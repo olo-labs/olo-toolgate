@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "source": "docs/codex/09-REQUIREMENTS-TRACEABILITY.md",
+  "status_values": [
+    "COMPLETE",
+    "NOT_APPLICABLE",
+    "BLOCKED"
+  ],
+  "rule": "A module is not done while any applicable requirement is BLOCKED."
+}

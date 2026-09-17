@@ -78,3 +78,8 @@ User + Team + Agent + Device + Tool + Action + Arguments + Resource + Context
 ## Documentation Rule
 
 Keep files short and focused. If a document grows beyond what a contributor can scan quickly, split it and link the parts from the section README.
+
+## Shared Contracts
+
+- [`architecture/shared-contracts.md`](architecture/shared-contracts.md)
+- [`development/contracts-release.md`](development/contracts-release.md)

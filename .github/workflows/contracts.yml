@@ -1,0 +1,50 @@
+name: contracts
+
+on:
+  pull_request:
+    paths:
+      - "packages/contracts/**"
+      - "tools/contracts/**"
+      - "CONTRACTS.md"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle/**"
+      - ".github/workflows/contracts.yml"
+  push:
+    branches: [main]
+    paths:
+      - "packages/contracts/**"
+      - "tools/contracts/**"
+      - "CONTRACTS.md"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle/**"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Validate shared contract packages
+        run: ./tools/contracts/check.sh
+
+      - name: Prove published Java-contract dependency mode
+        run: |
+          ./gradlew --no-daemon :contracts-java:publishToMavenLocal
+          ./gradlew --no-daemon \
+            -PusePublishedContracts=true \
+            -PcontractsVersion=0.1.0-SNAPSHOT \
+            :control-plane:build \
+            :marketplace-api:build \
+            :marketplace-worker:build

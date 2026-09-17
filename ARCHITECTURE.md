@@ -114,3 +114,9 @@ Gateway Runtime Authorization
 - [`docs/architecture/overview.md`](docs/architecture/overview.md)
 - [`docs/architecture/trust-boundaries.md`](docs/architecture/trust-boundaries.md)
 - [`docs/reference/architecture-master.md`](docs/reference/architecture-master.md)
+
+## Shared Contracts
+
+Cross-component contracts are published as versioned Rust, Java, TypeScript and PHP libraries from one language-neutral contract set. Monorepo components resolve them locally; separated repositories resolve the same package identities from registries.
+
+See [`CONTRACTS.md`](CONTRACTS.md).

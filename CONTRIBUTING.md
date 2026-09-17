@@ -33,7 +33,7 @@ before opening a pull request.
 | Marketplace API | Java | `apps/marketplace-api` |
 | Marketplace Worker | Java | `apps/marketplace-worker` |
 | Marketplace Website | Drupal / PHP | `apps/marketplace-drupal` |
-| Shared schemas | JSON Schema/OpenAPI | `packages/schemas` |
+| Shared schemas | JSON Schema/OpenAPI | `packages/contracts/schemas` |
 | Documentation | Markdown | `docs` |
 
 ## Before Coding
@@ -93,7 +93,7 @@ unknown package     -> reject
 Cross-component contracts live under:
 
 ```text
-packages/schemas/
+packages/contracts/schemas/
 ```
 
 Do not independently invent equivalent Rust/Java/TypeScript structures.
@@ -104,6 +104,12 @@ Run:
 
 ```bash
 make check
+```
+
+For Java/Gradle changes also run:
+
+```bash
+./gradlew javaCheck
 ```
 
 Then verify:

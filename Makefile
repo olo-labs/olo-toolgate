@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-.PHONY: help dev stop check test integration e2e security benchmark containers client docs clean tree
+.PHONY: help java-check java-projects publish-contracts-local dev stop check test integration e2e security benchmark containers client docs contracts contracts-check contracts-release-dry-run clean tree
 
 help:
 	@printf '%s\n' \
@@ -17,6 +17,8 @@ help:
 	  '  make containers   Build Docker images' \
 	  '  make client       Build endpoint client' \
 	  '  make docs         Validate documentation' \
+	  '  make contracts    Validate shared contract packages' \
+	  '  make contracts-release-dry-run  Show contract publication plan' \
 	  '  make tree         Print repository structure' \
 	  '  make clean        Remove local generated state' \
 	  '' \
@@ -55,9 +57,26 @@ client:
 docs:
 	@./tools/dev/docs-check.sh
 
+contracts: contracts-check
+
+contracts-check:
+	@./tools/contracts/check.sh
+
+contracts-release-dry-run:
+	@./tools/contracts/release-dry-run.sh
+
 tree:
 	@find . -path './.git' -prune -o -print | sort
 
 clean:
 	@rm -rf .dev .data logs tmp temp reports benchmark-results
 	@printf '%s\n' 'Local generated state removed.'
+
+java-projects:
+	@./gradlew projects
+
+java-check:
+	@./gradlew javaCheck
+
+publish-contracts-local:
+	@./gradlew :contracts-java:publishToMavenLocal

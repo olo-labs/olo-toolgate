@@ -54,8 +54,16 @@ Cargo.lock
 # Uncomment Cargo.lock tracking once application crates are initialized.
 # For binaries/applications, Cargo.lock should normally be committed.
 
+
 # -----------------------------------------------------------------------------
-# Java / Maven / Gradle
+# Gradle
+# -----------------------------------------------------------------------------
+.gradle/
+**/.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+
+# -----------------------------------------------------------------------------
+# Java
 # -----------------------------------------------------------------------------
 **/target/
 .gradle/
@@ -64,7 +72,6 @@ build/
 **/build/
 out/
 *.class
-*.jar
 *.war
 *.ear
 .mvn/timing.properties

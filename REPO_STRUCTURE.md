@@ -34,6 +34,12 @@ olo-toolgate/
 ├── CHANGELOG.md
 ├── LICENSE
 ├── Makefile
+├── settings.gradle.kts
+├── build.gradle.kts
+├── gradle.properties
+├── gradlew
+├── gradlew.bat
+├── gradle/
 ├── .env.example
 ├── .gitignore
 ├── .dockerignore

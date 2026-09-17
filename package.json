@@ -1,0 +1,12 @@
+{
+  "name": "olo-toolgate-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "packages/contracts/typescript"
+  ],
+  "scripts": {
+    "contracts:build": "npm --workspace @olo-labs/toolgate-contracts run build",
+    "contracts:check": "npm --workspace @olo-labs/toolgate-contracts run check"
+  }
+}

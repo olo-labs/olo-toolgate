@@ -1,0 +1,5 @@
+[versions]
+java = "21"
+
+# Add third-party library versions here as implementation modules are introduced.
+# Keep shared dependency versions centralized rather than duplicating them in subprojects.

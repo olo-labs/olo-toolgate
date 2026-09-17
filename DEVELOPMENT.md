@@ -73,11 +73,20 @@ Marketplace Web     Drupal / PHP
 
 ## Shared Contracts
 
-Canonical contracts:
+Canonical contract set:
 
 ```text
-packages/schemas/
+packages/contracts/
+  schemas/
+  openapi/
+  events/
+  rust/
+  java/
+  typescript/
+  php/
 ```
+
+Use workspace dependencies now and the same published package identities after repository separation. See [`CONTRACTS.md`](CONTRACTS.md).
 
 ## Debugging
 
@@ -92,3 +101,17 @@ Every component should support:
 ## More
 
 See [`docs/development/`](docs/development/).
+
+
+## Java Build
+
+Java services and libraries use **Gradle Kotlin DSL**.
+
+```bash
+./gradlew projects
+./gradlew javaCheck
+```
+
+Shared Java contracts are a local Gradle project now and a published Maven-compatible artifact later.
+
+See [`docs/development/gradle.md`](docs/development/gradle.md).

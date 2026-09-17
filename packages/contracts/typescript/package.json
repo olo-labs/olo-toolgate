@@ -1,0 +1,28 @@
+{
+  "name": "@olo-labs/toolgate-contracts",
+  "version": "0.1.0",
+  "description": "Shared protocol and data contracts for OLO ToolGate",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/olo-labs/olo-toolgate.git",
+    "directory": "packages/contracts/typescript"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

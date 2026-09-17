@@ -253,6 +253,24 @@ apps/
 └── marketplace-drupal/    # Drupal / PHP
 ```
 
+
+## Java build
+
+Java modules use **Gradle Kotlin DSL + Java 21**.
+
+```bash
+./gradlew projects
+./gradlew javaCheck
+```
+
+The shared Java contracts are consumed as a workspace project today and are publishable as:
+
+```text
+io.ololabs.toolgate:toolgate-contracts
+```
+
+so Java services can later move into separate repositories without changing imports.
+
 ## Want to contribute?
 
 You should be able to get from clone to a useful developer environment with:
@@ -270,6 +288,8 @@ Start here:
 - [Contributing](CONTRIBUTING.md)
 - [Development](DEVELOPMENT.md)
 - [Architecture](ARCHITECTURE.md)
+- [Codex implementation playbook](CODEX_IMPLEMENTATION.md)
+- [Shared contracts](CONTRACTS.md)
 - [Roadmap](ROADMAP.md)
 - [Good first contribution ideas](docs/contributors/good-first-contributions.md)
 

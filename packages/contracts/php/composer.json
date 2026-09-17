@@ -1,0 +1,14 @@
+{
+  "name": "olo-labs/toolgate-contracts",
+  "description": "Shared protocol and data contracts for OLO ToolGate",
+  "type": "library",
+  "license": "Apache-2.0",
+  "autoload": {
+    "psr-4": {
+      "OloLabs\\ToolGate\\Contracts\\": "src/"
+    }
+  },
+  "require": {
+    "php": ">=8.2"
+  }
+}

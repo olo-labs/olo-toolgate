@@ -1,0 +1,197 @@
+# Requirements Traceability
+
+## Purpose
+
+Prevent requirements from being silently missed.
+
+Every module must mark each applicable requirement as:
+
+```text
+COMPLETE
+NOT_APPLICABLE — with reason
+BLOCKED — module cannot be declared complete
+```
+
+## Architecture
+
+| ID | Requirement |
+|---|---|
+| ARC-001 | Respect documented component ownership. |
+| ARC-002 | Maintain low coupling/high cohesion. |
+| ARC-003 | Use dependency inversion at external boundaries. |
+| ARC-004 | No duplicated cross-component contract models. |
+| ARC-005 | Preserve future split-repo readiness. |
+| ARC-006 | Use explicit state machines for lifecycle workflows. |
+| ARC-007 | Stateless production app containers where architecture requires. |
+
+## Contracts
+
+| ID | Requirement |
+|---|---|
+| CON-001 | Canonical contract source is language-neutral. |
+| CON-002 | Java contracts publish as `io.ololabs.toolgate:toolgate-contracts`. |
+| CON-003 | Workspace and published dependency modes both work. |
+| CON-004 | Contract compatibility tests exist. |
+| CON-005 | Generated bindings are reproducible and drift-checked. |
+| CON-006 | Contract release is SemVer/versioned. |
+
+## Security
+
+| ID | Requirement |
+|---|---|
+| SEC-001 | Default deny/fail closed. |
+| SEC-002 | No secret logging/export. |
+| SEC-003 | Signature/hash validation cannot be bypassed. |
+| SEC-004 | Marketplace trust != organization deployment trust. |
+| SEC-005 | Organization deployment trust != runtime authorization. |
+| SEC-006 | Untrusted code is sandboxed. |
+| SEC-007 | SSRF/path/shell/archive attacks handled where applicable. |
+| SEC-008 | Key domains remain separate. |
+| SEC-009 | Security mutation is audited. |
+| SEC-010 | Replay/idempotency protections exist where required. |
+
+## Testing
+
+| ID | Requirement |
+|---|---|
+| TST-001 | Unit tests. |
+| TST-002 | Negative/error-path tests. |
+| TST-003 | Integration tests at real boundaries. |
+| TST-004 | Contract tests. |
+| TST-005 | Security tests. |
+| TST-006 | E2E coverage updated. |
+| TST-007 | Performance test for performance-sensitive path. |
+| TST-008 | No flaky timing-based correctness. |
+
+## Code Quality
+
+| ID | Requirement |
+|---|---|
+| QLT-001 | Apache-2.0 SPDX/copyright headers. |
+| QLT-002 | Public/security-sensitive code documented. |
+| QLT-003 | Static/lint/type checks pass. |
+| QLT-004 | Dependency use justified/centralized. |
+| QLT-005 | No god classes/service locator/global mutable correctness state. |
+| QLT-006 | Stable typed error model. |
+
+## APIs
+
+| ID | Requirement |
+|---|---|
+| API-001 | Versioned API. |
+| API-002 | OpenAPI updated/generated where applicable. |
+| API-003 | Input validation. |
+| API-004 | Stable error codes. |
+| API-005 | Request/correlation ID. |
+| API-006 | Idempotency on documented mutation APIs. |
+| API-007 | No stack trace/secret exposure. |
+
+## Data
+
+| ID | Requirement |
+|---|---|
+| DAT-001 | DB schema via migrations. |
+| DAT-002 | Clean install migration tested. |
+| DAT-003 | Upgrade migration tested where applicable. |
+| DAT-004 | Transaction/concurrency semantics explicit. |
+| DAT-005 | Persistent state externalized in production. |
+
+## Observability
+
+| ID | Requirement |
+|---|---|
+| OBS-001 | Health endpoint/state. |
+| OBS-002 | Readiness endpoint/state. |
+| OBS-003 | Structured logs. |
+| OBS-004 | Metrics. |
+| OBS-005 | Trace/correlation propagation. |
+| OBS-006 | Async jobs expose explicit durable status. |
+| OBS-007 | Sensitive values excluded from telemetry. |
+
+## Docker
+
+| ID | Requirement |
+|---|---|
+| DKR-001 | Multi-stage image. |
+| DKR-002 | Minimal runtime image. |
+| DKR-003 | Non-root runtime. |
+| DKR-004 | No embedded secrets. |
+| DKR-005 | OCI/version labels. |
+| DKR-006 | SBOM/image scan pipeline. |
+| DKR-007 | Graceful shutdown. |
+| DKR-008 | Read-only-root compatibility where practical. |
+
+## Kubernetes / Helm
+
+| ID | Requirement |
+|---|---|
+| K8S-001 | Helm template exists for deployable service. |
+| K8S-002 | Configurable resources. |
+| K8S-003 | Security contexts. |
+| K8S-004 | Probes. |
+| K8S-005 | ServiceAccount. |
+| K8S-006 | NetworkPolicy. |
+| K8S-007 | PDB where replicated. |
+| K8S-008 | HPA where horizontally scalable. |
+| K8S-009 | topology/affinity options. |
+| K8S-010 | external secret references. |
+| K8S-011 | optional ingress. |
+| K8S-012 | optional ServiceMonitor/metrics. |
+| K8S-013 | `helm lint` passes. |
+| K8S-014 | rendered manifests validate. |
+| K8S-015 | install/upgrade smoke test in local cluster. |
+| K8S-016 | rollback behavior documented/tested where applicable. |
+
+## Release
+
+| ID | Requirement |
+|---|---|
+| REL-001 | Maven contract publication pipeline. |
+| REL-002 | Container publication pipeline. |
+| REL-003 | Helm OCI publication pipeline. |
+| REL-004 | GitHub Release assets. |
+| REL-005 | SHA-256 checksums. |
+| REL-006 | SBOM. |
+| REL-007 | provenance/attestation. |
+| REL-008 | signatures when configured. |
+| REL-009 | release notes/changelog. |
+| REL-010 | compatibility matrix. |
+| REL-011 | upgrade notes. |
+
+## Documentation
+
+| ID | Requirement |
+|---|---|
+| DOC-001 | Contributor/user docs updated. |
+| DOC-002 | Component README updated. |
+| DOC-003 | Config documented. |
+| DOC-004 | API documented. |
+| DOC-005 | Architecture/ADR updated if needed. |
+| DOC-006 | Examples contain no real secrets. |
+| DOC-007 | Operational/troubleshooting docs updated. |
+
+## Performance / Scale
+
+| ID | Requirement |
+|---|---|
+| PRF-001 | No DB in normal Gateway authorization path. |
+| PRF-002 | Resource use bounded. |
+| PRF-003 | Horizontal scalability preserved where required. |
+| PRF-004 | Batch/async behavior used for fleet-scale reporting. |
+| PRF-005 | Benchmark methodology documented. |
+| PRF-006 | Backpressure/limits exist for queues/uploads/jobs. |
+
+## Module Completion Table Template
+
+Copy into the module PR/commit note:
+
+```text
+| Requirement | Status | Evidence |
+|---|---|---|
+| ARC-001 | COMPLETE | ... |
+| SEC-001 | COMPLETE | ... |
+| K8S-001 | NOT_APPLICABLE | library-only module |
+...
+```
+
+A `BLOCKED` requirement means the module is not DONE.

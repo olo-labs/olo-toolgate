@@ -23,6 +23,6 @@ olo-toolgate/
 
 ## Rule
 
-Canonical cross-language schemas live under `packages/schemas/`.
+Canonical cross-language schemas live under `packages/contracts/schemas/`.
 
 Rust, Java and TypeScript types are generated or validated against those schemas.

@@ -3970,7 +3970,7 @@ Use generated schemas rather than hand-maintaining incompatible data models acro
 Maintain canonical JSON Schema/OpenAPI definitions in:
 
 ```text
-packages/schemas
+packages/contracts/schemas
 ```
 
 Generate:
@@ -9102,7 +9102,7 @@ There must be exactly one authoritative package model shared by:
 Canonical schemas live in:
 
 ```text
-packages/schemas/
+packages/contracts/schemas/
 ```
 
 The Drupal Marketplace consumes released schema artifacts. It must not define a competing package format.

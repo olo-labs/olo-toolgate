@@ -19,6 +19,8 @@ https://github.com/olo-labs/olo-toolgate
 - GitHub community templates
 - monorepo directory structure
 - canonical schema location
+- Gradle Kotlin DSL multi-project Java build
+- publishable Java contracts with workspace/published dependency modes
 - top-level Makefile contract
 - initial CI checks
 - `.gitignore` / repository hygiene

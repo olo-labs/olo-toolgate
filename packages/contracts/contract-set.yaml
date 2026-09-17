@@ -1,0 +1,21 @@
+name: olo-toolgate-contracts
+version: 0.1.0-dev
+
+canonical:
+  schemas: schemas
+  openapi: openapi
+  events: events
+
+artifacts:
+  rust:
+    package: olo-toolgate-contracts
+  java:
+    groupId: io.ololabs.toolgate
+    artifactId: toolgate-contracts
+  typescript:
+    package: "@olo-labs/toolgate-contracts"
+  php:
+    package: olo-labs/toolgate-contracts
+
+compatibility:
+  policy: semver

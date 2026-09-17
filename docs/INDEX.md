@@ -16,6 +16,7 @@
 - `architecture/data-flows.md`
 - `architecture/monorepo-layout.md`
 - `architecture/package-model.md`
+- `architecture/shared-contracts.md`
 - `architecture/desired-vs-reported-state.md`
 - `architecture/scalability.md`
 - `architecture/compatibility.md`
@@ -68,8 +69,10 @@
 ## Development
 
 - `development/local-development.md`
+- `development/gradle.md`
 - `development/coding-standards.md`
 - `development/schema-workflow.md`
+- `development/contracts-release.md`
 - `development/adding-a-tool-runtime.md`
 - `development/adding-a-vault-provider.md`
 - `development/adding-a-resource-extractor.md`
@@ -95,3 +98,12 @@
 
 - `reference/architecture-master.md`
 - `reference/marketplace-api-master.md`
+
+## Codex Implementation
+
+- `codex/README.md`
+- `codex/00-MASTER-IMPLEMENTATION-PROMPT.md`
+- `codex/CODEX-RUNBOOK.md`
+- `codex/09-REQUIREMENTS-TRACEABILITY.md`
+- `codex/08-DEFINITION-OF-DONE.md`
+- `codex/modules/`
