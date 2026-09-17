@@ -1,0 +1,210 @@
+# =============================================================================
+# OLO ToolGate
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Secrets / local configuration
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.secret
+*.secrets
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+*.cer
+secrets/
+credentials/
+private/
+.local-secrets/
+
+# -----------------------------------------------------------------------------
+# Local ToolGate state
+# -----------------------------------------------------------------------------
+.dev/
+.data/
+data/
+runtime/
+artifacts/
+quarantine/
+hotfolder/
+HotFolder/
+logs/
+tmp/
+temp/
+coverage/
+reports/
+benchmark-results/
+
+# Keep checked-in example/sample data if explicitly under examples.
+!docs/examples/
+!examples/
+
+# -----------------------------------------------------------------------------
+# Rust
+# -----------------------------------------------------------------------------
+target/
+**/target/
+Cargo.lock
+# Uncomment Cargo.lock tracking once application crates are initialized.
+# For binaries/applications, Cargo.lock should normally be committed.
+
+# -----------------------------------------------------------------------------
+# Java / Maven / Gradle
+# -----------------------------------------------------------------------------
+**/target/
+.gradle/
+**/.gradle/
+build/
+**/build/
+out/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/timing.properties
+
+# -----------------------------------------------------------------------------
+# Node / React / TypeScript
+# -----------------------------------------------------------------------------
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+.vite/
+**/.vite/
+.next/
+.nuxt/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# -----------------------------------------------------------------------------
+# PHP / Drupal / Composer
+# -----------------------------------------------------------------------------
+vendor/
+**/vendor/
+web/sites/default/files/
+web/sites/*/files/
+web/sites/default/settings.local.php
+web/sites/default/services.local.yml
+drush/sites/self.site.yml
+.phpunit.result.cache
+
+# -----------------------------------------------------------------------------
+# Python
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.Python
+.venv/
+venv/
+env/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# -----------------------------------------------------------------------------
+# IDEs / editors
+# -----------------------------------------------------------------------------
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+*.code-workspace
+.project
+.classpath
+.settings/
+*.sublime-*
+*~
+*.swp
+*.swo
+
+# -----------------------------------------------------------------------------
+# OS files
+# -----------------------------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# -----------------------------------------------------------------------------
+# Docker / Compose local overrides
+# -----------------------------------------------------------------------------
+docker-compose.override.yml
+compose.override.yml
+*.local.compose.yml
+
+# -----------------------------------------------------------------------------
+# Terraform / IaC
+# -----------------------------------------------------------------------------
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# -----------------------------------------------------------------------------
+# Kubernetes / Helm generated/local
+# -----------------------------------------------------------------------------
+*.kubeconfig
+kubeconfig
+charts/*.tgz
+
+# -----------------------------------------------------------------------------
+# Test / coverage
+# -----------------------------------------------------------------------------
+junit.xml
+test-results/
+playwright-report/
+blob-report/
+allure-results/
+lcov.info
+
+# -----------------------------------------------------------------------------
+# Package archives / generated release files
+# -----------------------------------------------------------------------------
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.tar.zst
+*.deb
+*.rpm
+*.msi
+*.dmg
+*.pkg
+*.exe
+*.app
+sbom.generated.*
+checksums.txt
+release-manifest.json
+
+# -----------------------------------------------------------------------------
+# Misc
+# -----------------------------------------------------------------------------
+*.bak
+*.orig
+*.rej
+*.pid
+*.log

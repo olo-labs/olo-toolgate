@@ -1,0 +1,63 @@
+SHELL := /bin/sh
+
+.PHONY: help dev stop check test integration e2e security benchmark containers client docs clean tree
+
+help:
+	@printf '%s\n' \
+	  'OLO ToolGate repository commands' \
+	  '' \
+	  '  make dev          Start the contributor development environment' \
+	  '  make stop         Stop the development environment' \
+	  '  make check        Run formatting/lint/schema/docs checks' \
+	  '  make test         Run unit tests' \
+	  '  make integration  Run integration tests' \
+	  '  make e2e          Run end-to-end tests' \
+	  '  make security     Run security test suite' \
+	  '  make benchmark    Run benchmark suite' \
+	  '  make containers   Build Docker images' \
+	  '  make client       Build endpoint client' \
+	  '  make docs         Validate documentation' \
+	  '  make tree         Print repository structure' \
+	  '  make clean        Remove local generated state' \
+	  '' \
+	  'Implementation is currently scaffold/pre-alpha.'
+
+dev:
+	@./tools/dev/dev.sh
+
+stop:
+	@./tools/dev/stop.sh
+
+check:
+	@./tools/dev/check.sh
+
+test:
+	@./tools/dev/not-implemented.sh "unit tests"
+
+integration:
+	@./tools/dev/not-implemented.sh "integration tests"
+
+e2e:
+	@./tools/dev/not-implemented.sh "end-to-end tests"
+
+security:
+	@./tools/dev/not-implemented.sh "security tests"
+
+benchmark:
+	@./tools/dev/not-implemented.sh "benchmarks"
+
+containers:
+	@./tools/dev/not-implemented.sh "container builds"
+
+client:
+	@./tools/dev/not-implemented.sh "endpoint client build"
+
+docs:
+	@./tools/dev/docs-check.sh
+
+tree:
+	@find . -path './.git' -prune -o -print | sort
+
+clean:
+	@rm -rf .dev .data logs tmp temp reports benchmark-results
+	@printf '%s\n' 'Local generated state removed.'

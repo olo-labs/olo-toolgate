@@ -1,0 +1,24 @@
+#!/usr/bin/env sh
+set -eu
+
+required="
+README.md
+CONTRIBUTING.md
+ARCHITECTURE.md
+VISION.md
+ROADMAP.md
+SECURITY.md
+docs/README.md
+docs/INDEX.md
+docs/architecture/overview.md
+docs/security/security-invariants.md
+"
+
+for f in $required; do
+  if [ ! -f "$f" ]; then
+    printf 'Missing required documentation: %s\n' "$f" >&2
+    exit 1
+  fi
+done
+
+printf '%s\n' 'Documentation structure check passed.'

@@ -1,0 +1,61 @@
+name: Bug report
+description: Report a reproducible problem
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Keep this focused and do not include secrets.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Gateway
+        - Control Plane
+        - Admin UI
+        - Endpoint Client
+        - Marketplace API
+        - Marketplace Worker
+        - Drupal
+        - Quickstart
+        - Documentation
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      placeholder: OS, Docker/Kubernetes, browser/client, etc.
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Safe logs or trace ID
+      description: Remove credentials, tokens and personal data.

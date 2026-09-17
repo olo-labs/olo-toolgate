@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/olo-labs/olo-toolgate/discussions
+    about: Use Discussions for architecture questions, ideas and use cases.
+  - name: Security vulnerability
+    url: https://github.com/olo-labs/olo-toolgate/security
+    about: Do not disclose vulnerabilities in public issues.

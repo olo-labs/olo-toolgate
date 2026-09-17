@@ -1,0 +1,21 @@
+title: "[idea] "
+labels:
+  - ideas
+body:
+  - type: textarea
+    id: usecase
+    attributes:
+      label: What would you like ToolGate to control?
+      description: Tell us the real workflow first.
+    validations:
+      required: true
+
+  - type: textarea
+    id: today
+    attributes:
+      label: How do you handle this today?
+
+  - type: textarea
+    id: ideal
+    attributes:
+      label: What would the ideal experience look like?

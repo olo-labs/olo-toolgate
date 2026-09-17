@@ -1,0 +1,10 @@
+apiVersion: mcp-access.io/v1
+kind: AccessPolicy
+metadata:
+  name: engineering-example
+subject:
+  teams:
+    - engineering
+target:
+  tool: example.hello
+decision: ALLOW

@@ -1,0 +1,26 @@
+apiVersion: marketplace.mcp-access.io/v1
+kind: LocalToolPackage
+metadata:
+  publisher: example
+  name: hello-python
+  version: 0.1.0
+spec:
+  tool:
+    id: example.hello
+    ai:
+      description: Return a greeting for the provided name.
+  runtime:
+    type: python
+    entrypoint: main.py
+  inputs:
+    - name: name
+      type: string
+      required: true
+  permissions:
+    filesystem:
+      read: []
+      write: []
+    network:
+      allow: []
+  risk:
+    classification: READ
