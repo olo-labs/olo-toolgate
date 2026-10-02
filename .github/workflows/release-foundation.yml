@@ -68,7 +68,9 @@ jobs:
             cp "packages/contracts/java/build/libs/toolgate-contracts-${contracts_version}${classifier}.jar" build/release/
           done
           helm package deploy/helm/olo-toolgate --destination build/release
-          cp CHANGELOG.md docs/development/foundation-upgrades.md docs/gateway/upgrades.md build/release/
+          cp CHANGELOG.md docs/development/foundation-upgrades.md build/release/
+          cp docs/gateway/upgrades.md build/release/gateway-upgrades.md
+          cp docs/control-plane/upgrades.md build/release/control-upgrades.md
       - name: Generate release dependency SBOM
         run: |
           docker run --rm -v "$PWD:/repo" aquasec/trivy:0.61.1 fs --no-progress --include-dev-deps --format cyclonedx --scanners vuln --skip-dirs .dev,**/build,**/node_modules,target,.gradle,.git --output /repo/build/release/sbom.cdx.json /repo

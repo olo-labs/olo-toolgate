@@ -2,6 +2,11 @@ OLO ToolGate chart {{ .Chart.Version }}.
 {{ if .Values.gateway.enabled }}
 Gateway uses existing credentials Secret {{ .Values.gateway.credentialsSecret }}.
 Configure trusted TLS ingress and permitted NetworkPolicy peers before serving traffic.
-{{ else }}
-Gateway is disabled; this configuration installs no workloads.
+{{ end }}
+{{ if .Values.control.enabled }}
+Control Plane requires external PostgreSQL and existing identity/database Secrets.
+Configure TLS, issuer/audience and permitted NetworkPolicy DB/DNS/ingress peers.
+{{ end }}
+{{ if not (or .Values.gateway.enabled .Values.control.enabled) }}
+All services are disabled; this configuration installs no workloads.
 {{ end }}

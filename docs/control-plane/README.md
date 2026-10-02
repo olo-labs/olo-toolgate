@@ -1,5 +1,12 @@
 # Control Plane
 
+Module 02 implements tenant-scoped users, teams, agents, tools, policies and device
+records, versioned CRUD, append-only mutation audit and bounded JSON/YAML configuration
+import/export. See [configuration](configuration.md), [API](../api/control-plane-api.md),
+[deployment/upgrades](upgrades.md) and [ADR 003](../adr/003-control-plane-transactions.md).
+The remaining ownership list below describes the wider architecture; approvals,
+fleet deployment, vault bindings and Marketplace workflows are later modules.
+
 The Control Plane is the organization administration service and serves the Admin UI.
 
 ## Owns

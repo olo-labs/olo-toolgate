@@ -1,0 +1,1277 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+openapi: 3.1.0
+info:
+  title: OLO ToolGate Control Plane API
+  version: 0.3.0-dev
+  description: Tenant-scoped administrative records. Stored policies do not become runtime grants. JSON
+    and safe YAML imports support dry-run, merge and replace; formatVersion 1 only. Revision headers protect
+    concurrent edits. No credential or executable-code fields.
+security:
+- adminAccessToken: []
+paths:
+  /api/control/v1/openapi:
+    get:
+      operationId: getControlOpenApi
+      description: Requires toolgate-admin or toolgate-reader and valid tenant identity claims. Returns this API with all schemas embedded.
+      responses:
+        '200':
+          description: Self-contained OpenAPI 3.1 document
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Verified access token and valid identity claims required
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '403':
+          description: Role forbidden
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+  /api/control/v1/users:
+    get:
+      operationId: listControlUser
+      description: Requires toolgate-admin or toolgate-reader.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlUserPage
+        '400': &id001
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '401': &id002
+          description: Verified access token required
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '403': &id003
+          description: Role forbidden
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '404': &id004
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '409': &id005
+          description: Revision, reference, quota or idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '413': &id006
+          description: Transport request size limit; may be rejected before the API error envelope is available
+        '415': &id007
+          description: Unsupported media type
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '500': &id008
+          description: Internal failure
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '503': &id009
+          description: Database unavailable
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          maxLength: 512
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+    post:
+      operationId: createControlUser
+      description: Requires toolgate-admin.
+      responses:
+        '201':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlUser
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - &id010
+        name: Idempotency-Key
+        in: header
+        required: true
+        description: Opaque request identity, scoped to verified tenant and actor, retained for seven
+          days. Reuse with a different request fails.
+        schema:
+          type: string
+          pattern: ^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/control.schema.json#/$defs/ControlUser
+  /api/control/v1/users/{id}:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        $ref: ../schemas/v1/identifiers.schema.json#/$defs/Identifier
+    get:
+      operationId: getControlUser
+      description: Requires toolgate-admin or toolgate-reader.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlUser
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+    put:
+      operationId: updateControlUser
+      description: Requires toolgate-admin.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlUser
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id010
+      - &id011
+        name: If-Match
+        in: header
+        required: true
+        description: Quoted current record revision, or tenant export revision for import.
+        schema:
+          type: string
+          pattern: ^"(0|[1-9][0-9]*)"$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/control.schema.json#/$defs/ControlUser
+    delete:
+      operationId: deleteControlUser
+      description: Requires toolgate-admin.
+      responses:
+        '204':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id010
+      - *id011
+  /api/control/v1/teams:
+    get:
+      operationId: listControlTeam
+      description: Requires toolgate-admin or toolgate-reader.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlTeamPage
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          maxLength: 512
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+    post:
+      operationId: createControlTeam
+      description: Requires toolgate-admin.
+      responses:
+        '201':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlTeam
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/control.schema.json#/$defs/ControlTeam
+  /api/control/v1/teams/{id}:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        $ref: ../schemas/v1/identifiers.schema.json#/$defs/Identifier
+    get:
+      operationId: getControlTeam
+      description: Requires toolgate-admin or toolgate-reader.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlTeam
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+    put:
+      operationId: updateControlTeam
+      description: Requires toolgate-admin.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlTeam
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id010
+      - *id011
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/control.schema.json#/$defs/ControlTeam
+    delete:
+      operationId: deleteControlTeam
+      description: Requires toolgate-admin.
+      responses:
+        '204':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id010
+      - *id011
+  /api/control/v1/agents:
+    get:
+      operationId: listControlAgent
+      description: Requires toolgate-admin or toolgate-reader.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlAgentPage
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          maxLength: 512
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+    post:
+      operationId: createControlAgent
+      description: Requires toolgate-admin.
+      responses:
+        '201':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlAgent
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/control.schema.json#/$defs/ControlAgent
+  /api/control/v1/agents/{id}:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        $ref: ../schemas/v1/identifiers.schema.json#/$defs/Identifier
+    get:
+      operationId: getControlAgent
+      description: Requires toolgate-admin or toolgate-reader.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlAgent
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+    put:
+      operationId: updateControlAgent
+      description: Requires toolgate-admin.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlAgent
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id010
+      - *id011
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/control.schema.json#/$defs/ControlAgent
+    delete:
+      operationId: deleteControlAgent
+      description: Requires toolgate-admin.
+      responses:
+        '204':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id010
+      - *id011
+  /api/control/v1/tools:
+    get:
+      operationId: listControlTool
+      description: Requires toolgate-admin or toolgate-reader.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlToolPage
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          maxLength: 512
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+    post:
+      operationId: createControlTool
+      description: Requires toolgate-admin.
+      responses:
+        '201':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlTool
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/control.schema.json#/$defs/ControlTool
+  /api/control/v1/tools/{id}:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        $ref: ../schemas/v1/identifiers.schema.json#/$defs/Identifier
+    get:
+      operationId: getControlTool
+      description: Requires toolgate-admin or toolgate-reader.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlTool
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+    put:
+      operationId: updateControlTool
+      description: Requires toolgate-admin.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlTool
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id010
+      - *id011
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/control.schema.json#/$defs/ControlTool
+    delete:
+      operationId: deleteControlTool
+      description: Requires toolgate-admin.
+      responses:
+        '204':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id010
+      - *id011
+  /api/control/v1/policies:
+    get:
+      operationId: listControlPolicy
+      description: Requires toolgate-admin or toolgate-reader.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlPolicyPage
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          maxLength: 512
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+    post:
+      operationId: createControlPolicy
+      description: Requires toolgate-admin.
+      responses:
+        '201':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlPolicy
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/control.schema.json#/$defs/ControlPolicy
+  /api/control/v1/policies/{id}:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        $ref: ../schemas/v1/identifiers.schema.json#/$defs/Identifier
+    get:
+      operationId: getControlPolicy
+      description: Requires toolgate-admin or toolgate-reader.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlPolicy
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+    put:
+      operationId: updateControlPolicy
+      description: Requires toolgate-admin.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlPolicy
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id010
+      - *id011
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/control.schema.json#/$defs/ControlPolicy
+    delete:
+      operationId: deleteControlPolicy
+      description: Requires toolgate-admin.
+      responses:
+        '204':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id010
+      - *id011
+  /api/control/v1/devices:
+    get:
+      operationId: listControlDevice
+      description: Requires toolgate-admin or toolgate-reader.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlDevicePage
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          maxLength: 512
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+    post:
+      operationId: createControlDevice
+      description: Requires toolgate-admin.
+      responses:
+        '201':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlDevice
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/control.schema.json#/$defs/ControlDevice
+  /api/control/v1/devices/{id}:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        $ref: ../schemas/v1/identifiers.schema.json#/$defs/Identifier
+    get:
+      operationId: getControlDevice
+      description: Requires toolgate-admin or toolgate-reader.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlDevice
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+    put:
+      operationId: updateControlDevice
+      description: Requires toolgate-admin.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlDevice
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id010
+      - *id011
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/control.schema.json#/$defs/ControlDevice
+    delete:
+      operationId: deleteControlDevice
+      description: Requires toolgate-admin.
+      responses:
+        '204':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id010
+      - *id011
+  /api/control/v1/config/export:
+    get:
+      operationId: exportConfig
+      description: Requires toolgate-admin or toolgate-reader.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlSnapshot
+            application/yaml:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlSnapshot
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+  /api/control/v1/config/import:
+    post:
+      operationId: importConfig
+      description: Requires toolgate-admin.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlImportResult
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id010
+      - *id011
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/control.schema.json#/$defs/ControlImportRequest
+          application/yaml:
+            schema:
+              $ref: ../schemas/v1/control.schema.json#/$defs/ControlImportRequest
+  /api/control/v1/audit:
+    get:
+      operationId: listAudit
+      description: Requires toolgate-admin.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlAuditPage
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '413': *id006
+        '415': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+components:
+  securitySchemes:
+    adminAccessToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: RS256 token with verified issuer/audience/expiry and signed tenant_id/groups. Not a
+        Gateway runtime credential.

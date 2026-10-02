@@ -13,3 +13,7 @@ Create an ADR when changing:
 - public API compatibility.
 
 Use `000-template.md`.
+
+- [001: Shared contracts and foundation](001-foundation-contract-generation.md)
+- [002: Gateway static foundation](002-gateway-static-foundation.md)
+- [003: Control Plane transactions and identity](003-control-plane-transactions.md)

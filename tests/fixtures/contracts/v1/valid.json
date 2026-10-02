@@ -213,5 +213,404 @@
       "requestId": "request-1"
     },
     "traceId": "cccccccccccccccccccccccccccccccc"
+  },
+  "ControlUser": {
+    "id": "user-1",
+    "name": "User",
+    "enabled": true,
+    "revision": 1
+  },
+  "ControlTeam": {
+    "id": "team-1",
+    "name": "User",
+    "enabled": true,
+    "revision": 1,
+    "userIds": [
+      "user-1"
+    ]
+  },
+  "ControlAgent": {
+    "id": "agent-1",
+    "name": "User",
+    "enabled": true,
+    "revision": 1,
+    "ownerUserId": "user-1"
+  },
+  "ControlDevice": {
+    "id": "device-1",
+    "name": "User",
+    "enabled": true,
+    "revision": 1,
+    "ownerUserId": "user-1"
+  },
+  "ControlTool": {
+    "id": "calculator",
+    "name": "User",
+    "enabled": true,
+    "revision": 1,
+    "definition": {
+      "id": "calculator",
+      "name": "Calculator",
+      "description": "Pure calculation",
+      "actions": [
+        {
+          "name": "evaluate",
+          "resourceKinds": [
+            "CUSTOM"
+          ]
+        }
+      ],
+      "inputSchema": {
+        "type": "object"
+      },
+      "outputSchema": {
+        "type": "number"
+      }
+    }
+  },
+  "ControlPolicy": {
+    "id": "policy-1",
+    "name": "User",
+    "enabled": true,
+    "revision": 1,
+    "toolId": "calculator",
+    "action": "evaluate",
+    "resource": {
+      "kind": "CUSTOM",
+      "locator": "calculator"
+    },
+    "decision": "BLOCK",
+    "userIds": [
+      "user-1"
+    ],
+    "teamIds": [],
+    "agentIds": [],
+    "deviceIds": []
+  },
+  "ControlUserPage": {
+    "items": [
+      {
+        "id": "user-1",
+        "name": "User",
+        "enabled": true,
+        "revision": 1
+      }
+    ]
+  },
+  "ControlTeamPage": {
+    "items": [
+      {
+        "id": "team-1",
+        "name": "User",
+        "enabled": true,
+        "revision": 1,
+        "userIds": [
+          "user-1"
+        ]
+      }
+    ]
+  },
+  "ControlAgentPage": {
+    "items": [
+      {
+        "id": "agent-1",
+        "name": "User",
+        "enabled": true,
+        "revision": 1,
+        "ownerUserId": "user-1"
+      }
+    ]
+  },
+  "ControlToolPage": {
+    "items": [
+      {
+        "id": "calculator",
+        "name": "User",
+        "enabled": true,
+        "revision": 1,
+        "definition": {
+          "id": "calculator",
+          "name": "Calculator",
+          "description": "Pure calculation",
+          "actions": [
+            {
+              "name": "evaluate",
+              "resourceKinds": [
+                "CUSTOM"
+              ]
+            }
+          ],
+          "inputSchema": {
+            "type": "object"
+          },
+          "outputSchema": {
+            "type": "number"
+          }
+        }
+      }
+    ]
+  },
+  "ControlPolicyPage": {
+    "items": [
+      {
+        "id": "policy-1",
+        "name": "User",
+        "enabled": true,
+        "revision": 1,
+        "toolId": "calculator",
+        "action": "evaluate",
+        "resource": {
+          "kind": "CUSTOM",
+          "locator": "calculator"
+        },
+        "decision": "BLOCK",
+        "userIds": [
+          "user-1"
+        ],
+        "teamIds": [],
+        "agentIds": [],
+        "deviceIds": []
+      }
+    ]
+  },
+  "ControlDevicePage": {
+    "items": [
+      {
+        "id": "device-1",
+        "name": "User",
+        "enabled": true,
+        "revision": 1,
+        "ownerUserId": "user-1"
+      }
+    ]
+  },
+  "ControlSnapshot": {
+    "formatVersion": 1,
+    "tenantId": "tenant-1",
+    "revision": 0,
+    "users": [
+      {
+        "id": "user-1",
+        "name": "User",
+        "enabled": true,
+        "revision": 1
+      }
+    ],
+    "teams": [
+      {
+        "id": "team-1",
+        "name": "User",
+        "enabled": true,
+        "revision": 1,
+        "userIds": [
+          "user-1"
+        ]
+      }
+    ],
+    "agents": [
+      {
+        "id": "agent-1",
+        "name": "User",
+        "enabled": true,
+        "revision": 1,
+        "ownerUserId": "user-1"
+      }
+    ],
+    "tools": [
+      {
+        "id": "calculator",
+        "name": "User",
+        "enabled": true,
+        "revision": 1,
+        "definition": {
+          "id": "calculator",
+          "name": "Calculator",
+          "description": "Pure calculation",
+          "actions": [
+            {
+              "name": "evaluate",
+              "resourceKinds": [
+                "CUSTOM"
+              ]
+            }
+          ],
+          "inputSchema": {
+            "type": "object"
+          },
+          "outputSchema": {
+            "type": "number"
+          }
+        }
+      }
+    ],
+    "policies": [
+      {
+        "id": "policy-1",
+        "name": "User",
+        "enabled": true,
+        "revision": 1,
+        "toolId": "calculator",
+        "action": "evaluate",
+        "resource": {
+          "kind": "CUSTOM",
+          "locator": "calculator"
+        },
+        "decision": "BLOCK",
+        "userIds": [
+          "user-1"
+        ],
+        "teamIds": [],
+        "agentIds": [],
+        "deviceIds": []
+      }
+    ],
+    "devices": [
+      {
+        "id": "device-1",
+        "name": "User",
+        "enabled": true,
+        "revision": 1,
+        "ownerUserId": "user-1"
+      }
+    ]
+  },
+  "ControlImportMode": "MERGE",
+  "ControlChangeKind": "CREATE",
+  "ControlEntityKind": "USER",
+  "ControlImportRequest": {
+    "snapshot": {
+      "formatVersion": 1,
+      "tenantId": "tenant-1",
+      "revision": 0,
+      "users": [
+        {
+          "id": "user-1",
+          "name": "User",
+          "enabled": true,
+          "revision": 1
+        }
+      ],
+      "teams": [
+        {
+          "id": "team-1",
+          "name": "User",
+          "enabled": true,
+          "revision": 1,
+          "userIds": [
+            "user-1"
+          ]
+        }
+      ],
+      "agents": [
+        {
+          "id": "agent-1",
+          "name": "User",
+          "enabled": true,
+          "revision": 1,
+          "ownerUserId": "user-1"
+        }
+      ],
+      "tools": [
+        {
+          "id": "calculator",
+          "name": "User",
+          "enabled": true,
+          "revision": 1,
+          "definition": {
+            "id": "calculator",
+            "name": "Calculator",
+            "description": "Pure calculation",
+            "actions": [
+              {
+                "name": "evaluate",
+                "resourceKinds": [
+                  "CUSTOM"
+                ]
+              }
+            ],
+            "inputSchema": {
+              "type": "object"
+            },
+            "outputSchema": {
+              "type": "number"
+            }
+          }
+        }
+      ],
+      "policies": [
+        {
+          "id": "policy-1",
+          "name": "User",
+          "enabled": true,
+          "revision": 1,
+          "toolId": "calculator",
+          "action": "evaluate",
+          "resource": {
+            "kind": "CUSTOM",
+            "locator": "calculator"
+          },
+          "decision": "BLOCK",
+          "userIds": [
+            "user-1"
+          ],
+          "teamIds": [],
+          "agentIds": [],
+          "deviceIds": []
+        }
+      ],
+      "devices": [
+        {
+          "id": "device-1",
+          "name": "User",
+          "enabled": true,
+          "revision": 1,
+          "ownerUserId": "user-1"
+        }
+      ]
+    },
+    "mode": "MERGE",
+    "dryRun": true
+  },
+  "ControlChange": {
+    "kind": "USER",
+    "id": "user-1",
+    "operation": "CREATE"
+  },
+  "ControlImportResult": {
+    "applied": false,
+    "revision": 0,
+    "changes": [
+      {
+        "kind": "USER",
+        "id": "user-1",
+        "operation": "CREATE"
+      }
+    ]
+  },
+  "ControlAudit": {
+    "sequence": 1,
+    "tenantId": "tenant-1",
+    "actorId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "operation": "CREATE",
+    "target": "users:user-1",
+    "revision": 1,
+    "requestId": "request-1",
+    "occurredAt": "2026-10-02T00:00:00Z",
+    "requestDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "ControlAuditPage": {
+    "items": [
+      {
+        "sequence": 1,
+        "tenantId": "tenant-1",
+        "actorId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "operation": "CREATE",
+        "target": "users:user-1",
+        "revision": 1,
+        "requestId": "request-1",
+        "occurredAt": "2026-10-02T00:00:00Z",
+        "requestDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    ]
   }
 }

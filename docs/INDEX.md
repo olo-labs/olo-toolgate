@@ -25,6 +25,8 @@
 
 - `gateway/`
 - `control-plane/`
+- [Control Plane configuration](control-plane/configuration.md)
+- [Control Plane deployment and upgrades](control-plane/upgrades.md)
 - `client/`
 - `marketplace/`
 
@@ -93,6 +95,7 @@
 
 - `adr/README.md`
 - `adr/000-template.md`
+- [003: Control Plane transactions and identity](adr/003-control-plane-transactions.md)
 
 ## Reference
 
@@ -107,3 +110,4 @@
 - `codex/09-REQUIREMENTS-TRACEABILITY.md`
 - `codex/08-DEFINITION-OF-DONE.md`
 - `codex/modules/`
+- [Module 02 completion evidence](codex/modules/02-completion.md)

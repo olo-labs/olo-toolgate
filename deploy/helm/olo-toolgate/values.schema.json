@@ -5,7 +5,8 @@
   "additionalProperties": false,
   "required": [
     "global",
-    "gateway"
+    "gateway",
+    "control"
   ],
   "properties": {
     "global": {
@@ -662,6 +663,603 @@
             "properties": {
               "credentialsSecret": {
                 "minLength": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "replicaCount",
+        "image",
+        "resources",
+        "podSecurityContext",
+        "securityContext",
+        "terminationGracePeriodSeconds",
+        "nodeSelector",
+        "tolerations",
+        "affinity",
+        "topologySpreadConstraints",
+        "pdb",
+        "autoscaling",
+        "networkPolicy",
+        "ingress",
+        "serviceMonitor",
+        "developmentMode",
+        "publicKeySecret",
+        "publicKeyKey",
+        "jwt",
+        "database",
+        "limits",
+        "tracing"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repository",
+            "tag",
+            "digest",
+            "pullPolicy"
+          ],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[a-z0-9][a-z0-9./-]*$"
+            },
+            "tag": {
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[a-zA-Z0-9_.-]*$"
+            },
+            "digest": {
+              "type": "string",
+              "maxLength": 2048,
+              "pattern": "^$|^sha256:[a-f0-9]{64}$"
+            },
+            "pullPolicy": {
+              "type": "string",
+              "maxLength": 2048,
+              "enum": [
+                "IfNotPresent",
+                "Always",
+                "Never"
+              ]
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "requests",
+            "limits"
+          ],
+          "properties": {
+            "requests": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "cpu",
+                "memory"
+              ],
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*(m)?$"
+                },
+                "memory": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*(Ki|Mi|Gi)$"
+                }
+              }
+            },
+            "limits": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "cpu",
+                "memory"
+              ],
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*(m)?$"
+                },
+                "memory": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*(Ki|Mi|Gi)$"
+                }
+              }
+            }
+          }
+        },
+        "podSecurityContext": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "runAsNonRoot",
+            "runAsUser",
+            "runAsGroup",
+            "fsGroup",
+            "seccompProfile"
+          ],
+          "properties": {
+            "runAsNonRoot": {
+              "type": "boolean",
+              "const": true
+            },
+            "runAsUser": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "runAsGroup": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "fsGroup": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "seccompProfile": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "maxLength": 2048
+                }
+              }
+            }
+          }
+        },
+        "securityContext": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "allowPrivilegeEscalation",
+            "readOnlyRootFilesystem",
+            "capabilities"
+          ],
+          "properties": {
+            "allowPrivilegeEscalation": {
+              "type": "boolean",
+              "const": false
+            },
+            "readOnlyRootFilesystem": {
+              "type": "boolean",
+              "const": true
+            },
+            "capabilities": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "drop"
+              ],
+              "properties": {
+                "drop": {
+                  "const": [
+                    "ALL"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "terminationGracePeriodSeconds": {
+          "type": "integer",
+          "minimum": 25,
+          "maximum": 300
+        },
+        "nodeSelector": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tolerations": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object"
+          }
+        },
+        "affinity": {
+          "type": "object"
+        },
+        "topologySpreadConstraints": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object"
+          }
+        },
+        "pdb": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "minAvailable"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "minAvailable": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 31
+            }
+          }
+        },
+        "autoscaling": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "minReplicas",
+            "maxReplicas",
+            "targetCPUUtilizationPercentage"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "minReplicas": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32
+            },
+            "maxReplicas": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32
+            },
+            "targetCPUUtilizationPercentage": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "networkPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "runtimeFrom",
+            "managementFrom",
+            "databaseTo",
+            "dnsTo",
+            "collectorTo"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "runtimeFrom": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "object"
+              }
+            },
+            "managementFrom": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "object"
+              }
+            },
+            "databaseTo": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "object"
+              }
+            },
+            "dnsTo": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "object"
+              }
+            },
+            "collectorTo": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "ingress": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "className",
+            "annotations",
+            "host",
+            "tlsSecret"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "className": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "annotations": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "host": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "tlsSecret": {
+              "type": "string",
+              "maxLength": 2048
+            }
+          }
+        },
+        "serviceMonitor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "labels",
+            "interval"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "labels": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "interval": {
+              "type": "string",
+              "maxLength": 2048,
+              "pattern": "^[1-9][0-9]*(s|m)$"
+            }
+          }
+        },
+        "developmentMode": {
+          "type": "boolean"
+        },
+        "publicKeySecret": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$|^$"
+        },
+        "publicKeyKey": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9._-]+$",
+          "maxLength": 128
+        },
+        "jwt": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "issuer": {
+              "type": "string",
+              "pattern": "^https://[^/?#@]+[^?#]*$",
+              "maxLength": 512
+            },
+            "audience": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "required": [
+            "issuer",
+            "audience"
+          ]
+        },
+        "database": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9.-]+$",
+              "maxLength": 253
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "name": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "maxLength": 63
+            },
+            "credentialsSecret": {
+              "type": "string",
+              "maxLength": 253,
+              "pattern": "^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$|^$"
+            },
+            "sslMode": {
+              "type": "string",
+              "enum": [
+                "verify-full",
+                "disable"
+              ]
+            },
+            "caSecret": {
+              "type": "string",
+              "maxLength": 253,
+              "pattern": "^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$|^$"
+            },
+            "caKey": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9._-]+$",
+              "maxLength": 128
+            }
+          },
+          "required": [
+            "host",
+            "port",
+            "name",
+            "credentialsSecret",
+            "sslMode",
+            "caSecret",
+            "caKey"
+          ]
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "maxRecords": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 512
+            },
+            "maxConfigBytes": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 1048576
+            }
+          },
+          "required": [
+            "maxRecords",
+            "maxConfigBytes"
+          ]
+        },
+        "tracing": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "host",
+            "port",
+            "protocol"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "host": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9.-]+$",
+              "maxLength": 253
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "protocol": {
+              "enum": [
+                "grpc",
+                "http/protobuf"
+              ]
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "publicKeySecret": {
+                "minLength": 1
+              },
+              "database": {
+                "properties": {
+                  "credentialsSecret": {
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": true
+              },
+              "developmentMode": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "database": {
+                "properties": {
+                  "sslMode": {
+                    "const": "verify-full"
+                  },
+                  "caSecret": {
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": true
+              },
+              "tracing": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "networkPolicy": {
+                "properties": {
+                  "collectorTo": {
+                    "minItems": 1
+                  }
+                }
               }
             }
           }

@@ -340,5 +340,8 @@ Module 00 supplies canonical v1 schemas, generated bindings, workspace and local
 Maven artifact build modes, mandatory checks and protected release plumbing.
 Run `make check`; see [foundation workflow](docs/development/foundation.md).
 Module 01 adds the stateless [Gateway core](apps/gateway/README.md), static runtime
-authorization and an opt-in Helm gateway workload. Other service modules remain
-build scaffolds. No tool execution or permit issuance is available yet.
+authorization and an opt-in Helm gateway workload. Module 02 adds the
+[Control Plane backend](apps/control-plane/README.md), tenant-scoped records,
+PostgreSQL/Flyway, signed administrative JWTs, atomic audit/replay and JSON/YAML
+import/export. Marketplace services remain build scaffolds. No tool execution,
+policy distribution or permit issuance is available yet.

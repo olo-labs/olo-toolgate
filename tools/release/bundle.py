@@ -45,7 +45,12 @@ def main():
         version = (ROOT/'packages/contracts/VERSION').read_text().strip()
         product = (ROOT/'VERSION').read_text().strip()
         (args.output/f'olo-toolgate-contracts-{version}.tar.gz').write_bytes(bundle_bytes())
-        metadata = {'productVersion':product, 'contractsVersion':version, 'wireSchemaMajor':1, 'java':21, 'rust':'1.94.1', 'typescript':'5.9.3', 'php':'>=8.2', 'helmChartVersion':product, 'runtimeComponents':{'gateway':product,'otherServices':'not yet implemented'}, 'gatewayApi':'v1 decisions only', 'mcp':{'version':'2026-07-28','capabilities':'ingress skeleton; no execution, permits or legacy sessions'}, 'gatewayImage':f'ghcr.io/olo-labs/olo-toolgate-gateway:{product}', 'compatibilityWindow':'initial v1 gateway; no prior stable runtime release', 'maven':f'io.ololabs.toolgate:toolgate-contracts:{version}', 'helmOci':f'oci://ghcr.io/olo-labs/charts/olo-toolgate:{product}'}
+        metadata = {'productVersion':product, 'contractsVersion':version, 'wireSchemaMajor':1, 'java':21, 'rust':'1.94.1', 'typescript':'5.9.3', 'php':'>=8.2', 'helmChartVersion':product,
+                    'runtimeComponents':{'gateway':product,'control':product,'otherServices':'not yet implemented'},
+                    'gatewayApi':'v1 decisions only', 'controlApi':'/api/control/v1; organization records and safe config import/export', 'controlDatabase':{'postgresql':'17.11','flywaySchema':2},
+                    'mcp':{'version':'2026-07-28','capabilities':'ingress skeleton; no execution, permits or legacy sessions'},
+                    'gatewayImage':f'ghcr.io/olo-labs/olo-toolgate-gateway:{product}', 'controlImage':f'ghcr.io/olo-labs/olo-toolgate-control:{product}',
+                    'compatibilityWindow':'initial v1 Gateway/Control; no prior stable runtime release', 'maven':f'io.ololabs.toolgate:toolgate-contracts:{version}', 'helmOci':f'oci://ghcr.io/olo-labs/charts/olo-toolgate:{product}'}
         (args.output/'compatibility.json').write_text(json.dumps(metadata, indent=2)+'\n', encoding='utf-8', newline='\n')
     checksum_assets(args.output)
     print(f'Release assets prepared: {args.output}')

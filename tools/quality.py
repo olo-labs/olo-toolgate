@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_SUFFIXES = {'.java','.rs','.ts','.mjs','.php','.py','.sh','.kts','.toml','.ps1','.yml','.yaml'}
+SOURCE_SUFFIXES = {'.java','.rs','.ts','.mjs','.php','.py','.sh','.kts','.toml','.ps1','.yml','.yaml','.sql','.properties'}
 SECRET_PATTERNS = [
     re.compile(r'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----'),
     re.compile(r'\bAKIA[0-9A-Z]{16}\b'),

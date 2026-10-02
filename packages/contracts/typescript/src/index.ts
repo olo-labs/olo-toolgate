@@ -31,6 +31,140 @@ export interface ContractSet {
   readonly name: string;
   readonly version: string;
 }
+/** Tenant-scoped agents configuration record. Not a runtime credential or policy grant. */
+export interface ControlAgent {
+  readonly id: string;
+  readonly name: string;
+  readonly enabled: boolean;
+  readonly revision: number;
+  readonly ownerUserId: string;
+}
+/** Cursor page; nextCursor is absent after the last item. */
+export interface ControlAgentPage {
+  readonly items: ReadonlyArray<ControlAgent>;
+  readonly nextCursor?: string;
+}
+/** Append-only mutation metadata; payloads and credentials are excluded. */
+export interface ControlAudit {
+  readonly sequence: number;
+  readonly tenantId: string;
+  readonly actorId: string;
+  readonly operation: string;
+  readonly target: string;
+  readonly revision: number;
+  readonly requestId: string;
+  readonly occurredAt: string;
+  readonly requestDigest: string;
+}
+/** Cursor page of audit mutation metadata. */
+export interface ControlAuditPage {
+  readonly items: ReadonlyArray<ControlAudit>;
+  readonly nextCursor?: string;
+}
+/** Deterministic import diff without payload or credential material. */
+export interface ControlChange {
+  readonly kind: ControlEntityKind;
+  readonly id: string;
+  readonly operation: ControlChangeKind;
+}
+export type ControlChangeKind = "CREATE" | "UPDATE" | "DELETE";
+/** Tenant-scoped devices configuration record. Not a runtime credential or policy grant. */
+export interface ControlDevice {
+  readonly id: string;
+  readonly name: string;
+  readonly enabled: boolean;
+  readonly revision: number;
+  readonly ownerUserId: string;
+}
+/** Cursor page; nextCursor is absent after the last item. */
+export interface ControlDevicePage {
+  readonly items: ReadonlyArray<ControlDevice>;
+  readonly nextCursor?: string;
+}
+export type ControlEntityKind = "USER" | "TEAM" | "AGENT" | "TOOL" | "POLICY" | "DEVICE";
+export type ControlImportMode = "MERGE" | "REPLACE";
+/** Validate and diff before applying a bounded configuration transaction. */
+export interface ControlImportRequest {
+  readonly snapshot: ControlSnapshot;
+  readonly mode: ControlImportMode;
+  readonly dryRun: boolean;
+}
+/** Import validation/diff result with the current tenant revision. */
+export interface ControlImportResult {
+  readonly applied: boolean;
+  readonly revision: number;
+  readonly changes: ReadonlyArray<ControlChange>;
+}
+/** Tenant-scoped policies configuration record. Not a runtime credential or policy grant. */
+export interface ControlPolicy {
+  readonly id: string;
+  readonly name: string;
+  readonly enabled: boolean;
+  readonly revision: number;
+  readonly toolId: string;
+  readonly action: string;
+  readonly resource: ResourceDescriptor;
+  readonly decision: Decision;
+  readonly userIds: ReadonlyArray<string>;
+  readonly teamIds: ReadonlyArray<string>;
+  readonly agentIds: ReadonlyArray<string>;
+  readonly deviceIds: ReadonlyArray<string>;
+}
+/** Cursor page; nextCursor is absent after the last item. */
+export interface ControlPolicyPage {
+  readonly items: ReadonlyArray<ControlPolicy>;
+  readonly nextCursor?: string;
+}
+/** Versioned configuration data. Contains no credentials or executable code. */
+export interface ControlSnapshot {
+  readonly formatVersion: number;
+  readonly tenantId: string;
+  readonly revision: number;
+  readonly users: ReadonlyArray<ControlUser>;
+  readonly teams: ReadonlyArray<ControlTeam>;
+  readonly agents: ReadonlyArray<ControlAgent>;
+  readonly tools: ReadonlyArray<ControlTool>;
+  readonly policies: ReadonlyArray<ControlPolicy>;
+  readonly devices: ReadonlyArray<ControlDevice>;
+}
+/** Tenant-scoped teams configuration record. Not a runtime credential or policy grant. */
+export interface ControlTeam {
+  readonly id: string;
+  readonly name: string;
+  readonly enabled: boolean;
+  readonly revision: number;
+  readonly userIds: ReadonlyArray<string>;
+}
+/** Cursor page; nextCursor is absent after the last item. */
+export interface ControlTeamPage {
+  readonly items: ReadonlyArray<ControlTeam>;
+  readonly nextCursor?: string;
+}
+/** Tenant-scoped tools configuration record. Not a runtime credential or policy grant. */
+export interface ControlTool {
+  readonly id: string;
+  readonly name: string;
+  readonly enabled: boolean;
+  readonly revision: number;
+  readonly definition: ToolDefinition;
+}
+/** Cursor page; nextCursor is absent after the last item. */
+export interface ControlToolPage {
+  readonly items: ReadonlyArray<ControlTool>;
+  readonly nextCursor?: string;
+}
+/** Tenant-scoped users configuration record. Not a runtime credential or policy grant. */
+export interface ControlUser {
+  readonly id: string;
+  readonly name: string;
+  readonly enabled: boolean;
+  readonly revision: number;
+}
+/** Cursor page; nextCursor is absent after the last item. */
+export interface ControlUserPage {
+  readonly items: ReadonlyArray<ControlUser>;
+  readonly nextCursor?: string;
+}
 export type Decision = "ALLOW" | "ASK" | "BLOCK";
 export type DecisionReason = "MATCHED" | "NO_MATCH" | "POLICY_UNAVAILABLE" | "INVALID_INPUT" | "APPROVAL_REQUIRED";
 /** Organization assignment with independent Marketplace evidence; grants no runtime permission. */
@@ -143,5 +277,5 @@ export interface ToolDefinition {
   readonly inputSchema: Record<string, unknown>;
   readonly outputSchema: Record<string, unknown>;
 }
-export const CONTRACT_SET_VERSION = "0.2.0-dev" as const;
+export const CONTRACT_SET_VERSION = "0.3.0-dev" as const;
 export const CONTRACT_SET_NAME = "olo-toolgate-contracts" as const;

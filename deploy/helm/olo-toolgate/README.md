@@ -23,3 +23,11 @@ is `oci://ghcr.io/olo-labs/charts/olo-toolgate`; protected CI publishes the char
 See [foundation workflow](../../../docs/development/foundation.md).
 See [gateway deployment](../../../docs/gateway/deployment.md) for TLS, allowed
 network peers, credentials, probes, resources, security, metrics and scaling.
+
+## Module 02 Control Plane
+
+`control.enabled` adds a real Java administration workload with external PostgreSQL,
+JWT verification key and credential Secret references. Defaults render no service.
+See [configuration](../../../docs/control-plane/configuration.md) and
+[deployment/HA/upgrades](../../../docs/control-plane/upgrades.md). Control is independent
+of Gateway enabling and does not publish Gateway policies in Module 02.

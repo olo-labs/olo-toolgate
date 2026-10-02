@@ -1,7 +1,7 @@
 # Foundation developer workflow
 
-Module 00 provides contracts, builds and verification. The service modules are
-buildable markers, not running servers. `make dev` and the quickstart remain
+Module 00 provides contracts, builds and verification. Modules 01/02 add the Gateway
+and Control Plane runtimes; Marketplace modules remain buildable markers. `make dev` and the quickstart remain
 future product work; `make check` is implemented and never silently skips a gate.
 
 Install Java 21, Python 3.12+, Node 22, PHP 8.2+, Rust (the repository pins a stable
@@ -18,7 +18,9 @@ make security PYTHON=python
 
 Windows can use `gradlew.bat` and `python tools/check.py`. Set
 `TOOLGATE_DOCKER_TOOLS=1` to run Rust, PHP and Helm in development containers when
-native tools are unavailable. Java, Node, Python and Git still run locally. The
+native tools are unavailable. Java, Node, Python and Git still run locally. Module 02
+requires Docker for real PostgreSQL tests; `make check` supplies isolated databases,
+runs workspace/published Java builds and signed-token HTTP tests. The
 scan hooks require Docker and network access to vulnerability databases.
 Missing tooling, offline dependency failures and scan failures return nonzero.
 
@@ -109,9 +111,22 @@ No image is built or published until its owning module delivers a real service.
 If drift fails, regenerate and inspect the schema diff before accepting it.
 If a Maven proof fails, inspect the POM and the exclusive repository path rather
 than falling back to the project. If Helm reports an unsupported value, the
-foundation chart has no workload configuration yet. If a scan database cannot
+opt-in service values and external secret/DB references must satisfy its schema. If a scan database cannot
 be reached, repair network access and rerun; do not suppress the gate.
 
 See [ADR 001](../adr/001-foundation-contract-generation.md),
 [upgrade policy](foundation-upgrades.md) and
 [Module 00 coverage](../codex/modules/00-coverage.md).
+
+Module 02 uses reviewed Jakarta/Parsson EPL-2.0 dependencies without modifying them,
+retaining upstream JAR notices and documenting matching source artifacts in
+[dependency-license-reviews.json](../../tools/dependency-license-reviews.json).
+Reviews match exact versions, expressions and runtime/build scope; upgrades require
+a new review. The [classfile backport](https://github.com/smallrye/jdk-classfile-backport)
+is GPL-2.0 with Classpath exception and is used only during Quarkus augmentation,
+absent from runtimeClasspath/image. Its exception does not approve arbitrary GPL
+dependencies. [EDL 1.0](https://www.eclipse.org/org/documents/edl-v10/) is identified
+by Eclipse as BSD-3-Clause; UPL-1.0 is a reviewed permissive Graal build dependency.
+Vert.x/JNA alternative licenses retain OR expressions, selecting Apache-2.0.
+Public-domain declarations require an explicit CC0 source URL. Unknown metadata
+and unreviewed runtime copyleft expressions still fail the gate.

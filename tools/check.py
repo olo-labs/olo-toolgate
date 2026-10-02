@@ -86,6 +86,8 @@ def publication_proof():
 def helm_checks():
     from gateway.check import helm_checks as gateway_helm_checks
     gateway_helm_checks()
+    from control.helm import checks as control_helm_checks
+    control_helm_checks()
 
 
 def scans():
@@ -109,15 +111,35 @@ def main():
     parser.add_argument('--gateway-only', action='store_true')
     args = parser.parse_args()
     if args.scans: scans(); return
-    if args.publication_only: publication_proof(); return
+    if args.publication_only:
+        from control.check import database
+        with database() as db:
+            old = {name:os.environ.get(name) for name in ('CONTROL_TEST_URL','CONTROL_TEST_PASSWORD')}
+            os.environ.update({name:db[name] for name in old})
+            try: publication_proof()
+            finally:
+                for name,value in old.items():
+                    if value is None: os.environ.pop(name,None)
+                    else: os.environ[name]=value
+        return
     if args.gateway_only:
         run(['cargo','test','-p','olo-toolgate-gateway','--locked']); return
     python('tools/contracts/version.py','--check')
     python('tools/contracts/generate.py','--check')
     python('tools/quality.py')
     python('-m','unittest','discover','-s','tests/contracts','-v')
-    run(['gradle','projects','javaCheck','build'])
-    publication_proof()
+    from control.check import database, smoke
+    with database() as db:
+        old = {name:os.environ.get(name) for name in ('CONTROL_TEST_URL','CONTROL_TEST_PASSWORD')}
+        os.environ.update({name:db[name] for name in old})
+        try:
+            run(['gradle','projects','javaCheck','build'])
+            publication_proof()
+            smoke(db)
+        finally:
+            for name,value in old.items():
+                if value is None: os.environ.pop(name,None)
+                else: os.environ[name]=value
     run(['cargo','fmt','--all','--check'])
     run(['cargo','test','--workspace','--locked'])
     run(['cargo','clippy','--workspace','--all-targets','--locked','--','-D','warnings'])
@@ -129,7 +151,7 @@ def main():
     for source in sorted((ROOT/'packages/contracts/php/src').glob('*.php')):
         run(['php','-l',source.relative_to(ROOT).as_posix()], capture=True)
     if not args.contracts_only: helm_checks()
-    print('All required foundation and gateway gates passed')
+    print('All required foundation, gateway and control gates passed')
 
 
 if __name__ == '__main__': main()

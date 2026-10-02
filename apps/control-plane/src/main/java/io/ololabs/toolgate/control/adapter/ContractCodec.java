@@ -1,0 +1,190 @@
+// Copyright 2026 OLO Labs
+// SPDX-License-Identifier: Apache-2.0
+package io.ololabs.toolgate.control.adapter;
+
+import com.fasterxml.jackson.core.StreamReadConstraints;
+import com.fasterxml.jackson.core.StreamReadFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
+import com.networknt.schema.JsonSchema;
+import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.SpecVersion;
+import io.ololabs.toolgate.control.application.Codec;
+import io.ololabs.toolgate.control.application.Failure;
+import io.ololabs.toolgate.control.domain.Directory;
+import io.ololabs.toolgate.control.domain.Ids;
+import io.ololabs.toolgate.control.domain.Ids.Kind;
+import io.ololabs.toolgate.control.domain.Ids.RecordId;
+import io.ololabs.toolgate.control.domain.Ids.TenantId;
+import jakarta.enterprise.context.ApplicationScoped;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import org.yaml.snakeyaml.LoaderOptions;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.SafeConstructor;
+
+/** Offline validation against canonical schemas embedded in the shared Maven artifact. */
+@ApplicationScoped
+public class ContractCodec implements Codec {
+    private static final int MAX_BODY = 2 * 1024 * 1024;
+    private final ObjectMapper mapper;
+    private final ObjectNode canonicalDefinitions;
+    private final Map<String, JsonSchema> validators = new HashMap<>();
+    public ContractCodec() {
+        var factory = com.fasterxml.jackson.core.JsonFactory.builder()
+            .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+            .streamReadConstraints(StreamReadConstraints.builder().maxNestingDepth(32).maxStringLength(MAX_BODY).build()).build();
+        mapper = JsonMapper.builder(factory).enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).build();
+        try {
+            var definitions = mapper.createObjectNode();
+            for (var file : java.util.List.of("common", "identifiers", "error", "resource", "tool", "policy", "package", "client", "deployment", "runtime", "control")) {
+                var path = "/io/ololabs/toolgate/contracts/schemas/v1/" + file + ".schema.json";
+                try (var input = io.ololabs.toolgate.contracts.ContractSet.class.getResourceAsStream(path)) {
+                    if (input == null) throw new IllegalStateException("Shared schema artifact is incomplete");
+                    var schema = mapper.readTree(input);
+                    schema.path("$defs").properties().forEach(e -> definitions.set(e.getKey(), localReferences(e.getValue().deepCopy())));
+                }
+            }
+            var factorySchema = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012);
+            canonicalDefinitions = definitions;
+            for (var definition : definitions.properties()) {
+                var name = definition.getKey();
+                var wrapper = mapper.createObjectNode(); wrapper.put("$schema", "https://json-schema.org/draft/2020-12/schema");
+                wrapper.set("$defs", definitions); wrapper.put("$ref", "#/$defs/" + name);
+                validators.put(name, factorySchema.getSchema(wrapper));
+            }
+        } catch (java.io.IOException e) { throw new IllegalStateException("Cannot initialize canonical contracts", e); }
+    }
+    private JsonNode localReferences(JsonNode node) {
+        if (node.isObject() && node.has("$ref")) {
+            var value = node.get("$ref").asText();
+            if (!value.contains("#/$defs/")) throw new IllegalStateException("Unsupported canonical schema reference");
+            ((ObjectNode) node).put("$ref", "#/$defs/" + value.substring(value.indexOf("#/$defs/") + 8));
+        }
+        node.elements().forEachRemaining(this::localReferences); return node;
+    }
+    private JsonNode parse(String document, boolean yaml) {
+        if (document == null || document.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_BODY) throw Failure.validation();
+        try {
+            JsonNode node;
+            if (yaml) {
+                var options = new LoaderOptions(); options.setAllowDuplicateKeys(false);
+                options.setMaxAliasesForCollections(0); options.setNestingDepthLimit(32); options.setCodePointLimit(MAX_BODY);
+                node = mapper.valueToTree(new Yaml(new SafeConstructor(options)).load(document));
+            } else node = mapper.readTree(document);
+            if (node == null) throw Failure.validation();
+            return sorted(node);
+        } catch (java.io.IOException | IllegalArgumentException | org.yaml.snakeyaml.error.YAMLException e) { throw Failure.validation(); }
+    }
+    private JsonNode sorted(JsonNode node) {
+        if (node.isObject()) {
+            var result = mapper.createObjectNode(); var keys = new java.util.TreeSet<String>(); node.fieldNames().forEachRemaining(keys::add);
+            keys.forEach(key -> result.set(key, sorted(node.get(key)))); return result;
+        }
+        if (node.isArray()) { var result = mapper.createArrayNode(); node.forEach(item -> result.add(sorted(item))); return result; }
+        return node;
+    }
+    private void validate(String model, JsonNode node) {
+        if (!validators.get(model).validate(node).isEmpty()) throw Failure.validation();
+    }
+    public Directory.Entry entry(Kind kind, String document) {
+        var node = parse(document, false); validate(kind.model(), node);
+        // Decode actual generated bindings as an additional structural contract boundary.
+        try { mapper.treeToValue(node, Class.forName("io.ololabs.toolgate.contracts." + kind.model())); }
+        catch (java.io.IOException | ClassNotFoundException | IllegalArgumentException e) { throw Failure.validation(); }
+        var id = kind.id(node.get("id").asText());
+        var refs = new HashSet<RecordId>();
+        if (kind == Kind.TEAM) add(refs, Kind.USER, node.get("userIds"));
+        if (kind == Kind.AGENT || kind == Kind.DEVICE) refs.add(new Ids.UserId(node.get("ownerUserId").asText()));
+        if (kind == Kind.TOOL) {
+            var definition = node.get("definition");
+            if (!id.value().equals(definition.get("id").asText())) throw Failure.validation();
+            var actions = new HashSet<String>();
+            for (var action : definition.get("actions")) if (!actions.add(action.get("name").asText())) throw Failure.validation();
+            // Arbitrary embedded schemas are data. Bound their depth and forbid remote references and executable metadata.
+            schemaData(definition.get("inputSchema")); schemaData(definition.get("outputSchema"));
+        }
+        if (kind == Kind.POLICY) {
+            refs.add(new Ids.ToolId(node.get("toolId").asText()));
+            add(refs, Kind.USER, node.get("userIds")); add(refs, Kind.TEAM, node.get("teamIds"));
+            add(refs, Kind.AGENT, node.get("agentIds")); add(refs, Kind.DEVICE, node.get("deviceIds"));
+            if (node.get("decision").asText().equals("ASK")) throw Failure.validation();
+            if (refs.size() == 1) throw Failure.validation();
+        }
+        return new Directory.Entry(id, node.get("enabled").asBoolean(), node.get("revision").asLong(), json(node), refs);
+    }
+    private void schemaData(JsonNode node) {
+        if (node.isObject() && node.has("$ref") && !node.get("$ref").asText().startsWith("#")) throw Failure.validation();
+        node.elements().forEachRemaining(this::schemaData);
+    }
+    private void add(java.util.Set<RecordId> refs, Kind kind, JsonNode ids) {
+        ids.forEach(id -> refs.add(kind.id(id.asText())));
+    }
+    public Directory.Entry revision(Directory.Entry entry, long revision) {
+        var node = (ObjectNode) parse(entry.document(), false); node.put("revision", revision);
+        return entry(entry.id().kind(), json(node));
+    }
+    public Import input(String document, boolean yaml, TenantId tenant) {
+        var input = parse(document, yaml); validate("ControlImportRequest", input);
+        var snapshot = input.get("snapshot");
+        if (!snapshot.get("tenantId").asText().equals(tenant.value())) throw Failure.validation();
+        var entries = new HashMap<RecordId, Directory.Entry>();
+        for (var kind : Kind.values()) for (var node : snapshot.get(kind.path())) {
+            var entry = entry(kind, json(node));
+            if (entries.put(entry.id(), entry) != null) throw Failure.validation();
+        }
+        return new Import(new Directory(snapshot.get("revision").asLong(), entries), input.get("mode").asText().equals("REPLACE"), input.get("dryRun").asBoolean());
+    }
+    public String snapshot(TenantId tenant, Directory directory, boolean yaml) {
+        var node = mapper.createObjectNode(); node.put("formatVersion", 1); node.put("tenantId", tenant.value()); node.put("revision", directory.revision());
+        for (var kind : Kind.values()) {
+            var values = node.putArray(kind.path()); directory.entries().values().stream().filter(e -> e.id().kind() == kind)
+                .sorted(java.util.Comparator.comparing(e -> e.id().value())).forEach(e -> values.add(parse(e.document(), false)));
+        }
+        try { return yaml ? new YAMLMapper().writeValueAsString(sorted(node)) : json(node); }
+        catch (java.io.IOException e) { throw new IllegalStateException(e); }
+    }
+    public String json(Object value) {
+        try { return mapper.writeValueAsString(sorted(mapper.valueToTree(value))); }
+        catch (java.io.IOException e) { throw new IllegalStateException(e); }
+    }
+    public Object value(String document) { return parse(document, false); }
+    public void validatePolicies(Directory directory) {
+        for (var entry : directory.entries().values()) if (entry.id().kind() == Kind.POLICY) {
+            var policy = parse(entry.document(), false);
+            var tool = directory.entries().get(new Ids.ToolId(policy.get("toolId").asText()));
+            if (tool == null) throw new IllegalArgumentException("Missing policy tool");
+            var definition = parse(tool.document(), false).get("definition");
+            boolean declared = false;
+            for (var action : definition.get("actions")) if (action.get("name").asText().equals(policy.get("action").asText())) {
+                for (var resource : action.get("resourceKinds")) if (resource.asText().equals(policy.get("resource").get("kind").asText())) declared = true;
+            }
+            if (!declared) throw new IllegalArgumentException("Undeclared tool action or resource kind");
+        }
+    }
+    /** Serve a self-contained OpenAPI document assembled from canonical sources, without duplicate models. */
+    public String openapi() {
+        try (var input = ContractCodec.class.getResourceAsStream("/META-INF/openapi.yaml")) {
+            if (input == null) throw new IllegalStateException("Canonical OpenAPI is missing");
+            var options = new LoaderOptions(); options.setAllowDuplicateKeys(false);
+            // The trusted canonical specification reuses response/parameter YAML anchors.
+            // Untrusted configuration parsing above continues to allow zero collection aliases.
+            options.setMaxAliasesForCollections(2048);
+            var api = (ObjectNode) mapper.valueToTree(new Yaml(new SafeConstructor(options)).load(input));
+            ((ObjectNode) api.get("components")).set("schemas", canonicalDefinitions.deepCopy());
+            apiReferences(api); return json(api);
+        } catch (java.io.IOException e) { throw new IllegalStateException(e); }
+    }
+    private void apiReferences(JsonNode node) {
+        if (node.isObject() && node.has("$ref")) {
+            var ref = node.get("$ref").asText();
+            if (ref.contains("#/$defs/")) ((ObjectNode) node).put("$ref", "#/components/schemas/" + ref.substring(ref.indexOf("#/$defs/") + 8));
+        }
+        node.elements().forEachRemaining(this::apiReferences);
+    }
+}

@@ -1,6 +1,6 @@
 # Copyright 2026 OLO Labs
 # SPDX-License-Identifier: Apache-2.0
-# Gateway is opt-in and requires an administrator-provided credential Secret.
+# Services are opt-in; production PostgreSQL and credentials remain external.
 global:
   imageRegistry: ghcr.io/olo-labs
   imagePullSecrets: []
@@ -9,10 +9,10 @@ gateway:
   replicaCount: 2
   image:
     repository: olo-toolgate-gateway
-    tag: ""
-    digest: ""
+    tag: ''
+    digest: ''
     pullPolicy: IfNotPresent
-  credentialsSecret: ""
+  credentialsSecret: ''
   credentialsKey: credentials.json
   config:
     listen: 0.0.0.0:8081
@@ -35,29 +35,38 @@ gateway:
       emergencyBlock: false
       rules: []
     extractors:
-      - toolId: files.read
-        action: read
-        pointer: /path
-        kind: FILE
+    - toolId: files.read
+      action: read
+      pointer: /path
+      kind: FILE
   resources:
-    requests: {cpu: 100m, memory: 64Mi}
-    limits: {cpu: "1", memory: 256Mi}
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      cpu: '1'
+      memory: 256Mi
   podSecurityContext:
     runAsNonRoot: true
     runAsUser: 65532
     runAsGroup: 65532
     fsGroup: 65532
-    seccompProfile: {type: RuntimeDefault}
+    seccompProfile:
+      type: RuntimeDefault
   securityContext:
     allowPrivilegeEscalation: false
     readOnlyRootFilesystem: true
-    capabilities: {drop: [ALL]}
+    capabilities:
+      drop:
+      - ALL
   terminationGracePeriodSeconds: 30
   nodeSelector: {}
   tolerations: []
   affinity: {}
   topologySpreadConstraints: []
-  pdb: {enabled: true, minAvailable: 1}
+  pdb:
+    enabled: true
+    minAvailable: 1
   autoscaling:
     enabled: false
     minReplicas: 2
@@ -69,11 +78,91 @@ gateway:
     managementFrom: []
   ingress:
     enabled: false
-    className: ""
+    className: ''
     annotations: {}
     host: gateway.example.invalid
-    tlsSecret: ""
+    tlsSecret: ''
   serviceMonitor:
     enabled: false
     labels: {}
     interval: 30s
+control:
+  enabled: false
+  replicaCount: 2
+  image:
+    repository: olo-toolgate-control
+    tag: ''
+    digest: ''
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: '2'
+      memory: 768Mi
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    fsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+      - ALL
+  terminationGracePeriodSeconds: 30
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  pdb:
+    enabled: true
+    minAvailable: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+  networkPolicy:
+    enabled: true
+    runtimeFrom: []
+    managementFrom: []
+    databaseTo: []
+    dnsTo: []
+    collectorTo: []
+  ingress:
+    enabled: false
+    className: ''
+    annotations: {}
+    host: control.example.invalid
+    tlsSecret: ''
+  serviceMonitor:
+    enabled: false
+    labels: {}
+    interval: 30s
+  developmentMode: false
+  publicKeySecret: ''
+  publicKeyKey: public.pem
+  jwt:
+    issuer: https://identity.example.invalid
+    audience: toolgate-control
+  tracing:
+    enabled: false
+    host: collector.example.invalid
+    port: 4317
+    protocol: grpc
+  database:
+    host: postgres.example.invalid
+    port: 5432
+    name: toolgate
+    credentialsSecret: ''
+    sslMode: verify-full
+    caSecret: ''
+    caKey: ca.crt
+  limits:
+    maxRecords: 512
+    maxConfigBytes: 1048576

@@ -174,4 +174,6 @@ Maven artifact build modes, mandatory checks and protected release plumbing.
 Run `make check`; see [foundation workflow](docs/development/foundation.md).
 Module 01 adds closed runtime authorization/audit types and embeds canonical
 schemas in the Rust package for offline boundary validation. Frozen v1 definitions
-remain unchanged; current product/contracts versions are 0.2.0-dev.
+remain unchanged. Module 02 adds Control directory/snapshot/import/audit contracts
+and canonical Control OpenAPI. Current product/contracts versions are 0.3.0-dev;
+45 models/enums round-trip through all four language packages, with 11 schema groups.

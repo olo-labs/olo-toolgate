@@ -1,0 +1,291 @@
+{{/* Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0 */}}
+{{- if .Values.control.enabled }}
+{{- $g := .Values.control }}
+{{- $name := include "olo-toolgate.controlName" . }}
+{{- if le (int $g.terminationGracePeriodSeconds) 20 }}{{ fail "termination grace must exceed application drain deadline" }}{{ end }}
+{{- if and $g.autoscaling.enabled (gt (int $g.autoscaling.minReplicas) (int $g.autoscaling.maxReplicas)) }}{{ fail "HPA minimum must not exceed maximum" }}{{ end }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "olo-toolgate.controlLabels" . | nindent 4 }}
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "olo-toolgate.controlLabels" . | nindent 4 }}
+data:
+  QUARKUS_DATASOURCE_JDBC_URL: {{ printf "jdbc:postgresql://%s:%v/%s?sslmode=%s&sslrootcert=/etc/toolgate/database/ca.crt" $g.database.host $g.database.port $g.database.name $g.database.sslMode | quote }}
+  MP_JWT_VERIFY_ISSUER: {{ $g.jwt.issuer | quote }}
+  MP_JWT_VERIFY_AUDIENCES: {{ $g.jwt.audience | quote }}
+  TOOLGATE_CONTROL_DEVELOPMENT_MODE: {{ $g.developmentMode | quote }}
+  TOOLGATE_CONTROL_MAX_RECORDS: {{ printf "%d" (int $g.limits.maxRecords) | quote }}
+  TOOLGATE_CONTROL_MAX_CONFIG_BYTES: {{ printf "%d" (int $g.limits.maxConfigBytes) | quote }}
+  TOOLGATE_CONTROL_TRACE_EXPORT_ENABLED: {{ $g.tracing.enabled | quote }}
+  QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: {{ printf "https://%s:%v" $g.tracing.host $g.tracing.port | quote }}
+  QUARKUS_OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: {{ $g.tracing.protocol | quote }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "olo-toolgate.controlLabels" . | nindent 4 }}
+spec:
+  {{- if not $g.autoscaling.enabled }}
+  replicas: {{ $g.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxSurge: 1, maxUnavailable: 0}
+  selector:
+    matchLabels:
+      {{- include "olo-toolgate.controlSelector" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "olo-toolgate.controlSelector" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ $g | toJson | sha256sum }}
+    spec:
+      serviceAccountName: {{ $name }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: {{ $g.terminationGracePeriodSeconds }}
+      securityContext:
+        {{- toYaml $g.podSecurityContext | nindent 8 }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $g.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $g.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $g.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if $g.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml $g.topologySpreadConstraints | nindent 8 }}
+      {{- else }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "olo-toolgate.controlSelector" . | nindent 14 }}
+      {{- end }}
+      containers:
+        - name: control
+          {{- if $g.image.digest }}
+          image: {{ printf "%s/%s@%s" .Values.global.imageRegistry $g.image.repository $g.image.digest | quote }}
+          {{- else }}
+          image: {{ printf "%s/%s:%s" .Values.global.imageRegistry $g.image.repository ($g.image.tag | default .Chart.AppVersion) | quote }}
+          {{- end }}
+          imagePullPolicy: {{ $g.image.pullPolicy }}
+          securityContext:
+            {{- toYaml $g.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml $g.resources | nindent 12 }}
+          ports:
+            - {name: runtime, containerPort: 8082}
+            - {name: management, containerPort: 9092}
+          envFrom:
+            - configMapRef: {name: {{ $name }}}
+          env:
+            - {name: MP_JWT_VERIFY_PUBLICKEY_LOCATION, value: /etc/toolgate/identity/public.pem}
+            {{- range $env, $key := dict "QUARKUS_DATASOURCE_USERNAME" "username" "QUARKUS_DATASOURCE_PASSWORD" "password" "QUARKUS_FLYWAY_USERNAME" "migrationUsername" "QUARKUS_FLYWAY_PASSWORD" "migrationPassword" }}
+            - name: {{ $env }}
+              valueFrom:
+                secretKeyRef: {name: {{ $g.database.credentialsSecret | quote }}, key: {{ $key }}}
+            {{- end }}
+          startupProbe:
+            httpGet: {path: /q/health/live, port: management}
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: {path: /q/health/ready, port: management}
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            httpGet: {path: /q/health/live, port: management}
+            periodSeconds: 10
+            timeoutSeconds: 2
+          volumeMounts:
+            - {name: identity, mountPath: /etc/toolgate/identity, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+            {{- if eq $g.database.sslMode "verify-full" }}
+            - {name: database-ca, mountPath: /etc/toolgate/database, readOnly: true}
+            {{- end }}
+      volumes:
+        - name: identity
+          secret:
+            secretName: {{ required "control.publicKeySecret required" $g.publicKeySecret | quote }}
+            defaultMode: 0444
+            items: [{key: {{ $g.publicKeyKey | quote }}, path: public.pem}]
+        - name: tmp
+          emptyDir: {sizeLimit: 64Mi}
+        {{- if eq $g.database.sslMode "verify-full" }}
+        - name: database-ca
+          secret:
+            secretName: {{ required "control.database.caSecret required" $g.database.caSecret | quote }}
+            defaultMode: 0444
+            items: [{key: {{ $g.database.caKey | quote }}, path: ca.crt}]
+        {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "olo-toolgate.controlLabels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "olo-toolgate.controlSelector" . | nindent 4 }}
+  ports:
+    - {name: runtime, port: 8082, targetPort: runtime}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}-metrics
+  labels:
+    {{- include "olo-toolgate.controlLabels" . | nindent 4 }}
+    toolgate-metrics: control
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "olo-toolgate.controlSelector" . | nindent 4 }}
+  ports:
+    - {name: management, port: 9092, targetPort: management}
+{{- if $g.networkPolicy.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "olo-toolgate.controlSelector" . | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  {{- if or $g.networkPolicy.databaseTo $g.networkPolicy.dnsTo (and $g.tracing.enabled $g.networkPolicy.collectorTo) }}
+  egress:
+    {{- if $g.networkPolicy.databaseTo }}
+    - ports: [{protocol: TCP, port: {{ $g.database.port }}}]
+      to:
+        {{- toYaml $g.networkPolicy.databaseTo | nindent 8 }}
+    {{- end }}
+    {{- if $g.networkPolicy.dnsTo }}
+    - ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+      to:
+        {{- toYaml $g.networkPolicy.dnsTo | nindent 8 }}
+    {{- end }}
+    {{- if and $g.tracing.enabled $g.networkPolicy.collectorTo }}
+    - ports: [{protocol: TCP, port: {{ $g.tracing.port }}}]
+      to:
+        {{- toYaml $g.networkPolicy.collectorTo | nindent 8 }}
+    {{- end }}
+  {{- else }}
+  egress: []
+  {{- end }}
+  {{- if or $g.networkPolicy.runtimeFrom $g.networkPolicy.managementFrom }}
+  ingress:
+    {{- if $g.networkPolicy.runtimeFrom }}
+    - ports: [{protocol: TCP, port: 8082}]
+      from:
+        {{- toYaml $g.networkPolicy.runtimeFrom | nindent 8 }}
+    {{- end }}
+    {{- if $g.networkPolicy.managementFrom }}
+    - ports: [{protocol: TCP, port: 9092}]
+      from:
+        {{- toYaml $g.networkPolicy.managementFrom | nindent 8 }}
+    {{- end }}
+  {{- else }}
+  ingress: []
+  {{- end }}
+{{- end }}
+{{- if $g.pdb.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $name }}
+spec:
+  minAvailable: {{ $g.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "olo-toolgate.controlSelector" . | nindent 6 }}
+{{- end }}
+{{- if $g.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $name }}
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: {{ $name }}}
+  minReplicas: {{ $g.autoscaling.minReplicas }}
+  maxReplicas: {{ $g.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: {type: Utilization, averageUtilization: {{ $g.autoscaling.targetCPUUtilizationPercentage }}}
+{{- end }}
+{{- if $g.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $name }}
+  {{- with $g.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ required "control.ingress.className required" $g.ingress.className | quote }}
+  tls:
+    - hosts: [{{ $g.ingress.host | quote }}]
+      secretName: {{ required "control.ingress.tlsSecret required" $g.ingress.tlsSecret | quote }}
+  rules:
+    - host: {{ $g.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $name }}
+                port: {name: runtime}
+{{- end }}
+{{- if $g.serviceMonitor.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "olo-toolgate.controlLabels" . | nindent 4 }}
+    {{- with $g.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels: {toolgate-metrics: control, app.kubernetes.io/instance: {{ .Release.Name }}}
+  endpoints:
+    - {port: management, path: /q/metrics, interval: {{ $g.serviceMonitor.interval | quote }}}
+{{- end }}
+{{- end }}

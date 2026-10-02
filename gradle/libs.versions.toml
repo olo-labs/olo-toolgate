@@ -4,12 +4,20 @@
 java = "21"
 jackson = "2.21.7"
 junit = "5.14.2"
+quarkus = "3.40.1"
+json-schema = "1.5.9"
 
 [libraries]
 jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations", version = "2.21" }
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
 junit-launcher = { module = "org.junit.platform:junit-platform-launcher", version = "1.14.2" }
+quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
+jackson-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson" }
+json-schema = { module = "com.networknt:json-schema-validator", version.ref = "json-schema" }
+
+[plugins]
+quarkus = { id = "io.quarkus", version.ref = "quarkus" }
 
 # Add third-party library versions here as implementation modules are introduced.
 # Keep shared dependency versions centralized rather than duplicating them in subprojects.

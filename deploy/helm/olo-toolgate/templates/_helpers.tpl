@@ -15,3 +15,16 @@ app.kubernetes.io/component: gateway
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end -}}
+{{- define "olo-toolgate.controlName" -}}
+{{- printf "%s-%s" .Release.Name .Chart.Name | trunc 46 | trimSuffix "-" -}}-control
+{{- end -}}
+{{- define "olo-toolgate.controlSelector" -}}
+app.kubernetes.io/name: {{ include "olo-toolgate.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: control
+{{- end -}}
+{{- define "olo-toolgate.controlLabels" -}}
+{{ include "olo-toolgate.controlSelector" . }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end -}}

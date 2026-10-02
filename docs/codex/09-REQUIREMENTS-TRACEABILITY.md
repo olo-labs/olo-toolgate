@@ -207,3 +207,9 @@ A `BLOCKED` requirement means the module is not DONE.
   Gateway Core classifies all 104 unique IDs: 87 COMPLETE and 17 NOT_APPLICABLE
   with scope reasons. The three template example rows above are not extra
   requirements. Image/Helm publication remains protected CI only.
+- Module 02: [pre-implementation coverage plan](modules/02-coverage.md) and
+  [completion matrix and verification evidence](modules/02-completion.md).
+  Control Plane Backend classifies all 104 unique IDs: 95 COMPLETE and 9
+  NOT_APPLICABLE with scope reasons. Real PostgreSQL/HTTP/OTLP, container scan
+  and two-replica Kind install/upgrade/rollback pass. Remote publication remains
+  protected CI only.

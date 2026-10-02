@@ -43,6 +43,214 @@ pub struct ContractSet {
     pub name: String,
     pub version: String,
 }
+/// Tenant-scoped agents configuration record. Not a runtime credential or policy grant.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlAgent {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub revision: u64,
+    pub owner_user_id: String,
+}
+/// Cursor page; nextCursor is absent after the last item.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlAgentPage {
+    pub items: Vec<ControlAgent>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
+/// Append-only mutation metadata; payloads and credentials are excluded.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlAudit {
+    pub sequence: u64,
+    pub tenant_id: String,
+    pub actor_id: String,
+    pub operation: String,
+    pub target: String,
+    pub revision: u64,
+    pub request_id: String,
+    pub occurred_at: String,
+    pub request_digest: String,
+}
+/// Cursor page of audit mutation metadata.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlAuditPage {
+    pub items: Vec<ControlAudit>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
+/// Deterministic import diff without payload or credential material.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlChange {
+    pub kind: ControlEntityKind,
+    pub id: String,
+    pub operation: ControlChangeKind,
+}
+/// Canonical ControlChangeKind wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ControlChangeKind {
+    #[serde(rename = "CREATE")]
+    Create,
+    #[serde(rename = "UPDATE")]
+    Update,
+    #[serde(rename = "DELETE")]
+    Delete,
+}
+/// Tenant-scoped devices configuration record. Not a runtime credential or policy grant.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlDevice {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub revision: u64,
+    pub owner_user_id: String,
+}
+/// Cursor page; nextCursor is absent after the last item.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlDevicePage {
+    pub items: Vec<ControlDevice>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
+/// Canonical ControlEntityKind wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ControlEntityKind {
+    #[serde(rename = "USER")]
+    User,
+    #[serde(rename = "TEAM")]
+    Team,
+    #[serde(rename = "AGENT")]
+    Agent,
+    #[serde(rename = "TOOL")]
+    Tool,
+    #[serde(rename = "POLICY")]
+    Policy,
+    #[serde(rename = "DEVICE")]
+    Device,
+}
+/// Canonical ControlImportMode wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ControlImportMode {
+    #[serde(rename = "MERGE")]
+    Merge,
+    #[serde(rename = "REPLACE")]
+    Replace,
+}
+/// Validate and diff before applying a bounded configuration transaction.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlImportRequest {
+    pub snapshot: ControlSnapshot,
+    pub mode: ControlImportMode,
+    pub dry_run: bool,
+}
+/// Import validation/diff result with the current tenant revision.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlImportResult {
+    pub applied: bool,
+    pub revision: u64,
+    pub changes: Vec<ControlChange>,
+}
+/// Tenant-scoped policies configuration record. Not a runtime credential or policy grant.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlPolicy {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub revision: u64,
+    pub tool_id: String,
+    pub action: String,
+    pub resource: ResourceDescriptor,
+    pub decision: Decision,
+    pub user_ids: Vec<String>,
+    pub team_ids: Vec<String>,
+    pub agent_ids: Vec<String>,
+    pub device_ids: Vec<String>,
+}
+/// Cursor page; nextCursor is absent after the last item.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlPolicyPage {
+    pub items: Vec<ControlPolicy>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
+/// Versioned configuration data. Contains no credentials or executable code.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlSnapshot {
+    pub format_version: u64,
+    pub tenant_id: String,
+    pub revision: u64,
+    pub users: Vec<ControlUser>,
+    pub teams: Vec<ControlTeam>,
+    pub agents: Vec<ControlAgent>,
+    pub tools: Vec<ControlTool>,
+    pub policies: Vec<ControlPolicy>,
+    pub devices: Vec<ControlDevice>,
+}
+/// Tenant-scoped teams configuration record. Not a runtime credential or policy grant.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlTeam {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub revision: u64,
+    pub user_ids: Vec<String>,
+}
+/// Cursor page; nextCursor is absent after the last item.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlTeamPage {
+    pub items: Vec<ControlTeam>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
+/// Tenant-scoped tools configuration record. Not a runtime credential or policy grant.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlTool {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub revision: u64,
+    pub definition: ToolDefinition,
+}
+/// Cursor page; nextCursor is absent after the last item.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlToolPage {
+    pub items: Vec<ControlTool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
+/// Tenant-scoped users configuration record. Not a runtime credential or policy grant.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlUser {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub revision: u64,
+}
+/// Cursor page; nextCursor is absent after the last item.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlUserPage {
+    pub items: Vec<ControlUser>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
 /// Canonical Decision wire values.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Decision {
@@ -254,7 +462,7 @@ impl ContractSet {
     pub fn current() -> Self {
         Self {
             name: "olo-toolgate-contracts".into(),
-            version: "0.2.0-dev".into(),
+            version: "0.3.0-dev".into(),
         }
     }
 }
@@ -267,6 +475,10 @@ pub const CANONICAL_SCHEMAS: &[(&str, &str)] = &[
     (
         "https://schemas.ololabs.io/toolgate/v1/common.schema.json",
         include_str!("../schemas/v1/common.schema.json"),
+    ),
+    (
+        "https://schemas.ololabs.io/toolgate/v1/control.schema.json",
+        include_str!("../schemas/v1/control.schema.json"),
     ),
     (
         "https://schemas.ololabs.io/toolgate/v1/deployment.schema.json",

@@ -36,6 +36,9 @@ def expected():
     gateway_api = ROOT/'packages/contracts/openapi/gateway-v1.yaml'
     if gateway_api.exists():
         outputs[gateway_api] = re.sub(r'^  version: .*', f'  version: {product}', gateway_api.read_text(), flags=re.M)
+    control_api = ROOT/'packages/contracts/openapi/control-v1.yaml'
+    if control_api.exists():
+        outputs[control_api] = re.sub(r'^  version: .*', f'  version: {product}', control_api.read_text(), flags=re.M)
     return outputs
 
 

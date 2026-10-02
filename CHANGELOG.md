@@ -16,6 +16,16 @@ The project follows semantic versioning once stable versioning begins.
 
 ### Security
 
+## 0.3.0-dev — Module 02 Control Plane backend
+
+Java 21/Quarkus tenant-scoped directory CRUD, typed identifiers and shared Control
+schemas/bindings; PostgreSQL/Flyway, atomic audit/replay, retired identities and
+optimistic revisions; signed administrative JWTs, safe JSON/YAML import/export,
+bounded pages and private observability. Added non-root production image, external
+PostgreSQL Helm resources, protected GHCR pipeline, real database/HTTP tests and
+container/cluster smoke. No custom execution, policy publication or later module
+is implemented.
+
 ## 0.2.0-dev — Module 01 gateway core
 
 Stateless Rust authorization with validated static identity/policy, exact extraction,

@@ -1,13 +1,15 @@
 # Control Plane
 
-**Status:** scaffold / implementation pending  
-**Primary stack:** Java 21+ / Quarkus
+**Status:** Module 02 runtime
+
+**Primary stack:** Java 21 / Quarkus 3.40.1
 
 ## Responsibility
 
-Organization administration, policy, approvals, fleet, package imports, desired state.
+Tenant-scoped organization records, policy configuration, audit and import/export.
+Approvals, fleet/package deployment and Marketplace integration are later modules.
 
-## Before Implementing
+## Architecture references
 
 Read:
 
@@ -17,3 +19,17 @@ Read:
 - `../../docs/security/security-invariants.md`
 
 Do not move responsibility across component boundaries without an ADR.
+## Verification and deployment
+
+Java 21/Quarkus organization administration, PostgreSQL/Flyway, typed directory
+identities, CRUD, audit and safe config import/export. No arbitrary tool code executes.
+
+The domain has no framework/database dependencies; application use cases depend on
+`Store`/`Codec` ports. HTTP, JWT and JDBC live in adapters. Shared wire models and
+schemas come from the contracts project or published Maven JAR in artifact mode.
+
+Run `python tools/control/check.py` for unit, real PostgreSQL and HTTP verification.
+Use [configuration](../../docs/control-plane/configuration.md),
+[API](../../docs/api/control-plane-api.md),
+[deployment](../../docs/control-plane/upgrades.md) and
+[ADR 003](../../docs/adr/003-control-plane-transactions.md).
