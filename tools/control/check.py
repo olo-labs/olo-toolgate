@@ -34,7 +34,8 @@ def database():
     password = secrets.token_urlsafe(32)
     env = dict(os.environ, POSTGRES_PASSWORD=password)
     container = run(['docker', 'run', '-d', '--memory=512m', '--cpus=2', '-e', 'POSTGRES_PASSWORD',
-                     '-p', '127.0.0.1::5432', '-p', '127.0.0.1::8082', '-p', '127.0.0.1::9092', POSTGRES], env=env, capture_output=True, text=True).stdout.strip()
+                     '-p', '127.0.0.1::5432', '-p', '127.0.0.1::8082', '-p', '127.0.0.1::9092',
+                     '-p', '127.0.0.1::8081', '-p', '127.0.0.1::9091', POSTGRES], env=env, capture_output=True, text=True).stdout.strip()
     try:
         deadline = time.monotonic() + 60
         # The image's temporary init server accepts Unix sockets before initialization finishes.
@@ -53,7 +54,9 @@ CREATE DATABASE control OWNER control_migrator;"""
         yield {'CONTROL_TEST_URL':f'jdbc:postgresql://127.0.0.1:{port}/control?sslmode=disable', 'CONTROL_TEST_PASSWORD':password,
                'container':container, 'port':port,
                'runtimePort':info['NetworkSettings']['Ports']['8082/tcp'][0]['HostPort'],
-               'managementPort':info['NetworkSettings']['Ports']['9092/tcp'][0]['HostPort']}
+               'managementPort':info['NetworkSettings']['Ports']['9092/tcp'][0]['HostPort'],
+               'gatewayPort':info['NetworkSettings']['Ports']['8081/tcp'][0]['HostPort'],
+               'gatewayManagementPort':info['NetworkSettings']['Ports']['9091/tcp'][0]['HostPort']}
     finally:
         run(['docker', 'rm', '-f', container], capture_output=True)
 

@@ -33,3 +33,9 @@ Use [configuration](../../docs/control-plane/configuration.md),
 [API](../../docs/api/control-plane-api.md),
 [deployment](../../docs/control-plane/upgrades.md) and
 [ADR 003](../../docs/adr/003-control-plane-transactions.md).
+
+Module 04 adds the framework-independent policy compiler and `BundleSigner` port,
+immutable PostgreSQL publication history and signed publish/rollback APIs. The
+JCA signing adapter requires an external dedicated key. Run `make policy-e2e`
+for production-image integration and read
+[bundle protocol and operations](../../docs/control-plane/policy-bundles.md).

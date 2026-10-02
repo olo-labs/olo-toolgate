@@ -3,6 +3,10 @@
 // GENERATED FILE — DO NOT EDIT; python tools/ui/generate.py
 import type { ControlAgent, ControlAgentPage, ControlDevice, ControlDevicePage, ControlPolicy, ControlPolicyPage, ControlTeam, ControlTeamPage, ControlTool, ControlToolPage, ControlUser, ControlUserPage } from '@olo-labs/toolgate-contracts';
 export const operations = {
+  getCurrentPolicyBundle: { method: 'GET', path: '/api/control/v1/bundles/current' },
+  getPolicyBundleVersion: { method: 'GET', path: '/api/control/v1/bundles/versions/{sequence}' },
+  publishPolicyBundle: { method: 'POST', path: '/api/control/v1/bundles/publish' },
+  rollbackPolicyBundle: { method: 'POST', path: '/api/control/v1/bundles/rollback' },
   getControlOpenApi: { method: 'GET', path: '/api/control/v1/openapi' },
   listControlUser: { method: 'GET', path: '/api/control/v1/users' },
   createControlUser: { method: 'POST', path: '/api/control/v1/users' },

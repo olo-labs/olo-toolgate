@@ -21,6 +21,14 @@ pub trait PolicyEvaluator: Send + Sync {
     ) -> PortFuture<'a, Result<PolicyDecision, &'static str>>;
     /// Readiness means policy is safe for new traffic at this time.
     fn ready(&self, now: u64) -> bool;
+    /// Optional bounded-cardinality operational metrics, with no identity data.
+    fn metrics(&self, _now: u64) -> String {
+        String::new()
+    }
+    /// Recheck after audit acknowledgement; a replaced policy may revoke an ALLOW.
+    fn decision_valid(&self, _decision: &PolicyDecision, _input: &PolicyInput, now: u64) -> bool {
+        self.ready(now)
+    }
 }
 
 /// Static inputs cannot express ASK before the approvals module exists.

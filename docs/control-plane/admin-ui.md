@@ -66,7 +66,7 @@ HTML/release metadata use no-store; hashed assets cache immutably. Preserve thes
 headers through proxies. Source maps and Vite's internal manifest are excluded.
 Runtime MIT copyright/license notices are included. Rebuild UI and backend
 together from the lockfile. Product version is injected into the console; shared
-wire contracts remain v1 at the current 0.3.0-dev development baseline. The normal
+wire contracts remain v1 at the current 0.4.0-dev development baseline. The normal
 version tool synchronizes the console for the next release. No DB migration is
 added by this module.
 

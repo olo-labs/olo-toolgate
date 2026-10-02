@@ -88,6 +88,8 @@ def helm_checks():
     gateway_helm_checks()
     from control.helm import checks as control_helm_checks
     control_helm_checks()
+    from policy.helm import checks as policy_helm_checks
+    policy_helm_checks()
 
 
 def scans():
@@ -100,7 +102,10 @@ def scans():
     audit(json.loads(metadata.stdout))
     # This read-only scan hook is runnable locally and is mandatory in CI.
     run(['docker','run','--rm','-v',f'{ROOT.as_posix()}:/repo:ro','zricethezav/gitleaks:v8.24.2','detect','--source=/repo','--no-git','--redact','--exit-code=1'])
-    run(['docker','run','--rm','-v',f'{ROOT.as_posix()}:/repo:ro','aquasec/trivy:0.61.1','fs','--no-progress','--include-dev-deps','--scanners','vuln,license','--license-full','--exit-code','1','--severity','HIGH,CRITICAL','--skip-dirs','.dev,**/build,**/node_modules,target,.gradle,.git','/repo'])
+    from policy.secret_scan import checks as secret_scan_checks
+    secret_scan_checks()
+    from source_scan import scan
+    scan()
 
 
 def main():

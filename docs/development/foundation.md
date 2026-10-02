@@ -130,3 +130,33 @@ by Eclipse as BSD-3-Clause; UPL-1.0 is a reviewed permissive Graal build depende
 Vert.x/JNA alternative licenses retain OR expressions, selecting Apache-2.0.
 Public-domain declarations require an explicit CC0 source URL. Unknown metadata
 and unreviewed runtime copyleft expressions still fail the gate.
+
+Module 04 extends contracts to 12 schema groups/52 models and adds signed policy
+compiler/verification tests to `make check`. `make policy-e2e` builds real images
+and verifies the entire distribution flow; `make benchmark` records signed
+512-rule evaluation separately from the existing core baseline. See
+[bundle development and operations](../control-plane/policy-bundles.md).
+
+The locked same-file 1.0.6/walkdir 2.5.0 published README and LICENSE-MIT
+explicitly offer MIT or Unlicense. The audit normalizes their historical
+`Unlicense/MIT` declaration to `Unlicense OR MIT`, retaining the original
+metadata and rejecting unknown slash expressions. See the
+[Cargo license expression format](https://doc.rust-lang.org/cargo/reference/manifest.html#the-license-and-license-file-fields).
+
+The exact locked webpki-root-certs 1.0.9 public certificate dataset is reviewed
+under [CDLA-Permissive-2.0](https://cdla.dev/permissive-2-0/). Its complete license
+text accompanies redistributed data in the Gateway image notices. This is an
+exact-package review, not blanket acceptance of unreviewed data licenses.
+
+Gitleaks flags public compact policy signatures as JWT-shaped text. The reviewed
+allowance applies only to the `jwt` rule, exact public fixture paths and `jws`
+field lines. Other fields and private-key rules remain scanned. The scan hook
+executes a positive/negative proof that a credential field and an ephemeral
+private key in those same paths still fail. No credential or private material is
+excluded by the fixture allowance.
+
+Source vulnerability/license scanning uses an immutable Linux snapshot of every
+tracked working file and untracked non-ignored source. This avoids slow Windows
+bind-mount traversal and concurrent drift-test file locks while retaining all
+release sources and dependency lockfiles. Ignored caches/build outputs are
+covered by resolved dependency and production-image inventories.

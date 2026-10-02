@@ -25,3 +25,12 @@ does not discover minified-library metadata, so the verified production
 npm graph is merged into the image SBOM before checksumming and attestation. No separate UI
 image/chart registry is introduced. Console and API upgrade/rollback together;
 see [console operations](../control-plane/admin-ui.md).
+
+Module 04 adds the reusable signed-policy compatibility workflow as a required
+dependency of both image publishers and the foundation Maven/chart/assets release.
+It builds both production images and exercises genuine JWS publication, verified
+Gateway updates, rollback, key overlap, Control outage, expiry and restart recovery.
+The release matrix includes bundle format/algorithm and Flyway V3. Image scans and
+CycloneDX SBOMs include ring, rustls and reqwest. Runtime bundle signing keys remain
+external application inputs; they are unrelated to CI provenance or image signing.
+See [bundle operations](../control-plane/policy-bundles.md).

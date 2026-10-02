@@ -23,6 +23,7 @@ import org.eclipse.microprofile.jwt.JsonWebToken;
 public class ControlResource {
     private static final String COLLECTION = "{kind:users|teams|agents|tools|policies|devices}";
     @Inject DirectoryService service;
+    @Inject io.ololabs.toolgate.control.application.BundleService bundles;
     @Inject JsonWebToken jwt;
     @Inject Correlation correlation;
     @Inject MeterRegistry metrics;
@@ -48,6 +49,25 @@ public class ControlResource {
         if (value == null || !value.matches("\"(0|[1-9][0-9]{0,15})\"")) throw Failure.validation();
         try { var result = Long.parseLong(value.substring(1, value.length() - 1)); if (result > 9007199254740991L) throw Failure.validation(); return result; }
         catch (NumberFormatException e) { throw Failure.validation(); }
+    }
+    @GET @Path("bundles/current") @RolesAllowed({"toolgate-admin", "toolgate-reader", "toolgate-bundle-reader"})
+    public Response currentBundle() {
+        return Response.fromResponse(response(bundles.current(actor()), "READ", "bundle")).header("Cache-Control", "no-store").build();
+    }
+    @GET @Path("bundles/versions/{sequence}")
+    public Response bundle(@PathParam("sequence") long sequence) {
+        if (sequence < 1) throw Failure.validation();
+        return Response.fromResponse(response(bundles.get(actor(), sequence), "READ", "bundle")).header("Cache-Control", "no-store").build();
+    }
+    @POST @Path("bundles/publish") @Consumes("application/json") @RolesAllowed("toolgate-admin")
+    public Response publishBundle(@HeaderParam("Idempotency-Key") String key, String document) {
+        if (codec.model(document, io.ololabs.toolgate.contracts.BundlePublishRequest.class).rollbackOf() != null) throw Failure.validation();
+        return response(bundles.publish(actor(), document, key, correlation.id()), "PUBLISH", "bundle");
+    }
+    @POST @Path("bundles/rollback") @Consumes("application/json") @RolesAllowed("toolgate-admin")
+    public Response rollbackBundle(@HeaderParam("Idempotency-Key") String key, String document) {
+        if (codec.model(document, io.ololabs.toolgate.contracts.BundlePublishRequest.class).rollbackOf() == null) throw Failure.validation();
+        return response(bundles.publish(actor(), document, key, correlation.id()), "ROLLBACK", "bundle");
     }
     @GET @Path(COLLECTION)
     public Response page(@PathParam("kind") String kind, @QueryParam("cursor") String cursor, @QueryParam("limit") @DefaultValue("50") int limit) {

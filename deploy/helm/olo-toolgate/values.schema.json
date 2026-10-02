@@ -64,7 +64,8 @@
         "autoscaling",
         "networkPolicy",
         "ingress",
-        "serviceMonitor"
+        "serviceMonitor",
+        "bundle"
       ],
       "properties": {
         "enabled": {
@@ -587,6 +588,20 @@
               "items": {
                 "type": "object"
               }
+            },
+            "controlTo": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "object"
+              }
+            },
+            "dnsTo": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "object"
+              }
             }
           }
         },
@@ -648,6 +663,129 @@
               "pattern": "^[1-9][0-9]*(s|m)$"
             }
           }
+        },
+        "bundle": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "url": {
+              "type": "string",
+              "maxLength": 512,
+              "pattern": "^https://[A-Za-z0-9.-]+(:[0-9]+)?/api/control/v1/bundles/current$"
+            },
+            "tenantId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "issuer": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "audience": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "keyringSecret": {
+              "type": "string",
+              "maxLength": 253,
+              "pattern": "^$|^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$"
+            },
+            "keyringKey": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 253,
+              "pattern": "^[A-Za-z0-9._-]+$"
+            },
+            "tokenSecret": {
+              "type": "string",
+              "maxLength": 253,
+              "pattern": "^$|^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$"
+            },
+            "tokenKey": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 253,
+              "pattern": "^[A-Za-z0-9._-]+$"
+            },
+            "trustRevision": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "minimumSequence": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "maxGraceMs": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 300000
+            },
+            "pollIntervalMs": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 60000
+            },
+            "fetchTimeoutMs": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 30000
+            },
+            "controlPort": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          },
+          "required": [
+            "enabled",
+            "url",
+            "tenantId",
+            "issuer",
+            "audience",
+            "keyringSecret",
+            "keyringKey",
+            "tokenSecret",
+            "tokenKey",
+            "trustRevision",
+            "minimumSequence",
+            "maxGraceMs",
+            "pollIntervalMs",
+            "fetchTimeoutMs",
+            "controlPort"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "keyringSecret": {
+                    "minLength": 1
+                  },
+                  "tokenSecret": {
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
         }
       },
       "allOf": [
@@ -695,7 +833,8 @@
         "jwt",
         "database",
         "limits",
-        "tracing"
+        "tracing",
+        "bundle"
       ],
       "properties": {
         "enabled": {
@@ -1185,6 +1324,77 @@
               ]
             }
           }
+        },
+        "bundle": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "keyId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "issuer": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "audience": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "signingSecret": {
+              "type": "string",
+              "maxLength": 253,
+              "pattern": "^$|^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$"
+            },
+            "signingKey": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 253,
+              "pattern": "^[A-Za-z0-9._-]+$"
+            },
+            "keyRevision": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            }
+          },
+          "required": [
+            "enabled",
+            "keyId",
+            "issuer",
+            "audience",
+            "signingSecret",
+            "signingKey",
+            "keyRevision"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "signingSecret": {
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
         }
       },
       "allOf": [

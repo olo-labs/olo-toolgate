@@ -51,3 +51,10 @@ Connection/drain deadlines must cover request deadlines. Tune limits together wi
 resources and collector throughput. JSON parser depth is bounded and duplicate
 keys reject recursively. Sorted normalized JSON determines argument digests; it
 is not a general-purpose JCS/signature format.
+
+Module 04 adds mutually exclusive `bundleSource` mode in place of static `policy`.
+It requires a dedicated public keyring and externally refreshed Control access
+token, verifies signed current bundles, and swaps whole snapshots atomically.
+Readiness reflects verified freshness; grace allows only explicitly classified
+low-risk reads, and expiry blocks every action. See the complete
+[bundle configuration and failure runbook](../control-plane/policy-bundles.md).

@@ -16,10 +16,10 @@ from check import ROOT, POSTGRES, free_port, http_tests, keypair, ready, request
 
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--image',default='olo-toolgate-control:module03');args=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--image',default='olo-toolgate-control:module04');args=parser.parse_args()
     paths={name:os.environ.get('TOOLGATE_'+name.upper()+'_PATH') or shutil.which(name) for name in ('kind','kubectl','helm')}
     if any(not value for value in paths.values()): raise SystemExit('Native Kind, Helm and kubectl are required')
-    cluster='control-module02-'+uuid.uuid4().hex[:8];folder=ROOT/'.dev'/cluster;folder.mkdir(parents=True)
+    cluster='control-module04-'+uuid.uuid4().hex[:8];folder=ROOT/'.dev'/cluster;folder.mkdir(parents=True)
     config=folder/'kubeconfig';env=dict(os.environ,KUBECONFIG=str(config))
     def run(tool,*rest,capture=False,input=None):
         print('+ '+tool+' '+' '.join(rest[:3]),flush=True)
@@ -42,6 +42,13 @@ def main():
             path=folder/name;path.write_text(value,encoding='utf-8');path.chmod(0o600);secret_files[name]=path
         run('kubectl','create','secret','generic','control-db',*['--from-file='+name+'='+str(path) for name,path in secret_files.items()])
         run('kubectl','create','secret','generic','control-identity','--from-file=public.pem='+str(public))
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        from cryptography.hazmat.primitives import serialization
+        signing=rsa.generate_private_key(public_exponent=65537,key_size=2048)
+        signing_path=folder/'policy-signing.pem'
+        signing_path.write_bytes(signing.private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.PKCS8,serialization.NoEncryption()))
+        signing_path.chmod(0o600)
+        run('kubectl','create','secret','generic','policy-signing','--from-file=private.pem='+str(signing_path))
         # This PostgreSQL dependency exists only in the owned smoke cluster, outside the production chart.
         db=[{'apiVersion':'v1','kind':'Pod','metadata':{'name':'control-postgres','labels':{'app':'control-postgres'}},'spec':{
             'containers':[{'name':'postgres','image':POSTGRES.split('@')[0],'imagePullPolicy':'Never',
@@ -57,6 +64,7 @@ def main():
         run('kubectl','exec','-i','control-postgres','--','psql','-U','postgres','-v','ON_ERROR_STOP=1',input=sql,capture=True)
         registry,tag=args.image.rsplit(':',1);namespace,repo=registry.rsplit('/',1) if '/' in registry else ('docker.io/library',registry)
         values={'global':{'imageRegistry':namespace},'control':{'enabled':True,'developmentMode':True,'publicKeySecret':'control-identity',
+            'bundle':{'enabled':True,'signingSecret':'policy-signing','keyId':'bundle-cluster-1'},
             'image':{'repository':repo,'tag':tag,'pullPolicy':'Never'},'database':{'host':'control-postgres','name':'control','credentialsSecret':'control-db','sslMode':'disable'},
             'networkPolicy':{'runtimeFrom':[{'podSelector':{}}],'databaseTo':[{'podSelector':{'matchLabels':{'app':'control-postgres'}}}],
                              'dnsTo':[{'namespaceSelector':{'matchLabels':{'kubernetes.io/metadata.name':'kube-system'}}}]}}}
@@ -76,18 +84,33 @@ def main():
             management=f'http://127.0.0.1:{management_port}';ready(management,forward)
             return f'http://127.0.0.1:{api_port}',management
         runtime,management=connect();http_tests(runtime,management,key)
+        # The transport oversize check above closes kubectl's tunnel; reconnect.
+        runtime,management=connect()
+        admin=token(key);api='/api/control/v1'
+        revision=json.loads(request(runtime+api+'/config/export',admin)[1])['revision']
+        published=request(runtime+api+'/bundles/publish',admin,{'directoryRevision':revision,'expectedSequence':0,'lifetimeMs':600000,'graceMs':0},'POST',{'Idempotency-Key':'cluster-publish'})
+        assert published[0]==201,published[:2]
+        signed=published[1]
+        import base64
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.asymmetric import padding
+        parts=json.loads(signed)['jws'].split('.')
+        signing.public_key().verify(base64.urlsafe_b64decode(parts[2]+'=='),(parts[0]+'.'+parts[1]).encode(),padding.PKCS1v15(),hashes.SHA256())
+        assert request(runtime+api+'/bundles/current',admin)[1]==signed
         values['control']['limits']={'maxRecords':511};path.write_text(yaml.safe_dump(values),encoding='utf-8')
         run('helm','upgrade',release,chart,'-f',str(path),'--wait','--timeout','180s')
         runtime,management=connect()
         assert request(runtime+'/api/control/v1/users/user',token(key))[0]==200
+        assert request(runtime+api+'/bundles/current',token(key))[1]==signed
         run('helm','rollback',release,'1','--wait','--timeout','180s')
         runtime,management=connect()
         assert request(runtime+'/api/control/v1/users/user',token(key))[0]==200
+        assert request(runtime+api+'/bundles/versions/1',token(key))[1]==signed
         configmap=json.loads(run('kubectl','get','configmap',deployment,'-o','json',capture=True).stdout)
         assert configmap['data']['TOOLGATE_CONTROL_MAX_RECORDS']=='512'
         output=ROOT/'build/control';output.mkdir(parents=True,exist_ok=True)
         image_id=subprocess.check_output(['docker','image','inspect','--format','{{.Id}}',args.image],text=True).strip()
-        (output/'cluster-smoke.json').write_text(json.dumps({'image':args.image,'imageId':image_id,'postgres':True,'replicas':2,'installReady':True,'jwtRolesIsolation':True,'persistentUpgrade':True,'rollbackReady':True,'kindVersion':'0.27.0','kubernetes':'1.32.2'},indent=2)+'\n',encoding='utf-8')
+        (output/'cluster-smoke.json').write_text(json.dumps({'image':args.image,'imageId':image_id,'postgres':True,'replicas':2,'installReady':True,'jwtRolesIsolation':True,'persistentUpgrade':True,'rollbackReady':True,'externalSigningSecret':True,'signedPublicationVerified':True,'immutableBundleSurvivesUpgradeRollback':True,'kindVersion':'0.27.0','kubernetes':'1.32.2'},indent=2)+'\n',encoding='utf-8')
         print('Control Kind HA install, authenticated API, persistent upgrade and rollback passed')
     except Exception:
         # Preserve local diagnostics without printing pod environment or Secret data.

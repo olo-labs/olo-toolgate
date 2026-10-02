@@ -347,3 +347,10 @@ import/export. Marketplace services remain build scaffolds. No tool execution,
 policy distribution or permit issuance is available yet.
 Module 03 adds the [embedded Admin UI](apps/admin-ui/README.md): signed-token
 session shell, bounded dashboard, directory navigation and user management.
+
+Module 04 adds [signed policy bundles](docs/control-plane/policy-bundles.md):
+deterministic Control compilation and immutable publication, Gateway signature/hash
+verification and atomic last-known-good snapshots, explicit read-only grace,
+forward rollback and external key rotation. Run `make policy-e2e` for the real
+PostgreSQL/Control/Gateway flow and `make benchmark` for signed evaluation evidence.
+Publication requires a reviewed directory and dedicated external signing key.

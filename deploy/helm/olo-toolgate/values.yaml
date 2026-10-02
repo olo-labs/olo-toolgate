@@ -14,6 +14,22 @@ gateway:
     pullPolicy: IfNotPresent
   credentialsSecret: ''
   credentialsKey: credentials.json
+  bundle:
+    enabled: false
+    url: https://control.example.invalid/api/control/v1/bundles/current
+    tenantId: example
+    issuer: control
+    audience: gateway
+    keyringSecret: ''
+    keyringKey: keyring.json
+    tokenSecret: ''
+    tokenKey: access-token
+    trustRevision: '1'
+    minimumSequence: 0
+    maxGraceMs: 0
+    pollIntervalMs: 5000
+    fetchTimeoutMs: 3000
+    controlPort: 443
   config:
     listen: 0.0.0.0:8081
     managementListen: 0.0.0.0:9091
@@ -76,6 +92,8 @@ gateway:
     enabled: true
     runtimeFrom: []
     managementFrom: []
+    controlTo: []
+    dnsTo: []
   ingress:
     enabled: false
     className: ''
@@ -88,6 +106,14 @@ gateway:
     interval: 30s
 control:
   enabled: false
+  bundle:
+    enabled: false
+    keyId: bundle-key-1
+    issuer: control
+    audience: gateway
+    signingSecret: ''
+    signingKey: private.pem
+    keyRevision: '1'
   replicaCount: 2
   image:
     repository: olo-toolgate-control

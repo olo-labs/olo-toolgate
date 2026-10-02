@@ -18,6 +18,8 @@ concurrency:
   group: control-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  policy-compatibility:
+    uses: ./.github/workflows/policy.yml
   container-and-cluster:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -70,11 +72,11 @@ jobs:
       - name: Build, smoke and scan production image
         run: |
           python tools/control/container.py
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.61.1 image --no-progress --exit-code 1 --severity HIGH,CRITICAL olo-toolgate-control:module03
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/build/control:/evidence" aquasec/trivy:0.61.1 image --no-progress --format cyclonedx --output /evidence/control-sbom.cdx.json olo-toolgate-control:module03
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.61.1 image --no-progress --exit-code 1 --severity HIGH,CRITICAL olo-toolgate-control:module04
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/build/control:/evidence" aquasec/trivy:0.61.1 image --no-progress --format cyclonedx --output /evidence/control-sbom.cdx.json olo-toolgate-control:module04
           python tools/ui/merge_sbom.py
           python tools/control/cluster.py
-          docker save olo-toolgate-control:module03 -o build/control/image.tar
+          docker save olo-toolgate-control:module04 -o build/control/image.tar
           cp -r build/ui build/control/ui-evidence
           cp CHANGELOG.md docs/control-plane/upgrades.md build/control/
           (cd build/control && sha256sum image.tar control-sbom.cdx.json > SHA256SUMS)
@@ -85,7 +87,7 @@ jobs:
           if-no-files-found: error
   publish:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' && inputs.publish
-    needs: container-and-cluster
+    needs: [container-and-cluster, policy-compatibility]
     runs-on: ubuntu-24.04
     environment: control-release
     permissions:
@@ -112,7 +114,7 @@ jobs:
           docker load -i build/control/image.tar
           printf '%s' "$GH_TOKEN" | docker login ghcr.io --username "$REGISTRY_ACTOR" --password-stdin
           image="ghcr.io/olo-labs/olo-toolgate-control:${version}"
-          docker tag olo-toolgate-control:module03 "$image"
+          docker tag olo-toolgate-control:module04 "$image"
           docker push "$image"
           digest="$(docker inspect "$image" --format '{{index .RepoDigests 0}}' | cut -d@ -f2)"
           printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"

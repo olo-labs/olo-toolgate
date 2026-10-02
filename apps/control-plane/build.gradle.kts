@@ -26,6 +26,7 @@ dependencies {
 
 tasks.test {
     systemProperty("toolgate.published", usePublishedContracts.get())
+    systemProperty("toolgate.fixtures", rootProject.file("tests/fixtures/contracts/v1/valid.json").absolutePath)
     // A fresh PostgreSQL boundary is supplied for each verification invocation.
     outputs.upToDateWhen { false }
 }

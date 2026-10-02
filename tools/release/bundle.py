@@ -48,7 +48,7 @@ def main():
         metadata = {'productVersion':product, 'contractsVersion':version, 'wireSchemaMajor':1, 'java':21, 'rust':'1.94.1', 'typescript':'5.9.3', 'php':'>=8.2', 'helmChartVersion':product,
                     'runtimeComponents':{'gateway':product,'control':product,'adminUi':product,'otherServices':'not yet implemented'},
                     'adminUi':{'path':'/console/','packaging':'embedded in Control; same-origin API; external signed-token session','api':'Control v1'},
-                    'gatewayApi':'v1 decisions only', 'controlApi':'/api/control/v1; organization records and safe config import/export', 'controlDatabase':{'postgresql':'17.11','flywaySchema':2},
+                    'policyBundle':{'formatVersion':1,'jwsAlgorithm':'RS256','signedHeaderType':'toolgate-policy-bundle+jws','sequence':'monotonic per tenant; rollback is a new version'}, 'gatewayApi':'v1 decisions only', 'controlApi':'/api/control/v1; organization records and safe config import/export', 'controlDatabase':{'postgresql':'17.11','flywaySchema':3},
                     'mcp':{'version':'2026-07-28','capabilities':'ingress skeleton; no execution, permits or legacy sessions'},
                     'gatewayImage':f'ghcr.io/olo-labs/olo-toolgate-gateway:{product}', 'controlImage':f'ghcr.io/olo-labs/olo-toolgate-control:{product}',
                     'compatibilityWindow':'initial v1 Gateway/Control; no prior stable runtime release', 'maven':f'io.ololabs.toolgate:toolgate-contracts:{version}', 'helmOci':f'oci://ghcr.io/olo-labs/charts/olo-toolgate:{product}'}

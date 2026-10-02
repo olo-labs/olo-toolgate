@@ -19,6 +19,68 @@ pub struct AuthorizationRequest {
     pub action: String,
     pub arguments: std::collections::BTreeMap<String, serde_json::Value>,
 }
+/// Canonical BundleEffect wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BundleEffect {
+    #[serde(rename = "ALLOW")]
+    Allow,
+    #[serde(rename = "BLOCK")]
+    Block,
+}
+/// Strict JWS protected header; no remote or embedded keys and no algorithm negotiation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BundleHeader {
+    pub alg: String,
+    pub typ: String,
+    pub kid: String,
+}
+/// Signed version, trust domain, immutable policy bytes and bounded freshness claims.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BundlePayload {
+    pub format_version: u64,
+    pub issuer: String,
+    pub audience: String,
+    pub tenant_id: String,
+    pub sequence: u64,
+    pub version: String,
+    pub directory_revision: u64,
+    pub issued_at_unix_ms: u64,
+    pub expires_at_unix_ms: u64,
+    pub grace_ms: u64,
+    pub policy_sha256: String,
+    pub policy: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rollback_of: Option<u64>,
+}
+/// Publish a consistent directory snapshot or roll back into a new sequence. Requires Idempotency-Key.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BundlePublishRequest {
+    pub directory_revision: u64,
+    pub expected_sequence: u64,
+    pub lifetime_ms: u64,
+    pub grace_ms: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grace_policy_ids: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rollback_of: Option<u64>,
+}
+/// Exact tenant-scoped compiled policy; empty identity dimensions are unrestricted. BLOCK has precedence.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BundleRule {
+    pub policy_id: String,
+    pub user_ids: Vec<String>,
+    pub agent_ids: Vec<String>,
+    pub device_ids: Vec<String>,
+    pub tool_id: String,
+    pub action: String,
+    pub resource: ResourceDescriptor,
+    pub grace_allowed: bool,
+    pub effect: BundleEffect,
+}
 /// Device identity and capabilities. Enrollment credentials travel separately.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -35,6 +97,13 @@ pub struct ClientReport {
     pub client_version: String,
     pub applied_revision: u64,
     pub packages: Vec<ReportedPackage>,
+}
+/// Version 1 deterministic exact-match rules, with unconditional default deny.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CompiledPolicy {
+    pub format_version: u64,
+    pub rules: Vec<BundleRule>,
 }
 /// Identifies the shared contract set, independently of product versions.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -439,6 +508,12 @@ pub struct RuntimeAuditEvent {
     pub decision: PolicyDecision,
     pub trace_id: String,
 }
+/// RFC 7515 compact JWS; payload and hash must both verify before adoption.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SignedPolicyBundle {
+    pub jws: String,
+}
 /// Named operation and declared resource kinds.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -462,12 +537,16 @@ impl ContractSet {
     pub fn current() -> Self {
         Self {
             name: "olo-toolgate-contracts".into(),
-            version: "0.3.0-dev".into(),
+            version: "0.4.0-dev".into(),
         }
     }
 }
 /// Embedded canonical schemas for offline boundary validation.
 pub const CANONICAL_SCHEMAS: &[(&str, &str)] = &[
+    (
+        "https://schemas.ololabs.io/toolgate/v1/bundle.schema.json",
+        include_str!("../schemas/v1/bundle.schema.json"),
+    ),
     (
         "https://schemas.ololabs.io/toolgate/v1/client.schema.json",
         include_str!("../schemas/v1/client.schema.json"),

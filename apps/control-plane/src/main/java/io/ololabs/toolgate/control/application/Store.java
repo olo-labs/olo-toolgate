@@ -17,6 +17,11 @@ public interface Store {
         void remember(String actor, String key, String digest, Reply reply);
         void audit(String actor, String operation, String target, long revision, String requestId, String digest);
         String auditPage(long after, int limit);
+        long bundleSequence();
+        BundleRecord bundle(long sequence);
+        void publishBundle(BundleRecord bundle);
     }
+    /** Immutable signed wire bytes and compiler bytes, committed with audit/replay. */
+    record BundleRecord(long sequence, String document, String policy, long directoryRevision) {}
     record Reply(int status, String body, long revision) {}
 }

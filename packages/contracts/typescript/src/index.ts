@@ -13,6 +13,50 @@ export interface AuthorizationRequest {
   readonly action: string;
   readonly arguments: Record<string, unknown>;
 }
+export type BundleEffect = "ALLOW" | "BLOCK";
+/** Strict JWS protected header; no remote or embedded keys and no algorithm negotiation. */
+export interface BundleHeader {
+  readonly alg: string;
+  readonly typ: string;
+  readonly kid: string;
+}
+/** Signed version, trust domain, immutable policy bytes and bounded freshness claims. */
+export interface BundlePayload {
+  readonly formatVersion: number;
+  readonly issuer: string;
+  readonly audience: string;
+  readonly tenantId: string;
+  readonly sequence: number;
+  readonly version: string;
+  readonly directoryRevision: number;
+  readonly issuedAtUnixMs: number;
+  readonly expiresAtUnixMs: number;
+  readonly graceMs: number;
+  readonly policySha256: string;
+  readonly policy: string;
+  readonly rollbackOf?: number;
+}
+/** Publish a consistent directory snapshot or roll back into a new sequence. Requires Idempotency-Key. */
+export interface BundlePublishRequest {
+  readonly directoryRevision: number;
+  readonly expectedSequence: number;
+  readonly lifetimeMs: number;
+  readonly graceMs: number;
+  readonly gracePolicyIds?: ReadonlyArray<string>;
+  readonly rollbackOf?: number;
+}
+/** Exact tenant-scoped compiled policy; empty identity dimensions are unrestricted. BLOCK has precedence. */
+export interface BundleRule {
+  readonly policyId: string;
+  readonly userIds: ReadonlyArray<string>;
+  readonly agentIds: ReadonlyArray<string>;
+  readonly deviceIds: ReadonlyArray<string>;
+  readonly toolId: string;
+  readonly action: string;
+  readonly resource: ResourceDescriptor;
+  readonly graceAllowed: boolean;
+  readonly effect: BundleEffect;
+}
 /** Device identity and capabilities. Enrollment credentials travel separately. */
 export interface ClientEnrollmentRequest {
   readonly deviceId: string;
@@ -25,6 +69,11 @@ export interface ClientReport {
   readonly clientVersion: string;
   readonly appliedRevision: number;
   readonly packages: ReadonlyArray<ReportedPackage>;
+}
+/** Version 1 deterministic exact-match rules, with unconditional default deny. */
+export interface CompiledPolicy {
+  readonly formatVersion: number;
+  readonly rules: ReadonlyArray<BundleRule>;
 }
 /** Identifies the shared contract set, independently of product versions. */
 export interface ContractSet {
@@ -263,6 +312,10 @@ export interface RuntimeAuditEvent {
 export type SecretReference = string;
 export type SemanticVersion = string;
 export type Sha256 = string;
+/** RFC 7515 compact JWS; payload and hash must both verify before adoption. */
+export interface SignedPolicyBundle {
+  readonly jws: string;
+}
 /** Named operation and declared resource kinds. */
 export interface ToolAction {
   readonly name: string;
@@ -277,5 +330,5 @@ export interface ToolDefinition {
   readonly inputSchema: Record<string, unknown>;
   readonly outputSchema: Record<string, unknown>;
 }
-export const CONTRACT_SET_VERSION = "0.3.0-dev" as const;
+export const CONTRACT_SET_VERSION = "0.4.0-dev" as const;
 export const CONTRACT_SET_NAME = "olo-toolgate-contracts" as const;

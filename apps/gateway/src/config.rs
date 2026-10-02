@@ -47,7 +47,10 @@ pub struct Config {
     pub allowed_origins: Vec<String>,
     #[serde(default)]
     pub limits: Limits,
-    pub policy: StaticPolicy,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub policy: Option<StaticPolicy>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bundle_source: Option<crate::bundles::BundleSourceConfig>,
     pub extractors: Vec<ExtractorBinding>,
 }
 
@@ -93,7 +96,11 @@ impl Config {
         {
             return Err("origins must be exact HTTPS origins without a trailing slash");
         }
-        self.policy.validate(contracts, now)?;
+        match (&self.policy, &self.bundle_source) {
+            (Some(policy), None) => policy.validate(contracts, now)?,
+            (None, Some(source)) => source.validate()?,
+            _ => return Err("exactly one static or signed policy source is required"),
+        }
         crate::extraction::Registry::new(self.extractors.clone())?;
         Ok(())
     }

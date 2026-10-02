@@ -27,7 +27,7 @@ fn main() {
     let gateway = Gateway {
         contracts: Contracts::new().unwrap(),
         extractors: Registry::new(config.extractors).unwrap(),
-        policy: Arc::new(config.policy),
+        policy: Arc::new(config.policy.unwrap()),
         audit: Arc::new(Acknowledged),
     };
     let request: AuthorizationRequest = serde_json::from_str(
@@ -57,4 +57,63 @@ fn main() {
         samples.sort_unstable();
         println!("{}", serde_json::json!({"benchmark":"authorization-core", "iterations":samples.len(), "warmup":1000, "p50Ns":samples[10000], "p95Ns":samples[19000], "p99Ns":samples[19800], "meanNs":samples.iter().sum::<u64>()/samples.len() as u64, "audit":"immediate acknowledgement; no collector IO", "profile":"release", "contracts":olo_toolgate_contracts::ContractSet::current().version}));
     });
+    // Fixed signed public vectors keep crypto inputs/time reproducible. Verification
+    // is outside the hot path; a 512-rule last-match deny exercises a full scan.
+    let vectors: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../tests/fixtures/policy/signed-v1.json"
+    ))
+    .unwrap();
+    let source: olo_toolgate_gateway::bundles::BundleSourceConfig = serde_json::from_value(serde_json::json!({
+        "url":"http://127.0.0.1:8082/api/control/v1/bundles/current","tenantId":"example","issuer":"control","audience":"gateway",
+        "keyringPath":"test-keyring","tokenPath":"test-token","minimumSequence":0,"maxGraceMs":0,"pollIntervalMs":5000,
+        "fetchTimeoutMs":3000,"developmentLoopbackHttp":true})).unwrap();
+    let verifier = olo_toolgate_gateway::bundles::BundleVerifier::new(
+        source,
+        serde_json::from_value(vectors["keyring"].clone()).unwrap(),
+    )
+    .unwrap();
+    let fixed_instant = Instant::now();
+    let policy = olo_toolgate_gateway::bundles::VerifiedPolicy::with_monotonic_clock(
+        verifier,
+        std::sync::Arc::new(move || fixed_instant),
+    );
+    let now = vectors["now"].as_u64().unwrap();
+    let input: olo_toolgate_contracts::PolicyInput =
+        serde_json::from_value(vectors["input"].clone()).unwrap();
+    let start = Instant::now();
+    policy
+        .adopt(
+            &serde_json::to_vec(&vectors["bundles"]["many"]).unwrap(),
+            now,
+        )
+        .unwrap();
+    let verification_ns = start.elapsed().as_nanos();
+    for _ in 0..1000 {
+        let decision = policy.decide(&input, now);
+        assert_eq!(
+            decision.reason,
+            olo_toolgate_contracts::DecisionReason::Matched
+        );
+        assert_eq!(decision.policy_version, "1.0.1");
+        black_box(decision);
+    }
+    let mut samples = Vec::with_capacity(20000);
+    for _ in 0..20000 {
+        let start = Instant::now();
+        let decision = policy.decide(&input, now);
+        assert_eq!(
+            decision.reason,
+            olo_toolgate_contracts::DecisionReason::Matched
+        );
+        assert_eq!(decision.policy_version, "1.0.1");
+        black_box(decision);
+        samples.push(start.elapsed().as_nanos() as u64);
+    }
+    samples.sort_unstable();
+    println!(
+        "{}",
+        serde_json::json!({"benchmark":"signed-policy-evaluation","rules":512,"iterations":samples.len(),"warmup":1000,
+        "p50Ns":samples[10000],"p95Ns":samples[19000],"p99Ns":samples[19800],"coldVerificationNs":verification_ns,
+        "meanNs":samples.iter().sum::<u64>()/samples.len() as u64,"profile":"release","includes":"snapshot acquisition, exact-match full scan and decision allocation; excludes extraction, schema/audit IO"})
+    );
 }

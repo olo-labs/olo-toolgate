@@ -16,7 +16,10 @@ concurrency:
   group: release-foundation-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  policy-compatibility:
+    uses: ./.github/workflows/policy.yml
   release:
+    needs: policy-compatibility
     runs-on: ubuntu-24.04
     environment: foundation-release
     permissions:

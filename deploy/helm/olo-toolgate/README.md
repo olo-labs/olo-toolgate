@@ -37,3 +37,14 @@ JWT verification key and credential Secret references. Defaults render no servic
 See [configuration](../../../docs/control-plane/configuration.md) and
 [deployment/HA/upgrades](../../../docs/control-plane/upgrades.md). Control is independent
 of Gateway enabling and does not publish Gateway policies in Module 02.
+
+## Module 04 signed bundles
+
+Enable `control.bundle.enabled` with an external dedicated signing Secret.
+Enable `gateway.bundle.enabled` with separate public-keyring and refreshed
+fetch-token Secrets, an HTTPS Control endpoint, explicit `controlTo`/`dnsTo`
+egress peers and TLS `controlPort`. Signed mode removes static policy from
+the rendered Gateway config. `keyRevision`/`trustRevision` trigger rollouts
+after external key changes. Secret material is never accepted in values or
+rendered resources. Full fields, rotation and expiry behavior are documented in
+[the bundle runbook](../../../docs/control-plane/policy-bundles.md).

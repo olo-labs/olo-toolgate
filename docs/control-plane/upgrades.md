@@ -1,6 +1,6 @@
 # Control Plane deployment and upgrades
 
-Product, shared contracts and chart are `0.3.0-dev`, retaining v1 wire paths. The
+Product, shared contracts and chart are `0.4.0-dev`, retaining v1 wire paths. The
 canonical Control contracts are additive; the frozen foundation corpus remains
 compatible. The image name is `ghcr.io/olo-labs/olo-toolgate-control:<version>`.
 Protected `control-release` CI publishes the exact tested/scanned image, its SBOM
@@ -52,8 +52,9 @@ smoke validates rendered policy and actual two-replica behavior, not CNI enforce
 
 Back up PostgreSQL and verify restore procedures before upgrades. Flyway V1 creates
 directory and append-only audit tables; V2 adds tenant revisions, seven-day
-idempotency and permanent retired-ID tracking. Clean install and V1→V2 are tested
-with PostgreSQL 17.11. Migrations validate existing checksums and apply pending
+idempotency and permanent retired-ID tracking. V3 adds immutable signed bundle
+history with SELECT/INSERT-only runtime permissions. Clean install, V1→V3 and
+V2→V3 are tested with PostgreSQL 17.11. Migrations validate existing checksums and apply pending
 changes under Flyway's database lock. Automatic clean, baseline and repair are
 disabled. Runtime credentials cannot change schema or update/delete audit rows.
 
@@ -69,5 +70,6 @@ Helm rollback restores application/configuration/resources, never database schem
 The smoke path changes the directory limit, rolls out both replicas, then rolls
 back and verifies persisted rows. Schema rollback is a database restore or forward
 fix coordinated with application compatibility. Never use Flyway clean as recovery.
-The V2 application requires V2 schema; there is no pre-Module-02 runtime to roll
-back to. Export/import configuration is not a database or audit backup.
+The current application requires V3 schema. See the
+[signed bundle migration/restore runbook](policy-bundles.md) before downgrading
+a deployed signed-policy source or restoring older publication history. Export/import configuration is not a database or audit backup.

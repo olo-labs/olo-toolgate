@@ -133,7 +133,11 @@ pub fn management_router(state: Arc<AppState>) -> Router {
             get(|State(s): State<Arc<AppState>>| async move {
                 (
                     [("content-type", "text/plain; version=0.0.4")],
-                    s.metrics.render(),
+                    format!(
+                        "{}{}",
+                        s.metrics.render(),
+                        s.gateway.policy.metrics(unix_ms().unwrap_or(0))
+                    ),
                 )
             }),
         )

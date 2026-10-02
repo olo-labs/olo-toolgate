@@ -49,6 +49,22 @@ public class PostgresStore implements Store {
         private final Connection connection;
         private final String tenant;
         JdbcSession(Connection connection, String tenant) { this.connection = connection; this.tenant = tenant; }
+        public long bundleSequence() {
+            try (var statement = statement("SELECT COALESCE(max(sequence),0) FROM control_policy_bundles WHERE tenant_id=?"); var rows = statement.executeQuery()) {
+                rows.next(); return rows.getLong(1);
+            } catch (SQLException e) { throw Failure.unavailable(); }
+        }
+        public BundleRecord bundle(long sequence) {
+            try (var statement = statement("SELECT document,policy,directory_revision FROM control_policy_bundles WHERE tenant_id=? AND sequence=?", sequence); var rows = statement.executeQuery()) {
+                return rows.next() ? new BundleRecord(sequence, rows.getString(1), rows.getString(2), rows.getLong(3)) : null;
+            } catch (SQLException e) { throw Failure.unavailable(); }
+        }
+        public void publishBundle(BundleRecord bundle) {
+            try (var statement = statement("INSERT INTO control_policy_bundles (tenant_id,sequence,directory_revision,document,policy) VALUES (?,?,?,?,?)",
+                    bundle.sequence(), bundle.directoryRevision(), bundle.document(), bundle.policy())) {
+                statement.executeUpdate();
+            } catch (SQLException e) { throw Failure.unavailable(); }
+        }
         private java.sql.PreparedStatement statement(String sql, Object... params) throws SQLException {
             var statement = connection.prepareStatement(sql); statement.setString(1, tenant);
             for (int i = 0; i < params.length; i++) statement.setObject(i + 2, params[i]); return statement;

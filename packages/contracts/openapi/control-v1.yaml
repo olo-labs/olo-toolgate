@@ -3,13 +3,253 @@
 openapi: 3.1.0
 info:
   title: OLO ToolGate Control Plane API
-  version: 0.3.0-dev
-  description: Tenant-scoped administrative records. Stored policies do not become runtime grants. JSON
-    and safe YAML imports support dry-run, merge and replace; formatVersion 1 only. Revision headers protect
-    concurrent edits. No credential or executable-code fields.
+  version: 0.4.0-dev
+  description: Tenant-scoped administration and explicit signed policy publication. Directory policies become runtime
+    configuration only after publication; bundle trust is separate from execution permits.
 security:
 - adminAccessToken: []
 paths:
+  /api/control/v1/bundles/current:
+    get:
+      operationId: getCurrentPolicyBundle
+      description: Tenant-scoped immutable signed current bundle. Requires admin, reader or dedicated toolgate-bundle-reader.
+        No-store; ETag is sequence. Refresh authentication externally.
+      responses:
+        '200':
+          description: Signed bundle; clients must verify signature, hash, tenant, trust claims and freshness before
+            adoption
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Quoted immutable sequence
+            X-Request-ID:
+              schema:
+                type: string
+              description: Server correlation ID
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/bundle.schema.json#/$defs/SignedPolicyBundle
+        '401':
+          description: Valid short-lived access token required
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '403':
+          description: Role forbidden
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '404':
+          description: No publication or historical version in this tenant
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '503':
+          description: Signing disabled, signing failure or database unavailable
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+  /api/control/v1/bundles/versions/{sequence}:
+    get:
+      operationId: getPolicyBundleVersion
+      description: Exact immutable historical bytes. Requires admin or reader. Historical expiry is not extended.
+      parameters:
+      - name: sequence
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+      responses:
+        '200':
+          description: Signed bundle; clients must verify signature, hash, tenant, trust claims and freshness before
+            adoption
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Quoted immutable sequence
+            X-Request-ID:
+              schema:
+                type: string
+              description: Server correlation ID
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/bundle.schema.json#/$defs/SignedPolicyBundle
+        '401':
+          description: Valid short-lived access token required
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '403':
+          description: Role forbidden
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '404':
+          description: No publication or historical version in this tenant
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '503':
+          description: Signing disabled, signing failure or database unavailable
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+  /api/control/v1/bundles/publish:
+    post:
+      operationId: publishPolicyBundle
+      description: Admin only. Compile current directoryRevision and atomically publish expectedSequence+1 with audit
+        and durable replay. rollbackOf must be absent. Lifetime is 1 second–24 hours; grace is 0–5 minutes. Publication
+        does not execute tools.
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          $ref: ../schemas/v1/identifiers.schema.json#/$defs/Identifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/bundle.schema.json#/$defs/BundlePublishRequest
+      responses:
+        '201':
+          description: Signed bundle; clients must verify signature, hash, tenant, trust claims and freshness before
+            adoption
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Quoted immutable sequence
+            X-Request-ID:
+              schema:
+                type: string
+              description: Server correlation ID
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/bundle.schema.json#/$defs/SignedPolicyBundle
+        '400':
+          description: Malformed or unsupported input; required fields/key missing
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '401':
+          description: Valid short-lived access token required
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '403':
+          description: Role forbidden
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '404':
+          description: No publication or historical version in this tenant
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '409':
+          description: Stale directory/bundle sequence or changed idempotency request
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '503':
+          description: Signing disabled, signing failure or database unavailable
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+  /api/control/v1/bundles/rollback:
+    post:
+      operationId: rollbackPolicyBundle
+      description: Admin only. rollbackOf is required and selects an existing tenant version. Copies its exact policy
+        bytes into expectedSequence+1 with fresh signed expiry, new signature, audit and replay. Does not rewind sequence
+        or mutate history.
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          $ref: ../schemas/v1/identifiers.schema.json#/$defs/Identifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/bundle.schema.json#/$defs/BundlePublishRequest
+      responses:
+        '201':
+          description: Signed bundle; clients must verify signature, hash, tenant, trust claims and freshness before
+            adoption
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Quoted immutable sequence
+            X-Request-ID:
+              schema:
+                type: string
+              description: Server correlation ID
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/bundle.schema.json#/$defs/SignedPolicyBundle
+        '400':
+          description: Malformed or unsupported input; required fields/key missing
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '401':
+          description: Valid short-lived access token required
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '403':
+          description: Role forbidden
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '404':
+          description: No publication or historical version in this tenant
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '409':
+          description: Stale directory/bundle sequence or changed idempotency request
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '503':
+          description: Signing disabled, signing failure or database unavailable
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
   /api/control/v1/openapi:
     get:
       operationId: getControlOpenApi

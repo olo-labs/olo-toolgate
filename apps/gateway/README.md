@@ -36,3 +36,8 @@ Read:
 - `../../docs/security/security-invariants.md`
 
 Do not move responsibility across component boundaries without an ADR.
+
+Module 04 adds signed bundle verification, background distribution and atomic
+in-memory policy replacement. Choose `bundleSource` instead of static `policy`;
+invalid/outdated bundles retain only a still-valid verified snapshot. See
+[bundle trust, grace and operations](../../docs/control-plane/policy-bundles.md).

@@ -28,6 +28,13 @@ data:
   TOOLGATE_CONTROL_TRACE_EXPORT_ENABLED: {{ $g.tracing.enabled | quote }}
   QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: {{ printf "https://%s:%v" $g.tracing.host $g.tracing.port | quote }}
   QUARKUS_OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: {{ $g.tracing.protocol | quote }}
+  TOOLGATE_CONTROL_BUNDLE_ENABLED: {{ $g.bundle.enabled | quote }}
+  TOOLGATE_CONTROL_BUNDLE_ISSUER: {{ $g.bundle.issuer | quote }}
+  TOOLGATE_CONTROL_BUNDLE_AUDIENCE: {{ $g.bundle.audience | quote }}
+  {{- if $g.bundle.enabled }}
+  TOOLGATE_CONTROL_BUNDLE_KEY_ID: {{ $g.bundle.keyId | quote }}
+  TOOLGATE_CONTROL_BUNDLE_PRIVATE_KEY_PATH: /etc/toolgate/bundle-signing/private.pem
+  {{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -125,6 +132,9 @@ spec:
           volumeMounts:
             - {name: identity, mountPath: /etc/toolgate/identity, readOnly: true}
             - {name: tmp, mountPath: /tmp}
+            {{- if $g.bundle.enabled }}
+            - {name: bundle-signing, mountPath: /etc/toolgate/bundle-signing, readOnly: true}
+            {{- end }}
             {{- if eq $g.database.sslMode "verify-full" }}
             - {name: database-ca, mountPath: /etc/toolgate/database, readOnly: true}
             {{- end }}
@@ -136,6 +146,13 @@ spec:
             items: [{key: {{ $g.publicKeyKey | quote }}, path: public.pem}]
         - name: tmp
           emptyDir: {sizeLimit: 64Mi}
+        {{- if $g.bundle.enabled }}
+        - name: bundle-signing
+          secret:
+            secretName: {{ required "control.bundle.signingSecret required" $g.bundle.signingSecret | quote }}
+            defaultMode: 0440
+            items: [{key: {{ $g.bundle.signingKey | quote }}, path: private.pem}]
+        {{- end }}
         {{- if eq $g.database.sslMode "verify-full" }}
         - name: database-ca
           secret:

@@ -78,7 +78,7 @@ class FoundationTests(unittest.TestCase):
 
     def test_all_schemas_and_every_definition_have_valid_fixtures(self):
         self.assertEqual(set(self.validators), set(self.fixtures))
-        self.assertEqual(11, len(self.schemas))
+        self.assertEqual(12, len(self.schemas))
         for name, fixture in self.fixtures.items():
             with self.subTest(model=name):
                 self.validators[name].validate(fixture)
@@ -241,6 +241,7 @@ class FoundationTests(unittest.TestCase):
         self.assertTrue(licenses.accepted('MIT-0'))
         self.assertTrue(licenses.accepted('Zlib'))
         self.assertTrue(licenses.accepted(licenses.cargo_license('MIT/Apache-2.0')))
+        self.assertTrue(licenses.accepted(licenses.cargo_license('Unlicense/MIT')))
         self.assertEqual(licenses.cargo_license('Unknown/MIT'), 'Unknown/MIT')
         with self.assertRaises(Exception): licenses.accepted(licenses.cargo_license('Unknown/MIT'))
         self.assertTrue(licenses.accepted('EPL-2.0', tooling=True))

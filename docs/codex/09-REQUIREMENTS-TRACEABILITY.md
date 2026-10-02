@@ -219,3 +219,11 @@ A `BLOCKED` requirement means the module is not DONE.
   NOT_APPLICABLE with scope reasons. Real PostgreSQL/Control browser E2E,
   accessibility, production embedding, scans and Kind upgrade/rollback pass.
   Remote publication remains protected CI only.
+
+- Module 04: [pre-implementation coverage plan](modules/04-coverage.md) and
+  [completion matrix and verification evidence](modules/04-completion.md).
+  Signed policy bundles classify all 104 unique IDs: 101 COMPLETE and 3
+  NOT_APPLICABLE with scope reasons. Real JCA/ring/PostgreSQL production-image
+  E2E, rotation/outage/expiry/recovery, local Maven proof, scans/SBOMs and
+  two-replica signed publication/Helm upgrade/rollback pass. Protected releases
+  require the new policy compatibility gate; no remote publication was performed.

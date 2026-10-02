@@ -16,6 +16,8 @@ public interface Codec {
     String json(Object value);
     Object value(String document);
     void validatePolicies(Directory directory);
+    /** Validate canonical schema before decoding a generated shared model. */
+    <T> T model(String document, Class<T> type);
     record Import(Directory directory, boolean replace, boolean dryRun) {}
     default String result(boolean applied, long revision, java.util.List<Map<String, String>> changes) {
         return json(Map.of("applied", applied, "revision", revision, "changes", changes));

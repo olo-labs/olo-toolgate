@@ -6,6 +6,16 @@ The project follows semantic versioning once stable versioning begins.
 
 ## Unreleased
 
+### Module 04 — 0.4.0-dev
+
+- Canonical v1 RS256/JWS policy bundles and deterministic four-language bindings.
+- Bounded deterministic compilation, immutable PostgreSQL history, transactional
+  publish/rollback/audit/idempotency, dedicated external signing key.
+- Gateway verification, atomic snapshots, last-known-good, monotonic sequence,
+  expiry and explicitly classified low-risk read grace; no unsigned fallback.
+- Rotation/outage/restart compatibility tests, signed evaluator benchmark,
+  external Helm key/token references and required cross-component release CI gate.
+
 ### Added
 
 - Initial architecture and contributor documentation.

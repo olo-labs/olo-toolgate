@@ -5,9 +5,11 @@ use olo_toolgate_gateway::{
     application::Gateway,
     audit::JsonAudit,
     auth::{Authenticator, Credential},
+    bundles::{BundleKeyring, BundleVerifier, VerifiedPolicy},
     config::{read_json, Config},
     extraction::Registry,
     http::{management_router, runtime_router, AppState},
+    policy::PolicyEvaluator,
     server, unix_ms,
     validation::Contracts,
 };
@@ -60,14 +62,39 @@ async fn run() -> Result<(), &'static str> {
         .map_err(|_| "management listener bind failed")?;
     let (audit, audit_worker) =
         JsonAudit::new(config.limits.audit_queue_capacity, std::io::stdout());
+    let (shutdown, receiver) = watch::channel(false);
+    let mut bundle_receiver = receiver.clone();
+    let (policy, mut bundle_worker): (Arc<dyn PolicyEvaluator>, _) =
+        if let Some(source) = &config.bundle_source {
+            let keyring: BundleKeyring = read_json(&source.keyring_path)?;
+            let verified = Arc::new(VerifiedPolicy::new(BundleVerifier::new(
+                source.clone(),
+                keyring,
+            )?));
+            let polling = verified.clone();
+            (
+                verified,
+                tokio::spawn(olo_toolgate_gateway::bundles::poll(
+                    polling,
+                    bundle_receiver,
+                )),
+            )
+        } else {
+            (
+                Arc::new(config.policy.clone().ok_or("static policy required")?),
+                tokio::spawn(async move {
+                    let _ = bundle_receiver.changed().await;
+                    Ok(())
+                }),
+            )
+        };
     let gateway = Gateway {
         contracts,
         extractors,
-        policy: Arc::new(config.policy.clone()),
+        policy,
         audit: Arc::new(audit),
     };
     let state = Arc::new(AppState::new(gateway, auth, config.clone()));
-    let (shutdown, receiver) = watch::channel(false);
     let runtime_task = tokio::spawn(server::serve(
         runtime,
         runtime_router(state.clone()),
@@ -94,9 +121,20 @@ async fn run() -> Result<(), &'static str> {
         signal = shutdown_signal() => { if signal.is_err() { failed = true; } },
         _ = &mut runtime_task => { failed = true; },
         _ = &mut management_task => { failed = true; },
+        _ = &mut bundle_worker => { failed = true; },
     }
     state.draining.store(true, Ordering::Release);
     let _ = shutdown.send(true);
+    if !bundle_worker.is_finished()
+        && tokio::time::timeout(
+            Duration::from_millis(config.limits.shutdown_timeout_ms),
+            &mut bundle_worker,
+        )
+        .await
+        .is_err()
+    {
+        bundle_worker.abort();
+    }
     tracing::info!(
         service = "gateway",
         version = env!("CARGO_PKG_VERSION"),

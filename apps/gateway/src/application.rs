@@ -72,13 +72,13 @@ impl Gateway {
         }
         let event = RuntimeAuditEvent {
             timestamp_unix_ms: now,
-            context: input.context,
-            tool_id: input.tool_id,
-            action: input.action,
+            context: input.context.clone(),
+            tool_id: input.tool_id.clone(),
+            action: input.action.clone(),
             resource_digest: digest(
                 &serde_json::to_vec(&input.resource).map_err(|_| ErrorCode::Internal)?,
             ),
-            arguments_digest: input.arguments_digest,
+            arguments_digest: input.arguments_digest.clone(),
             decision: decision.clone(),
             trace_id,
         };
@@ -87,9 +87,11 @@ impl Gateway {
             .await
             .map_err(|_| ErrorCode::DependencyUnavailable)?;
         if decision.decision == Decision::Allow
-            && !self
-                .policy
-                .ready(crate::unix_ms().ok_or(ErrorCode::DependencyUnavailable)?)
+            && !self.policy.decision_valid(
+                &decision,
+                &input,
+                crate::unix_ms().ok_or(ErrorCode::DependencyUnavailable)?,
+            )
         {
             return Err(ErrorCode::DependencyUnavailable);
         }

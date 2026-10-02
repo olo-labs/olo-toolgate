@@ -136,3 +136,11 @@ Module 03 embeds the React console at Control's `/console/` origin. It uses
 canonical OpenAPI and the shared TypeScript package, leaving validation,
 authorization and policy meaning in the backend. See
 [ADR 004](docs/adr/004-embedded-admin-console.md).
+
+Module 04 makes Control the compiler/publisher and Gateway the verifier/evaluator
+of tenant-bound signed policy snapshots. Publication/history/audit/replay share
+one database transaction; signature verification and bounded fetching are outside
+the authorization path. Atomic snapshots, monotonic sequences and freshness
+deadlines preserve fail-closed behavior during outages and rollback. See
+[ADR 005](docs/adr/005-signed-policy-bundles.md) and
+[protocol/operations](docs/control-plane/policy-bundles.md).

@@ -42,7 +42,7 @@ public class ContractCodec implements Codec {
         mapper = JsonMapper.builder(factory).enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).build();
         try {
             var definitions = mapper.createObjectNode();
-            for (var file : java.util.List.of("common", "identifiers", "error", "resource", "tool", "policy", "package", "client", "deployment", "runtime", "control")) {
+            for (var file : java.util.List.of("common", "identifiers", "error", "resource", "tool", "policy", "package", "client", "deployment", "runtime", "control", "bundle")) {
                 var path = "/io/ololabs/toolgate/contracts/schemas/v1/" + file + ".schema.json";
                 try (var input = io.ololabs.toolgate.contracts.ContractSet.class.getResourceAsStream(path)) {
                     if (input == null) throw new IllegalStateException("Shared schema artifact is incomplete");
@@ -154,6 +154,11 @@ public class ContractCodec implements Codec {
         catch (java.io.IOException e) { throw new IllegalStateException(e); }
     }
     public Object value(String document) { return parse(document, false); }
+    public <T> T model(String document, Class<T> type) {
+        var node = parse(document, false); validate(type.getSimpleName(), node);
+        try { return mapper.treeToValue(node, type); }
+        catch (java.io.IOException | IllegalArgumentException e) { throw Failure.validation(); }
+    }
     public void validatePolicies(Directory directory) {
         for (var entry : directory.entries().values()) if (entry.id().kind() == Kind.POLICY) {
             var policy = parse(entry.document(), false);

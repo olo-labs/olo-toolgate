@@ -64,6 +64,13 @@ fn shared_fixture_round_trips() {
         ControlImportResult,
         ControlAudit,
         ControlAuditPage,
+        BundleRule,
+        BundleEffect,
+        CompiledPolicy,
+        BundleHeader,
+        BundlePayload,
+        SignedPolicyBundle,
+        BundlePublishRequest,
     );
     assert_eq!(ContractSet::current().version, env!("CARGO_PKG_VERSION"));
     assert_eq!(ContractSet::current().name, "olo-toolgate-contracts");

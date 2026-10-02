@@ -4,7 +4,8 @@ The required external inputs are PostgreSQL and an identity provider issuing RS2
 access tokens. There is no built-in password database, default account or generated
 production credential. Directory users describe the organization; they do not create
 identity-provider users or change their token roles. Disable/revoke IdP accounts in
-the IdP. Directory changes do not publish Gateway policy bundles in this module.
+the IdP. Directory changes require explicit signed bundle publication to reach
+Gateway. See [publication, trust configuration and operations](policy-bundles.md).
 
 | Environment variable | Meaning |
 |---|---|

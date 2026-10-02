@@ -14,7 +14,8 @@ PUT uses the current body revision and quoted `If-Match`, returning revision +1.
 DELETE requires quoted `If-Match`. Deleted IDs are permanently retired per tenant
 and kind. References must exist; enabled records cannot depend on disabled records.
 Policies require at least one explicit subject and a declared tool action/resource
-kind. Only ALLOW/BLOCK records are accepted; no publication or runtime grant occurs.
+kind. Only ALLOW/BLOCK records are accepted; mutations alone do not distribute
+runtime policy. Explicit signed publication uses the bundle endpoints below.
 
 All mutations require `Idempotency-Key`, scoped to verified tenant and actor, with
 seven-day retention. Identical request replay returns the original status/body/ETag
@@ -53,3 +54,11 @@ schemas; it introduces no copied wire definitions. Errors use `ErrorEnvelope` an
 management endpoints are documented in [configuration](../control-plane/configuration.md).
 Early HTTP transport body/header limits can reject before the REST error envelope
 and correlation filter; the canonical specification documents that boundary.
+
+Module 04 adds `GET /bundles/current`, `GET /bundles/versions/{sequence}`,
+`POST /bundles/publish` and `POST /bundles/rollback`, using the shared
+`SignedPolicyBundle` and `BundlePublishRequest` models. Publication is admin-only,
+idempotent and transactional, with expected directory revision/current sequence.
+Rollback republishes historical policy as a higher sequence. The dedicated
+`toolgate-bundle-reader` role can read current bundles only. See
+[protocol, examples, grace and key rotation](../control-plane/policy-bundles.md).

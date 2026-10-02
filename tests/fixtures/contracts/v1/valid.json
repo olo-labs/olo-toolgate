@@ -612,5 +612,71 @@
         "requestDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     ]
+  },
+  "BundleRule": {
+    "policyId": "allow-read",
+    "userIds": [
+      "alice"
+    ],
+    "agentIds": [],
+    "deviceIds": [],
+    "toolId": "files",
+    "action": "read",
+    "resource": {
+      "kind": "CUSTOM",
+      "locator": "calculator"
+    },
+    "graceAllowed": true,
+    "effect": "ALLOW"
+  },
+  "BundleEffect": "ALLOW",
+  "CompiledPolicy": {
+    "formatVersion": 1,
+    "rules": [
+      {
+        "policyId": "allow-read",
+        "userIds": [
+          "alice"
+        ],
+        "agentIds": [],
+        "deviceIds": [],
+        "toolId": "files",
+        "action": "read",
+        "resource": {
+          "kind": "CUSTOM",
+          "locator": "calculator"
+        },
+        "graceAllowed": true,
+        "effect": "ALLOW"
+      }
+    ]
+  },
+  "BundleHeader": {
+    "alg": "RS256",
+    "typ": "toolgate-policy-bundle+jws",
+    "kid": "bundle-key-1"
+  },
+  "BundlePayload": {
+    "formatVersion": 1,
+    "issuer": "control",
+    "audience": "gateway",
+    "tenantId": "example",
+    "sequence": 1,
+    "version": "1.0.1",
+    "directoryRevision": 0,
+    "issuedAtUnixMs": 1700000000000,
+    "expiresAtUnixMs": 1700000060000,
+    "graceMs": 0,
+    "policySha256": "2bb1e5048a19bde93c340142b5d9ba1f5ead639dce7add67bfd02d6c3a49b7e1",
+    "policy": "eyJmb3JtYXRWZXJzaW9uIjoxLCJydWxlcyI6W3siYWN0aW9uIjoicmVhZCIsImFnZW50SWRzIjpbXSwiZGV2aWNlSWRzIjpbXSwiZWZmZWN0IjoiQUxMT1ciLCJncmFjZUFsbG93ZWQiOnRydWUsInBvbGljeUlkIjoiYWxsb3ctcmVhZCIsInJlc291cmNlIjp7ImtpbmQiOiJDVVNUT00iLCJsb2NhdG9yIjoiY2FsY3VsYXRvciJ9LCJ0b29sSWQiOiJmaWxlcyIsInVzZXJJZHMiOlsiYWxpY2UiXX1dfQ"
+  },
+  "SignedPolicyBundle": {
+    "jws": "eyJhbGciOiAiUlMyNTYiLCAidHlwIjogInRvb2xnYXRlLXBvbGljeS1idW5kbGUrandzIiwgImtpZCI6ICJidW5kbGUta2V5LTEifQ.eyJmb3JtYXRWZXJzaW9uIjogMSwgImlzc3VlciI6ICJjb250cm9sIiwgImF1ZGllbmNlIjogImdhdGV3YXkiLCAidGVuYW50SWQiOiAiZXhhbXBsZSIsICJzZXF1ZW5jZSI6IDEsICJ2ZXJzaW9uIjogIjEuMC4xIiwgImRpcmVjdG9yeVJldmlzaW9uIjogMCwgImlzc3VlZEF0VW5peE1zIjogMTcwMDAwMDAwMDAwMCwgImV4cGlyZXNBdFVuaXhNcyI6IDE3MDAwMDAwNjAwMDAsICJncmFjZU1zIjogMCwgInBvbGljeVNoYTI1NiI6ICIyYmIxZTUwNDhhMTliZGU5M2MzNDAxNDJiNWQ5YmExZjVlYWQ2MzlkY2U3YWRkNjdiZmQwMmQ2YzNhNDliN2UxIiwgInBvbGljeSI6ICJleUptYjNKdFlYUldaWEp6YVc5dUlqb3hMQ0p5ZFd4bGN5STZXM3NpWVdOMGFXOXVJam9pY21WaFpDSXNJbUZuWlc1MFNXUnpJanBiWFN3aVpHVjJhV05sU1dSeklqcGJYU3dpWldabVpXTjBJam9pUVV4TVQxY2lMQ0puY21GalpVRnNiRzkzWldRaU9uUnlkV1VzSW5CdmJHbGplVWxrSWpvaVlXeHNiM2N0Y21WaFpDSXNJbkpsYzI5MWNtTmxJanA3SW10cGJtUWlPaUpEVlZOVVQwMGlMQ0pzYjJOaGRHOXlJam9pWTJGc1kzVnNZWFJ2Y2lKOUxDSjBiMjlzU1dRaU9pSm1hV3hsY3lJc0luVnpaWEpKWkhNaU9sc2lZV3hwWTJVaVhYMWRmUSJ9.c3RydWN0dXJhbC1vbmx5"
+  },
+  "BundlePublishRequest": {
+    "directoryRevision": 0,
+    "expectedSequence": 0,
+    "lifetimeMs": 60000,
+    "graceMs": 0
   }
 }

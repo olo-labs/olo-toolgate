@@ -99,6 +99,15 @@
         "https://projects.eclipse.org/license/epl-2.0",
         "https://projects.eclipse.org/license/secondary-gpl-2.0-cp"
       ]
+    },
+    "webpki-root-certs:1.0.9": {
+      "expression": "CDLA-Permissive-2.0",
+      "scope": null,
+      "reason": "Unmodified public certificate trust data. Permissive use/modification/redistribution; complete license text is retained by Gateway collect-notices.sh. Exact version reviewed from published Cargo package LICENSE.",
+      "sourceArtifact": "https://crates.io/api/v1/crates/webpki-root-certs/1.0.9/download",
+      "licenseUrls": [
+        "https://cdla.dev/permissive-2-0/"
+      ]
     }
   }
 }

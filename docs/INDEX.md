@@ -28,6 +28,7 @@
 - [Control Plane configuration](control-plane/configuration.md)
 - [Admin console: authentication, accessibility and packaging](control-plane/admin-ui.md)
 - [Control Plane deployment and upgrades](control-plane/upgrades.md)
+- [Signed policy bundle protocol and operations](control-plane/policy-bundles.md)
 - `client/`
 - `marketplace/`
 
@@ -98,6 +99,7 @@
 - `adr/000-template.md`
 - [003: Control Plane transactions and identity](adr/003-control-plane-transactions.md)
 - [004: Embedded administration console](adr/004-embedded-admin-console.md)
+- [005: Signed policy publication and verified snapshots](adr/005-signed-policy-bundles.md)
 
 ## Reference
 
@@ -115,3 +117,6 @@
 - [Module 02 completion evidence](codex/modules/02-completion.md)
 - [Module 03 coverage plan](codex/modules/03-coverage.md)
 - [Module 03 completion evidence](codex/modules/03-completion.md)
+
+- [Module 04 coverage plan](codex/modules/04-coverage.md)
+- [Module 04 completion evidence](codex/modules/04-completion.md)

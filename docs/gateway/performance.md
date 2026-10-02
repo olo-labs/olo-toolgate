@@ -33,3 +33,21 @@ does not measure the production musl image, network or collector throughput.
 - Failure path.
 - Security edge cases.
 - Metrics/audit emitted.
+
+## Module 04 signed evaluation baseline
+
+`make benchmark` records `build/gateway/bundle-benchmark.json` separately from
+the core baseline. One genuine signed 512-rule snapshot is verified before
+measurement; the last matching rule is BLOCK, forcing a complete scan.
+The 1,000 warmups/20,000 samples use a fixed UTC/monotonic clock and assert
+matched versioned decisions, so fixture expiry cannot change the measured path.
+This microbenchmark includes snapshot acquisition, exact matching and allocation;
+it excludes production clock sampling, extraction, schemas, network and audit I/O.
+Cold signature/hash/schema adoption is measured separately.
+
+The 2026-10-02 Rust 1.94.1 release run in Docker on Windows 11 (Intel Family 6
+Model 85 Stepping 4) measured p50 9,703 ns, p95 39,251 ns, p99 60,599 ns and
+mean 15,864 ns; cold adoption was 9,349,243 ns. Results vary with host load and
+are not end-to-end throughput/latency promises. No noisy performance threshold
+is a correctness gate. Evaluation remains bounded by the signed 4,096-rule
+contract; the current Control directory limit bounds compiler output to 512.

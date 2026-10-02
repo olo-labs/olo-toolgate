@@ -159,7 +159,7 @@ async fn call(
 
 #[test]
 fn policy_block_precedence_order_independence_emergency_and_default() {
-    let mut p = config().policy;
+    let mut p = config().policy.unwrap();
     let input = PolicyInput {
         context: context(),
         tool_id: request().tool_id,
@@ -230,7 +230,7 @@ fn config_rejects_unknown_unbounded_expired_or_unsafe_settings() {
     invalid.extractors.push(invalid.extractors[0].clone());
     assert!(invalid.validate(&contracts, 1).is_err());
     invalid = cfg;
-    invalid.policy.expires_at_unix_ms = 1;
+    invalid.policy.as_mut().unwrap().expires_at_unix_ms = 1;
     assert!(invalid.validate(&contracts, 1).is_err());
     let mut invalid = serde_json::to_value(config()).unwrap();
     invalid["policy"]["rules"][0]["effect"] = json!("ASK");
@@ -311,7 +311,7 @@ async fn rate_limit_exact_boundary_is_deterministic() {
 #[tokio::test]
 async fn http_allows_only_matching_input_and_audits_without_secrets() {
     let audit = Arc::new(RecordingAudit::default());
-    let s = state(Arc::new(config().policy), audit.clone(), config());
+    let s = state(Arc::new(config().policy.unwrap()), audit.clone(), config());
     let mut body = payload();
     body["arguments"]["private"] = json!("password-private-sentinel");
     let (status, decision, headers) = call(
@@ -342,7 +342,7 @@ async fn http_allows_only_matching_input_and_audits_without_secrets() {
 #[tokio::test]
 async fn http_malformed_auth_and_limits_never_return_allow() {
     let s = state(
-        Arc::new(config().policy),
+        Arc::new(config().policy.unwrap()),
         Arc::new(RecordingAudit::default()),
         config(),
     );
@@ -415,7 +415,7 @@ async fn policy_and_audit_failures_and_ask_fail_closed() {
             ask: false,
             pending: false,
         }) as Arc<dyn PolicyEvaluator>,
-        Arc::new(config().policy),
+        Arc::new(config().policy.unwrap()),
     ] {
         let audit = Arc::new(RecordingAudit {
             fail: true,
@@ -472,7 +472,7 @@ async fn extractor_port_failure_rejects_and_expired_policy_blocks() {
     let gateway = Gateway {
         contracts,
         extractors: registry,
-        policy: Arc::new(cfg.policy),
+        policy: Arc::new(cfg.policy.unwrap()),
         audit: Arc::new(RecordingAudit::default()),
     };
     assert_eq!(
@@ -482,7 +482,7 @@ async fn extractor_port_failure_rejects_and_expired_policy_blocks() {
             .await
             .unwrap_err()
     );
-    let mut policy = config().policy;
+    let mut policy = config().policy.unwrap();
     policy.expires_at_unix_ms = 1;
     let s = state(
         Arc::new(policy),
@@ -527,7 +527,7 @@ fn mcp_request(method: &str, name: Option<&str>) -> Request<Body> {
 #[tokio::test]
 async fn mcp_stateless_ping_discovery_calls_and_header_mismatch() {
     let s = state(
-        Arc::new(config().policy),
+        Arc::new(config().policy.unwrap()),
         Arc::new(RecordingAudit::default()),
         config(),
     );
@@ -589,7 +589,7 @@ async fn mcp_stateless_ping_discovery_calls_and_header_mismatch() {
 #[tokio::test]
 async fn mcp_protocol_negative_cases_and_encoded_name() {
     let router = runtime_router(state(
-        Arc::new(config().policy),
+        Arc::new(config().policy.unwrap()),
         Arc::new(RecordingAudit::default()),
         config(),
     ));
@@ -644,7 +644,7 @@ async fn mcp_protocol_negative_cases_and_encoded_name() {
     let mut value: Value = serde_json::from_slice(&to_bytes(body, 65536).await.unwrap()).unwrap();
     value.as_object_mut().unwrap().remove("id");
     let response = runtime_router(state(
-        Arc::new(config().policy),
+        Arc::new(config().policy.unwrap()),
         Arc::new(RecordingAudit::default()),
         config(),
     ))
@@ -660,7 +660,7 @@ async fn mcp_protocol_negative_cases_and_encoded_name() {
 #[tokio::test]
 async fn correlation_and_management_surfaces_do_not_trust_identity_headers() {
     let s = state(
-        Arc::new(config().policy),
+        Arc::new(config().policy.unwrap()),
         Arc::new(RecordingAudit::default()),
         config(),
     );
@@ -721,7 +721,7 @@ async fn correlation_and_management_surfaces_do_not_trust_identity_headers() {
 #[tokio::test]
 async fn real_tcp_http_and_graceful_shutdown() {
     let s = state(
-        Arc::new(config().policy),
+        Arc::new(config().policy.unwrap()),
         Arc::new(RecordingAudit::default()),
         config(),
     );
@@ -788,7 +788,7 @@ async fn ingress_rate_header_duplicate_credentials_and_media_limits() {
     let mut cfg = config();
     cfg.limits.requests_per_second = 1;
     let s = state(
-        Arc::new(cfg.policy.clone()),
+        Arc::new(cfg.policy.clone().unwrap()),
         Arc::new(RecordingAudit::default()),
         cfg,
     );
@@ -811,7 +811,7 @@ async fn ingress_rate_header_duplicate_credentials_and_media_limits() {
             .0
     );
     let s = state(
-        Arc::new(config().policy),
+        Arc::new(config().policy.unwrap()),
         Arc::new(RecordingAudit::default()),
         config(),
     );
@@ -852,7 +852,11 @@ async fn audit_dependency_wait_is_within_the_request_deadline() {
             true
         }
     }
-    let s = state(Arc::new(config().policy), Arc::new(PendingAudit), config());
+    let s = state(
+        Arc::new(config().policy.unwrap()),
+        Arc::new(PendingAudit),
+        config(),
+    );
     let (status, body, _) = call(
         runtime_router(s),
         "/v1/authorize",
