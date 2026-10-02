@@ -213,3 +213,9 @@ A `BLOCKED` requirement means the module is not DONE.
   NOT_APPLICABLE with scope reasons. Real PostgreSQL/HTTP/OTLP, container scan
   and two-replica Kind install/upgrade/rollback pass. Remote publication remains
   protected CI only.
+- Module 03: [pre-implementation coverage plan](modules/03-coverage.md) and
+  [completion matrix and verification evidence](modules/03-completion.md).
+  Admin UI Foundation classifies all 104 unique IDs: 88 COMPLETE and 16
+  NOT_APPLICABLE with scope reasons. Real PostgreSQL/Control browser E2E,
+  accessibility, production embedding, scans and Kind upgrade/rollback pass.
+  Remote publication remains protected CI only.

@@ -131,3 +131,8 @@ Directory metadata neither provisions IdP accounts nor grants Gateway runtime
 access. Policies remain administrative data until bundle publication is implemented.
 See [ADR 003](docs/adr/003-control-plane-transactions.md) and
 [Control operations](docs/control-plane/configuration.md).
+
+Module 03 embeds the React console at Control's `/console/` origin. It uses
+canonical OpenAPI and the shared TypeScript package, leaving validation,
+authorization and policy meaning in the backend. See
+[ADR 004](docs/adr/004-embedded-admin-console.md).

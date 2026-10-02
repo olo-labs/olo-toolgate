@@ -3,10 +3,13 @@
   "private": true,
   "version": "0.3.0-dev",
   "workspaces": [
-    "packages/contracts/typescript"
+    "packages/contracts/typescript",
+    "apps/admin-ui"
   ],
   "scripts": {
     "contracts:build": "npm --workspace @olo-labs/toolgate-contracts run build",
-    "contracts:check": "npm --workspace @olo-labs/toolgate-contracts run check"
+    "contracts:check": "npm --workspace @olo-labs/toolgate-contracts run check",
+    "ui:check": "npm --workspace @olo-labs/toolgate-admin-ui run check",
+    "ui:build": "npm run contracts:build && npm --workspace @olo-labs/toolgate-admin-ui run build"
   }
 }

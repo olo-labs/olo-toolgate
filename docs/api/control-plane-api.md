@@ -1,5 +1,9 @@
 # Control Plane API
 
+The Module 03 console consumes this canonical API on the same origin. Generated
+operation metadata imports the shared TypeScript contracts; no wire changes or
+UI-specific endpoints are added. See [console behavior](../control-plane/admin-ui.md).
+
 ## Purpose
 
 Users, teams, tools, policies, approvals, clients, deployments, vault bindings, import/export and audit.

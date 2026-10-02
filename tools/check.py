@@ -126,6 +126,7 @@ def main():
         run(['cargo','test','-p','olo-toolgate-gateway','--locked']); return
     python('tools/contracts/version.py','--check')
     python('tools/contracts/generate.py','--check')
+    python('tools/ui/generate.py','--check')
     python('tools/quality.py')
     python('-m','unittest','discover','-s','tests/contracts','-v')
     from control.check import database, smoke
@@ -147,11 +148,15 @@ def main():
     run(['npm','run','contracts:check'])
     run(['npm','run','contracts:build'])
     run(['npm','--workspace','@olo-labs/toolgate-contracts','test'])
+    run(['npm','run','ui:check'])
+    run(['npm','--workspace','@olo-labs/toolgate-admin-ui','test'])
+    if not args.contracts_only: python('tools/ui/check.py','--no-build')
+    python('tools/ui/package.py')
     run(['php','packages/contracts/php/tests/roundtrip.php'])
     for source in sorted((ROOT/'packages/contracts/php/src').glob('*.php')):
         run(['php','-l',source.relative_to(ROOT).as_posix()], capture=True)
     if not args.contracts_only: helm_checks()
-    print('All required foundation, gateway and control gates passed')
+    print('All required foundation, gateway, control and admin UI gates passed')
 
 
 if __name__ == '__main__': main()

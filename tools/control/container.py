@@ -48,7 +48,7 @@ def smoke(image):
 
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--image',default='olo-toolgate-control:module02');parser.add_argument('--no-build',action='store_true');args=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--image',default='olo-toolgate-control:module03');parser.add_argument('--no-build',action='store_true');args=parser.parse_args()
     if not args.no_build:
         version=(ROOT/'VERSION').read_text().strip();revision=run(['git','rev-parse','HEAD'],capture_output=True,text=True).stdout.strip()
         run(['docker','build','-f','apps/control-plane/Dockerfile','--build-arg','VERSION='+version,'--build-arg','REVISION='+revision,'-t',args.image,'.'])

@@ -55,18 +55,27 @@ jobs:
         run: |
           python tools/contracts/version.py --check
           python tools/contracts/generate.py --check
+          python tools/ui/generate.py --check
+          npm ci --ignore-scripts
+          npm run ui:build
+          npm --workspace @olo-labs/toolgate-admin-ui test
+          npx --no-install playwright install --with-deps chromium
           python tools/quality.py
           python -m unittest discover -s tests/contracts -v
           python tools/control/check.py
+          python tools/ui/check.py --no-build
+          python tools/ui/package.py
           python tools/check.py --scans
           python tools/control/helm.py
       - name: Build, smoke and scan production image
         run: |
           python tools/control/container.py
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.61.1 image --no-progress --exit-code 1 --severity HIGH,CRITICAL olo-toolgate-control:module02
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/build/control:/evidence" aquasec/trivy:0.61.1 image --no-progress --format cyclonedx --output /evidence/control-sbom.cdx.json olo-toolgate-control:module02
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.61.1 image --no-progress --exit-code 1 --severity HIGH,CRITICAL olo-toolgate-control:module03
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/build/control:/evidence" aquasec/trivy:0.61.1 image --no-progress --format cyclonedx --output /evidence/control-sbom.cdx.json olo-toolgate-control:module03
+          python tools/ui/merge_sbom.py
           python tools/control/cluster.py
-          docker save olo-toolgate-control:module02 -o build/control/image.tar
+          docker save olo-toolgate-control:module03 -o build/control/image.tar
+          cp -r build/ui build/control/ui-evidence
           cp CHANGELOG.md docs/control-plane/upgrades.md build/control/
           (cd build/control && sha256sum image.tar control-sbom.cdx.json > SHA256SUMS)
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -103,7 +112,7 @@ jobs:
           docker load -i build/control/image.tar
           printf '%s' "$GH_TOKEN" | docker login ghcr.io --username "$REGISTRY_ACTOR" --password-stdin
           image="ghcr.io/olo-labs/olo-toolgate-control:${version}"
-          docker tag olo-toolgate-control:module02 "$image"
+          docker tag olo-toolgate-control:module03 "$image"
           docker push "$image"
           digest="$(docker inspect "$image" --format '{{index .RepoDigests 0}}' | cut -d@ -f2)"
           printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"

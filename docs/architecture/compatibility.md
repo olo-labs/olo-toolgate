@@ -35,4 +35,5 @@ Unsupported packages may be visible but cannot be installed.
 | Gateway | product 0.3.0-dev | Module 01 behavior and runtime v1 API retained; no Control policy publication yet |
 | Helm chart | 0.3.0-dev | Services opt-in; empty default; external database/secrets |
 | Config snapshot | formatVersion 1 | Same-tenant import with optimistic tenant revision; unknown versions rejected |
-| Endpoint/UI/Marketplace | pending | No cross-component workflow delivered by this module |
+| Admin UI | 0.3.0-dev development baseline | Embedded Control v1 consumer; same-origin signed-token session; no wire/schema change |
+| Endpoint/Marketplace | pending | No cross-component workflow delivered by this module |

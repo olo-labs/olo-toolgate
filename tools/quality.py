@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_SUFFIXES = {'.java','.rs','.ts','.mjs','.php','.py','.sh','.kts','.toml','.ps1','.yml','.yaml','.sql','.properties'}
+SOURCE_SUFFIXES = {'.java','.rs','.ts','.tsx','.css','.html','.mjs','.php','.py','.sh','.kts','.toml','.ps1','.yml','.yaml','.sql','.properties'}
 SECRET_PATTERNS = [
     re.compile(r'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----'),
     re.compile(r'\bAKIA[0-9A-Z]{16}\b'),
@@ -37,9 +37,9 @@ def main():
         for problem in violations(path, content):
             problems.append(f'{name}: {problem}')
     lock = json.loads((ROOT/'package-lock.json').read_text())
-    allowed = {'Apache-2.0','MIT','BSD-2-Clause','BSD-3-Clause','ISC','0BSD'}
+    allowed = {'Apache-2.0','MIT','MIT-0','CC0-1.0','BlueOak-1.0.0','BSD-2-Clause','BSD-3-Clause','ISC','0BSD'}
     for name, package in lock['packages'].items():
-        if name and not package.get('link') and package.get('license') not in allowed:
+        if name and not package.get('link') and package.get('license') not in allowed and not (package.get('dev') and package.get('license') == 'MPL-2.0'):
             problems.append(f'npm license requires review: {name}')
     if problems: raise SystemExit('\n'.join(problems))
     print('Source headers, npm licenses and obvious-secret checks passed')

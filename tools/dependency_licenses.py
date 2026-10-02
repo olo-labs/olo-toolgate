@@ -12,7 +12,7 @@ from packaging.requirements import Requirement
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ALLOWED = {'Apache-2.0','MIT','MIT-0','Zlib','BSD-2-Clause','BSD-3-Clause','ISC','0BSD','Unicode-3.0','UPL-1.0','MPL-2.0','EPL-1.0','EPL-2.0','Python-2.0','PSF-2.0','Unlicense','CC0-1.0'}
+ALLOWED = {'Apache-2.0','MIT','MIT-0','BlueOak-1.0.0','Zlib','BSD-2-Clause','BSD-3-Clause','ISC','0BSD','Unicode-3.0','UPL-1.0','MPL-2.0','EPL-1.0','EPL-2.0','Python-2.0','PSF-2.0','Unlicense','CC0-1.0'}
 TOOL_ONLY = {'MPL-2.0','EPL-1.0','EPL-2.0','Python-2.0','PSF-2.0'}
 LICENSING = get_spdx_licensing()
 
@@ -89,8 +89,8 @@ def audit(rust_metadata, output=None):
             inventory.append({'ecosystem':'cargo','name':package['name'],'version':package['version'],'license':cargo_license(declared),'declaredLicense':declared})
     npm = json.loads((ROOT/'package-lock.json').read_text())
     for name, package in npm['packages'].items():
-        if name.startswith('node_modules/') and not package.get('link'):
-            inventory.append({'ecosystem':'npm','name':name.removeprefix('node_modules/'),'version':package['version'],'license':package.get('license') or ''})
+        if 'node_modules/' in name and not package.get('link'):
+            inventory.append({'ecosystem':'npm','name':name.split('node_modules/',1)[1],'version':package['version'],'license':package.get('license') or '', 'scope':'build-test' if package.get('dev') else 'runtime'})
     pending = [Requirement(line).name for line in (ROOT/'tools/requirements.txt').read_text().splitlines() if line and not line.startswith('#')]
     visited = set()
     while pending:
@@ -119,7 +119,7 @@ def audit(rust_metadata, output=None):
                           'scope':'runtime' if coordinate in runtime_coordinates else 'build-test'})
     for dependency in inventory:
         expression = dependency['license']
-        tooling = dependency['ecosystem'] in ('python-tools','npm') or dependency.get('scope') == 'build-test' or dependency['name'].startswith(('org.junit','org.opentest4j','org.apiguardian'))
+        tooling = dependency['ecosystem'] == 'python-tools' or dependency.get('scope') == 'build-test' or dependency['name'].startswith(('org.junit','org.opentest4j','org.apiguardian'))
         review = reviews.get(dependency['name']+':'+dependency['version'])
         reviewed = review and review['expression'] == expression and review['scope'] == dependency.get('scope')
         if reviewed: dependency['review'] = review

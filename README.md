@@ -345,3 +345,5 @@ authorization and an opt-in Helm gateway workload. Module 02 adds the
 PostgreSQL/Flyway, signed administrative JWTs, atomic audit/replay and JSON/YAML
 import/export. Marketplace services remain build scaffolds. No tool execution,
 policy distribution or permit issuance is available yet.
+Module 03 adds the [embedded Admin UI](apps/admin-ui/README.md): signed-token
+session shell, bounded dashboard, directory navigation and user management.

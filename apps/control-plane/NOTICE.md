@@ -14,3 +14,9 @@ Exact versions, license URLs and matching source artifact URLs are distributed i
 `/usr/share/licenses/olo-toolgate/third-party/dependency-license-reviews.json`.
 The Quarkus build-only classfile backport is not distributed in the runtime image.
 Upstream notices remain inside the original dependency JARs.
+
+The embedded console includes MIT-licensed React, React DOM and Scheduler. Full
+upstream copyright/license texts are served at `/console/THIRD-PARTY-NOTICES.txt`.
+The locked npm graph is distributed in
+`/usr/share/licenses/olo-toolgate/third-party/package-lock.json`; development
+tooling from that graph is absent from the JRE-only runtime.

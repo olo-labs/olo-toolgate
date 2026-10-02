@@ -25,10 +25,12 @@ def expected():
     cargo = ROOT/'Cargo.toml'
     outputs[cargo] = re.sub(r'^version = "[^"]+"', f'version = "{contracts}"', cargo.read_text(), flags=re.M)
     outputs[cargo] = re.sub(r'(olo-toolgate-contracts = \{[^\n]*version = ")[^"]+', lambda m: m[1]+contracts, outputs[cargo])
-    for path in ('package.json','packages/contracts/typescript/package.json'):
+    for path in ('package.json','packages/contracts/typescript/package.json','apps/admin-ui/package.json'):
         p = ROOT/path
         content = json.loads(p.read_text())
         content['version'] = contracts if 'contracts' in path else product
+        if path == 'apps/admin-ui/package.json':
+            content['dependencies']['@olo-labs/toolgate-contracts'] = contracts
         outputs[p] = json.dumps(content, indent=2) + '\n'
     chart = ROOT/'deploy/helm/olo-toolgate/Chart.yaml'
     outputs[chart] = re.sub(r'^version: .*', f'version: {product}', chart.read_text(), flags=re.M)

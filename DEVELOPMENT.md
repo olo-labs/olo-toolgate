@@ -121,4 +121,9 @@ See [`docs/development/gradle.md`](docs/development/gradle.md).
 Module 00 supplies canonical v1 schemas, generated bindings, workspace and local
 Maven artifact build modes, mandatory checks and protected release plumbing.
 Run `make check`; see [foundation workflow](docs/development/foundation.md).
-The service modules remain build scaffolds and the Helm chart has no workloads.
+Gateway, Control and the embedded Admin UI are implemented; Marketplace services
+remain scaffolds. Helm workloads are opt-in and disabled defaults render empty.
+Control builds now require Node 22.12+ for the console. See
+[UI development and real-browser tests](apps/admin-ui/README.md).
+`make e2e` runs the console against isolated real Control/PostgreSQL and generated
+signed test identities. Full Quickstart bootstrap remains future work.

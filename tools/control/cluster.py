@@ -16,7 +16,7 @@ from check import ROOT, POSTGRES, free_port, http_tests, keypair, ready, request
 
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--image',default='olo-toolgate-control:module02');args=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--image',default='olo-toolgate-control:module03');args=parser.parse_args()
     paths={name:os.environ.get('TOOLGATE_'+name.upper()+'_PATH') or shutil.which(name) for name in ('kind','kubectl','helm')}
     if any(not value for value in paths.values()): raise SystemExit('Native Kind, Helm and kubectl are required')
     cluster='control-module02-'+uuid.uuid4().hex[:8];folder=ROOT/'.dev'/cluster;folder.mkdir(parents=True)

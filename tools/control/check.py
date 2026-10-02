@@ -110,6 +110,7 @@ def ready(management, process=None):
 
 
 def http_tests(runtime, management, key):
+    static_tests(runtime)
     api = runtime+'/api/control/v1'
     admin = token(key); reader = token(key, groups=['toolgate-reader']); user = {'id':'user', 'name':'secret-redaction-sentinel', 'enabled':True, 'revision':1}
     for invalid in (None, token(rsa.generate_private_key(public_exponent=65537,key_size=2048)), token(key, exp=int(time.time())-1),
@@ -207,6 +208,23 @@ def http_tests(runtime, management, key):
     assert request(api+'/users', admin, b'x'*(2*1024*1024+1), 'POST', {'Idempotency-Key':'oversize'})[0] == 413
     print('Control HTTP: verified JWT negatives, roles, tenant isolation, contracts, limits, idempotency, safe JSON/YAML import, audit and telemetry passed')
     return admin
+
+
+def static_tests(runtime):
+    """Proves embedded artifacts and browser headers in host/container/cluster modes."""
+    import re
+    status,html,headers=request(runtime+'/console/')
+    assert status==200 and b'ToolGate' in html
+    assert headers.get('Cache-Control')=='no-store'
+    assert "script-src 'self'" in headers.get('Content-Security-Policy','')
+    assert headers.get('X-Content-Type-Options')=='nosniff'
+    asset=re.search(rb'src="([^"]+\.js)"',html).group(1).decode()
+    status,content,headers=request(runtime+asset)
+    assert status==200 and len(content)>1000 and 'immutable' in headers.get('Cache-Control','')
+    status,metadata,_=request(runtime+'/console/release.json')
+    assert status==200 and json.loads(metadata)['version']==(ROOT/'VERSION').read_text().strip()
+    assert request(runtime+'/console/.vite/manifest.json')[0]==404
+    assert request(runtime+'/console/THIRD-PARTY-NOTICES.txt')[0]==200
 
 
 def smoke(db):

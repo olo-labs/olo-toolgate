@@ -45,7 +45,7 @@ integration:
 	@$(PYTHON) tools/check.py --gateway-only
 
 e2e:
-	@./tools/dev/not-implemented.sh "end-to-end tests"
+	@$(PYTHON) tools/ui/check.py
 
 security:
 	@$(PYTHON) tools/check.py --scans

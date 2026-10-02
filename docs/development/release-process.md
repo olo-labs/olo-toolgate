@@ -16,3 +16,12 @@ chart and raw/checksummed assets. Configure signing before claiming signed image
 See [Control deployment](../control-plane/upgrades.md) and
 [compatibility](../architecture/compatibility.md). Runtime JARs retain upstream
 notices and the image includes dependency versions and Temurin legal notices.
+
+Module 03 embeds the console in the same Control image. CI adds locked npm build,
+component/transport coverage, canonical operation drift, browser/axe E2E against
+real Control/PostgreSQL, a reproducible versioned UI tar/checksums and production
+npm SBOM. Runtime MIT notices are included in the served artifact. Image scanning
+does not discover minified-library metadata, so the verified production
+npm graph is merged into the image SBOM before checksumming and attestation. No separate UI
+image/chart registry is introduced. Console and API upgrade/rollback together;
+see [console operations](../control-plane/admin-ui.md).

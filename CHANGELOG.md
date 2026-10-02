@@ -9,6 +9,11 @@ The project follows semantic versioning once stable versioning begins.
 ### Added
 
 - Initial architecture and contributor documentation.
+- Module 03 embedded React/TypeScript/Vite administration console, generated
+  Control OpenAPI operation bindings, memory-only signed-token shell, bounded
+  dashboard, paginated directory navigation and revision-aware user management.
+- Component/API coverage, real signed-token PostgreSQL browser E2E, axe/keyboard
+  accessibility gates, reproducible UI assets/notices/checksums and CI integration.
 
 ### Changed
 

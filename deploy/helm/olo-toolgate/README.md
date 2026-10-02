@@ -1,5 +1,11 @@
 # OLO ToolGate chart
 
+Module 03 embeds the administration console in the existing Control image at
+`/console/`. The Control root-path TLS ingress also routes `/api/control/v1/` on
+the same origin. Private management ports remain separate. No UI workload,
+additional service, secret or chart values are needed. See
+[console deployment and upgrade guidance](../../../docs/control-plane/admin-ui.md).
+
 Gateway is disabled by default, so default/upgrade renders remain empty. Module 01
 adds the real Gateway Deployment, separate runtime/management Services, SA,
 ConfigMap, NetworkPolicy, PDB, configurable HPA, Ingress and ServiceMonitor.
