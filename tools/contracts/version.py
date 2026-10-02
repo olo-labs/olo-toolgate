@@ -7,14 +7,18 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SEMVER = re.compile(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?')
+# Numeric prerelease identifiers follow the same no-leading-zero rule as the core.
+# Release versions omit build metadata so every configured registry uses one tag.
+NUMERIC = r'(?:0|[1-9][0-9]*)'
+PRERELEASE = r'(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)'
+SEMVER = re.compile(rf'{NUMERIC}\.{NUMERIC}\.{NUMERIC}(?:-{PRERELEASE}(?:\.{PRERELEASE})*)?')
 
 
 def expected():
     contracts = (ROOT/'packages/contracts/VERSION').read_text().strip()
     product = (ROOT/'VERSION').read_text().strip()
     if not SEMVER.fullmatch(contracts) or not SEMVER.fullmatch(product):
-        raise ValueError('Version must be SemVer (no snapshot aliases)')
+        raise ValueError('Release version must be SemVer core/prerelease without build metadata')
     outputs = {}
     manifest = ROOT/'packages/contracts/contract-set.yaml'
     outputs[manifest] = re.sub(r'^version: .*', f'version: {contracts}', manifest.read_text(), flags=re.M)

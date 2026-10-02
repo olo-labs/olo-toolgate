@@ -57,7 +57,7 @@ below omit the long local bundled Python executable path.
 | Command | Result |
 |---|---|
 | make check PYTHON=<Python 3.12 executable> | PASS: mandatory gate completed, no skipped tools |
-| python -m unittest discover -s tests/contracts -v | PASS: 15 tests, including schema/negative/trust/compatibility/drift/license/version/CI/docs/bundle checks |
+| python -m unittest discover -s tests/contracts -v | PASS: 17 tests, including schema/negative/trust/compatibility/drift/license/version/CI/docs/bundle checks |
 | python tools/contracts/generate.py --check | PASS: 51 generated outputs current |
 | python tools/contracts/version.py --check | PASS: synchronized metadata |
 | gradlew.bat projects javaCheck build --no-daemon | PASS: four Java projects, two contract tests and one test per service |
@@ -75,6 +75,25 @@ Release assets were prepared in ignored build/release. No remote artifact was
 published, tag pushed, GitHub release created or workload deployed. GitHub-hosted
 workflow execution and provenance issuance require pushing this change into the
 configured protected CI environment. Local actionlint and CI smoke tests passed.
+
+## Revalidation on 2026-10-02
+
+Reviewed the committed foundation against the governing documents and existing
+coverage table before making further edits. Tightened release version validation
+to reject leading zeroes in numeric prerelease identifiers before writing version
+sources. Tightened compatibility checks to reject enum additions, removals and
+replacement of an unrestricted string with an enum, because existing generated
+readers use closed enums. Frozen v1 schemas and fixtures remain unchanged.
+
+Regression tests cover both guards and verify invalid version input leaves both
+version sources unchanged. The 17-test Python suite, full `make check`, local
+Maven publication and artifact consumer proof, empty default/upgrade Helm renders,
+and all scan hooks passed again. Generated-code drift, version synchronization,
+source quality and whitespace checks also passed. Changes are confined to
+`tools/contracts/version.py`, `tests/contracts/test_foundation.py`,
+`docs/development/foundation-upgrades.md` and this report. The completion matrix
+still classifies 49 requirements as COMPLETE and 58 as NOT_APPLICABLE, with none
+BLOCKED. No later module was started and no remote publication was performed.
 
 ## Definition of done application
 
@@ -129,14 +148,14 @@ established. Artifact signing is not configured. No runtime observability was ad
 | SEC-008 | NOT_APPLICABLE | No authorization/signature verifier, execution sandbox, external request, replay store, key management or audited mutation is implemented. Signature fixtures are explicitly non-signatures; ownership remains in later modules. |
 | SEC-009 | NOT_APPLICABLE | No authorization/signature verifier, execution sandbox, external request, replay store, key management or audited mutation is implemented. Signature fixtures are explicitly non-signatures; ownership remains in later modules. |
 | SEC-010 | NOT_APPLICABLE | No authorization/signature verifier, execution sandbox, external request, replay store, key management or audited mutation is implemented. Signature fixtures are explicitly non-signatures; ownership remains in later modules. |
-| TST-001 | COMPLETE | 15 offline Python schema/boundary tests; Java round trips/security tests plus three service dependency tests; two Rust tests; TS compile-negative/transport tests; 22 PHP model round trips; real Maven proof with empty-repository negative. No timing-based correctness. |
-| TST-002 | COMPLETE | 15 offline Python schema/boundary tests; Java round trips/security tests plus three service dependency tests; two Rust tests; TS compile-negative/transport tests; 22 PHP model round trips; real Maven proof with empty-repository negative. No timing-based correctness. |
-| TST-003 | COMPLETE | 15 offline Python schema/boundary tests; Java round trips/security tests plus three service dependency tests; two Rust tests; TS compile-negative/transport tests; 22 PHP model round trips; real Maven proof with empty-repository negative. No timing-based correctness. |
-| TST-004 | COMPLETE | 15 offline Python schema/boundary tests; Java round trips/security tests plus three service dependency tests; two Rust tests; TS compile-negative/transport tests; 22 PHP model round trips; real Maven proof with empty-repository negative. No timing-based correctness. |
-| TST-005 | COMPLETE | 15 offline Python schema/boundary tests; Java round trips/security tests plus three service dependency tests; two Rust tests; TS compile-negative/transport tests; 22 PHP model round trips; real Maven proof with empty-repository negative. No timing-based correctness. |
+| TST-001 | COMPLETE | 17 offline Python schema/boundary tests; Java round trips/security tests plus three service dependency tests; two Rust tests; TS compile-negative/transport tests; 22 PHP model round trips; real Maven proof with empty-repository negative. No timing-based correctness. |
+| TST-002 | COMPLETE | 17 offline Python schema/boundary tests; Java round trips/security tests plus three service dependency tests; two Rust tests; TS compile-negative/transport tests; 22 PHP model round trips; real Maven proof with empty-repository negative. No timing-based correctness. |
+| TST-003 | COMPLETE | 17 offline Python schema/boundary tests; Java round trips/security tests plus three service dependency tests; two Rust tests; TS compile-negative/transport tests; 22 PHP model round trips; real Maven proof with empty-repository negative. No timing-based correctness. |
+| TST-004 | COMPLETE | 17 offline Python schema/boundary tests; Java round trips/security tests plus three service dependency tests; two Rust tests; TS compile-negative/transport tests; 22 PHP model round trips; real Maven proof with empty-repository negative. No timing-based correctness. |
+| TST-005 | COMPLETE | 17 offline Python schema/boundary tests; Java round trips/security tests plus three service dependency tests; two Rust tests; TS compile-negative/transport tests; 22 PHP model round trips; real Maven proof with empty-repository negative. No timing-based correctness. |
 | TST-006 | NOT_APPLICABLE | No running product cross-component flow or performance-critical runtime exists. Build-boundary integration is covered by the real Maven artifact proof. |
 | TST-007 | NOT_APPLICABLE | No running product cross-component flow or performance-critical runtime exists. Build-boundary integration is covered by the real Maven artifact proof. |
-| TST-008 | COMPLETE | 15 offline Python schema/boundary tests; Java round trips/security tests plus three service dependency tests; two Rust tests; TS compile-negative/transport tests; 22 PHP model round trips; real Maven proof with empty-repository negative. No timing-based correctness. |
+| TST-008 | COMPLETE | 17 offline Python schema/boundary tests; Java round trips/security tests plus three service dependency tests; two Rust tests; TS compile-negative/transport tests; 22 PHP model round trips; real Maven proof with empty-repository negative. No timing-based correctness. |
 | QLT-001 | COMPLETE | quality.py checks headers/npm licenses; dependency_licenses.py audits 61 resolved packages; central catalogs and lockfiles; Java -Xlint:all -Werror, Rust fmt/clippy, TS type checks, PHP lint. Generated value models contain no business workflows. |
 | QLT-002 | COMPLETE | quality.py checks headers/npm licenses; dependency_licenses.py audits 61 resolved packages; central catalogs and lockfiles; Java -Xlint:all -Werror, Rust fmt/clippy, TS type checks, PHP lint. Generated value models contain no business workflows. |
 | QLT-003 | COMPLETE | quality.py checks headers/npm licenses; dependency_licenses.py audits 61 resolved packages; central catalogs and lockfiles; Java -Xlint:all -Werror, Rust fmt/clippy, TS type checks, PHP lint. Generated value models contain no business workflows. |

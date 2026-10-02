@@ -17,6 +17,18 @@ never be rewritten simply to make a breaking change pass. New model fixtures
 may be added separately. Signing formats, verification, policy lifecycles and
 actual package reconciliation are implemented by their later owning modules.
 
+Adding an enum value also changes the wire contract for an existing closed
+reader. The compatibility gate rejects additions, removals and replacement of
+an unrestricted string with an enum. Introduce such changes through an explicitly
+reviewed wire revision rather than treating them as ordinary additions.
+
+Release versions support SemVer core and prerelease identifiers without build
+metadata, keeping Maven/npm/Cargo/Helm release tags aligned. Purely numeric
+prerelease identifiers cannot have leading zeroes (`rc.1` is valid; `rc.01` is
+not). Invalid `--set` input is rejected before any version source is written.
+This strengthens release metadata validation; the frozen v1 wire schemas retain
+their existing acceptance rules.
+
 There is no database migration, running workload, HA behavior or cluster upgrade
 to test in this foundation. The Helm chart has no rendered resources and its
 default and upgrade renders must both remain empty. Chart `version` tracks the

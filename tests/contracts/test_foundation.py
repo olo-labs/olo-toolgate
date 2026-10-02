@@ -46,8 +46,9 @@ def compatible(old, new, path='root'):
     for key in ('type', '$ref', 'const', 'pattern', 'additionalProperties'):
         if key in old and new.get(key) != old[key]:
             raise ValueError(f'Compatibility changed: {path}/{key}')
-    if not set(old.get('enum', [])) <= set(new.get('enum', old.get('enum', []))):
-        raise ValueError(f'Enum narrowed: {path}')
+    if ('enum' in old or 'enum' in new) and set(old.get('enum', [])) != set(new.get('enum', [])):
+        # Writers must not introduce values that the frozen reader cannot decode.
+        raise ValueError(f'Enum wire values changed: {path}')
     if not set(new.get('required', [])) <= set(old.get('required', [])):
         raise ValueError(f'Required fields added: {path}')
     for key in ('maxLength','maximum','maxItems'):
@@ -123,15 +124,21 @@ class FoundationTests(unittest.TestCase):
 
     def test_compatibility_checker_detects_breaks(self):
         old = self.schemas['policy.schema.json']
-        for change in ('enum','required','removed','bound','added'):
+        for change in ('enum','enum-added','enum-removed','required','removed','bound','added'):
             new = copy.deepcopy(old)
             model = new['$defs']['PolicyDecision']
             if change == 'enum': new['$defs']['Decision']['enum'].remove('BLOCK')
+            if change == 'enum-added': new['$defs']['Decision']['enum'].append('DEFER')
+            if change == 'enum-removed': del new['$defs']['Decision']['enum']
             if change == 'required': model['required'].append('newField')
             if change == 'removed': del model['properties']['requestId']
             if change == 'bound': model['properties']['newField'] = {'type':'string','maxLength':1}
             if change == 'added': model['properties']['newField'] = {'type':'string'}
             with self.subTest(change=change), self.assertRaises(ValueError): compatible(old, new)
+
+    def test_restricted_enum_cannot_replace_unrestricted_string(self):
+        with self.assertRaises(ValueError):
+            compatible({'type':'string'}, {'type':'string','enum':['BLOCK']})
 
     def test_drift_detection_is_nonmutating_and_deterministic(self):
         spec = importlib.util.spec_from_file_location('generator', ROOT/'tools/contracts/generate.py')
@@ -190,6 +197,21 @@ class FoundationTests(unittest.TestCase):
         synchronized = tomllib.loads(expected[ROOT/'Cargo.toml'])
         for name in ('serde','serde_json'):
             self.assertEqual(current['workspace']['dependencies'][name], synchronized['workspace']['dependencies'][name])
+
+    def test_release_versions_reject_numeric_prerelease_leading_zeroes(self):
+        spec = importlib.util.spec_from_file_location('versioning', ROOT/'tools/contracts/version.py')
+        versioning = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(versioning)
+        for version in ('0.0.0','1.2.3','1.2.3-dev','1.2.3-0','1.2.3-rc.1','1.2.3-01alpha','1.2.3-alpha-1'):
+            with self.subTest(version=version): self.assertIsNotNone(versioning.SEMVER.fullmatch(version))
+        for version in ('01.2.3','1.02.3','1.2.03','1.2.3-01','1.2.3-rc.01','1.2.3-','1.2.3-rc..1','1.2.3+build.1','1.2.3\n'):
+            with self.subTest(version=version): self.assertIsNone(versioning.SEMVER.fullmatch(version))
+        sources = [ROOT/'VERSION', ROOT/'packages/contracts/VERSION']
+        originals = [path.read_bytes() for path in sources]
+        result = subprocess.run([sys.executable, str(ROOT/'tools/contracts/version.py'), '--set', '1.2.3-01'], capture_output=True)
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(b'valid SemVer', result.stderr)
+        self.assertEqual(originals, [path.read_bytes() for path in sources])
 
     def test_header_and_secret_gate_rejects_bad_sources(self):
         spec = importlib.util.spec_from_file_location('quality', ROOT/'tools/quality.py')
