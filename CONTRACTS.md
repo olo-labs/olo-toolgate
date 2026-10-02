@@ -172,4 +172,6 @@ The same rule applies to Java, TypeScript and PHP consumers.
 Module 00 supplies canonical v1 schemas, generated bindings, workspace and local
 Maven artifact build modes, mandatory checks and protected release plumbing.
 Run `make check`; see [foundation workflow](docs/development/foundation.md).
-The service modules remain build scaffolds and the Helm chart has no workloads.
+Module 01 adds closed runtime authorization/audit types and embeds canonical
+schemas in the Rust package for offline boundary validation. Frozen v1 definitions
+remain unchanged; current product/contracts versions are 0.2.0-dev.

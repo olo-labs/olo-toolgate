@@ -68,7 +68,7 @@ jobs:
             cp "packages/contracts/java/build/libs/toolgate-contracts-${contracts_version}${classifier}.jar" build/release/
           done
           helm package deploy/helm/olo-toolgate --destination build/release
-          cp CHANGELOG.md docs/development/foundation-upgrades.md build/release/
+          cp CHANGELOG.md docs/development/foundation-upgrades.md docs/gateway/upgrades.md build/release/
       - name: Generate release dependency SBOM
         run: |
           docker run --rm -v "$PWD:/repo" aquasec/trivy:0.61.1 fs --no-progress --include-dev-deps --format cyclonedx --scanners vuln --skip-dirs .dev,**/build,**/node_modules,target,.gradle,.git --output /repo/build/release/sbom.cdx.json /repo
@@ -99,4 +99,4 @@ jobs:
           version="$(cat VERSION)"
           printf '%s' "$GH_TOKEN" | helm registry login ghcr.io --username "$REGISTRY_ACTOR" --password-stdin
           helm push "build/release/olo-toolgate-${version}.tgz" oci://ghcr.io/olo-labs/charts
-          gh release create "v${version}" build/release/* --verify-tag --title "Foundation ${version}" --notes-file CHANGELOG.md
+          gh release create "v${version}" build/release/* --verify-tag --title "OLO ToolGate ${version}" --notes-file CHANGELOG.md

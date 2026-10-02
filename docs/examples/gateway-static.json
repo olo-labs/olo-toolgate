@@ -1,0 +1,15 @@
+{
+  "listen": "127.0.0.1:8081",
+  "managementListen": "127.0.0.1:9091",
+  "trustedTlsProxy": false,
+  "allowedOrigins": [],
+  "policy": {
+    "version": "0.1.0-dev",
+    "expiresAtUnixMs": 4102444800000,
+    "emergencyBlock": false,
+    "rules": [
+      {"tenantId": "tenant-demo", "userId": "user-demo", "agentId": "agent-demo", "deviceId": null, "toolId": "files.read", "action": "read", "resource": {"kind": "FILE", "locator": "workspace/readme.txt"}, "effect": "ALLOW"}
+    ]
+  },
+  "extractors": [{"toolId": "files.read", "action": "read", "pointer": "/path", "kind": "FILE"}]
+}

@@ -25,3 +25,14 @@ Read next:
 - `request-lifecycle.md`
 - `policy-bundles.md`
 - `execution-permits.md`
+
+Module 01 provides authorization with static inputs and a stateless MCP skeleton.
+Execution, permits, distributed bundles, approvals and credential brokering are
+explicitly unsupported; their absence never becomes ALLOW.
+
+- [Configuration](configuration.md)
+- [Deployment and operations](deployment.md)
+- [Upgrades and rollback](upgrades.md)
+- [Performance methodology](performance.md)
+- [API](../api/gateway-api.md)
+- [ADR and security boundaries](../adr/002-gateway-static-foundation.md)

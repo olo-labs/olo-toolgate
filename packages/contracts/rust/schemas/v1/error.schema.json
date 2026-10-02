@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ololabs.io/toolgate/v1/error.schema.json",
+  "$comment": "Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0",
+  "title": "ErrorEnvelope",
+  "$ref": "#/$defs/ErrorEnvelope",
+  "$defs": {
+    "ErrorCode": {
+      "type": "string",
+      "enum": [
+        "VALIDATION",
+        "UNAUTHORIZED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "CONFLICT",
+        "DEPENDENCY_UNAVAILABLE",
+        "TIMEOUT",
+        "INTERNAL",
+        "UNSUPPORTED"
+      ]
+    },
+    "ErrorEnvelope": {
+      "type": "object",
+      "description": "Machine-readable error without exception text or caller-controlled detail.",
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "error.schema.json#/$defs/ErrorCode"
+        },
+        "requestId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "requestId",
+        "retryable"
+      ]
+    }
+  }
+}

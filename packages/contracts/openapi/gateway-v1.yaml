@@ -1,0 +1,111 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+openapi: 3.1.0
+info:
+  title: OLO ToolGate Gateway Core
+  version: 0.2.0-dev
+  description: Decisions only; no execution or permits. Management uses a separate restricted listener.
+servers:
+  - url: https://gateway.example.invalid
+security:
+  - runtimeBearer: []
+paths:
+  /v1/authorize:
+    post:
+      operationId: authorize
+      summary: Evaluate the exact request using credential-bound identity and trusted resource extraction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: https://schemas.ololabs.io/toolgate/v1/runtime.schema.json#/$defs/AuthorizationRequest
+      responses:
+        '200':
+          description: Explicit ALLOW/BLOCK decision, acknowledged by local audit; never an execution permit
+          headers:
+            X-Request-Id: {schema: {type: string}}
+            traceparent: {schema: {type: string}}
+            Cache-Control: {schema: {type: string, const: no-store}}
+          content:
+            application/json:
+              schema:
+                $ref: https://schemas.ololabs.io/toolgate/v1/policy.schema.json#/$defs/PolicyDecision
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '413': {$ref: '#/components/responses/Error'}
+        '415': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
+        '431': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+        '504': {$ref: '#/components/responses/Error'}
+  /v1/permits:
+    post:
+      operationId: unsupportedPermit
+      responses:
+        '501': {$ref: '#/components/responses/Error'}
+  /mcp:
+    post:
+      operationId: mcpSkeleton
+      description: Stateless 2026-07-28 skeleton. Ping and empty discovery; tools/call authorizes but cannot execute. JSON-RPC and mirrored metadata headers required.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object}
+      parameters:
+        - {in: header, name: MCP-Protocol-Version, required: true, schema: {type: string, const: '2026-07-28'}}
+        - {in: header, name: Mcp-Method, required: true, schema: {type: string}}
+        - {in: header, name: Mcp-Name, schema: {type: string}}
+        - {in: header, name: Accept, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: JSON-RPC result or explicit authorization/unsupported error
+          content: {application/json: {schema: {type: object}}}
+        '400':
+          description: Invalid frame, parameters, unsupported version or header mismatch
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {description: Unsupported RPC method}
+        '406': {description: JSON and SSE acceptance required}
+        '413': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+        '504': {$ref: '#/components/responses/Error'}
+  /v1/health/live:
+    get:
+      operationId: liveness
+      servers: [{url: 'http://127.0.0.1:9091'}]
+      security: []
+      responses:
+        '200': {description: Process is serving management traffic}
+  /v1/health/ready:
+    get:
+      operationId: readiness
+      servers: [{url: 'http://127.0.0.1:9091'}]
+      security: []
+      responses:
+        '200': {description: Policy, credentials and audit usable; not draining}
+        '503': {description: Unsafe for new traffic}
+  /v1/metrics:
+    get:
+      operationId: metrics
+      servers: [{url: 'http://127.0.0.1:9091'}]
+      security: []
+      responses:
+        '200':
+          description: Fixed-cardinality Prometheus metrics
+          content: {text/plain: {schema: {type: string}}}
+components:
+  securitySchemes:
+    runtimeBearer:
+      type: http
+      scheme: bearer
+      description: Administrator-provisioned high-entropy runtime token with exact identity and expiry binding
+  responses:
+    Error:
+      description: Stable sanitized error code and server-generated request ID
+      content:
+        application/json:
+          schema:
+            $ref: https://schemas.ololabs.io/toolgate/v1/error.schema.json#/$defs/ErrorEnvelope

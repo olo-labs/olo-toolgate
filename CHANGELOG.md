@@ -16,6 +16,15 @@ The project follows semantic versioning once stable versioning begins.
 
 ### Security
 
+## 0.2.0-dev — Module 01 gateway core
+
+Stateless Rust authorization with validated static identity/policy, exact extraction,
+deny precedence, acknowledged sanitized audit, bounded ingress, separate probes/
+metrics, structured tracing and graceful shutdown. Added shared runtime types,
+offline schema embedding and Gateway OpenAPI. Added non-root image, protected
+GHCR workflow, gateway Helm workload, Kubernetes render/cluster smoke and benchmark.
+No execution, permits, bundles, approvals or later module is implemented.
+
 ## 0.1.0-dev — Module 00 foundation
 
 Canonical v1 contracts and deterministic Java/Rust/TypeScript/PHP bindings;

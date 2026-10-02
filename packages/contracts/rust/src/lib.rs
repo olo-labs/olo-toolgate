@@ -11,6 +11,14 @@ pub struct ArtifactDescriptor {
     pub sha256: String,
     pub size_bytes: u64,
 }
+/// Runtime request; principal context and resource identity are derived by the gateway, never asserted by the caller.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AuthorizationRequest {
+    pub tool_id: String,
+    pub action: String,
+    pub arguments: std::collections::BTreeMap<String, serde_json::Value>,
+}
 /// Device identity and capabilities. Enrollment credentials travel separately.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -210,6 +218,19 @@ pub enum ResourceKind {
     #[serde(rename = "CUSTOM")]
     Custom,
 }
+/// Sanitized authorization evaluation event; hashes replace raw arguments and resource locators. A decision is not execution success.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RuntimeAuditEvent {
+    pub timestamp_unix_ms: u64,
+    pub context: RequestContext,
+    pub tool_id: String,
+    pub action: String,
+    pub resource_digest: String,
+    pub arguments_digest: String,
+    pub decision: PolicyDecision,
+    pub trace_id: String,
+}
 /// Named operation and declared resource kinds.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -233,7 +254,50 @@ impl ContractSet {
     pub fn current() -> Self {
         Self {
             name: "olo-toolgate-contracts".into(),
-            version: "0.1.0-dev".into(),
+            version: "0.2.0-dev".into(),
         }
     }
 }
+/// Embedded canonical schemas for offline boundary validation.
+pub const CANONICAL_SCHEMAS: &[(&str, &str)] = &[
+    (
+        "https://schemas.ololabs.io/toolgate/v1/client.schema.json",
+        include_str!("../schemas/v1/client.schema.json"),
+    ),
+    (
+        "https://schemas.ololabs.io/toolgate/v1/common.schema.json",
+        include_str!("../schemas/v1/common.schema.json"),
+    ),
+    (
+        "https://schemas.ololabs.io/toolgate/v1/deployment.schema.json",
+        include_str!("../schemas/v1/deployment.schema.json"),
+    ),
+    (
+        "https://schemas.ololabs.io/toolgate/v1/error.schema.json",
+        include_str!("../schemas/v1/error.schema.json"),
+    ),
+    (
+        "https://schemas.ololabs.io/toolgate/v1/identifiers.schema.json",
+        include_str!("../schemas/v1/identifiers.schema.json"),
+    ),
+    (
+        "https://schemas.ololabs.io/toolgate/v1/package.schema.json",
+        include_str!("../schemas/v1/package.schema.json"),
+    ),
+    (
+        "https://schemas.ololabs.io/toolgate/v1/policy.schema.json",
+        include_str!("../schemas/v1/policy.schema.json"),
+    ),
+    (
+        "https://schemas.ololabs.io/toolgate/v1/resource.schema.json",
+        include_str!("../schemas/v1/resource.schema.json"),
+    ),
+    (
+        "https://schemas.ololabs.io/toolgate/v1/runtime.schema.json",
+        include_str!("../schemas/v1/runtime.schema.json"),
+    ),
+    (
+        "https://schemas.ololabs.io/toolgate/v1/tool.schema.json",
+        include_str!("../schemas/v1/tool.schema.json"),
+    ),
+];

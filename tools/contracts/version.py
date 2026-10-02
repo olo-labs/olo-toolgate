@@ -33,6 +33,9 @@ def expected():
     chart = ROOT/'deploy/helm/olo-toolgate/Chart.yaml'
     outputs[chart] = re.sub(r'^version: .*', f'version: {product}', chart.read_text(), flags=re.M)
     outputs[chart] = re.sub(r'^appVersion: .*', f'appVersion: "{product}"', outputs[chart], flags=re.M)
+    gateway_api = ROOT/'packages/contracts/openapi/gateway-v1.yaml'
+    if gateway_api.exists():
+        outputs[gateway_api] = re.sub(r'^  version: .*', f'  version: {product}', gateway_api.read_text(), flags=re.M)
     return outputs
 
 

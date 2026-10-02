@@ -1,2 +1,7 @@
-OLO ToolGate foundation chart {{ .Chart.Version }}.
-This release installs no workloads. Runtime services arrive in their owning modules.
+OLO ToolGate chart {{ .Chart.Version }}.
+{{ if .Values.gateway.enabled }}
+Gateway uses existing credentials Secret {{ .Values.gateway.credentialsSecret }}.
+Configure trusted TLS ingress and permitted NetworkPolicy peers before serving traffic.
+{{ else }}
+Gateway is disabled; this configuration installs no workloads.
+{{ end }}

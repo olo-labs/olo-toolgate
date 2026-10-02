@@ -78,7 +78,7 @@ class FoundationTests(unittest.TestCase):
 
     def test_all_schemas_and_every_definition_have_valid_fixtures(self):
         self.assertEqual(set(self.validators), set(self.fixtures))
-        self.assertEqual(9, len(self.schemas))
+        self.assertEqual(10, len(self.schemas))
         for name, fixture in self.fixtures.items():
             with self.subTest(model=name):
                 self.validators[name].validate(fixture)
@@ -158,7 +158,7 @@ class FoundationTests(unittest.TestCase):
         finally:
             target.write_bytes(original)
 
-    def test_chart_values_and_no_workload_templates(self):
+    def test_chart_values_and_disabled_gateway_default(self):
         chart = ROOT/'deploy/helm/olo-toolgate'
         schema = json.loads((chart/'values.schema.json').read_text())
         Draft7Validator.check_schema(schema)
@@ -166,7 +166,8 @@ class FoundationTests(unittest.TestCase):
         Draft7Validator(schema).validate(values)
         for bad in [dict(values, gateway={'enabled':True}), {'global':{'imageRegistry':'INVALID SPACE','imagePullSecrets':[]}}, {'global':{'imageRegistry':'ghcr.io/olo-labs','imagePullSecrets':[{'name':'x','password':'secret'}]}}]:
             with self.assertRaises(ValidationError): Draft7Validator(schema).validate(bad)
-        self.assertEqual({'NOTES.txt','_helpers.tpl'}, {p.name for p in (chart/'templates').iterdir()})
+        self.assertFalse(values['gateway']['enabled'])
+        self.assertIn('gateway.yaml', {p.name for p in (chart/'templates').iterdir()})
 
     def test_ci_smoke(self):
         ci = yaml.load((ROOT/'.github/workflows/foundation.yml').read_text(), Loader=yaml.BaseLoader)
@@ -234,7 +235,14 @@ class FoundationTests(unittest.TestCase):
         self.assertTrue(licenses.accepted('MIT OR GPL-3.0-only'))
         self.assertFalse(licenses.accepted('MIT AND GPL-3.0-only'))
         self.assertFalse(licenses.accepted('GPL-3.0-only'))
+        self.assertTrue(licenses.accepted('Apache-2.0 WITH LLVM-exception OR MIT'))
+        self.assertFalse(licenses.accepted('Apache-2.0 WITH LLVM-exception'))
         self.assertTrue(licenses.accepted('(MIT OR Apache-2.0) AND Unicode-3.0'))
+        self.assertTrue(licenses.accepted('MIT-0'))
+        self.assertTrue(licenses.accepted('Zlib'))
+        self.assertTrue(licenses.accepted(licenses.cargo_license('MIT/Apache-2.0')))
+        self.assertEqual(licenses.cargo_license('Unknown/MIT'), 'Unknown/MIT')
+        with self.assertRaises(Exception): licenses.accepted(licenses.cargo_license('Unknown/MIT'))
         self.assertTrue(licenses.accepted('EPL-2.0', tooling=True))
         self.assertFalse(licenses.accepted('EPL-2.0'))
         with self.assertRaises(Exception): licenses.accepted('Unknown-Private-License')

@@ -165,6 +165,12 @@ def render():
         outputs[java_dir + name + '.java'] = '\n'.join(java) + '\n'
         outputs[php_dir + name + '.php'] = '\n'.join(php) + '\n'
     rust += ['impl ContractSet {', '    /// Current canonical contract set.', '    pub fn current() -> Self {', '        Self {', '            name: "olo-toolgate-contracts".into(),', f'            version: "{version}".into(),', '        }', '    }', '}']
+    rust += ['/// Embedded canonical schemas for offline boundary validation.', 'pub const CANONICAL_SCHEMAS: &[(&str, &str)] = &[']
+    for path in sorted((CONTRACTS/'schemas/v1').glob('*.json')):
+        schema = json.loads(path.read_text())
+        outputs[f'packages/contracts/rust/schemas/v1/{path.name}'] = path.read_text(encoding='utf-8')
+        rust += ['    (', f'        "{schema["$id"]}",', f'        include_str!("../schemas/v1/{path.name}"),', '    ),']
+    rust += ['];']
     ts += [f'export const CONTRACT_SET_VERSION = "{version}" as const;', 'export const CONTRACT_SET_NAME = "olo-toolgate-contracts" as const;']
     outputs['packages/contracts/rust/src/lib.rs'] = '\n'.join(rust) + '\n'
     outputs['packages/contracts/typescript/src/index.ts'] = '\n'.join(ts) + '\n'

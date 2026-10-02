@@ -12,15 +12,24 @@ from packaging.requirements import Requirement
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ALLOWED = {'Apache-2.0','MIT','BSD-2-Clause','BSD-3-Clause','ISC','0BSD','Unicode-3.0','MPL-2.0','EPL-2.0','Python-2.0','PSF-2.0','Unlicense','CC0-1.0'}
+ALLOWED = {'Apache-2.0','MIT','MIT-0','Zlib','BSD-2-Clause','BSD-3-Clause','ISC','0BSD','Unicode-3.0','MPL-2.0','EPL-2.0','Python-2.0','PSF-2.0','Unlicense','CC0-1.0'}
 TOOL_ONLY = {'MPL-2.0','EPL-2.0','Python-2.0','PSF-2.0'}
 LICENSING = get_spdx_licensing()
+
+
+def cargo_license(expression):
+    # Cargo's historical slash syntax predates SPDX OR. Normalize only the
+    # reviewed MIT/Apache pair found in locked dependencies, retaining metadata.
+    return {'MIT/Apache-2.0':'MIT OR Apache-2.0',
+            'Apache-2.0/MIT':'Apache-2.0 OR MIT'}.get(expression, expression)
 
 
 def accepted(expression, tooling=False):
     parsed = LICENSING.parse(expression, validate=True, strict=True)
     allowed = ALLOWED if tooling else ALLOWED - TOOL_ONLY
-    decisions = {symbol: LICENSING.TRUE if symbol.key in allowed else LICENSING.FALSE for symbol in parsed.get_symbols()}
+    # WITH is a compound symbol. It requires its own review and cannot inherit
+    # approval merely because its underlying license is approved.
+    decisions = {symbol: LICENSING.TRUE if getattr(symbol, 'key', str(symbol)) in allowed else LICENSING.FALSE for symbol in parsed.get_symbols()}
     return parsed.subs(decisions).simplify() == LICENSING.TRUE
 
 
@@ -65,7 +74,8 @@ def audit(rust_metadata, output=None):
     inventory = []
     for package in rust_metadata['packages']:
         if package.get('source'):
-            inventory.append({'ecosystem':'cargo','name':package['name'],'version':package['version'],'license':package.get('license') or ''})
+            declared = package.get('license') or ''
+            inventory.append({'ecosystem':'cargo','name':package['name'],'version':package['version'],'license':cargo_license(declared),'declaredLicense':declared})
     npm = json.loads((ROOT/'package-lock.json').read_text())
     for name, package in npm['packages'].items():
         if name.startswith('node_modules/') and not package.get('link'):

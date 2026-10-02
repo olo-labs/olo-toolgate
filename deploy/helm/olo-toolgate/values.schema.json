@@ -3,22 +3,670 @@
   "$comment": "Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0",
   "type": "object",
   "additionalProperties": false,
-  "required": ["global"],
+  "required": [
+    "global",
+    "gateway"
+  ],
   "properties": {
     "global": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["imageRegistry", "imagePullSecrets"],
+      "required": [
+        "imageRegistry",
+        "imagePullSecrets"
+      ],
       "properties": {
-        "imageRegistry": {"type": "string", "pattern": "^[a-z0-9][a-z0-9./:-]*$", "maxLength": 256},
+        "imageRegistry": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9./:-]*$",
+          "maxLength": 256
+        },
         "imagePullSecrets": {
-          "type": "array", "maxItems": 16,
+          "type": "array",
+          "maxItems": 16,
           "items": {
-            "type": "object", "additionalProperties": false, "required": ["name"],
-            "properties": {"name": {"type": "string", "pattern": "^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$", "maxLength": 253}}
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$",
+                "maxLength": 253
+              }
+            }
           }
         }
       }
+    },
+    "gateway": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "replicaCount",
+        "image",
+        "credentialsSecret",
+        "credentialsKey",
+        "config",
+        "resources",
+        "podSecurityContext",
+        "securityContext",
+        "terminationGracePeriodSeconds",
+        "nodeSelector",
+        "tolerations",
+        "affinity",
+        "topologySpreadConstraints",
+        "pdb",
+        "autoscaling",
+        "networkPolicy",
+        "ingress",
+        "serviceMonitor"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repository",
+            "tag",
+            "digest",
+            "pullPolicy"
+          ],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[a-z0-9][a-z0-9./-]*$"
+            },
+            "tag": {
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[a-zA-Z0-9_.-]*$"
+            },
+            "digest": {
+              "type": "string",
+              "maxLength": 2048,
+              "pattern": "^$|^sha256:[a-f0-9]{64}$"
+            },
+            "pullPolicy": {
+              "type": "string",
+              "maxLength": 2048,
+              "enum": [
+                "IfNotPresent",
+                "Always",
+                "Never"
+              ]
+            }
+          }
+        },
+        "credentialsSecret": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^$|^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$"
+        },
+        "credentialsKey": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^[a-zA-Z0-9._-]+$"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "listen",
+            "managementListen",
+            "trustedTlsProxy",
+            "allowedOrigins",
+            "limits",
+            "policy",
+            "extractors"
+          ],
+          "properties": {
+            "listen": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "managementListen": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "trustedTlsProxy": {
+              "type": "boolean"
+            },
+            "allowedOrigins": {
+              "type": "array",
+              "maxItems": 32,
+              "items": {
+                "type": "string",
+                "maxLength": 256
+              }
+            },
+            "limits": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "maxBodyBytes",
+                "maxHeaderBytes",
+                "maxConcurrentRequests",
+                "maxConnections",
+                "requestsPerSecond",
+                "requestTimeoutMs",
+                "connectionTimeoutMs",
+                "shutdownTimeoutMs",
+                "auditQueueCapacity"
+              ],
+              "properties": {
+                "maxBodyBytes": {
+                  "type": "integer",
+                  "minimum": 256,
+                  "maximum": 1048576
+                },
+                "maxHeaderBytes": {
+                  "type": "integer",
+                  "minimum": 1024,
+                  "maximum": 32768
+                },
+                "maxConcurrentRequests": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1024
+                },
+                "maxConnections": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4096
+                },
+                "requestsPerSecond": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100000
+                },
+                "requestTimeoutMs": {
+                  "type": "integer",
+                  "minimum": 10,
+                  "maximum": 30000
+                },
+                "connectionTimeoutMs": {
+                  "type": "integer",
+                  "minimum": 100,
+                  "maximum": 60000
+                },
+                "shutdownTimeoutMs": {
+                  "type": "integer",
+                  "minimum": 100,
+                  "maximum": 120000
+                },
+                "auditQueueCapacity": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4096
+                }
+              }
+            },
+            "policy": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "version",
+                "expiresAtUnixMs",
+                "emergencyBlock",
+                "rules"
+              ],
+              "properties": {
+                "version": {
+                  "type": "string",
+                  "maxLength": 128,
+                  "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$"
+                },
+                "expiresAtUnixMs": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "emergencyBlock": {
+                  "type": "boolean"
+                },
+                "rules": {
+                  "type": "array",
+                  "maxItems": 4096,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "tenantId",
+                      "toolId",
+                      "action",
+                      "resource",
+                      "effect"
+                    ],
+                    "properties": {
+                      "tenantId": {
+                        "type": "string",
+                        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$",
+                        "maxLength": 128
+                      },
+                      "toolId": {
+                        "type": "string",
+                        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$",
+                        "maxLength": 128
+                      },
+                      "action": {
+                        "type": "string",
+                        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$",
+                        "maxLength": 128
+                      },
+                      "userId": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$",
+                        "maxLength": 128
+                      },
+                      "agentId": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$",
+                        "maxLength": 128
+                      },
+                      "deviceId": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$",
+                        "maxLength": 128
+                      },
+                      "resource": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "kind",
+                          "locator"
+                        ],
+                        "properties": {
+                          "kind": {
+                            "enum": [
+                              "FILE",
+                              "URL",
+                              "DATABASE",
+                              "DEVICE",
+                              "CUSTOM"
+                            ]
+                          },
+                          "locator": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 2048
+                          }
+                        }
+                      },
+                      "effect": {
+                        "enum": [
+                          "ALLOW",
+                          "BLOCK"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "extractors": {
+              "type": "array",
+              "maxItems": 1024,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "toolId",
+                  "action",
+                  "pointer",
+                  "kind"
+                ],
+                "properties": {
+                  "toolId": {
+                    "type": "string",
+                    "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$",
+                    "maxLength": 128
+                  },
+                  "action": {
+                    "type": "string",
+                    "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$",
+                    "maxLength": 128
+                  },
+                  "pointer": {
+                    "type": "string",
+                    "pattern": "^/",
+                    "maxLength": 256
+                  },
+                  "kind": {
+                    "enum": [
+                      "CUSTOM",
+                      "FILE"
+                    ]
+                  }
+                }
+              },
+              "minItems": 1
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "requests",
+            "limits"
+          ],
+          "properties": {
+            "requests": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "cpu",
+                "memory"
+              ],
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*(m)?$"
+                },
+                "memory": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*(Ki|Mi|Gi)$"
+                }
+              }
+            },
+            "limits": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "cpu",
+                "memory"
+              ],
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*(m)?$"
+                },
+                "memory": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*(Ki|Mi|Gi)$"
+                }
+              }
+            }
+          }
+        },
+        "podSecurityContext": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "runAsNonRoot",
+            "runAsUser",
+            "runAsGroup",
+            "fsGroup",
+            "seccompProfile"
+          ],
+          "properties": {
+            "runAsNonRoot": {
+              "type": "boolean",
+              "const": true
+            },
+            "runAsUser": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "runAsGroup": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "fsGroup": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "seccompProfile": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "maxLength": 2048
+                }
+              }
+            }
+          }
+        },
+        "securityContext": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "allowPrivilegeEscalation",
+            "readOnlyRootFilesystem",
+            "capabilities"
+          ],
+          "properties": {
+            "allowPrivilegeEscalation": {
+              "type": "boolean",
+              "const": false
+            },
+            "readOnlyRootFilesystem": {
+              "type": "boolean",
+              "const": true
+            },
+            "capabilities": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "drop"
+              ],
+              "properties": {
+                "drop": {
+                  "const": [
+                    "ALL"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "terminationGracePeriodSeconds": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 300
+        },
+        "nodeSelector": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tolerations": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object"
+          }
+        },
+        "affinity": {
+          "type": "object"
+        },
+        "topologySpreadConstraints": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object"
+          }
+        },
+        "pdb": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "minAvailable"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "minAvailable": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 31
+            }
+          }
+        },
+        "autoscaling": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "minReplicas",
+            "maxReplicas",
+            "targetCPUUtilizationPercentage"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "minReplicas": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32
+            },
+            "maxReplicas": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32
+            },
+            "targetCPUUtilizationPercentage": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "networkPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "runtimeFrom",
+            "managementFrom"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "runtimeFrom": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "object"
+              }
+            },
+            "managementFrom": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "ingress": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "className",
+            "annotations",
+            "host",
+            "tlsSecret"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "className": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "annotations": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "host": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "tlsSecret": {
+              "type": "string",
+              "maxLength": 2048
+            }
+          }
+        },
+        "serviceMonitor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "labels",
+            "interval"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "labels": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "interval": {
+              "type": "string",
+              "maxLength": 2048,
+              "pattern": "^[1-9][0-9]*(s|m)$"
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "credentialsSecret": {
+                "minLength": 1
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }

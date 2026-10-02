@@ -1,6 +1,79 @@
 # Copyright 2026 OLO Labs
 # SPDX-License-Identifier: Apache-2.0
-# Workload settings are introduced with real services in their owning modules.
+# Gateway is opt-in and requires an administrator-provided credential Secret.
 global:
   imageRegistry: ghcr.io/olo-labs
   imagePullSecrets: []
+gateway:
+  enabled: false
+  replicaCount: 2
+  image:
+    repository: olo-toolgate-gateway
+    tag: ""
+    digest: ""
+    pullPolicy: IfNotPresent
+  credentialsSecret: ""
+  credentialsKey: credentials.json
+  config:
+    listen: 0.0.0.0:8081
+    managementListen: 0.0.0.0:9091
+    trustedTlsProxy: true
+    allowedOrigins: []
+    limits:
+      maxBodyBytes: 65536
+      maxHeaderBytes: 8192
+      maxConcurrentRequests: 128
+      maxConnections: 256
+      requestsPerSecond: 1000
+      requestTimeoutMs: 2000
+      connectionTimeoutMs: 10000
+      shutdownTimeoutMs: 15000
+      auditQueueCapacity: 256
+    policy:
+      version: 0.1.0-dev
+      expiresAtUnixMs: 4102444800000
+      emergencyBlock: false
+      rules: []
+    extractors:
+      - toolId: files.read
+        action: read
+        pointer: /path
+        kind: FILE
+  resources:
+    requests: {cpu: 100m, memory: 64Mi}
+    limits: {cpu: "1", memory: 256Mi}
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    fsGroup: 65532
+    seccompProfile: {type: RuntimeDefault}
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities: {drop: [ALL]}
+  terminationGracePeriodSeconds: 30
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  pdb: {enabled: true, minAvailable: 1}
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+  networkPolicy:
+    enabled: true
+    runtimeFrom: []
+    managementFrom: []
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    host: gateway.example.invalid
+    tlsSecret: ""
+  serviceMonitor:
+    enabled: false
+    labels: {}
+    interval: 30s

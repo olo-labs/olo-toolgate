@@ -186,5 +186,32 @@
       "contractsVersion": "0.1.0-dev",
       "minimumClientVersion": "0.1.0-dev"
     }
+  },
+  "AuthorizationRequest": {
+    "toolId": "files.read",
+    "action": "read",
+    "arguments": {
+      "path": "workspace/readme.txt"
+    }
+  },
+  "RuntimeAuditEvent": {
+    "timestampUnixMs": 1790899200000,
+    "context": {
+      "requestId": "request-1",
+      "tenantId": "tenant-1",
+      "userId": "user-1",
+      "agentId": "agent-1"
+    },
+    "toolId": "files.read",
+    "action": "read",
+    "resourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "argumentsDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "decision": {
+      "decision": "BLOCK",
+      "reason": "NO_MATCH",
+      "policyVersion": "0.1.0-dev",
+      "requestId": "request-1"
+    },
+    "traceId": "cccccccccccccccccccccccccccccccc"
   }
 }

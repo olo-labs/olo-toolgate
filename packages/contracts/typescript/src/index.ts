@@ -7,6 +7,12 @@ export interface ArtifactDescriptor {
   readonly sha256: string;
   readonly sizeBytes: number;
 }
+/** Runtime request; principal context and resource identity are derived by the gateway, never asserted by the caller. */
+export interface AuthorizationRequest {
+  readonly toolId: string;
+  readonly action: string;
+  readonly arguments: Record<string, unknown>;
+}
 /** Device identity and capabilities. Enrollment credentials travel separately. */
 export interface ClientEnrollmentRequest {
   readonly deviceId: string;
@@ -109,6 +115,17 @@ export interface ResourceDescriptor {
   readonly locator: string;
 }
 export type ResourceKind = "FILE" | "URL" | "DATABASE" | "DEVICE" | "CUSTOM";
+/** Sanitized authorization evaluation event; hashes replace raw arguments and resource locators. A decision is not execution success. */
+export interface RuntimeAuditEvent {
+  readonly timestampUnixMs: number;
+  readonly context: RequestContext;
+  readonly toolId: string;
+  readonly action: string;
+  readonly resourceDigest: string;
+  readonly argumentsDigest: string;
+  readonly decision: PolicyDecision;
+  readonly traceId: string;
+}
 export type SecretReference = string;
 export type SemanticVersion = string;
 export type Sha256 = string;
@@ -126,5 +143,5 @@ export interface ToolDefinition {
   readonly inputSchema: Record<string, unknown>;
   readonly outputSchema: Record<string, unknown>;
 }
-export const CONTRACT_SET_VERSION = "0.1.0-dev" as const;
+export const CONTRACT_SET_VERSION = "0.2.0-dev" as const;
 export const CONTRACT_SET_NAME = "olo-toolgate-contracts" as const;

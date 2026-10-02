@@ -229,9 +229,6 @@ established. Artifact signing is not configured. No runtime observability was ad
 | PRF-004 | NOT_APPLICABLE | No Gateway authorization path, database path, fleet workflow, upload/queue or performance-sensitive runtime exists. Schema collection/string bounds are input constraints, not performance claims. |
 | PRF-005 | NOT_APPLICABLE | No Gateway authorization path, database path, fleet workflow, upload/queue or performance-sensitive runtime exists. Schema collection/string bounds are input constraints, not performance claims. |
 | PRF-006 | NOT_APPLICABLE | No Gateway authorization path, database path, fleet workflow, upload/queue or performance-sensitive runtime exists. Schema collection/string bounds are input constraints, not performance claims. |
-| ARC-001 | COMPLETE | Canonical contracts only in packages/contracts; generated models are data-only; shared imports exercised in three service scaffolds. ADR 001 records boundaries and split readiness. |
-| SEC-001 | COMPLETE | Explicit non-defaulted decision enum, closed security schemas, no secret fields in errors/enrollment, credential references only; trust-domain mismatch and unknown/missing field negatives pass. This is contract-boundary coverage, not a runtime verifier. |
-| K8S-001 | NOT_APPLICABLE | Foundation chart intentionally renders no workloads or resources. Probes, network policies, secrets integration, HA, cluster install/upgrade/rollback apply when real services are delivered. |
 
 ## Files changed
 

@@ -200,5 +200,10 @@ A `BLOCKED` requirement means the module is not DONE.
 
 - Module 00: [pre-implementation coverage plan](modules/00-coverage.md) and
   [completion matrix and verification evidence](modules/00-completion.md).
-  The foundation classifies all 107 IDs: 49 COMPLETE and 58 NOT_APPLICABLE
+  The foundation classifies all 104 unique IDs: 49 COMPLETE and 55 NOT_APPLICABLE
   with scope reasons. Remote publication is configured for protected CI only.
+- Module 01: [pre-implementation coverage plan](modules/01-coverage.md) and
+  [completion matrix and verification evidence](modules/01-completion.md).
+  Gateway Core classifies all 104 unique IDs: 87 COMPLETE and 17 NOT_APPLICABLE
+  with scope reasons. The three template example rows above are not extra
+  requirements. Image/Helm publication remains protected CI only.

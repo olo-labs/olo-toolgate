@@ -41,6 +41,8 @@ fn shared_fixture_round_trips() {
         ClientEnrollmentRequest,
         ClientReport,
         PackageManifest,
+        AuthorizationRequest,
+        RuntimeAuditEvent,
     );
     assert_eq!(ContractSet::current().version, env!("CARGO_PKG_VERSION"));
     assert_eq!(ContractSet::current().name, "olo-toolgate-contracts");

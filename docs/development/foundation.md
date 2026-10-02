@@ -28,6 +28,13 @@ fails for unknown or unapproved license metadata and writes
 `build/release/dependency-licenses.json`. Apache/MIT/BSD/ISC are accepted for
 runtime bindings (including the permissive Unicode-3.0 data license used by Rust
 identifier tooling); MPL/EPL and Python licenses are accepted for build/test tools.
+
+Gateway dependencies also use reviewed permissive [MIT-0](https://spdx.org/licenses/MIT-0.html)
+and [Zlib](https://spdx.org/licenses/Zlib.html) licenses. Zlib source notices and
+altered-source markings must be retained. The two legacy MIT/Apache Cargo slash
+expressions are normalized to SPDX OR, as described by the
+[Cargo manifest reference](https://doc.rust-lang.org/cargo/reference/manifest.html#the-license-and-license-file-fields);
+the inventory retains the declared expression. Unknown expressions still fail.
 BSD-only Python classifiers remain explicitly labeled as family evidence, not
 an inferred SPDX revision. Generated Javadoc contains JDK assets under the
 GPL classpath exception; it is a separate classifier artifact, not runtime code.

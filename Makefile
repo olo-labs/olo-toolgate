@@ -38,9 +38,11 @@ check:
 
 test:
 	@$(PYTHON) -m unittest discover -s tests/contracts -v
+	@$(PYTHON) tools/check.py --gateway-only
 
 integration:
 	@$(PYTHON) tools/check.py --publication-only
+	@$(PYTHON) tools/check.py --gateway-only
 
 e2e:
 	@./tools/dev/not-implemented.sh "end-to-end tests"
@@ -49,10 +51,10 @@ security:
 	@$(PYTHON) tools/check.py --scans
 
 benchmark:
-	@./tools/dev/not-implemented.sh "benchmarks"
+	@$(PYTHON) tools/gateway/benchmark.py
 
 containers:
-	@./tools/dev/not-implemented.sh "container builds"
+	@$(PYTHON) tools/gateway/container.py
 
 client:
 	@./tools/dev/not-implemented.sh "endpoint client build"

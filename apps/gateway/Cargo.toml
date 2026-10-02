@@ -1,0 +1,30 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "olo-toolgate-gateway"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+olo-toolgate-contracts.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+axum.workspace = true
+tokio.workspace = true
+jsonschema.workspace = true
+sha2.workspace = true
+subtle.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+base64.workspace = true
+hyper.workspace = true
+hyper-util.workspace = true
+
+[dev-dependencies]
+tower.workspace = true
+
+[[bench]]
+name = "authorization"
+harness = false

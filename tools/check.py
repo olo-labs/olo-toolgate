@@ -29,6 +29,9 @@ def command(args):
         images = {'cargo':'rust:1.94-bookworm','php':'php:8.2-cli','helm':'alpine/helm:3.17.3'}
         prefix = ['docker','run','--rm','-v',f'{ROOT.as_posix()}:/work','-w','/work']
         if exe == 'cargo':
+            registry = ROOT/'.dev/cargo-registry'
+            registry.mkdir(parents=True, exist_ok=True)
+            prefix += ['-v',f'{registry.as_posix()}:/usr/local/cargo/registry']
             # bash positional arguments preserve argument boundaries without shell interpolation.
             return prefix + [images[exe], 'sh','-c','rustup component add rustfmt clippy >/dev/null && exec cargo "$@"','toolgate-cargo', *rest]
         return prefix + (['--entrypoint','helm'] if exe == 'helm' else []) + [images[exe]] + ([] if exe == 'helm' else [exe]) + rest
@@ -81,16 +84,13 @@ def publication_proof():
 
 
 def helm_checks():
-    chart = 'deploy/helm/olo-toolgate'
-    run(['helm','lint','--strict',chart])
-    for flag in ([], ['--is-upgrade']):
-        rendered = run(['helm','template','foundation',chart,*flag], capture=True)
-        if rendered.stdout.strip(): raise SystemExit('Foundation chart unexpectedly rendered workloads')
-    run(['helm','template','foundation',chart,'--set','gateway.enabled=true'], expect_failure=True)
+    from gateway.check import helm_checks as gateway_helm_checks
+    gateway_helm_checks()
 
 
 def scans():
-    run(['docker','run','--rm','-v',f'{ROOT.as_posix()}:/work:ro','-w','/work','rhysd/actionlint:1.7.7','.github/workflows/foundation.yml','.github/workflows/release-foundation.yml'])
+    workflows = [p.relative_to(ROOT).as_posix() for p in sorted((ROOT/'.github/workflows').glob('*.yml'))]
+    run(['docker','run','--rm','-v',f'{ROOT.as_posix()}:/work:ro','-w','/work','rhysd/actionlint:1.7.7',*workflows])
     run(['npm','audit','--audit-level=high'])
     python('-m','pip_audit','-r','tools/requirements.txt')
     from dependency_licenses import audit
@@ -106,9 +106,12 @@ def main():
     parser.add_argument('--scans', action='store_true')
     parser.add_argument('--contracts-only', action='store_true')
     parser.add_argument('--publication-only', action='store_true')
+    parser.add_argument('--gateway-only', action='store_true')
     args = parser.parse_args()
     if args.scans: scans(); return
     if args.publication_only: publication_proof(); return
+    if args.gateway_only:
+        run(['cargo','test','-p','olo-toolgate-gateway','--locked']); return
     python('tools/contracts/version.py','--check')
     python('tools/contracts/generate.py','--check')
     python('tools/quality.py')
@@ -126,7 +129,7 @@ def main():
     for source in sorted((ROOT/'packages/contracts/php/src').glob('*.php')):
         run(['php','-l',source.relative_to(ROOT).as_posix()], capture=True)
     if not args.contracts_only: helm_checks()
-    print('All required foundation gates passed')
+    print('All required foundation and gateway gates passed')
 
 
 if __name__ == '__main__': main()
