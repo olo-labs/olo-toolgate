@@ -1,0 +1,231 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+"""Offline schema, compatibility, generator and CI boundary tests."""
+import copy
+import importlib.util
+import json
+import re
+import subprocess
+import sys
+import unittest
+import tomllib
+from pathlib import Path
+
+import yaml
+from jsonschema import Draft7Validator, Draft202012Validator, ValidationError
+from referencing import Registry, Resource
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def schemas_at(directory):
+    return {p.name: json.loads(p.read_text()) for p in directory.glob('*.schema.json')}
+
+
+def registry(schemas):
+    return Registry().with_resources((s['$id'], Resource.from_contents(s)) for s in schemas.values())
+
+
+def validators(schemas):
+    result = {}
+    store = registry(schemas)
+    for schema in schemas.values():
+        Draft202012Validator.check_schema(schema)
+        for name in schema['$defs']:
+            wrapper = {'$ref':schema['$id']+'#/$defs/'+name}
+            result[name] = Draft202012Validator(wrapper, registry=store)
+    return result
+
+
+def compatible(old, new, path='root'):
+    """Check the supported subset for narrowing of accepted old inputs.
+
+    Closed objects make new fields a reader incompatibility even if optional;
+    callers need a negotiated wire revision, rather than silent field dropping.
+    """
+    for key in ('type', '$ref', 'const', 'pattern', 'additionalProperties'):
+        if key in old and new.get(key) != old[key]:
+            raise ValueError(f'Compatibility changed: {path}/{key}')
+    if not set(old.get('enum', [])) <= set(new.get('enum', old.get('enum', []))):
+        raise ValueError(f'Enum narrowed: {path}')
+    if not set(new.get('required', [])) <= set(old.get('required', [])):
+        raise ValueError(f'Required fields added: {path}')
+    for key in ('maxLength','maximum','maxItems'):
+        if key in new and new[key] < old.get(key, float('inf')):
+            raise ValueError(f'Upper bound narrowed: {path}/{key}')
+    for key in ('minLength','minimum','minItems'):
+        if key in new and new[key] > old.get(key, float('-inf')):
+            raise ValueError(f'Lower bound narrowed: {path}/{key}')
+    for key in ('$defs','properties'):
+        if key in old:
+            if key == 'properties' and old.get('additionalProperties') is False and set(new.get(key, {})) != set(old[key]):
+                raise ValueError(f'Closed reader fields changed: {path}')
+            for name, value in old[key].items():
+                if name not in new.get(key, {}):
+                    raise ValueError(f'Definition removed: {path}/{name}')
+                compatible(value, new[key][name], f'{path}/{name}')
+    if 'items' in old:
+        compatible(old['items'], new['items'], path+'/items')
+
+
+class FoundationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.schemas = schemas_at(ROOT/'packages/contracts/schemas/v1')
+        cls.validators = validators(cls.schemas)
+        cls.fixtures = json.loads((ROOT/'tests/fixtures/contracts/v1/valid.json').read_text())
+
+    def test_all_schemas_and_every_definition_have_valid_fixtures(self):
+        self.assertEqual(set(self.validators), set(self.fixtures))
+        self.assertEqual(9, len(self.schemas))
+        for name, fixture in self.fixtures.items():
+            with self.subTest(model=name):
+                self.validators[name].validate(fixture)
+                self.assertEqual(fixture, json.loads(json.dumps(fixture)))
+
+    def test_every_object_rejects_unknown_and_missing_fields(self):
+        for name, fixture in self.fixtures.items():
+            if not isinstance(fixture, dict):
+                continue
+            with self.subTest(model=name):
+                bad = dict(fixture, bypass=True)
+                with self.assertRaises(ValidationError):
+                    self.validators[name].validate(bad)
+                for key in next(s['$defs'][name] for s in self.schemas.values() if name in s['$defs'])['required']:
+                    bad = dict(fixture)
+                    bad.pop(key)
+                    with self.assertRaises(ValidationError):
+                        self.validators[name].validate(bad)
+
+    def test_negative_security_inputs(self):
+        for name, bad in [('Identifier','../escape'),('Identifier',''),('Sha256','A'*64),('SemanticVersion','01.0.0'),('SecretReference','plaintext-token'),('Decision','UNKNOWN')]:
+            with self.subTest(model=name), self.assertRaises(ValidationError):
+                self.validators[name].validate(bad)
+        for name, field, value in [('PackageManifest','credentialReferences',['literal-secret']),('PolicyDecision','decision',None),('DesiredState','revision',-1),('ErrorEnvelope','stackTrace','private exception')]:
+            bad = dict(self.fixtures[name], **{field:value})
+            with self.subTest(model=name), self.assertRaises(ValidationError):
+                self.validators[name].validate(bad)
+
+    def test_trust_domains_are_not_interchangeable(self):
+        for source, target in [('MarketplaceRelease','DeploymentAssignment'),('DeploymentAssignment','PolicyDecision'),('PolicyDecision','MarketplaceRelease')]:
+            with self.assertRaises(ValidationError):
+                self.validators[target].validate(self.fixtures[source])
+
+    def test_frozen_compatibility_corpus_and_schema(self):
+        baseline = schemas_at(ROOT/'tests/fixtures/contracts/v1/schemas')
+        corpus = json.loads((ROOT/'tests/fixtures/contracts/v1/compatibility.json').read_text())
+        self.assertEqual(1, corpus['readerMajor'])
+        for name, fixture in corpus['fixtures'].items():
+            self.validators[name].validate(fixture)
+            validators(baseline)[name].validate(fixture)
+        for name, schema in baseline.items():
+            compatible(schema, self.schemas[name], name)
+
+    def test_compatibility_checker_detects_breaks(self):
+        old = self.schemas['policy.schema.json']
+        for change in ('enum','required','removed','bound','added'):
+            new = copy.deepcopy(old)
+            model = new['$defs']['PolicyDecision']
+            if change == 'enum': new['$defs']['Decision']['enum'].remove('BLOCK')
+            if change == 'required': model['required'].append('newField')
+            if change == 'removed': del model['properties']['requestId']
+            if change == 'bound': model['properties']['newField'] = {'type':'string','maxLength':1}
+            if change == 'added': model['properties']['newField'] = {'type':'string'}
+            with self.subTest(change=change), self.assertRaises(ValueError): compatible(old, new)
+
+    def test_drift_detection_is_nonmutating_and_deterministic(self):
+        spec = importlib.util.spec_from_file_location('generator', ROOT/'tools/contracts/generate.py')
+        generator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(generator)
+        self.assertEqual(generator.render(), generator.render())
+        for name, expected in generator.render().items():
+            self.assertEqual(expected.encode(), (ROOT/name).read_bytes(), name)
+        target = ROOT/'packages/contracts/typescript/src/index.ts'
+        original = target.read_bytes()
+        try:
+            target.write_bytes(original+b'// drift\n')
+            result = subprocess.run([sys.executable, str(ROOT/'tools/contracts/generate.py'), '--check'], capture_output=True)
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn(b'Generated code drift', result.stderr)
+            self.assertEqual(original+b'// drift\n', target.read_bytes())
+        finally:
+            target.write_bytes(original)
+
+    def test_chart_values_and_no_workload_templates(self):
+        chart = ROOT/'deploy/helm/olo-toolgate'
+        schema = json.loads((chart/'values.schema.json').read_text())
+        Draft7Validator.check_schema(schema)
+        values = yaml.safe_load((chart/'values.yaml').read_text())
+        Draft7Validator(schema).validate(values)
+        for bad in [dict(values, gateway={'enabled':True}), {'global':{'imageRegistry':'INVALID SPACE','imagePullSecrets':[]}}, {'global':{'imageRegistry':'ghcr.io/olo-labs','imagePullSecrets':[{'name':'x','password':'secret'}]}}]:
+            with self.assertRaises(ValidationError): Draft7Validator(schema).validate(bad)
+        self.assertEqual({'NOTES.txt','_helpers.tpl'}, {p.name for p in (chart/'templates').iterdir()})
+
+    def test_ci_smoke(self):
+        ci = yaml.load((ROOT/'.github/workflows/foundation.yml').read_text(), Loader=yaml.BaseLoader)
+        self.assertEqual('read', ci['permissions']['contents'])
+        self.assertIn('pull_request', ci['on'])
+        commands = '\n'.join(s.get('run','') for s in ci['jobs']['check']['steps'])
+        self.assertIn('make check', commands)
+        self.assertIn('tools/check.py --scans', commands)
+        for path in (ROOT/'.github/workflows').glob('*.yml'):
+            workflow = yaml.load(path.read_text(), Loader=yaml.BaseLoader)
+            for job in workflow['jobs'].values():
+                for step in job.get('steps', []):
+                    if 'uses' in step:
+                        self.assertRegex(step['uses'], r'@[a-f0-9]{40}$')
+
+    def test_release_bundle_is_reproducible(self):
+        spec = importlib.util.spec_from_file_location('bundle', ROOT/'tools/release/bundle.py')
+        bundle = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(bundle)
+        self.assertEqual(bundle.bundle_bytes(), bundle.bundle_bytes())
+
+    def test_version_sync_does_not_rewrite_dependencies(self):
+        spec = importlib.util.spec_from_file_location('versioning', ROOT/'tools/contracts/version.py')
+        versioning = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(versioning)
+        expected = versioning.expected()
+        current = tomllib.loads((ROOT/'Cargo.toml').read_text())
+        synchronized = tomllib.loads(expected[ROOT/'Cargo.toml'])
+        for name in ('serde','serde_json'):
+            self.assertEqual(current['workspace']['dependencies'][name], synchronized['workspace']['dependencies'][name])
+
+    def test_header_and_secret_gate_rejects_bad_sources(self):
+        spec = importlib.util.spec_from_file_location('quality', ROOT/'tools/quality.py')
+        quality = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(quality)
+        self.assertIn('missing copyright/SPDX header', quality.violations(Path('bad.java'), 'public class Bad {}'))
+        self.assertTrue(quality.violations(Path('bad.txt'), 'AK'+'IA'+'Z'*16))
+
+    def test_generator_refuses_unsupported_composition(self):
+        spec = importlib.util.spec_from_file_location('generator', ROOT/'tools/contracts/generate.py')
+        generator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(generator)
+        with self.assertRaises(ValueError):
+            generator.validate_shape({'type':'object','allOf':[{'type':'object'}]})
+
+    def test_dependency_license_policy_respects_and_or(self):
+        spec = importlib.util.spec_from_file_location('licenses', ROOT/'tools/dependency_licenses.py')
+        licenses = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(licenses)
+        self.assertTrue(licenses.accepted('MIT OR GPL-3.0-only'))
+        self.assertFalse(licenses.accepted('MIT AND GPL-3.0-only'))
+        self.assertFalse(licenses.accepted('GPL-3.0-only'))
+        self.assertTrue(licenses.accepted('(MIT OR Apache-2.0) AND Unicode-3.0'))
+        self.assertTrue(licenses.accepted('EPL-2.0', tooling=True))
+        self.assertFalse(licenses.accepted('EPL-2.0'))
+        with self.assertRaises(Exception): licenses.accepted('Unknown-Private-License')
+
+    def test_foundation_documentation_local_links(self):
+        paths = [ROOT/'docs/development/foundation.md', ROOT/'docs/development/foundation-upgrades.md', ROOT/'docs/adr/001-foundation-contract-generation.md', ROOT/'deploy/helm/olo-toolgate/README.md']
+        paths += [ROOT/f'packages/contracts/{language}/README.md' for language in ('java','rust','typescript','php','schemas')]
+        for path in paths:
+            text = path.read_text(encoding='utf-8')
+            for target in re.findall(r'\]\(([^)]+)\)', text):
+                if '://' in target or target.startswith('#'): continue
+                self.assertTrue((path.parent/target.split('#')[0]).is_file(), f'{path}: {target}')
+
+
+if __name__ == '__main__':
+    unittest.main()

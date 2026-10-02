@@ -1,3 +1,5 @@
+// Copyright 2026 OLO Labs
+// SPDX-License-Identifier: Apache-2.0
 package io.ololabs.toolgate.marketplace.api;
 
 import io.ololabs.toolgate.contracts.ContractSet;

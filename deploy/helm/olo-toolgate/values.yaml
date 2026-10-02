@@ -1,0 +1,6 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+# Workload settings are introduced with real services in their owning modules.
+global:
+  imageRegistry: ghcr.io/olo-labs
+  imagePullSecrets: []

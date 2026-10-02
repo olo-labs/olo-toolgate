@@ -1,0 +1,8 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+title = "ToolGate source secret scan"
+[extend]
+useDefault = true
+[allowlist]
+description = "Dependency caches and generated build state; no source exclusions"
+paths = ['''(^|/)(\.git|\.dev|\.gradle|node_modules|target|build)/''']

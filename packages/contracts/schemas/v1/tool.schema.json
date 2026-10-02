@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ololabs.io/toolgate/v1/tool.schema.json",
+  "$comment": "Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0",
+  "title": "ToolDefinition",
+  "$ref": "#/$defs/ToolDefinition",
+  "$defs": {
+    "ToolAction": {
+      "type": "object",
+      "description": "Named operation and declared resource kinds.",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "resourceKinds": {
+          "type": "array",
+          "items": {
+            "$ref": "resource.schema.json#/$defs/ResourceKind"
+          },
+          "maxItems": 32
+        }
+      },
+      "required": [
+        "name",
+        "resourceKinds"
+      ]
+    },
+    "ToolDefinition": {
+      "type": "object",
+      "description": "Capability definition. JSON schemas are data, never executable code.",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "tool.schema.json#/$defs/ToolAction"
+          },
+          "maxItems": 128
+        },
+        "inputSchema": {
+          "type": "object"
+        },
+        "outputSchema": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "actions",
+        "inputSchema",
+        "outputSchema"
+      ]
+    }
+  }
+}

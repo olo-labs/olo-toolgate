@@ -1,3 +1,5 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
 [workspace]
 resolver = "2"
 members = [
@@ -8,3 +10,9 @@ members = [
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/olo-labs/olo-toolgate"
+version = "0.1.0-dev"
+
+[workspace.dependencies]
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+olo-toolgate-contracts = { path = "packages/contracts/rust", version = "0.1.0-dev" }

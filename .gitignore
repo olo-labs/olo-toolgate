@@ -50,8 +50,7 @@ benchmark-results/
 # -----------------------------------------------------------------------------
 target/
 **/target/
-Cargo.lock
-# Uncomment Cargo.lock tracking once application crates are initialized.
+# Keep the workspace dependency lock committed from Module 00 onward.
 # For binaries/applications, Cargo.lock should normally be committed.
 
 

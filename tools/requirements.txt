@@ -1,0 +1,8 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+# Validation only: JSON Schema is canonical; PyYAML reads CI/chart metadata.
+jsonschema==4.26.0
+PyYAML==6.0.3
+pip-audit==2.10.0
+license-expression==30.4.4
+packaging==26.3

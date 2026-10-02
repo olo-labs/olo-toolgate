@@ -1,0 +1,132 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+"""Required foundation gates, without silently skipping missing tools.
+
+Windows contributors may set TOOLGATE_DOCKER_TOOLS=1 to use isolated Rust,
+PHP and Helm tooling. Java, Node and Python still execute on the host.
+"""
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import xml.etree.ElementTree as ET
+import zipfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+DOCKER = os.environ.get('TOOLGATE_DOCKER_TOOLS') == '1'
+
+
+def command(args):
+    exe, *rest = args
+    if exe == 'gradle':
+        return [str(ROOT/('gradlew.bat' if os.name == 'nt' else 'gradlew')), '--no-daemon', *rest]
+    if exe == 'npm' and os.name == 'nt': exe = 'npm.cmd'
+    if DOCKER and exe in ('cargo','php','helm'):
+        images = {'cargo':'rust:1.94-bookworm','php':'php:8.2-cli','helm':'alpine/helm:3.17.3'}
+        prefix = ['docker','run','--rm','-v',f'{ROOT.as_posix()}:/work','-w','/work']
+        if exe == 'cargo':
+            # bash positional arguments preserve argument boundaries without shell interpolation.
+            return prefix + [images[exe], 'sh','-c','rustup component add rustfmt clippy >/dev/null && exec cargo "$@"','toolgate-cargo', *rest]
+        return prefix + (['--entrypoint','helm'] if exe == 'helm' else []) + [images[exe]] + ([] if exe == 'helm' else [exe]) + rest
+    if not shutil.which(exe): raise SystemExit(f'Required tool missing: {exe}; see docs/development/foundation.md')
+    return [exe,*rest]
+
+
+def run(args, capture=False, expect_failure=False):
+    print('+ ' + ' '.join(args), flush=True)
+    result = subprocess.run(command(args), cwd=ROOT, text=True, capture_output=capture or expect_failure)
+    if expect_failure:
+        if result.returncode == 0: raise SystemExit('Expected rejection but command passed: '+args[0])
+        print('Expected negative-path rejection verified')
+    elif result.returncode:
+        if result.stdout: print(result.stdout)
+        if result.stderr: print(result.stderr, file=sys.stderr)
+        raise SystemExit(result.returncode)
+    return result
+
+
+def python(*args):
+    return run([sys.executable,*args])
+
+
+def publication_proof():
+    local = ROOT/'.dev/maven-local-proof'
+    local.mkdir(parents=True, exist_ok=True)
+    version = (ROOT/'packages/contracts/VERSION').read_text().strip()
+    run(['gradle', f'-Dmaven.repo.local={local.as_posix()}', ':contracts-java:publishToMavenLocal'])
+    artifact = local/'io/ololabs/toolgate/toolgate-contracts'/version
+    for classifier in ('','-sources','-javadoc'):
+        file = artifact/f'toolgate-contracts-{version}{classifier}.jar'
+        if not file.is_file(): raise SystemExit('Publication artifact missing: '+file.name)
+    pom = ET.parse(artifact/f'toolgate-contracts-{version}.pom').getroot()
+    namespace = {'m':'http://maven.apache.org/POM/4.0.0'}
+    if pom.findtext('m:artifactId', namespaces=namespace) != 'toolgate-contracts': raise SystemExit('Incorrect Maven identity')
+    if pom.findtext('m:version', namespaces=namespace) != version: raise SystemExit('Incorrect Maven version')
+    if not pom.findall('m:dependencies/m:dependency',namespace): raise SystemExit('Transitive serializer dependencies missing from POM')
+    with zipfile.ZipFile(artifact/f'toolgate-contracts-{version}.jar') as jar:
+        if 'io/ololabs/toolgate/contracts/PolicyDecision.class' not in jar.namelist(): raise SystemExit('Published generated models missing')
+        if 'META-INF/LICENSE' not in jar.namelist(): raise SystemExit('Published license missing')
+    tasks = [f':{service}:build' for service in ('control-plane','marketplace-api','marketplace-worker')]
+    updates = ['--write-locks'] if os.environ.get('TOOLGATE_UPDATE_LOCKS') == '1' else []
+    run(['gradle','-PusePublishedContracts=true',f'-PcontractsRepository={local.as_posix()}','--rerun-tasks',*updates,*tasks])
+    with tempfile.TemporaryDirectory(prefix='missing-contracts-', dir=ROOT/'.dev') as empty:
+        negative = run(['gradle','-PusePublishedContracts=true',f'-PcontractsRepository={Path(empty).as_posix()}','--rerun-tasks',':control-plane:compileJava'], expect_failure=True)
+        if 'toolgate-contracts' not in negative.stdout+negative.stderr:
+            raise SystemExit('Negative proof failed for an unrelated reason')
+    print('Local Maven JAR/POM/sources/Javadoc and all artifact-mode service builds verified')
+
+
+def helm_checks():
+    chart = 'deploy/helm/olo-toolgate'
+    run(['helm','lint','--strict',chart])
+    for flag in ([], ['--is-upgrade']):
+        rendered = run(['helm','template','foundation',chart,*flag], capture=True)
+        if rendered.stdout.strip(): raise SystemExit('Foundation chart unexpectedly rendered workloads')
+    run(['helm','template','foundation',chart,'--set','gateway.enabled=true'], expect_failure=True)
+
+
+def scans():
+    run(['docker','run','--rm','-v',f'{ROOT.as_posix()}:/work:ro','-w','/work','rhysd/actionlint:1.7.7','.github/workflows/foundation.yml','.github/workflows/release-foundation.yml'])
+    run(['npm','audit','--audit-level=high'])
+    python('-m','pip_audit','-r','tools/requirements.txt')
+    from dependency_licenses import audit
+    metadata = run(['cargo','metadata','--format-version','1','--locked'], capture=True)
+    audit(json.loads(metadata.stdout))
+    # This read-only scan hook is runnable locally and is mandatory in CI.
+    run(['docker','run','--rm','-v',f'{ROOT.as_posix()}:/repo:ro','zricethezav/gitleaks:v8.24.2','detect','--source=/repo','--no-git','--redact','--exit-code=1'])
+    run(['docker','run','--rm','-v',f'{ROOT.as_posix()}:/repo:ro','aquasec/trivy:0.61.1','fs','--no-progress','--include-dev-deps','--scanners','vuln,license','--license-full','--exit-code','1','--severity','HIGH,CRITICAL','--skip-dirs','.dev,**/build,**/node_modules,target,.gradle,.git','/repo'])
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--scans', action='store_true')
+    parser.add_argument('--contracts-only', action='store_true')
+    parser.add_argument('--publication-only', action='store_true')
+    args = parser.parse_args()
+    if args.scans: scans(); return
+    if args.publication_only: publication_proof(); return
+    python('tools/contracts/version.py','--check')
+    python('tools/contracts/generate.py','--check')
+    python('tools/quality.py')
+    python('-m','unittest','discover','-s','tests/contracts','-v')
+    run(['gradle','projects','javaCheck','build'])
+    publication_proof()
+    run(['cargo','fmt','--all','--check'])
+    run(['cargo','test','--workspace','--locked'])
+    run(['cargo','clippy','--workspace','--all-targets','--locked','--','-D','warnings'])
+    run(['npm','ci','--ignore-scripts'])
+    run(['npm','run','contracts:check'])
+    run(['npm','run','contracts:build'])
+    run(['npm','--workspace','@olo-labs/toolgate-contracts','test'])
+    run(['php','packages/contracts/php/tests/roundtrip.php'])
+    for source in sorted((ROOT/'packages/contracts/php/src').glob('*.php')):
+        run(['php','-l',source.relative_to(ROOT).as_posix()], capture=True)
+    if not args.contracts_only: helm_checks()
+    print('All required foundation gates passed')
+
+
+if __name__ == '__main__': main()

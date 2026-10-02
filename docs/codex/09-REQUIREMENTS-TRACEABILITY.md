@@ -195,3 +195,10 @@ Copy into the module PR/commit note:
 ```
 
 A `BLOCKED` requirement means the module is not DONE.
+
+## Module evidence
+
+- Module 00: [pre-implementation coverage plan](modules/00-coverage.md) and
+  [completion matrix and verification evidence](modules/00-completion.md).
+  The foundation classifies all 107 IDs: 49 COMPLETE and 58 NOT_APPLICABLE
+  with scope reasons. Remote publication is configured for protected CI only.

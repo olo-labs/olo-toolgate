@@ -1,21 +1,9 @@
-# Canonical Schemas
+# ToolGate schemas contracts
 
-Language-neutral ToolGate data contracts live here.
+Canonical wire definitions live in `packages/contracts/schemas/v1`. Bindings are
+generated with `python tools/contracts/generate.py` and drift-checked in CI.
+Validate canonical schemas at untrusted boundaries; bindings provide structural
+models and serialization rather than a complete JSON Schema validator.
 
-The Foundation/Contracts implementation module will add versioned schemas for:
-
-```text
-common identifiers
-error envelopes
-tools
-resources
-policies
-packages
-permits
-clients
-desired/reported state
-Marketplace records
-events
-```
-
-Generated language bindings must be reproducible from these files.
+See [foundation workflow](../../../docs/development/foundation.md) for build,
+tests, stable package identities, dependency modes, publishing and compatibility.

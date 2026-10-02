@@ -166,3 +166,10 @@ olo-toolgate-contracts = "<compatible version>"
 ```
 
 The same rule applies to Java, TypeScript and PHP consumers.
+
+## Implemented foundation
+
+Module 00 supplies canonical v1 schemas, generated bindings, workspace and local
+Maven artifact build modes, mandatory checks and protected release plumbing.
+Run `make check`; see [foundation workflow](docs/development/foundation.md).
+The service modules remain build scaffolds and the Helm chart has no workloads.

@@ -1,17 +1,9 @@
-# olo-toolgate-contracts (Rust)
+# ToolGate rust contracts
 
-Publishable Rust binding for canonical ToolGate contracts.
+Canonical wire definitions live in `packages/contracts/schemas/v1`. Bindings are
+generated with `python tools/contracts/generate.py` and drift-checked in CI.
+Validate canonical schemas at untrusted boundaries; bindings provide structural
+models and serialization rather than a complete JSON Schema validator.
 
-Within the monorepo, consumers should use a path/workspace dependency **with the version retained**:
-
-```toml
-olo-toolgate-contracts = { path = "../../packages/contracts/rust", version = "0.1.0" }
-```
-
-After a component moves to another repository:
-
-```toml
-olo-toolgate-contracts = "0.1"
-```
-
-Application imports remain unchanged.
+See [foundation workflow](../../../docs/development/foundation.md) for build,
+tests, stable package identities, dependency modes, publishing and compatibility.

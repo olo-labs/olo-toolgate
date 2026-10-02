@@ -1,0 +1,194 @@
+{
+  "version": "0.1.0-dev",
+  "readerMajor": 1,
+  "fixtures": {
+    "Identifier": "device-1",
+    "SemanticVersion": "0.1.0-dev",
+    "Sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "SecretReference": "secret://example/token",
+    "ContractSet": {
+      "name": "olo-toolgate-contracts",
+      "version": "0.1.0-dev"
+    },
+    "RequestContext": {
+      "requestId": "request-1",
+      "tenantId": "tenant-1",
+      "userId": "user-1",
+      "agentId": "agent-1"
+    },
+    "ErrorCode": "VALIDATION",
+    "ErrorEnvelope": {
+      "code": "VALIDATION",
+      "requestId": "request-1",
+      "retryable": false
+    },
+    "ResourceKind": "CUSTOM",
+    "ResourceDescriptor": {
+      "kind": "CUSTOM",
+      "locator": "calculator"
+    },
+    "ToolAction": {
+      "name": "evaluate",
+      "resourceKinds": [
+        "CUSTOM"
+      ]
+    },
+    "ToolDefinition": {
+      "id": "calculator",
+      "name": "Calculator",
+      "description": "Pure calculation",
+      "actions": [
+        {
+          "name": "evaluate",
+          "resourceKinds": [
+            "CUSTOM"
+          ]
+        }
+      ],
+      "inputSchema": {
+        "type": "object"
+      },
+      "outputSchema": {
+        "type": "number"
+      }
+    },
+    "Decision": "BLOCK",
+    "DecisionReason": "NO_MATCH",
+    "PolicyDecision": {
+      "decision": "BLOCK",
+      "reason": "NO_MATCH",
+      "policyVersion": "0.1.0-dev",
+      "requestId": "request-1"
+    },
+    "PackageState": "READY",
+    "ReportedPackage": {
+      "packageId": "community/calculator",
+      "version": "0.1.0-dev",
+      "state": "READY"
+    },
+    "PackageCompatibility": {
+      "contractsVersion": "0.1.0-dev",
+      "minimumClientVersion": "0.1.0-dev"
+    },
+    "ArtifactDescriptor": {
+      "uri": "https://example.invalid/calculator.zip",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sizeBytes": 123
+    },
+    "MarketplaceRelease": {
+      "packageId": "community/calculator",
+      "version": "0.1.0-dev",
+      "manifestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "marketplaceKeyId": "marketplace/test-key",
+      "marketplaceSignature": "fixture-not-a-real-signature"
+    },
+    "DeploymentAssignment": {
+      "assignmentId": "assignment-1",
+      "deviceId": "device-1",
+      "release": {
+        "packageId": "community/calculator",
+        "version": "0.1.0-dev",
+        "manifestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "marketplaceKeyId": "marketplace/test-key",
+        "marketplaceSignature": "fixture-not-a-real-signature"
+      },
+      "organizationKeyId": "organization/test-key",
+      "organizationSignature": "fixture-not-a-real-signature",
+      "desiredPresence": true
+    },
+    "DesiredState": {
+      "deviceId": "device-1",
+      "revision": 1,
+      "assignments": [
+        {
+          "assignmentId": "assignment-1",
+          "deviceId": "device-1",
+          "release": {
+            "packageId": "community/calculator",
+            "version": "0.1.0-dev",
+            "manifestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "marketplaceKeyId": "marketplace/test-key",
+            "marketplaceSignature": "fixture-not-a-real-signature"
+          },
+          "organizationKeyId": "organization/test-key",
+          "organizationSignature": "fixture-not-a-real-signature",
+          "desiredPresence": true
+        }
+      ]
+    },
+    "ClientEnrollmentRequest": {
+      "deviceId": "device-1",
+      "clientVersion": "0.1.0-dev",
+      "capabilities": [
+        "calculator"
+      ]
+    },
+    "ClientReport": {
+      "deviceId": "device-1",
+      "clientVersion": "0.1.0-dev",
+      "appliedRevision": 1,
+      "packages": [
+        {
+          "packageId": "community/calculator",
+          "version": "0.1.0-dev",
+          "state": "READY"
+        }
+      ]
+    },
+    "PolicyInput": {
+      "context": {
+        "requestId": "request-1",
+        "tenantId": "tenant-1",
+        "userId": "user-1",
+        "agentId": "agent-1"
+      },
+      "toolId": "calculator",
+      "action": "evaluate",
+      "resource": {
+        "kind": "CUSTOM",
+        "locator": "calculator"
+      },
+      "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "PackageManifest": {
+      "schemaVersion": 1,
+      "id": "community/calculator",
+      "version": "0.1.0-dev",
+      "tools": [
+        {
+          "id": "calculator",
+          "name": "Calculator",
+          "description": "Pure calculation",
+          "actions": [
+            {
+              "name": "evaluate",
+              "resourceKinds": [
+                "CUSTOM"
+              ]
+            }
+          ],
+          "inputSchema": {
+            "type": "object"
+          },
+          "outputSchema": {
+            "type": "number"
+          }
+        }
+      ],
+      "artifacts": [
+        {
+          "uri": "https://example.invalid/calculator.zip",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "sizeBytes": 123
+        }
+      ],
+      "credentialReferences": [
+        "secret://example/token"
+      ],
+      "compatibility": {
+        "contractsVersion": "0.1.0-dev",
+        "minimumClientVersion": "0.1.0-dev"
+      }
+    }
+  }
+}

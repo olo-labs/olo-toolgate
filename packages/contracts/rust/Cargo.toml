@@ -1,8 +1,10 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
 [package]
 name = "olo-toolgate-contracts"
-version = "0.1.0"
-edition = "2021"
-license = "Apache-2.0"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
 description = "Shared protocol and data contracts for OLO ToolGate"
 repository = "https://github.com/olo-labs/olo-toolgate"
 homepage = "https://github.com/olo-labs/olo-toolgate"
@@ -14,5 +16,5 @@ name = "olo_toolgate_contracts"
 path = "src/lib.rs"
 
 [dependencies]
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde.workspace = true
+serde_json.workspace = true

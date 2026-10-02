@@ -1,0 +1,2 @@
+OLO ToolGate foundation chart {{ .Chart.Version }}.
+This release installs no workloads. Runtime services arrive in their owning modules.

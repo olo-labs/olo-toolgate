@@ -1,5 +1,15 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
 [versions]
 java = "21"
+jackson = "2.21.7"
+junit = "5.14.2"
+
+[libraries]
+jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations", version = "2.21" }
+jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+junit-launcher = { module = "org.junit.platform:junit-platform-launcher", version = "1.14.2" }
 
 # Add third-party library versions here as implementation modules are introduced.
 # Keep shared dependency versions centralized rather than duplicating them in subprojects.

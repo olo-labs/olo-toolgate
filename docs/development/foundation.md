@@ -1,0 +1,110 @@
+# Foundation developer workflow
+
+Module 00 provides contracts, builds and verification. The service modules are
+buildable markers, not running servers. `make dev` and the quickstart remain
+future product work; `make check` is implemented and never silently skips a gate.
+
+Install Java 21, Python 3.12+, Node 22, PHP 8.2+, Rust (the repository pins a stable
+toolchain with fmt/clippy), Helm 3.17.3 and GNU Make. Gradle bootstraps its pinned,
+SHA-256-verified distribution; a global Gradle installation is unnecessary.
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r tools/requirements.txt
+make check PYTHON=python
+make security PYTHON=python
+```
+
+Windows can use `gradlew.bat` and `python tools/check.py`. Set
+`TOOLGATE_DOCKER_TOOLS=1` to run Rust, PHP and Helm in development containers when
+native tools are unavailable. Java, Node, Python and Git still run locally. The
+scan hooks require Docker and network access to vulnerability databases.
+Missing tooling, offline dependency failures and scan failures return nonzero.
+
+The dependency license audit reads Cargo metadata, npm lock licenses, recursive
+Python tool metadata and Maven dependency/parent POMs from Maven Central. It
+fails for unknown or unapproved license metadata and writes
+`build/release/dependency-licenses.json`. Apache/MIT/BSD/ISC are accepted for
+runtime bindings (including the permissive Unicode-3.0 data license used by Rust
+identifier tooling); MPL/EPL and Python licenses are accepted for build/test tools.
+BSD-only Python classifiers remain explicitly labeled as family evidence, not
+an inferred SPDX revision. Generated Javadoc contains JDK assets under the
+GPL classpath exception; it is a separate classifier artifact, not runtime code.
+Source scans exclude ignored build/dependency caches. No advisory is suppressed.
+
+The full gate validates versions, generated drift, headers and npm licenses,
+offline schemas/compatibility/security fixtures, Java tests and publication,
+Rust tests/fmt/clippy, TypeScript type tests/build/JSON transport, PHP DTO round
+trips/lint and Helm lint/default/upgrade/invalid-value rendering. Foundation CI
+also runs vulnerability, license and redacted secret scans. `make test` runs
+schema/boundary tests; `make integration` runs the Maven publication proof.
+
+Canonical contracts are `schemas/v1/*.schema.json`, with each named model in
+`$defs`. Schema IDs are identifiers resolved from the local registry, not network
+retrieval locations. All schema tests are offline. Shared fixtures live in
+`tests/fixtures/contracts/v1`; the compatibility corpus and schema snapshots
+are frozen acceptance baselines. Test signatures are explicit non-signatures.
+
+```sh
+python tools/contracts/generate.py
+python tools/contracts/generate.py --check
+./gradlew projects javaCheck build
+./gradlew :contracts-java:publishToMavenLocal
+python tools/check.py --publication-only
+```
+
+Generated bindings are structural serializers, not full schema validators.
+Validate schema constraints before using input. Java/PHP/Rust reject unknown
+object fields and unknown enum values in their decoders; TypeScript requires a
+runtime schema validator in the consuming service. Error envelopes expose stable
+codes, request IDs and retryability, with no exception text or arbitrary details.
+Open JSON maps in tool input/output schemas are schema data, never credentials or
+permission grants. Resource locators are descriptors, not validated filesystem
+or network capabilities. ALLOW/ASK/BLOCK models do not authorize execution.
+
+`VERSION` owns product/chart versions. `packages/contracts/VERSION` owns contract
+versions. For an initially aligned release run
+`python tools/contracts/version.py --set 0.1.0`, regenerate bindings, then update
+locks with `npm install --package-lock-only --ignore-scripts`,
+`cargo update`, `./gradlew javaCheck --write-locks` and
+`TOOLGATE_UPDATE_LOCKS=1 python tools/check.py --publication-only`. Review all
+lock changes and rerun checks. Separate workspace and artifact-mode Gradle locks
+keep dependency-source proofs deterministic. Python validation tools are pinned
+in `tools/requirements.txt`; scanners review their resolved transitives.
+
+Local publication proof uses `.dev/maven-local-proof` through
+`-Dmaven.repo.local`; it does not depend on a contributor's Maven cache.
+`-PusePublishedContracts=true -PcontractsRepository=<repository>` selects an
+exclusive Maven repository for the stable contract coordinate. An optional
+`-PcontractsVersion=<semver>` selects a compatibility test version. Java services
+keep identical imports in either mode. Java JARs also include canonical schemas.
+
+Remote Maven repositories are configured only when `CI=true` and
+`MAVEN_REPOSITORY_URL` is set. `MAVEN_USERNAME` and `MAVEN_PASSWORD` are protected
+CI environment secrets, never Gradle properties or checked-in files. Publication
+uses HTTPS and must be configured through the `foundation-release` GitHub
+environment with maintainers' required reviewers and registry permissions.
+
+`release-foundation.yml` supports a dry-run dispatch and matching `v<version>`
+tags. It executes the full gates, packages Java/raw contracts/Helm, produces a
+CycloneDX dependency SBOM and SHA-256 asset list, creates GitHub provenance
+attestations, and publishes only for a tag or explicit publish dispatch.
+Manual publication requires the matching tag already to exist. Configure the
+protected environment before using publication. Rust/npm/Composer package
+publication remains registry opt-in; their identities and source packages exist.
+
+Helm OCI is `oci://ghcr.io/olo-labs/charts/olo-toolgate:<chart-version>`.
+Reserved runtime image names are `ghcr.io/olo-labs/olo-toolgate-{quickstart,
+gateway,control,marketplace-api,marketplace-worker}:<product-version>`.
+No image is built or published until its owning module delivers a real service.
+
+If drift fails, regenerate and inspect the schema diff before accepting it.
+If a Maven proof fails, inspect the POM and the exclusive repository path rather
+than falling back to the project. If Helm reports an unsupported value, the
+foundation chart has no workload configuration yet. If a scan database cannot
+be reached, repair network access and rerun; do not suppress the gate.
+
+See [ADR 001](../adr/001-foundation-contract-generation.md),
+[upgrade policy](foundation-upgrades.md) and
+[Module 00 coverage](../codex/modules/00-coverage.md).

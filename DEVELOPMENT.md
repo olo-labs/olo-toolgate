@@ -115,3 +115,10 @@ Java services and libraries use **Gradle Kotlin DSL**.
 Shared Java contracts are a local Gradle project now and a published Maven-compatible artifact later.
 
 See [`docs/development/gradle.md`](docs/development/gradle.md).
+
+## Implemented foundation
+
+Module 00 supplies canonical v1 schemas, generated bindings, workspace and local
+Maven artifact build modes, mandatory checks and protected release plumbing.
+Run `make check`; see [foundation workflow](docs/development/foundation.md).
+The service modules remain build scaffolds and the Helm chart has no workloads.

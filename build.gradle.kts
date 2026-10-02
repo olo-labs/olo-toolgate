@@ -1,3 +1,5 @@
+// Copyright 2026 OLO Labs
+// SPDX-License-Identifier: Apache-2.0
 import org.gradle.api.plugins.JavaPlugin
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.tasks.compile.JavaCompile
@@ -9,16 +11,35 @@ plugins {
 }
 
 group = "io.ololabs.toolgate"
-version = providers.gradleProperty("toolgateVersion").get()
+version = file("VERSION").readText().trim()
 
 allprojects {
     group = rootProject.group
     version = rootProject.version
+    dependencyLocking {
+        lockAllConfigurations()
+        lockFile.set(file(if (providers.gradleProperty("usePublishedContracts").orNull == "true") "gradle-artifact.lockfile" else "gradle.lockfile"))
+    }
 
     repositories {
+        if (providers.gradleProperty("usePublishedContracts").orNull == "true") {
+            exclusiveContent {
+                forRepository {
+                    maven {
+                        name = "localContractProof"
+                        url = uri(providers.gradleProperty("contractsRepository").getOrElse("${rootDir}/.dev/maven"))
+                    }
+                }
+                filter { includeModule("io.ololabs.toolgate", "toolgate-contracts") }
+            }
+        }
         mavenCentral()
-        mavenLocal()
     }
+}
+
+tasks.named("check") { dependsOn("javaCheck") }
+tasks.named("build") {
+    dependsOn(":contracts-java:build", ":control-plane:build", ":marketplace-api:build", ":marketplace-worker:build")
 }
 
 subprojects {

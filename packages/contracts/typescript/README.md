@@ -1,13 +1,9 @@
-# @olo-labs/toolgate-contracts
+# ToolGate typescript contracts
 
-Publishable TypeScript bindings for ToolGate shared contracts.
+Canonical wire definitions live in `packages/contracts/schemas/v1`. Bindings are
+generated with `python tools/contracts/generate.py` and drift-checked in CI.
+Validate canonical schemas at untrusted boundaries; bindings provide structural
+models and serialization rather than a complete JSON Schema validator.
 
-Monorepo consumers should depend on:
-
-```json
-{
-  "@olo-labs/toolgate-contracts": "workspace:*"
-}
-```
-
-After repository separation, use a compatible published SemVer. Import paths stay unchanged.
+See [foundation workflow](../../../docs/development/foundation.md) for build,
+tests, stable package identities, dependency modes, publishing and compatibility.

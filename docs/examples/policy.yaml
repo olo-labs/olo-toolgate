@@ -1,3 +1,5 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
 apiVersion: mcp-access.io/v1
 kind: AccessPolicy
 metadata:

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ololabs.io/toolgate/v1/resource.schema.json",
+  "$comment": "Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0",
+  "title": "ResourceDescriptor",
+  "$ref": "#/$defs/ResourceDescriptor",
+  "$defs": {
+    "ResourceKind": {
+      "type": "string",
+      "enum": [
+        "FILE",
+        "URL",
+        "DATABASE",
+        "DEVICE",
+        "CUSTOM"
+      ]
+    },
+    "ResourceDescriptor": {
+      "type": "object",
+      "description": "Declared resource identity; does not grant access or validate a path.",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "resource.schema.json#/$defs/ResourceKind"
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        }
+      },
+      "required": [
+        "kind",
+        "locator"
+      ]
+    }
+  }
+}

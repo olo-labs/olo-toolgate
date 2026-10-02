@@ -1,4 +1,7 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
 SHELL := /bin/sh
+PYTHON ?= python3
 
 .PHONY: help java-check java-projects publish-contracts-local dev stop check test integration e2e security benchmark containers client docs contracts contracts-check contracts-release-dry-run clean tree
 
@@ -31,19 +34,19 @@ stop:
 	@./tools/dev/stop.sh
 
 check:
-	@./tools/dev/check.sh
+	@$(PYTHON) tools/check.py
 
 test:
-	@./tools/dev/not-implemented.sh "unit tests"
+	@$(PYTHON) -m unittest discover -s tests/contracts -v
 
 integration:
-	@./tools/dev/not-implemented.sh "integration tests"
+	@$(PYTHON) tools/check.py --publication-only
 
 e2e:
 	@./tools/dev/not-implemented.sh "end-to-end tests"
 
 security:
-	@./tools/dev/not-implemented.sh "security tests"
+	@$(PYTHON) tools/check.py --scans
 
 benchmark:
 	@./tools/dev/not-implemented.sh "benchmarks"
@@ -60,10 +63,10 @@ docs:
 contracts: contracts-check
 
 contracts-check:
-	@./tools/contracts/check.sh
+	@$(PYTHON) tools/check.py --contracts-only
 
 contracts-release-dry-run:
-	@./tools/contracts/release-dry-run.sh
+	@$(PYTHON) tools/release/bundle.py
 
 tree:
 	@find . -path './.git' -prune -o -print | sort
