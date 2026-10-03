@@ -1,6 +1,6 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
-import type { ApprovalDecisionRequest, ApprovalPage, ApprovalRecord, ControlUser, ErrorEnvelope } from '@olo-labs/toolgate-contracts';
+import type { ApprovalDecisionRequest, ApprovalPage, ApprovalRecord, ControlUser, ErrorEnvelope, EndpointEnrollmentReview, EndpointEnrollmentDecision } from '@olo-labs/toolgate-contracts';
 import { listOperations, operations, type DirectoryKind, type DirectoryPages } from './operations.generated';
 
 /** Human-safe messages never render server text, exception bodies or credentials. */
@@ -103,5 +103,11 @@ export class ControlClient {
   approval(id: string, signal?: AbortSignal): Promise<ApprovalRecord> { return this.send(operations.getApproval, { id, signal }); }
   decideApproval(id: string, decision: ApprovalDecisionRequest, key: string): Promise<ApprovalRecord> {
     return this.send(operations.decideApproval, { id, body: decision, key });
+  }
+  enrollment(code: string, signal?: AbortSignal): Promise<EndpointEnrollmentReview> {
+    return this.send(operations.reviewEndpointEnrollment, { query: new URLSearchParams({ code }), signal });
+  }
+  decideEnrollment(decision: EndpointEnrollmentDecision, key: string): Promise<EndpointEnrollmentReview> {
+    return this.send(operations.decideEndpointEnrollment, { body: decision, key });
   }
 }

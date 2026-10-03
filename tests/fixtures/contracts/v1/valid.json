@@ -892,5 +892,130 @@
     "graceMs": 0,
     "policySha256": "2bb1e5048a19bde93c340142b5d9ba1f5ead639dce7add67bfd02d6c3a49b7e1",
     "policy": "eyJmb3JtYXRWZXJzaW9uIjoxLCJydWxlcyI6W3siYWN0aW9uIjoicmVhZCIsImFnZW50SWRzIjpbXSwiZGV2aWNlSWRzIjpbXSwiZWZmZWN0IjoiQUxMT1ciLCJncmFjZUFsbG93ZWQiOnRydWUsInBvbGljeUlkIjoiYWxsb3ctcmVhZCIsInJlc291cmNlIjp7ImtpbmQiOiJDVVNUT00iLCJsb2NhdG9yIjoiY2FsY3VsYXRvciJ9LCJ0b29sSWQiOiJmaWxlcyIsInVzZXJJZHMiOlsiYWxpY2UiXX1dfQ"
+  },
+  "ClientPlatform": "WINDOWS",
+  "EnrollmentState": "PENDING",
+  "EndpointState": "UNENROLLED",
+  "EnrollmentChoice": "APPROVE",
+  "ClientDiscovery": {
+    "protocolVersion": 1,
+    "serverId": "device-1",
+    "organization": "example",
+    "tenantId": "device-1",
+    "controlUrl": "https://control.example.test",
+    "gatewayUrl": "https://control.example.test",
+    "verificationUri": "https://control.example.test",
+    "minimumClientVersion": "0.1.0-dev",
+    "issuedAtUnixMs": 1,
+    "expiresAtUnixMs": 1,
+    "issuerCertificatePem": "example"
+  },
+  "SignedClientDiscovery": {
+    "payload": "AA",
+    "signature": "AA"
+  },
+  "EndpointEnrollmentStart": {
+    "deviceId": "device-1",
+    "clientVersion": "0.1.0-dev",
+    "platform": "WINDOWS",
+    "csrPem": "example",
+    "capabilities": []
+  },
+  "EndpointEnrollmentChallenge": {
+    "enrollmentId": "device-1",
+    "deviceCode": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "userCode": "AAAAAAAAAAAAAAAA",
+    "verificationUri": "https://control.example.test",
+    "expiresAtUnixMs": 1,
+    "pollIntervalSeconds": 2
+  },
+  "EndpointEnrollmentPoll": {
+    "enrollmentId": "device-1",
+    "deviceCode": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "EndpointEnrollmentReview": {
+    "enrollmentId": "device-1",
+    "userCode": "AAAAAAAAAAAAAAAA",
+    "deviceId": "device-1",
+    "platform": "WINDOWS",
+    "keyFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "state": "PENDING",
+    "expiresAtUnixMs": 1
+  },
+  "EndpointEnrollmentDecision": {
+    "userCode": "AAAAAAAAAAAAAAAA",
+    "keyFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "choice": "APPROVE"
+  },
+  "DeviceIdentity": {
+    "deviceId": "device-1",
+    "tenantId": "device-1",
+    "userId": "device-1",
+    "serverId": "device-1",
+    "certificatePem": "example",
+    "issuerCertificatePem": "example",
+    "expiresAtUnixMs": 1
+  },
+  "EndpointEnrollmentResult": {
+    "state": "PENDING"
+  },
+  "EndpointCheckIn": {
+    "sequence": 1,
+    "report": {
+      "deviceId": "device-1",
+      "clientVersion": "0.1.0-dev",
+      "appliedRevision": 1,
+      "packages": [
+        {
+          "packageId": "community/calculator",
+          "version": "0.1.0-dev",
+          "state": "READY"
+        }
+      ]
+    }
+  },
+  "EndpointCheckInAck": {
+    "deviceId": "device-1",
+    "sequence": 1,
+    "serverTimeUnixMs": 1,
+    "nextIntervalSeconds": 10
+  },
+  "EndpointDeviceRecord": {
+    "deviceId": "device-1",
+    "tenantId": "device-1",
+    "userId": "device-1",
+    "keyFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "state": "UNENROLLED",
+    "revision": 1,
+    "lastSeenUnixMs": 1,
+    "reportSequence": 1
+  },
+  "EndpointRevokeRequest": {
+    "expectedRevision": 1
+  },
+  "ClientHealth": {
+    "state": "UNENROLLED",
+    "ready": false,
+    "uptimeSeconds": 1,
+    "successfulCheckIns": 1,
+    "failedCheckIns": 1,
+    "reportSequence": 1
+  },
+  "ClientIpcOperation": "HEALTH",
+  "ClientIpcRequest": {
+    "protocolVersion": 1,
+    "requestId": "device-1",
+    "operation": "HEALTH"
+  },
+  "ClientIpcResponse": {
+    "requestId": "device-1"
+  },
+  "EndpointEnrollmentPrompt": {
+    "enrollmentId": "device-1",
+    "userCode": "AAAAAAAAAAAAAAAA",
+    "verificationUri": "https://control.example.test",
+    "expiresAtUnixMs": 1,
+    "pollIntervalSeconds": 2,
+    "keyFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   }
 }

@@ -149,7 +149,10 @@ public final class DirectoryService {
         } catch (IllegalArgumentException e) { throw Failure.conflict(); }
     }
     public static String digest(String value) {
-        try { return java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8))); }
+        return digest(value.getBytes(StandardCharsets.UTF_8));
+    }
+    public static String digest(byte[] value) {
+        try { return java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value)); }
         catch (java.security.NoSuchAlgorithmException e) { throw new IllegalStateException(e); }
     }
 }

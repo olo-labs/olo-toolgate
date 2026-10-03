@@ -190,6 +190,16 @@ control:
     labels: {}
     interval: 30s
   developmentMode: false
+  endpoint:
+    enabled: false
+    tenantId: ''
+    serverId: ''
+    organization: ''
+    controlUrl: ''
+    gatewayUrl: ''
+    deviceCaSecret: ''
+    tlsSecret: ''
+    trustStoreSecret: ''
   publicKeySecret: ''
   publicKeyKey: public.pem
   jwt:

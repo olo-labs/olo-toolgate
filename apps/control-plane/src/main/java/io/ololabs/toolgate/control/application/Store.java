@@ -30,6 +30,14 @@ public interface Store {
         void consumePermit(String jti, long consumedAt);
         long approvalClock(long now);
         long activePermits(long now);
+        EnrollmentRecord enrollment(String id);
+        EnrollmentRecord enrollmentCode(String codeDigest);
+        void saveEnrollment(EnrollmentRecord enrollment);
+        long pendingEnrollments(long now);
+        void pruneEnrollments(long now);
+        EndpointRecord endpoint(String deviceId);
+        EndpointRecord endpointKey(String fingerprint);
+        void saveEndpoint(EndpointRecord endpoint);
     }
     /** Immutable signed wire bytes and compiler bytes, committed with audit/replay. */
     record BundleRecord(long sequence, String document, String policy, long directoryRevision) {}
@@ -39,4 +47,9 @@ public interface Store {
     record PermitLease(String jti, String approvalId, String bindingDigest, String requestId,
                        long issuedAt, long expiresAt, Long consumedAt) {}
     record Reply(int status, String body, long revision) {}
+    /** Device codes are hashed; CSR and certificate data are public key material. */
+    record EnrollmentRecord(String id, String codeDigest, String deviceDigest, String document,
+                            String csr, String userId, String certificate, long expiresAt, long lastPoll) {}
+    record EndpointRecord(String id, String fingerprint, String document, String csr,
+                          String reportDigest, String acknowledgment) {}
 }

@@ -15,6 +15,7 @@ dependencies {
     implementation("org.flywaydb:flyway-database-postgresql")
     implementation(libs.jackson.yaml)
     implementation(libs.json.schema)
+    implementation(libs.bouncycastle.pkix)
     if (usePublishedContracts.get()) {
         implementation("io.ololabs.toolgate:toolgate-contracts:$contractsVersion")
     } else {

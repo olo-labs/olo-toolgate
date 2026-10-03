@@ -142,12 +142,51 @@ export interface BundleRule {
   readonly graceAllowed: boolean;
   readonly effect: BundleEffect;
 }
+/** Endpoint identity foundation wire model. */
+export interface ClientDiscovery {
+  readonly protocolVersion: number;
+  readonly serverId: string;
+  readonly organization: string;
+  readonly tenantId: string;
+  readonly controlUrl: string;
+  readonly gatewayUrl: string;
+  readonly verificationUri: string;
+  readonly minimumClientVersion: string;
+  readonly issuedAtUnixMs: number;
+  readonly expiresAtUnixMs: number;
+  readonly issuerCertificatePem: string;
+}
 /** Device identity and capabilities. Enrollment credentials travel separately. */
 export interface ClientEnrollmentRequest {
   readonly deviceId: string;
   readonly clientVersion: string;
   readonly capabilities: ReadonlyArray<string>;
 }
+/** Endpoint identity foundation wire model. */
+export interface ClientHealth {
+  readonly state: EndpointState;
+  readonly ready: boolean;
+  readonly uptimeSeconds: number;
+  readonly successfulCheckIns: number;
+  readonly failedCheckIns: number;
+  readonly reportSequence: number;
+  readonly lastSuccessUnixMs?: number;
+}
+export type ClientIpcOperation = "HEALTH" | "ENROLL" | "CHECK_IN";
+/** Endpoint identity foundation wire model. */
+export interface ClientIpcRequest {
+  readonly protocolVersion: number;
+  readonly requestId: string;
+  readonly operation: ClientIpcOperation;
+}
+/** Endpoint identity foundation wire model. */
+export interface ClientIpcResponse {
+  readonly requestId: string;
+  readonly health?: ClientHealth;
+  readonly challenge?: EndpointEnrollmentPrompt;
+  readonly error?: ErrorCode;
+}
+export type ClientPlatform = "WINDOWS" | "LINUX" | "MACOS";
 /** Batched report of device inventory and applied desired revision. */
 export interface ClientReport {
   readonly deviceId: string;
@@ -316,6 +355,100 @@ export interface DesiredState {
   readonly revision: number;
   readonly assignments: ReadonlyArray<DeploymentAssignment>;
 }
+/** Endpoint identity foundation wire model. */
+export interface DeviceIdentity {
+  readonly deviceId: string;
+  readonly tenantId: string;
+  readonly userId: string;
+  readonly serverId: string;
+  readonly certificatePem: string;
+  readonly issuerCertificatePem: string;
+  readonly expiresAtUnixMs: number;
+}
+/** Endpoint identity foundation wire model. */
+export interface EndpointCheckIn {
+  readonly sequence: number;
+  readonly report: ClientReport;
+}
+/** Endpoint identity foundation wire model. */
+export interface EndpointCheckInAck {
+  readonly deviceId: string;
+  readonly sequence: number;
+  readonly serverTimeUnixMs: number;
+  readonly nextIntervalSeconds: number;
+  readonly identity?: DeviceIdentity;
+}
+/** Endpoint identity foundation wire model. */
+export interface EndpointDeviceRecord {
+  readonly deviceId: string;
+  readonly tenantId: string;
+  readonly userId: string;
+  readonly keyFingerprint: string;
+  readonly state: EndpointState;
+  readonly revision: number;
+  readonly lastSeenUnixMs: number;
+  readonly reportSequence: number;
+  readonly report?: ClientReport;
+}
+/** Endpoint identity foundation wire model. */
+export interface EndpointEnrollmentChallenge {
+  readonly enrollmentId: string;
+  readonly deviceCode: string;
+  readonly userCode: string;
+  readonly verificationUri: string;
+  readonly expiresAtUnixMs: number;
+  readonly pollIntervalSeconds: number;
+}
+/** Endpoint identity foundation wire model. */
+export interface EndpointEnrollmentDecision {
+  readonly userCode: string;
+  readonly keyFingerprint: string;
+  readonly choice: EnrollmentChoice;
+}
+/** Endpoint identity foundation wire model. */
+export interface EndpointEnrollmentPoll {
+  readonly enrollmentId: string;
+  readonly deviceCode: string;
+}
+/** Endpoint identity foundation wire model. */
+export interface EndpointEnrollmentPrompt {
+  readonly enrollmentId: string;
+  readonly userCode: string;
+  readonly verificationUri: string;
+  readonly expiresAtUnixMs: number;
+  readonly pollIntervalSeconds: number;
+  readonly keyFingerprint: string;
+}
+/** Endpoint identity foundation wire model. */
+export interface EndpointEnrollmentResult {
+  readonly state: EnrollmentState;
+  readonly identity?: DeviceIdentity;
+}
+/** Endpoint identity foundation wire model. */
+export interface EndpointEnrollmentReview {
+  readonly enrollmentId: string;
+  readonly userCode: string;
+  readonly deviceId: string;
+  readonly platform: ClientPlatform;
+  readonly keyFingerprint: string;
+  readonly state: EnrollmentState;
+  readonly expiresAtUnixMs: number;
+}
+/** Endpoint identity foundation wire model. */
+export interface EndpointEnrollmentStart {
+  readonly deviceId: string;
+  readonly clientVersion: string;
+  readonly platform: ClientPlatform;
+  readonly csrPem: string;
+  readonly capabilities: ReadonlyArray<string>;
+}
+/** Endpoint identity foundation wire model. */
+export interface EndpointRevokeRequest {
+  readonly expectedRevision: number;
+}
+export type EndpointState = "UNENROLLED" | "PENDING" | "ACTIVE" | "OFFLINE" | "REVOKED";
+export type EnrollmentChoice = "APPROVE" | "DENY";
+export type EnrollmentState = "PENDING" | "APPROVED" | "DENIED" | "EXPIRED" | "CONSUMED";
 export type ErrorCode = "VALIDATION" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "DEPENDENCY_UNAVAILABLE" | "TIMEOUT" | "INTERNAL" | "UNSUPPORTED";
 /** Machine-readable error without exception text or caller-controlled detail. */
 export interface ErrorEnvelope {
@@ -428,6 +561,11 @@ export interface RuntimeAuditEvent {
 export type SecretReference = string;
 export type SemanticVersion = string;
 export type Sha256 = string;
+/** Endpoint identity foundation wire model. */
+export interface SignedClientDiscovery {
+  readonly payload: string;
+  readonly signature: string;
+}
 /** RS256 compact JWS; structural validation alone does not establish trust. */
 export interface SignedExecutionPermit {
   readonly jws: string;
@@ -450,5 +588,5 @@ export interface ToolDefinition {
   readonly inputSchema: Record<string, unknown>;
   readonly outputSchema: Record<string, unknown>;
 }
-export const CONTRACT_SET_VERSION = "0.5.0-dev" as const;
+export const CONTRACT_SET_VERSION = "0.6.0-dev" as const;
 export const CONTRACT_SET_NAME = "olo-toolgate-contracts" as const;

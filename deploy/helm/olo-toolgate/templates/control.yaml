@@ -29,6 +29,23 @@ data:
   QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: {{ printf "https://%s:%v" $g.tracing.host $g.tracing.port | quote }}
   QUARKUS_OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: {{ $g.tracing.protocol | quote }}
   TOOLGATE_CONTROL_APPROVAL_ENABLED: {{ $g.approval.enabled | quote }}
+  TOOLGATE_CONTROL_ENDPOINT_ENABLED: {{ $g.endpoint.enabled | quote }}
+  {{- if $g.endpoint.enabled }}
+  TOOLGATE_CONTROL_ENDPOINT_TENANT_ID: {{ required "control.endpoint.tenantId required" $g.endpoint.tenantId | quote }}
+  TOOLGATE_CONTROL_ENDPOINT_SERVER_ID: {{ required "control.endpoint.serverId required" $g.endpoint.serverId | quote }}
+  TOOLGATE_CONTROL_ENDPOINT_ORGANIZATION: {{ required "control.endpoint.organization required" $g.endpoint.organization | quote }}
+  TOOLGATE_CONTROL_ENDPOINT_CONTROL_URL: {{ required "control.endpoint.controlUrl required" $g.endpoint.controlUrl | quote }}
+  TOOLGATE_CONTROL_ENDPOINT_GATEWAY_URL: {{ required "control.endpoint.gatewayUrl required" $g.endpoint.gatewayUrl | quote }}
+  TOOLGATE_CONTROL_ENDPOINT_PRIVATE_KEY_PATH: /etc/toolgate/device-ca/private.pem
+  TOOLGATE_CONTROL_ENDPOINT_CA_CERTIFICATE_PATH: /etc/toolgate/device-ca/ca.pem
+  QUARKUS_HTTP_INSECURE_REQUESTS: disabled
+  QUARKUS_HTTP_SSL_PORT: "8082"
+  QUARKUS_HTTP_SSL_CLIENT_AUTH: request
+  QUARKUS_HTTP_SSL_CERTIFICATE_FILES: /etc/toolgate/server-tls/tls.crt
+  QUARKUS_HTTP_SSL_CERTIFICATE_KEY_FILES: /etc/toolgate/server-tls/tls.key
+  QUARKUS_HTTP_SSL_CERTIFICATE_TRUST_STORE_FILE: /etc/toolgate/device-trust/truststore.p12
+  QUARKUS_HTTP_SSL_CERTIFICATE_TRUST_STORE_FILE_TYPE: PKCS12
+  {{- end }}
   TOOLGATE_CONTROL_APPROVAL_PENDING_TTL_MS: {{ printf "%d" (int $g.approval.pendingTtlMs) | quote }}
   TOOLGATE_CONTROL_APPROVAL_MAX_ACTIVE: {{ printf "%d" (int $g.approval.maxActive) | quote }}
   TOOLGATE_CONTROL_APPROVAL_MAX_ACTIVE_PERMITS: {{ printf "%d" (int $g.approval.maxActivePermits) | quote }}
@@ -115,6 +132,11 @@ spec:
           envFrom:
             - configMapRef: {name: {{ $name }}}
           env:
+            {{- if $g.endpoint.enabled }}
+            - name: QUARKUS_HTTP_SSL_CERTIFICATE_TRUST_STORE_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: {{ required "control.endpoint.trustStoreSecret required" $g.endpoint.trustStoreSecret | quote }}, key: password}
+            {{- end }}
             - {name: MP_JWT_VERIFY_PUBLICKEY_LOCATION, value: /etc/toolgate/identity/public.pem}
             {{- range $env, $key := dict "QUARKUS_DATASOURCE_USERNAME" "username" "QUARKUS_DATASOURCE_PASSWORD" "password" "QUARKUS_FLYWAY_USERNAME" "migrationUsername" "QUARKUS_FLYWAY_PASSWORD" "migrationPassword" }}
             - name: {{ $env }}
@@ -136,6 +158,11 @@ spec:
           volumeMounts:
             - {name: identity, mountPath: /etc/toolgate/identity, readOnly: true}
             - {name: tmp, mountPath: /tmp}
+            {{- if $g.endpoint.enabled }}
+            - {name: device-ca, mountPath: /etc/toolgate/device-ca, readOnly: true}
+            - {name: server-tls, mountPath: /etc/toolgate/server-tls, readOnly: true}
+            - {name: device-trust, mountPath: /etc/toolgate/device-trust, readOnly: true}
+            {{- end }}
             {{- if $g.bundle.enabled }}
             - {name: bundle-signing, mountPath: /etc/toolgate/bundle-signing, readOnly: true}
             {{- end }}
@@ -143,6 +170,23 @@ spec:
             - {name: database-ca, mountPath: /etc/toolgate/database, readOnly: true}
             {{- end }}
       volumes:
+        {{- if $g.endpoint.enabled }}
+        - name: device-ca
+          secret:
+            secretName: {{ required "control.endpoint.deviceCaSecret required" $g.endpoint.deviceCaSecret | quote }}
+            defaultMode: 0440
+            items: [{key: private.pem, path: private.pem}, {key: ca.pem, path: ca.pem}]
+        - name: server-tls
+          secret:
+            secretName: {{ required "control.endpoint.tlsSecret required" $g.endpoint.tlsSecret | quote }}
+            defaultMode: 0440
+            items: [{key: tls.crt, path: tls.crt}, {key: tls.key, path: tls.key}]
+        - name: device-trust
+          secret:
+            secretName: {{ required "control.endpoint.trustStoreSecret required" $g.endpoint.trustStoreSecret | quote }}
+            defaultMode: 0440
+            items: [{key: truststore.p12, path: truststore.p12}]
+        {{- end }}
         - name: identity
           secret:
             secretName: {{ required "control.publicKeySecret required" $g.publicKeySecret | quote }}

@@ -3,6 +3,14 @@
 // GENERATED FILE — DO NOT EDIT; python tools/ui/generate.py
 import type { ControlAgent, ControlAgentPage, ControlDevice, ControlDevicePage, ControlPolicy, ControlPolicyPage, ControlTeam, ControlTeamPage, ControlTool, ControlToolPage, ControlUser, ControlUserPage } from '@olo-labs/toolgate-contracts';
 export const operations = {
+  clientDiscovery: { method: 'GET', path: '/.well-known/olo-toolgate-client' },
+  startEndpointEnrollment: { method: 'POST', path: '/api/control/v1/endpoint/enrollments' },
+  pollEndpointEnrollment: { method: 'POST', path: '/api/control/v1/endpoint/enrollments/poll' },
+  reviewEndpointEnrollment: { method: 'GET', path: '/api/control/v1/endpoint/enrollments/review' },
+  decideEndpointEnrollment: { method: 'POST', path: '/api/control/v1/endpoint/enrollments/decision' },
+  endpointCheckIn: { method: 'POST', path: '/api/control/v1/endpoint/check-in' },
+  getEndpointDevice: { method: 'GET', path: '/api/control/v1/endpoint/devices/{id}' },
+  revokeEndpointDevice: { method: 'POST', path: '/api/control/v1/endpoint/devices/{id}/revoke' },
   listApprovals: { method: 'GET', path: '/api/control/v1/approvals' },
   getApproval: { method: 'GET', path: '/api/control/v1/approvals/{id}' },
   decideApproval: { method: 'POST', path: '/api/control/v1/approvals/{id}/decision' },

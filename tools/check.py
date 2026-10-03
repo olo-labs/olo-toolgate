@@ -92,6 +92,8 @@ def helm_checks():
     policy_helm_checks()
     from approval.helm import checks as approval_helm_checks
     approval_helm_checks()
+    from client.helm import checks as endpoint_helm_checks
+    endpoint_helm_checks()
 
 
 def scans():

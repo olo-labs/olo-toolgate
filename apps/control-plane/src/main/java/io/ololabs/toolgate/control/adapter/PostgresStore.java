@@ -49,6 +49,49 @@ public class PostgresStore implements Store {
         private final Connection connection;
         private final String tenant;
         JdbcSession(Connection connection, String tenant) { this.connection = connection; this.tenant = tenant; }
+        private EnrollmentRecord enrollmentRows(java.sql.PreparedStatement statement) throws SQLException {
+            try (statement; var rows=statement.executeQuery()) {
+                return rows.next() ? new EnrollmentRecord(rows.getString(1),rows.getString(2),rows.getString(3),rows.getString(4),
+                    rows.getString(5),rows.getString(6),rows.getString(7),rows.getLong(8),rows.getLong(9)) : null;
+            }
+        }
+        public EnrollmentRecord enrollment(String id) {
+            try { return enrollmentRows(statement("SELECT enrollment_id,code_digest,device_digest,document,csr,user_id,certificate,expires_at,last_poll FROM control_enrollments WHERE tenant_id=? AND enrollment_id=?",id)); }
+            catch (SQLException e) { throw Failure.unavailable(); }
+        }
+        public EnrollmentRecord enrollmentCode(String digest) {
+            try { return enrollmentRows(statement("SELECT enrollment_id,code_digest,device_digest,document,csr,user_id,certificate,expires_at,last_poll FROM control_enrollments WHERE tenant_id=? AND code_digest=?",digest)); }
+            catch (SQLException e) { throw Failure.unavailable(); }
+        }
+        public void saveEnrollment(EnrollmentRecord e) {
+            try (var s=statement("INSERT INTO control_enrollments (tenant_id,enrollment_id,code_digest,device_digest,document,csr,user_id,certificate,expires_at,last_poll) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT (tenant_id,enrollment_id) DO UPDATE SET document=excluded.document,user_id=excluded.user_id,certificate=excluded.certificate,last_poll=excluded.last_poll",
+                e.id(),e.codeDigest(),e.deviceDigest(),e.document(),e.csr(),e.userId(),e.certificate(),e.expiresAt(),e.lastPoll())) { s.executeUpdate(); }
+            catch (SQLException failure) { throw Failure.unavailable(); }
+        }
+        public long pendingEnrollments(long now) {
+            try (var s=statement("SELECT count(*) FROM control_enrollments WHERE tenant_id=? AND expires_at>?",now);var rows=s.executeQuery()) {rows.next();return rows.getLong(1);}
+            catch (SQLException e) { throw Failure.unavailable(); }
+        }
+        public void pruneEnrollments(long now) {
+            try (var s=statement("DELETE FROM control_enrollments WHERE tenant_id=? AND expires_at<=?",now)) {s.executeUpdate();}
+            catch (SQLException e) { throw Failure.unavailable(); }
+        }
+        private EndpointRecord endpointRows(java.sql.PreparedStatement statement) throws SQLException {
+            try (statement;var rows=statement.executeQuery()) {return rows.next()?new EndpointRecord(rows.getString(1),rows.getString(2),rows.getString(3),rows.getString(4),rows.getString(5),rows.getString(6)):null;}
+        }
+        public EndpointRecord endpoint(String id) {
+            try {return endpointRows(statement("SELECT device_id,key_fingerprint,document,csr,report_digest,acknowledgment FROM control_endpoints WHERE tenant_id=? AND device_id=?",id));}
+            catch (SQLException e) { throw Failure.unavailable(); }
+        }
+        public EndpointRecord endpointKey(String fingerprint) {
+            try {return endpointRows(statement("SELECT device_id,key_fingerprint,document,csr,report_digest,acknowledgment FROM control_endpoints WHERE tenant_id=? AND key_fingerprint=?",fingerprint));}
+            catch (SQLException e) { throw Failure.unavailable(); }
+        }
+        public void saveEndpoint(EndpointRecord e) {
+            try (var s=statement("INSERT INTO control_endpoints (tenant_id,device_id,key_fingerprint,document,csr,report_digest,acknowledgment) VALUES (?,?,?,?,?,?,?) ON CONFLICT (tenant_id,device_id) DO UPDATE SET document=excluded.document,report_digest=excluded.report_digest,acknowledgment=excluded.acknowledgment",
+                e.id(),e.fingerprint(),e.document(),e.csr(),e.reportDigest(),e.acknowledgment())) {s.executeUpdate();}
+            catch (SQLException failure) {throw Failure.unavailable();}
+        }
         public long bundleSequence() {
             try (var statement = statement("SELECT COALESCE(max(sequence),0) FROM control_policy_bundles WHERE tenant_id=?"); var rows = statement.executeQuery()) {
                 rows.next(); return rows.getLong(1);

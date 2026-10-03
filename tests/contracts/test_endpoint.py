@@ -1,0 +1,43 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+"""Endpoint trust boundaries remain closed and release targets explicit."""
+import copy
+import json
+import unittest
+from pathlib import Path
+import yaml
+from jsonschema import Draft7Validator, ValidationError
+from test_foundation import schemas_at, validators
+ROOT = Path(__file__).resolve().parents[2]
+
+class EndpointContractsTests(unittest.TestCase):
+    def test_private_device_code_cannot_enter_public_prompt(self):
+        models = validators(schemas_at(ROOT/'packages/contracts/schemas/v1'))
+        fixtures = json.loads((ROOT/'tests/fixtures/contracts/v1/valid.json').read_text())
+        for name in ('EndpointEnrollmentPrompt','EndpointEnrollmentDecision','ClientIpcRequest','DeviceIdentity'):
+            sample = copy.deepcopy(fixtures[name]); sample['deviceCode'] = 'a'*64
+            with self.assertRaises(ValidationError): models[name].validate(sample)
+        sample = copy.deepcopy(fixtures['ClientIpcRequest']); sample['operation'] = 'EXPORT_KEY'
+        with self.assertRaises(ValidationError): models['ClientIpcRequest'].validate(sample)
+
+    def test_endpoint_chart_requires_external_tls_and_ca(self):
+        schema = json.loads((ROOT/'deploy/helm/olo-toolgate/values.schema.json').read_text())
+        values = yaml.safe_load((ROOT/'deploy/helm/olo-toolgate/values.yaml').read_text())
+        Draft7Validator(schema).validate(values)
+        values['control']['endpoint']['enabled'] = True
+        with self.assertRaises(ValidationError): Draft7Validator(schema).validate(values)
+        settings = values['control']['endpoint']
+        settings.update(tenantId='tenant',serverId='server',organization='Organization',deviceCaSecret='device-ca',
+                        tlsSecret='server-tls',trustStoreSecret='device-trust',controlUrl='https://control.example.test',gatewayUrl='https://gateway.example.test')
+        Draft7Validator(schema).validate(values)
+        settings['controlUrl'] = 'http://control.example.test'
+        with self.assertRaises(ValidationError): Draft7Validator(schema).validate(values)
+
+    def test_native_matrix_and_packaging_targets_cover_six_platforms(self):
+        workflow = yaml.safe_load((ROOT/'.github/workflows/client.yml').read_text())
+        matrix = workflow['jobs']['native']['strategy']['matrix']['include']
+        self.assertEqual(6,len(matrix)); self.assertEqual(6,len({row['target'] for row in matrix}))
+        self.assertTrue(all('arm' in row['runner'] or row['target'].startswith('x86_64') or row['runner']=='macos-15' for row in matrix))
+        from importlib.util import spec_from_file_location, module_from_spec
+        spec = spec_from_file_location('client_package',ROOT/'tools/client/package.py'); package = module_from_spec(spec); spec.loader.exec_module(package)
+        self.assertEqual(package.TARGETS,{row['target'] for row in matrix})

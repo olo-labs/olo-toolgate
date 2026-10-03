@@ -1565,6 +1565,97 @@
               "maximum": 10000
             }
           }
+        },
+        "endpoint": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "tenantId",
+            "serverId",
+            "organization",
+            "deviceCaSecret",
+            "tlsSecret",
+            "trustStoreSecret",
+            "controlUrl",
+            "gatewayUrl"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "tenantId": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "serverId": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "organization": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "deviceCaSecret": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "tlsSecret": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "trustStoreSecret": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "controlUrl": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "gatewayUrl": {
+              "type": "string",
+              "maxLength": 2048
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "tenantId": {
+                    "minLength": 1
+                  },
+                  "serverId": {
+                    "minLength": 1
+                  },
+                  "organization": {
+                    "minLength": 1
+                  },
+                  "deviceCaSecret": {
+                    "minLength": 1
+                  },
+                  "tlsSecret": {
+                    "minLength": 1
+                  },
+                  "trustStoreSecret": {
+                    "minLength": 1
+                  },
+                  "controlUrl": {
+                    "pattern": "^https://[^/@?#]+/?$"
+                  },
+                  "gatewayUrl": {
+                    "pattern": "^https://[^/@?#]+/?$"
+                  }
+                }
+              }
+            }
+          ]
         }
       },
       "allOf": [

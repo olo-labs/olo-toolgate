@@ -1,0 +1,8 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+# Official hosted labels added after actionlint 1.7.7's bundled label inventory.
+# https://docs.github.com/en/actions/reference/runners/github-hosted-runners
+self-hosted-runner:
+  labels:
+    - windows-11-arm
+    - macos-15-intel

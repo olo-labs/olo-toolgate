@@ -219,6 +219,22 @@ pub struct BundleRule {
     pub grace_allowed: bool,
     pub effect: BundleEffect,
 }
+/// Endpoint identity foundation wire model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ClientDiscovery {
+    pub protocol_version: u64,
+    pub server_id: String,
+    pub organization: String,
+    pub tenant_id: String,
+    pub control_url: String,
+    pub gateway_url: String,
+    pub verification_uri: String,
+    pub minimum_client_version: String,
+    pub issued_at_unix_ms: u64,
+    pub expires_at_unix_ms: u64,
+    pub issuer_certificate_pem: String,
+}
 /// Device identity and capabilities. Enrollment credentials travel separately.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -226,6 +242,59 @@ pub struct ClientEnrollmentRequest {
     pub device_id: String,
     pub client_version: String,
     pub capabilities: Vec<String>,
+}
+/// Endpoint identity foundation wire model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ClientHealth {
+    pub state: EndpointState,
+    pub ready: bool,
+    pub uptime_seconds: u64,
+    pub successful_check_ins: u64,
+    pub failed_check_ins: u64,
+    pub report_sequence: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_success_unix_ms: Option<u64>,
+}
+/// Canonical ClientIpcOperation wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ClientIpcOperation {
+    #[serde(rename = "HEALTH")]
+    Health,
+    #[serde(rename = "ENROLL")]
+    Enroll,
+    #[serde(rename = "CHECK_IN")]
+    CheckIn,
+}
+/// Endpoint identity foundation wire model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ClientIpcRequest {
+    pub protocol_version: u64,
+    pub request_id: String,
+    pub operation: ClientIpcOperation,
+}
+/// Endpoint identity foundation wire model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ClientIpcResponse {
+    pub request_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub health: Option<ClientHealth>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub challenge: Option<EndpointEnrollmentPrompt>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<ErrorCode>,
+}
+/// Canonical ClientPlatform wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ClientPlatform {
+    #[serde(rename = "WINDOWS")]
+    Windows,
+    #[serde(rename = "LINUX")]
+    Linux,
+    #[serde(rename = "MACOS")]
+    Macos,
 }
 /// Batched report of device inventory and applied desired revision.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -501,6 +570,160 @@ pub struct DesiredState {
     pub revision: u64,
     pub assignments: Vec<DeploymentAssignment>,
 }
+/// Endpoint identity foundation wire model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct DeviceIdentity {
+    pub device_id: String,
+    pub tenant_id: String,
+    pub user_id: String,
+    pub server_id: String,
+    pub certificate_pem: String,
+    pub issuer_certificate_pem: String,
+    pub expires_at_unix_ms: u64,
+}
+/// Endpoint identity foundation wire model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EndpointCheckIn {
+    pub sequence: u64,
+    pub report: ClientReport,
+}
+/// Endpoint identity foundation wire model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EndpointCheckInAck {
+    pub device_id: String,
+    pub sequence: u64,
+    pub server_time_unix_ms: u64,
+    pub next_interval_seconds: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub identity: Option<DeviceIdentity>,
+}
+/// Endpoint identity foundation wire model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EndpointDeviceRecord {
+    pub device_id: String,
+    pub tenant_id: String,
+    pub user_id: String,
+    pub key_fingerprint: String,
+    pub state: EndpointState,
+    pub revision: u64,
+    pub last_seen_unix_ms: u64,
+    pub report_sequence: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub report: Option<ClientReport>,
+}
+/// Endpoint identity foundation wire model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EndpointEnrollmentChallenge {
+    pub enrollment_id: String,
+    pub device_code: String,
+    pub user_code: String,
+    pub verification_uri: String,
+    pub expires_at_unix_ms: u64,
+    pub poll_interval_seconds: u64,
+}
+/// Endpoint identity foundation wire model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EndpointEnrollmentDecision {
+    pub user_code: String,
+    pub key_fingerprint: String,
+    pub choice: EnrollmentChoice,
+}
+/// Endpoint identity foundation wire model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EndpointEnrollmentPoll {
+    pub enrollment_id: String,
+    pub device_code: String,
+}
+/// Endpoint identity foundation wire model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EndpointEnrollmentPrompt {
+    pub enrollment_id: String,
+    pub user_code: String,
+    pub verification_uri: String,
+    pub expires_at_unix_ms: u64,
+    pub poll_interval_seconds: u64,
+    pub key_fingerprint: String,
+}
+/// Endpoint identity foundation wire model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EndpointEnrollmentResult {
+    pub state: EnrollmentState,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub identity: Option<DeviceIdentity>,
+}
+/// Endpoint identity foundation wire model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EndpointEnrollmentReview {
+    pub enrollment_id: String,
+    pub user_code: String,
+    pub device_id: String,
+    pub platform: ClientPlatform,
+    pub key_fingerprint: String,
+    pub state: EnrollmentState,
+    pub expires_at_unix_ms: u64,
+}
+/// Endpoint identity foundation wire model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EndpointEnrollmentStart {
+    pub device_id: String,
+    pub client_version: String,
+    pub platform: ClientPlatform,
+    pub csr_pem: String,
+    pub capabilities: Vec<String>,
+}
+/// Endpoint identity foundation wire model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EndpointRevokeRequest {
+    pub expected_revision: u64,
+}
+/// Canonical EndpointState wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EndpointState {
+    #[serde(rename = "UNENROLLED")]
+    Unenrolled,
+    #[serde(rename = "PENDING")]
+    Pending,
+    #[serde(rename = "ACTIVE")]
+    Active,
+    #[serde(rename = "OFFLINE")]
+    Offline,
+    #[serde(rename = "REVOKED")]
+    Revoked,
+}
+/// Canonical EnrollmentChoice wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnrollmentChoice {
+    #[serde(rename = "APPROVE")]
+    Approve,
+    #[serde(rename = "DENY")]
+    Deny,
+}
+/// Canonical EnrollmentState wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnrollmentState {
+    #[serde(rename = "PENDING")]
+    Pending,
+    #[serde(rename = "APPROVED")]
+    Approved,
+    #[serde(rename = "DENIED")]
+    Denied,
+    #[serde(rename = "EXPIRED")]
+    Expired,
+    #[serde(rename = "CONSUMED")]
+    Consumed,
+}
 /// Canonical ErrorCode wire values.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ErrorCode {
@@ -684,6 +907,13 @@ pub struct RuntimeAuditEvent {
     pub decision: PolicyDecision,
     pub trace_id: String,
 }
+/// Endpoint identity foundation wire model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SignedClientDiscovery {
+    pub payload: String,
+    pub signature: String,
+}
 /// RS256 compact JWS; structural validation alone does not establish trust.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -719,7 +949,7 @@ impl ContractSet {
     pub fn current() -> Self {
         Self {
             name: "olo-toolgate-contracts".into(),
-            version: "0.5.0-dev".into(),
+            version: "0.6.0-dev".into(),
         }
     }
 }
@@ -748,6 +978,10 @@ pub const CANONICAL_SCHEMAS: &[(&str, &str)] = &[
     (
         "https://schemas.ololabs.io/toolgate/v1/deployment.schema.json",
         include_str!("../schemas/v1/deployment.schema.json"),
+    ),
+    (
+        "https://schemas.ololabs.io/toolgate/v1/endpoint.schema.json",
+        include_str!("../schemas/v1/endpoint.schema.json"),
     ),
     (
         "https://schemas.ololabs.io/toolgate/v1/error.schema.json",

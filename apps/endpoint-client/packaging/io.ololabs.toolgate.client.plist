@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0 -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>Label</key><string>io.ololabs.toolgate.client</string>
+<key>ProgramArguments</key><array><string>/usr/local/lib/olo-toolgate/olo-toolgate-client</string><string>service</string></array>
+<key>UserName</key><string>root</string>
+<key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
+<key>Umask</key><integer>63</integer>
+</dict></plist>

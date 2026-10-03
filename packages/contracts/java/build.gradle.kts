@@ -29,6 +29,10 @@ tasks.withType<Jar>().configureEach {
 }
 tasks.processResources {
     from(rootProject.file("packages/contracts/schemas")) { into("io/ololabs/toolgate/contracts/schemas") }
+    from(rootProject.file("packages/contracts/VERSION")) {
+        into("META-INF")
+        rename { "toolgate-contracts.version" }
+    }
 }
 
 java {

@@ -175,8 +175,8 @@ Run `make check`; see [foundation workflow](docs/development/foundation.md).
 Module 01 adds closed runtime authorization/audit types and embeds canonical
 schemas in the Rust package for offline boundary validation. Frozen v1 definitions
 remain unchanged. Module 02 adds Control directory/snapshot/import/audit contracts
-and canonical Control OpenAPI. Current product/contracts versions are 0.5.0-dev;
-68 models/enums round-trip through all four language packages, with 13 schema groups.
+and canonical Control OpenAPI. Current product/contracts versions are 0.6.0-dev;
+90 models/enums round-trip through all four language packages, with 14 schema groups.
 
 Module 04 adds `bundle.schema.json`: protected header, signed payload, compiled
 rules, publish request and JWS envelope. Exact signed bytes and an internal policy

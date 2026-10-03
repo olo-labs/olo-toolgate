@@ -234,3 +234,5 @@ A `BLOCKED` requirement means the module is not DONE.
   Real PostgreSQL/production signed-permit E2E, browser accessibility, local Maven,
   scans/SBOMs and two-replica upgrade/rollback pass. Protected release compatibility
   gates include approval behavior; remote publication remains CI only.
+
+- Module 06: [coverage plan](modules/06-coverage.md) and [verification report](modules/06-completion.md). In progress: 101 BLOCKED and 3 NOT_APPLICABLE; commit records current work without claiming definition-of-done completion.

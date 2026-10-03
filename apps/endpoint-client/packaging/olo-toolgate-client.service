@@ -1,0 +1,27 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+[Unit]
+Description=OLO ToolGate protected endpoint identity service
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/lib/olo-toolgate/olo-toolgate-client service
+Restart=on-failure
+RestartSec=10
+RuntimeDirectory=olo-toolgate
+RuntimeDirectoryMode=0755
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/olo-toolgate /run/olo-toolgate
+PrivateTmp=true
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+MemoryMax=256M
+TasksMax=64
+TimeoutStopSec=20
+[Install]
+WantedBy=multi-user.target

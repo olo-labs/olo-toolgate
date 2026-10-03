@@ -4,6 +4,15 @@ All notable project changes should be documented here.
 
 The project follows semantic versioning once stable versioning begins.
 
+## 0.6.0-dev — Module 06 in progress
+
+- Add canonical endpoint enrollment, discovery, identity, check-in and IPC models.
+- Add Rust protected-service/CLI foundations, local key custody, bounded OS IPC,
+  ordered durable reports and fail-closed offline/revoked health.
+- Add Control enrollment/certificate issuer, browser confirmation, mTLS check-in,
+  revocation, audit and PostgreSQL migration V5; add native build/package skeleton.
+- Module 06 completion gates remain open; see its verification report.
+
 ## 0.5.0-dev — Module 05
 
 - Add exact-operation ASK review with dedicated approver identity, one-time and

@@ -1,0 +1,616 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ololabs.io/toolgate/v1/endpoint.schema.json",
+  "$comment": "Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0",
+  "title": "Endpoint identity foundation",
+  "$ref": "#/$defs/ClientHealth",
+  "$defs": {
+    "ClientPlatform": {
+      "type": "string",
+      "enum": [
+        "WINDOWS",
+        "LINUX",
+        "MACOS"
+      ]
+    },
+    "EnrollmentState": {
+      "type": "string",
+      "enum": [
+        "PENDING",
+        "APPROVED",
+        "DENIED",
+        "EXPIRED",
+        "CONSUMED"
+      ]
+    },
+    "EndpointState": {
+      "type": "string",
+      "enum": [
+        "UNENROLLED",
+        "PENDING",
+        "ACTIVE",
+        "OFFLINE",
+        "REVOKED"
+      ]
+    },
+    "EnrollmentChoice": {
+      "type": "string",
+      "enum": [
+        "APPROVE",
+        "DENY"
+      ]
+    },
+    "ClientDiscovery": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "protocolVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "serverId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "organization": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "tenantId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "controlUrl": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 2048,
+          "pattern": "^https://[^\\s]+$"
+        },
+        "gatewayUrl": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 2048,
+          "pattern": "^https://[^\\s]+$"
+        },
+        "verificationUri": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 2048,
+          "pattern": "^https://[^\\s]+$"
+        },
+        "minimumClientVersion": {
+          "$ref": "identifiers.schema.json#/$defs/SemanticVersion"
+        },
+        "issuedAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "issuerCertificatePem": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        }
+      },
+      "required": [
+        "protocolVersion",
+        "serverId",
+        "organization",
+        "tenantId",
+        "controlUrl",
+        "gatewayUrl",
+        "verificationUri",
+        "minimumClientVersion",
+        "issuedAtUnixMs",
+        "expiresAtUnixMs",
+        "issuerCertificatePem"
+      ]
+    },
+    "SignedClientDiscovery": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "payload": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32768,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "signature": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      },
+      "required": [
+        "payload",
+        "signature"
+      ]
+    },
+    "EndpointEnrollmentStart": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "clientVersion": {
+          "$ref": "identifiers.schema.json#/$defs/SemanticVersion"
+        },
+        "platform": {
+          "$ref": "endpoint.schema.json#/$defs/ClientPlatform"
+        },
+        "csrPem": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "capabilities": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          }
+        }
+      },
+      "required": [
+        "deviceId",
+        "clientVersion",
+        "platform",
+        "csrPem",
+        "capabilities"
+      ]
+    },
+    "EndpointEnrollmentChallenge": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "enrollmentId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "deviceCode": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "userCode": {
+          "type": "string",
+          "pattern": "^[A-F0-9]{16}$"
+        },
+        "verificationUri": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 2048,
+          "pattern": "^https://[^\\s]+$"
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "pollIntervalSeconds": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 30
+        }
+      },
+      "required": [
+        "enrollmentId",
+        "deviceCode",
+        "userCode",
+        "verificationUri",
+        "expiresAtUnixMs",
+        "pollIntervalSeconds"
+      ]
+    },
+    "EndpointEnrollmentPoll": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "enrollmentId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "deviceCode": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "enrollmentId",
+        "deviceCode"
+      ]
+    },
+    "EndpointEnrollmentReview": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "enrollmentId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "userCode": {
+          "type": "string",
+          "pattern": "^[A-F0-9]{16}$"
+        },
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "platform": {
+          "$ref": "endpoint.schema.json#/$defs/ClientPlatform"
+        },
+        "keyFingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "state": {
+          "$ref": "endpoint.schema.json#/$defs/EnrollmentState"
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "enrollmentId",
+        "userCode",
+        "deviceId",
+        "platform",
+        "keyFingerprint",
+        "state",
+        "expiresAtUnixMs"
+      ]
+    },
+    "EndpointEnrollmentDecision": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "userCode": {
+          "type": "string",
+          "pattern": "^[A-F0-9]{16}$"
+        },
+        "keyFingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "choice": {
+          "$ref": "endpoint.schema.json#/$defs/EnrollmentChoice"
+        }
+      },
+      "required": [
+        "userCode",
+        "keyFingerprint",
+        "choice"
+      ]
+    },
+    "DeviceIdentity": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "tenantId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "userId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "serverId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "certificatePem": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "issuerCertificatePem": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "deviceId",
+        "tenantId",
+        "userId",
+        "serverId",
+        "certificatePem",
+        "issuerCertificatePem",
+        "expiresAtUnixMs"
+      ]
+    },
+    "EndpointEnrollmentResult": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "$ref": "endpoint.schema.json#/$defs/EnrollmentState"
+        },
+        "identity": {
+          "$ref": "endpoint.schema.json#/$defs/DeviceIdentity"
+        }
+      },
+      "required": [
+        "state"
+      ]
+    },
+    "EndpointCheckIn": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "report": {
+          "$ref": "client.schema.json#/$defs/ClientReport"
+        }
+      },
+      "required": [
+        "sequence",
+        "report"
+      ]
+    },
+    "EndpointCheckInAck": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "serverTimeUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "nextIntervalSeconds": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 3600
+        },
+        "identity": {
+          "$ref": "endpoint.schema.json#/$defs/DeviceIdentity"
+        }
+      },
+      "required": [
+        "deviceId",
+        "sequence",
+        "serverTimeUnixMs",
+        "nextIntervalSeconds"
+      ]
+    },
+    "EndpointDeviceRecord": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "tenantId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "userId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "keyFingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "state": {
+          "$ref": "endpoint.schema.json#/$defs/EndpointState"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "lastSeenUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "reportSequence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "report": {
+          "$ref": "client.schema.json#/$defs/ClientReport"
+        }
+      },
+      "required": [
+        "deviceId",
+        "tenantId",
+        "userId",
+        "keyFingerprint",
+        "state",
+        "revision",
+        "lastSeenUnixMs",
+        "reportSequence"
+      ]
+    },
+    "EndpointRevokeRequest": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "expectedRevision"
+      ]
+    },
+    "ClientHealth": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "$ref": "endpoint.schema.json#/$defs/EndpointState"
+        },
+        "ready": {
+          "type": "boolean"
+        },
+        "uptimeSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "successfulCheckIns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "failedCheckIns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "reportSequence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "lastSuccessUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "state",
+        "ready",
+        "uptimeSeconds",
+        "successfulCheckIns",
+        "failedCheckIns",
+        "reportSequence"
+      ]
+    },
+    "ClientIpcOperation": {
+      "type": "string",
+      "enum": [
+        "HEALTH",
+        "ENROLL",
+        "CHECK_IN"
+      ]
+    },
+    "ClientIpcRequest": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "protocolVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "requestId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "operation": {
+          "$ref": "endpoint.schema.json#/$defs/ClientIpcOperation"
+        }
+      },
+      "required": [
+        "protocolVersion",
+        "requestId",
+        "operation"
+      ]
+    },
+    "ClientIpcResponse": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "health": {
+          "$ref": "endpoint.schema.json#/$defs/ClientHealth"
+        },
+        "challenge": {
+          "$ref": "endpoint.schema.json#/$defs/EndpointEnrollmentPrompt"
+        },
+        "error": {
+          "$ref": "error.schema.json#/$defs/ErrorCode"
+        }
+      },
+      "required": [
+        "requestId"
+      ]
+    },
+    "EndpointEnrollmentPrompt": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "enrollmentId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "userCode": {
+          "type": "string",
+          "pattern": "^[A-F0-9]{16}$"
+        },
+        "verificationUri": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 2048,
+          "pattern": "^https://[^\\s]+$"
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "pollIntervalSeconds": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 30
+        },
+        "keyFingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "enrollmentId",
+        "userCode",
+        "verificationUri",
+        "expiresAtUnixMs",
+        "pollIntervalSeconds",
+        "keyFingerprint"
+      ]
+    }
+  }
+}

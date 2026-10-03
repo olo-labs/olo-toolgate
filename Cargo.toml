@@ -5,18 +5,19 @@ resolver = "2"
 members = [
   "packages/contracts/rust",
   "apps/gateway",
+  "apps/endpoint-client",
 ]
 
 [workspace.package]
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/olo-labs/olo-toolgate"
-version = "0.5.0-dev"
+version = "0.6.0-dev"
 
 [workspace.dependencies]
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
-olo-toolgate-contracts = { path = "packages/contracts/rust", version = "0.5.0-dev" }
+olo-toolgate-contracts = { path = "packages/contracts/rust", version = "0.6.0-dev" }
 axum = { version = "0.8.9", default-features = false, features = ["http1", "json", "tokio"] }
 tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time", "io-util", "test-util", "fs"] }
 jsonschema = { version = "0.58.4", default-features = false }
@@ -31,3 +32,8 @@ hyper-util = { version = "0.1.21", features = ["tokio", "service"] }
 ring = "0.17.14"
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no-provider"] }
 rustls = { version = "0.23.45", default-features = false, features = ["std", "tls12", "ring"] }
+rcgen = { version = "0.14.10", default-features = false, features = ["crypto", "pem", "ring"] }
+x509-parser = { version = "0.18.1", features = ["verify"] }
+libc = "0.2.183"
+windows-service = "0.8.1"
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Cryptography", "Win32_Security_Authorization", "Win32_System_Threading", "Win32_System_Memory", "Win32_System_Pipes", "Win32_UI_Shell"] }

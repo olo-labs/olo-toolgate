@@ -34,7 +34,7 @@ class ControlAssetsTests(unittest.TestCase):
             output=Path(folder);version=(ROOT/'VERSION').read_text().strip()
             metadata=json.loads((output/'compatibility.json').read_text())
             self.assertEqual(version,metadata['runtimeComponents']['control'])
-            self.assertEqual(4,metadata['controlDatabase']['flywaySchema'])
+            self.assertEqual(5,metadata['controlDatabase']['flywaySchema'])
             self.assertEqual('ghcr.io/olo-labs/olo-toolgate-control:'+version,metadata['controlImage'])
             with tarfile.open(output/('olo-toolgate-contracts-'+version+'.tar.gz')) as archive:
                 self.assertIn('schemas/v1/control.schema.json',archive.getnames())

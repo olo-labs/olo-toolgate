@@ -56,12 +56,19 @@ def maven_license(group, artifact, version, cache):
     if coordinate in cache: return cache[coordinate]
     url = f'https://repo.maven.apache.org/maven2/{group.replace(".","/")}/{artifact}/{version}/{artifact}-{version}.pom'
     with urllib.request.urlopen(url, timeout=30) as response: pom = ET.fromstring(response.read())
-    ns = {'m':'http://maven.apache.org/POM/4.0.0'}
+    ns = {'m':'http://maven.apache.org/POM/4.0.0' if pom.tag.startswith('{') else ''}
     names = [node.text or '' for node in pom.findall('m:licenses/m:license/m:name', ns)]
     result = []
     for name in names:
         lowered = name.lower()
         if name in ALLOWED: result.append(name)
+        elif group == 'org.bouncycastle' and name == 'Bouncy Castle Licence':
+            # Upstream LICENSE.html explicitly identifies MIT; preserve upstream notices.
+            # https://github.com/bcgit/bc-java/blob/main/LICENSE.html
+            urls = [node.text or '' for node in pom.findall('m:licenses/m:license/m:url', ns)]
+            if 'https://www.bouncycastle.org/licence.html' not in urls:
+                raise ValueError('Bouncy Castle license URL requires review: '+coordinate)
+            result.append('MIT')
         elif 'apache' in lowered and '2' in lowered: result.append('Apache-2.0')
         elif ('eclipse public' in lowered or lowered.startswith('epl')) and '2' in lowered: result.append('EPL-2.0')
         elif 'eclipse public' in lowered and '1' in lowered: result.append('EPL-1.0')

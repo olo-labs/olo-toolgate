@@ -354,6 +354,10 @@ forward rollback and external key rotation. Run `make policy-e2e` for the real
 PostgreSQL/Control/Gateway flow and `make benchmark` for signed evaluation evidence.
 Publication requires a reviewed directory and dedicated external signing key.
 
+Module 06 is in progress: [endpoint client documentation](apps/endpoint-client/README.md)
+describes native enrollment, key custody, IPC and check-in. Its remaining verification
+gates are recorded in [the Module 06 report](docs/codex/modules/06-completion.md).
+
 Module 05 adds [ASK approvals](docs/control-plane/approvals.md): a dedicated human
 approval queue, one-time/temporary/deny decisions, durable expiry and race safety,
 Gateway-signed exact-operation permits and atomic single-use consumption. Control

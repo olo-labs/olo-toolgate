@@ -1,0 +1,355 @@
+// Copyright 2026 OLO Labs
+// SPDX-License-Identifier: Apache-2.0
+//! Durable identity/check-in state machine. Only this protected process owns network credentials.
+use crate::{
+    config::Config,
+    identity::{verify_discovery, verify_identity, DeviceKey},
+    storage::{ProtectedStore, ServiceLease},
+    transport::ControlPort,
+    Failure, Result,
+};
+use olo_toolgate_contracts::*;
+use serde::{Deserialize, Serialize};
+use std::{sync::Arc, time::Instant};
+
+#[derive(Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct Journal {
+    manifest: Option<ClientDiscovery>,
+    challenge: Option<EndpointEnrollmentChallenge>,
+    identity: Option<DeviceIdentity>,
+    sequence: u64,
+    last_success: Option<u64>,
+    pending_report: Option<EndpointCheckIn>,
+    revoked: bool,
+    #[serde(default)]
+    observed_time: u64,
+}
+/// One instance per machine, protected by OS lease and serialized command handling.
+pub struct ClientService {
+    store: ProtectedStore,
+    _lease: ServiceLease,
+    key: Arc<DeviceKey>,
+    control: Arc<dyn ControlPort>,
+    config: Config,
+    journal: Journal,
+    state: EndpointState,
+    started: Instant,
+    successes: u64,
+    failures: u64,
+    observed: u64,
+    boot_time: u64,
+}
+impl ClientService {
+    pub fn open(
+        config: Config,
+        store: ProtectedStore,
+        key: Arc<DeviceKey>,
+        control: Arc<dyn ControlPort>,
+    ) -> Result<Self> {
+        config.validate()?;
+        let lease = store.lease()?;
+        let journal: Journal = match store.read("journal.json")? {
+            Some(bytes) => serde_json::from_slice(&bytes).map_err(|_| Failure::Validation)?,
+            None => Journal::default(),
+        };
+        let observed = crate::now().max(journal.observed_time);
+        if let Some(manifest) = &journal.manifest {
+            if crate::config::origin(&manifest.control_url)?
+                != crate::config::origin(&config.server_url)?
+            {
+                return Err(Failure::Unauthorized);
+            }
+        }
+        if let (Some(identity), Some(manifest)) = (&journal.identity, &journal.manifest) {
+            verify_identity(
+                identity,
+                manifest,
+                &key,
+                &format!("device-{}", &key.fingerprint()[..32]),
+                observed.min(identity.expires_at_unix_ms.saturating_sub(1000)),
+            )?;
+        }
+        if (journal.identity.is_some() || journal.challenge.is_some()) && journal.manifest.is_none()
+        {
+            return Err(Failure::Validation);
+        }
+        let state = if journal.revoked {
+            EndpointState::Revoked
+        } else if journal.identity.is_some() {
+            EndpointState::Offline
+        } else if journal.challenge.is_some() {
+            EndpointState::Pending
+        } else {
+            EndpointState::Unenrolled
+        };
+        Ok(Self {
+            store,
+            _lease: lease,
+            key,
+            control,
+            config,
+            journal,
+            state,
+            started: Instant::now(),
+            successes: 0,
+            failures: 0,
+            observed,
+            boot_time: observed,
+        })
+    }
+    fn clock(&mut self) -> Result<u64> {
+        let wall = crate::now();
+        if wall.saturating_add(1000) < self.observed {
+            return Err(Failure::Expired);
+        }
+        let now = wall.max(
+            self.boot_time.saturating_add(
+                self.started
+                    .elapsed()
+                    .as_millis()
+                    .try_into()
+                    .unwrap_or(u64::MAX),
+            ),
+        );
+        self.observed = now;
+        self.journal.observed_time = now;
+        self.save()?;
+        Ok(now)
+    }
+    fn save(&self) -> Result<()> {
+        self.store.write(
+            "journal.json",
+            &serde_json::to_vec(&self.journal).map_err(|_| Failure::Validation)?,
+        )
+    }
+    fn device(&self) -> String {
+        format!("device-{}", &self.key.fingerprint()[..32])
+    }
+    pub fn health(&self) -> ClientHealth {
+        let now = crate::now().max(
+            self.boot_time.saturating_add(
+                self.started
+                    .elapsed()
+                    .as_millis()
+                    .try_into()
+                    .unwrap_or(u64::MAX),
+            ),
+        );
+        let fresh = now >= self.observed
+            && self
+                .journal
+                .identity
+                .as_ref()
+                .is_some_and(|i| i.expires_at_unix_ms > now)
+            && self
+                .journal
+                .last_success
+                .is_some_and(|t| now.saturating_sub(t) <= 120000);
+        ClientHealth {
+            state: if self.state == EndpointState::Active && !fresh {
+                EndpointState::Offline
+            } else {
+                self.state.clone()
+            },
+            ready: self.state == EndpointState::Active && fresh,
+            uptime_seconds: self.started.elapsed().as_secs(),
+            successful_check_ins: self.successes,
+            failed_check_ins: self.failures,
+            report_sequence: self.journal.sequence,
+            last_success_unix_ms: self.journal.last_success,
+        }
+    }
+    fn prompt(&self, challenge: &EndpointEnrollmentChallenge) -> EndpointEnrollmentPrompt {
+        EndpointEnrollmentPrompt {
+            enrollment_id: challenge.enrollment_id.clone(),
+            user_code: challenge.user_code.clone(),
+            verification_uri: challenge.verification_uri.clone(),
+            expires_at_unix_ms: challenge.expires_at_unix_ms,
+            poll_interval_seconds: challenge.poll_interval_seconds,
+            key_fingerprint: self.key.fingerprint(),
+        }
+    }
+    pub async fn enroll(&mut self) -> Result<EndpointEnrollmentPrompt> {
+        if self.journal.revoked || self.journal.identity.is_some() {
+            return Err(Failure::Conflict);
+        }
+        let now = self.clock()?;
+        if let Some(challenge) = &self.journal.challenge {
+            if challenge.expires_at_unix_ms > now {
+                return Ok(self.prompt(challenge));
+            }
+        }
+        let envelope = self.control.discovery().await?;
+        let pin = self
+            .journal
+            .manifest
+            .as_ref()
+            .map(|m| {
+                crate::identity::certificate_der(&m.issuer_certificate_pem)
+                    .map(|b| crate::digest(&b))
+            })
+            .transpose()?;
+        let manifest = verify_discovery(
+            &envelope,
+            &crate::config::origin(&self.config.server_url)?,
+            now,
+            pin.as_deref(),
+        )?;
+        let request = EndpointEnrollmentStart {
+            device_id: self.device(),
+            client_version: env!("CARGO_PKG_VERSION").into(),
+            platform: crate::platform::current(),
+            csr_pem: self.key.csr(&self.device())?,
+            capabilities: vec!["endpoint.identity.v1".into(), "endpoint.check-in.v1".into()],
+        };
+        let challenge = self.control.start(request).await?;
+        if challenge.verification_uri != manifest.verification_uri
+            || challenge.expires_at_unix_ms <= now
+            || challenge.expires_at_unix_ms - now > 600000
+        {
+            return Err(Failure::Unauthorized);
+        }
+        self.journal.manifest = Some(manifest);
+        self.journal.challenge = Some(challenge.clone());
+        self.state = EndpointState::Pending;
+        self.save()?;
+        Ok(self.prompt(&challenge))
+    }
+    pub async fn tick(&mut self) -> Result<()> {
+        let result = self.tick_inner().await;
+        if let Err(failure) = result {
+            self.failures = self.failures.saturating_add(1);
+            if failure == Failure::Revoked {
+                self.state = EndpointState::Revoked;
+                self.journal.revoked = true;
+                self.save()?;
+            } else if self.journal.identity.is_some() {
+                self.state = EndpointState::Offline;
+            }
+            tracing::warn!(event="client_check_in",result="rejected",error=?failure);
+        }
+        result
+    }
+    async fn tick_inner(&mut self) -> Result<()> {
+        let now = self.clock()?;
+        if self.journal.revoked {
+            return Err(Failure::Revoked);
+        }
+        if self.journal.identity.is_none() {
+            let Some(challenge) = &self.journal.challenge else {
+                return Ok(());
+            };
+            if challenge.expires_at_unix_ms <= now {
+                self.journal.challenge = None;
+                self.state = EndpointState::Unenrolled;
+                self.save()?;
+                return Err(Failure::Expired);
+            }
+            let result = self
+                .control
+                .poll(EndpointEnrollmentPoll {
+                    enrollment_id: challenge.enrollment_id.clone(),
+                    device_code: challenge.device_code.clone(),
+                })
+                .await?;
+            match result.state {
+                EnrollmentState::Consumed => {
+                    let identity = result.identity.ok_or(Failure::Unauthorized)?;
+                    let manifest = self
+                        .journal
+                        .manifest
+                        .as_ref()
+                        .ok_or(Failure::Unauthorized)?;
+                    verify_identity(&identity, manifest, &self.key, &self.device(), now)?;
+                    self.journal.identity = Some(identity);
+                    self.journal.challenge = None;
+                    self.save()?;
+                }
+                EnrollmentState::Pending => return Ok(()),
+                EnrollmentState::Denied | EnrollmentState::Expired => {
+                    self.journal.challenge = None;
+                    self.state = EndpointState::Unenrolled;
+                    self.save()?;
+                    return Err(Failure::Unauthorized);
+                }
+                _ => return Err(Failure::Unauthorized),
+            }
+        }
+        let identity = self.journal.identity.clone().ok_or(Failure::Unauthorized)?;
+        if identity.expires_at_unix_ms <= now {
+            return Err(Failure::Expired);
+        }
+        if self.journal.pending_report.is_none()
+            && self
+                .journal
+                .last_success
+                .is_some_and(|last| now.saturating_sub(last) < 10000)
+        {
+            return Ok(());
+        }
+        if self.journal.pending_report.is_none() {
+            let request = EndpointCheckIn {
+                sequence: self
+                    .journal
+                    .sequence
+                    .checked_add(1)
+                    .ok_or(Failure::Conflict)?,
+                report: ClientReport {
+                    device_id: self.device(),
+                    client_version: env!("CARGO_PKG_VERSION").into(),
+                    applied_revision: 0,
+                    packages: vec![],
+                },
+            };
+            self.journal.pending_report = Some(request);
+            self.save()?;
+        }
+        let request = self
+            .journal
+            .pending_report
+            .clone()
+            .ok_or(Failure::Conflict)?;
+        let ack = self.control.check_in(identity, request.clone()).await?;
+        if ack.device_id != self.device()
+            || ack.sequence != request.sequence
+            || ack.server_time_unix_ms.abs_diff(now) > 300000
+        {
+            return Err(Failure::Unauthorized);
+        }
+        if let Some(identity) = ack.identity {
+            verify_identity(
+                &identity,
+                self.journal
+                    .manifest
+                    .as_ref()
+                    .ok_or(Failure::Unauthorized)?,
+                &self.key,
+                &self.device(),
+                now,
+            )?;
+            self.journal.identity = Some(identity);
+        }
+        self.journal.sequence = request.sequence;
+        self.journal.pending_report = None;
+        self.journal.last_success = Some(now);
+        self.save()?;
+        self.successes = self.successes.saturating_add(1);
+        self.state = EndpointState::Active;
+        tracing::info!(
+            event = "client_check_in",
+            result = "accepted",
+            sequence = self.journal.sequence
+        );
+        Ok(())
+    }
+    pub fn next_delay_seconds(&self) -> u64 {
+        if self.journal.challenge.is_some() {
+            return 5;
+        }
+        if self.state == EndpointState::Active {
+            return 60;
+        }
+        (5_u64.saturating_mul(1_u64 << self.failures.min(6))).min(300)
+    }
+}

@@ -3,12 +3,257 @@
 openapi: 3.1.0
 info:
   title: OLO ToolGate Control Plane API
-  version: 0.5.0-dev
+  version: 0.6.0-dev
   description: Tenant-scoped administration and explicit signed policy publication. Directory policies become runtime
     configuration only after publication; bundle trust is separate from execution permits.
 security:
 - adminAccessToken: []
 paths:
+  /.well-known/olo-toolgate-client:
+    get:
+      operationId: clientDiscovery
+      description: Direct HTTPS. Detached RS256 signature over domain-prefixed exact
+        payload bytes. TLS origin bootstraps dedicated device CA.
+      responses:
+        '200':
+          description: Success; no-store
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/endpoint.schema.json#/$defs/SignedClientDiscovery
+        '400':
+          description: Invalid bounded input
+        '401':
+          description: Direct TLS/identity required
+        '403':
+          description: Wrong tenant/user, inactive or revoked device
+        '409':
+          description: State, replay or polling conflict
+        '503':
+          description: Dependency unavailable
+      security: []
+  /api/control/v1/endpoint/enrollments:
+    post:
+      operationId: startEndpointEnrollment
+      description: Anonymous direct HTTPS, verified P-256 CSR, bounded pending quota.
+        This challenge creation is not a grant and may be repeated after a lost response.
+      responses:
+        '200':
+          description: Success; no-store
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/endpoint.schema.json#/$defs/EndpointEnrollmentChallenge
+        '400':
+          description: Invalid bounded input
+        '401':
+          description: Direct TLS/identity required
+        '403':
+          description: Wrong tenant/user, inactive or revoked device
+        '409':
+          description: State, replay or polling conflict
+        '503':
+          description: Dependency unavailable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/endpoint.schema.json#/$defs/EndpointEnrollmentStart
+      security: []
+  /api/control/v1/endpoint/enrollments/poll:
+    post:
+      operationId: pollEndpointEnrollment
+      description: Device code proves possession; minimum five-second poll interval,
+        ten-minute expiry. Exact certificate response may be recovered until expiry.
+      responses:
+        '200':
+          description: Success; no-store
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/endpoint.schema.json#/$defs/EndpointEnrollmentResult
+        '400':
+          description: Invalid bounded input
+        '401':
+          description: Direct TLS/identity required
+        '403':
+          description: Wrong tenant/user, inactive or revoked device
+        '409':
+          description: State, replay or polling conflict
+        '503':
+          description: Dependency unavailable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/endpoint.schema.json#/$defs/EndpointEnrollmentPoll
+      security: []
+  /api/control/v1/endpoint/enrollments/review:
+    get:
+      operationId: reviewEndpointEnrollment
+      description: Dedicated toolgate-enroller and signed user_id mapping to enabled
+        same-tenant user. Compare code and key fingerprint on the device.
+      responses:
+        '200':
+          description: Success; no-store
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/endpoint.schema.json#/$defs/EndpointEnrollmentReview
+        '400':
+          description: Invalid bounded input
+        '401':
+          description: Direct TLS/identity required
+        '403':
+          description: Wrong tenant/user, inactive or revoked device
+        '409':
+          description: State, replay or polling conflict
+        '503':
+          description: Dependency unavailable
+      parameters:
+      - name: code
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-F0-9]{16}$
+  /api/control/v1/endpoint/enrollments/decision:
+    post:
+      operationId: decideEndpointEnrollment
+      description: Dedicated toolgate-enroller confirms device for their signed enabled
+        user. Approval, identity registration, directory metadata, audit and idempotency
+        commit atomically.
+      responses:
+        '200':
+          description: Success; no-store
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/endpoint.schema.json#/$defs/EndpointEnrollmentReview
+        '400':
+          description: Invalid bounded input
+        '401':
+          description: Direct TLS/identity required
+        '403':
+          description: Wrong tenant/user, inactive or revoked device
+        '409':
+          description: State, replay or polling conflict
+        '503':
+          description: Dependency unavailable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/endpoint.schema.json#/$defs/EndpointEnrollmentDecision
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+  /api/control/v1/endpoint/check-in:
+    post:
+      operationId: endpointCheckIn
+      description: Actual verified TLS peer certificate plus active registry. No bearer/header
+        substitute. Sequence and exact report replay are transactional; certificates
+        renew before expiry.
+      responses:
+        '200':
+          description: Success; no-store
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/endpoint.schema.json#/$defs/EndpointCheckInAck
+        '400':
+          description: Invalid bounded input
+        '401':
+          description: Direct TLS/identity required
+        '403':
+          description: Wrong tenant/user, inactive or revoked device
+        '409':
+          description: State, replay or polling conflict
+        '503':
+          description: Dependency unavailable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/endpoint.schema.json#/$defs/EndpointCheckIn
+      security: []
+  /api/control/v1/endpoint/devices/{id}:
+    get:
+      operationId: getEndpointDevice
+      description: Administrative enrolled identity view. Directory metadata alone never
+        authenticates a device.
+      responses:
+        '200':
+          description: Success; no-store
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/endpoint.schema.json#/$defs/EndpointDeviceRecord
+        '400':
+          description: Invalid bounded input
+        '401':
+          description: Direct TLS/identity required
+        '403':
+          description: Wrong tenant/user, inactive or revoked device
+        '409':
+          description: State, replay or polling conflict
+        '503':
+          description: Dependency unavailable
+      parameters:
+      - &endpoint001
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+  /api/control/v1/endpoint/devices/{id}/revoke:
+    post:
+      operationId: revokeEndpointDevice
+      description: Administrator revocation; expected revision, durable idempotency
+        and audit. Next check-in rejects even before certificate expires.
+      responses:
+        '200':
+          description: Success; no-store
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/endpoint.schema.json#/$defs/EndpointDeviceRecord
+        '400':
+          description: Invalid bounded input
+        '401':
+          description: Direct TLS/identity required
+        '403':
+          description: Wrong tenant/user, inactive or revoked device
+        '409':
+          description: State, replay or polling conflict
+        '503':
+          description: Dependency unavailable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/endpoint.schema.json#/$defs/EndpointRevokeRequest
+      parameters:
+      - *endpoint001
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
   /api/control/v1/approvals:
     get:
       operationId: listApprovals
@@ -290,7 +535,7 @@ paths:
     post:
       operationId: publishPolicyBundle
       description: Admin only. Compile current directoryRevision and atomically publish expectedSequence+1 with audit
-        and durable replay. rollbackOf must be absent. Lifetime is 1 second–24 hours; grace is 0–5 minutes. Publication
+        and durable replay. rollbackOf must be absent. Lifetime is 1 secondÃ¢â‚¬â€œ24 hours; grace is 0Ã¢â‚¬â€œ5 minutes. Publication
         does not execute tools.
       parameters:
       - name: Idempotency-Key
