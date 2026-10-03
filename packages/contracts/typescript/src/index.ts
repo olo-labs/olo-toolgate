@@ -1,11 +1,96 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
 // GENERATED FILE — DO NOT EDIT DIRECTLY; tools/contracts/generate.py
+/** Signed format 2 envelope; compilation adds ASK; old readers reject safely. */
+export interface ApprovalBundlePayload {
+  readonly formatVersion: number;
+  readonly issuer: string;
+  readonly audience: string;
+  readonly tenantId: string;
+  readonly sequence: number;
+  readonly version: string;
+  readonly directoryRevision: number;
+  readonly issuedAtUnixMs: number;
+  readonly expiresAtUnixMs: number;
+  readonly graceMs: number;
+  readonly policySha256: string;
+  readonly policy: string;
+  readonly rollbackOf?: number;
+}
+/** Format 2 exact rule; BLOCK > ASK > ALLOW. ASK never uses grace. */
+export interface ApprovalBundleRule {
+  readonly policyId: string;
+  readonly userIds: ReadonlyArray<string>;
+  readonly agentIds: ReadonlyArray<string>;
+  readonly deviceIds: ReadonlyArray<string>;
+  readonly toolId: string;
+  readonly action: string;
+  readonly resource: ResourceDescriptor;
+  readonly graceAllowed: boolean;
+  readonly effect: Decision;
+}
+export type ApprovalChoice = "APPROVE_ONCE" | "APPROVE_TEMPORARY" | "DENY";
+/** Format 2 adds human approval without weakening default deny. */
+export interface ApprovalCompiledPolicy {
+  readonly formatVersion: number;
+  readonly rules: ReadonlyArray<ApprovalBundleRule>;
+}
+/** Optimistic human decision; duration is required only for temporary approval. */
+export interface ApprovalDecisionRequest {
+  readonly decision: ApprovalChoice;
+  readonly expectedRevision: number;
+  readonly durationMs?: number;
+}
+/** Bounded tenant-scoped approval page. */
+export interface ApprovalPage {
+  readonly items: ReadonlyArray<ApprovalRecord>;
+  readonly nextCursor?: string;
+}
+/** Gateway-only atomic lease consumption; repeat use never grants again. */
+export interface ApprovalPermitUse {
+  readonly approvalId: string;
+  readonly permitId: string;
+  readonly input: PolicyInput;
+  readonly policyVersion: string;
+}
+/** Durable tenant approval status; identity/resource and digest only, never raw arguments. */
+export interface ApprovalRecord {
+  readonly id: string;
+  readonly revision: number;
+  readonly state: ApprovalState;
+  readonly input: PolicyInput;
+  readonly policyVersion: string;
+  readonly createdAtUnixMs: number;
+  readonly expiresAtUnixMs: number;
+  readonly decidedBy?: string;
+  readonly decidedAtUnixMs?: number;
+}
+/** Authenticated Control result for this exact Gateway attempt; lease fields occur only on a successful grant. */
+export interface ApprovalResolution {
+  readonly approvalId: string;
+  readonly state: ApprovalState;
+  readonly input: PolicyInput;
+  readonly policyVersion: string;
+  readonly permitId?: string;
+  readonly permitExpiresAtUnixMs?: number;
+}
+export type ApprovalState = "PENDING" | "APPROVED_ONCE" | "APPROVED_TEMPORARY" | "DENIED" | "EXPIRED" | "CONSUMED";
+/** Gateway-only normalized ASK request. No raw arguments or credentials. */
+export interface ApprovalSubmission {
+  readonly input: PolicyInput;
+  readonly policyVersion: string;
+}
 /** Immutable artifact identity; digest must be verified by consumers. */
 export interface ArtifactDescriptor {
   readonly uri: string;
   readonly sha256: string;
   readonly sizeBytes: number;
+}
+/** V2 ASK outcome; pending ASK grants no execution; ALLOW for approved ASK requires a signed permit. */
+export interface AuthorizationOutcome {
+  readonly decision: PolicyDecision;
+  readonly approvalId?: string;
+  readonly permit?: SignedExecutionPermit;
 }
 /** Runtime request; principal context and resource identity are derived by the gateway, never asserted by the caller. */
 export interface AuthorizationRequest {
@@ -238,6 +323,37 @@ export interface ErrorEnvelope {
   readonly requestId: string;
   readonly retryable: boolean;
 }
+/** Exact-operation capability; maximum ten seconds; authoritative consume boundary enforces replay. */
+export interface ExecutionPermitClaims {
+  readonly permitVersion: number;
+  readonly issuer: string;
+  readonly audience: string;
+  readonly tenantId: string;
+  readonly userId: string;
+  readonly agentId: string;
+  readonly deviceId?: string;
+  readonly toolId: string;
+  readonly action: string;
+  readonly resource: ResourceDescriptor;
+  readonly argumentsDigest: string;
+  readonly requestId: string;
+  readonly policyVersion: string;
+  readonly approvalId: string;
+  readonly jti: string;
+  readonly issuedAtUnixMs: number;
+  readonly expiresAtUnixMs: number;
+}
+/** Dedicated runtime permit trust domain; no key negotiation or remote keys. */
+export interface ExecutionPermitHeader {
+  readonly alg: string;
+  readonly typ: string;
+  readonly kid: string;
+}
+/** Authenticated runtime request to verify and atomically consume one exact-bound permit. */
+export interface ExecutionPermitUseRequest {
+  readonly permit: SignedExecutionPermit;
+  readonly request: AuthorizationRequest;
+}
 export type Identifier = string;
 /** Marketplace trust only; never organization or runtime authorization. */
 export interface MarketplaceRelease {
@@ -312,6 +428,10 @@ export interface RuntimeAuditEvent {
 export type SecretReference = string;
 export type SemanticVersion = string;
 export type Sha256 = string;
+/** RS256 compact JWS; structural validation alone does not establish trust. */
+export interface SignedExecutionPermit {
+  readonly jws: string;
+}
 /** RFC 7515 compact JWS; payload and hash must both verify before adoption. */
 export interface SignedPolicyBundle {
   readonly jws: string;
@@ -330,5 +450,5 @@ export interface ToolDefinition {
   readonly inputSchema: Record<string, unknown>;
   readonly outputSchema: Record<string, unknown>;
 }
-export const CONTRACT_SET_VERSION = "0.4.0-dev" as const;
+export const CONTRACT_SET_VERSION = "0.5.0-dev" as const;
 export const CONTRACT_SET_NAME = "olo-toolgate-contracts" as const;

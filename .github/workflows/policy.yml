@@ -1,6 +1,6 @@
 # Copyright 2026 OLO Labs
 # SPDX-License-Identifier: Apache-2.0
-name: signed-policy-compatibility
+name: signed-policy-and-approval-compatibility
 on:
   workflow_call:
 permissions:
@@ -8,7 +8,7 @@ permissions:
 jobs:
   policy-compatibility:
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 45
     env:
       TOOLGATE_DOCKER_TOOLS: "1"
     steps:
@@ -25,7 +25,9 @@ jobs:
           python tools/contracts/version.py --check
           python tools/contracts/generate.py --check
           python -m unittest discover -s tests/contracts -v
-          python tools/policy/check.py --build
+          python tools/approval/check.py --build
+          python tools/policy/check.py
+          python tools/approval/helm.py
           python tools/policy/helm.py
           python tools/gateway/benchmark.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -33,5 +35,6 @@ jobs:
           name: signed-policy-evidence
           path: |
             build/policy/
+            build/approval/
             build/gateway/bundle-benchmark.json
           if-no-files-found: error

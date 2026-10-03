@@ -144,3 +144,9 @@ the authorization path. Atomic snapshots, monotonic sequences and freshness
 deadlines preserve fail-closed behavior during outages and rollback. See
 [ADR 005](docs/adr/005-signed-policy-bundles.md) and
 [protocol/operations](docs/control-plane/policy-bundles.md).
+
+Module 05 adds durable human ASK decisions in Control while Gateway retains runtime
+policy checks and separate permit signing. PostgreSQL serializes human decisions,
+once grants and strict jti consumption across stateless replicas. Approval failure
+blocks ASK, and approved requests cannot bypass current BLOCK or expiry. See
+[ADR 006](docs/adr/006-ask-approvals.md) and [approval operations](docs/control-plane/approvals.md).

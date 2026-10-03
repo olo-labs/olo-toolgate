@@ -786,6 +786,116 @@
               }
             }
           ]
+        },
+        "approval": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "url",
+            "tokenSecret",
+            "tokenKey",
+            "signingSecret",
+            "signingKey",
+            "keyId",
+            "issuer",
+            "audience",
+            "keyRevision",
+            "requestTimeoutMs",
+            "permitLifetimeMs",
+            "controlPort"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "url": {
+              "type": "string",
+              "pattern": "^https://[A-Za-z0-9.-]+(?::[0-9]+)?$"
+            },
+            "tokenSecret": {
+              "type": "string",
+              "maxLength": 253,
+              "pattern": "^$|^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$"
+            },
+            "tokenKey": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 253,
+              "pattern": "^[A-Za-z0-9._-]+$"
+            },
+            "signingSecret": {
+              "type": "string",
+              "maxLength": 253,
+              "pattern": "^$|^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$"
+            },
+            "signingKey": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 253,
+              "pattern": "^[A-Za-z0-9._-]+$"
+            },
+            "keyId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "issuer": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "audience": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "keyRevision": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "requestTimeoutMs": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 10000
+            },
+            "permitLifetimeMs": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000
+            },
+            "controlPort": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "tokenSecret": {
+                    "minLength": 1
+                  },
+                  "signingSecret": {
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
         }
       },
       "allOf": [
@@ -801,6 +911,36 @@
             "properties": {
               "credentialsSecret": {
                 "minLength": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "approval": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "enabled"
+                ]
+              }
+            },
+            "required": [
+              "approval"
+            ]
+          },
+          "then": {
+            "properties": {
+              "bundle": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                }
               }
             }
           }
@@ -1395,6 +1535,36 @@
               }
             }
           ]
+        },
+        "approval": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "pendingTtlMs",
+            "maxActive",
+            "maxActivePermits"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "pendingTtlMs": {
+              "type": "integer",
+              "minimum": 1000,
+              "maximum": 300000
+            },
+            "maxActive": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000
+            },
+            "maxActivePermits": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000
+            }
+          }
         }
       },
       "allOf": [
@@ -1468,6 +1638,36 @@
                 "properties": {
                   "collectorTo": {
                     "minItems": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "approval": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "enabled"
+                ]
+              }
+            },
+            "required": [
+              "approval"
+            ]
+          },
+          "then": {
+            "properties": {
+              "bundle": {
+                "properties": {
+                  "enabled": {
+                    "const": true
                   }
                 }
               }

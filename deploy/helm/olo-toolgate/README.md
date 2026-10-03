@@ -48,3 +48,13 @@ the rendered Gateway config. `keyRevision`/`trustRevision` trigger rollouts
 after external key changes. Secret material is never accepted in values or
 rendered resources. Full fields, rotation and expiry behavior are documented in
 [the bundle runbook](../../../docs/control-plane/policy-bundles.md).
+
+Approval mode is opt-in through `control.approval.enabled` and
+`gateway.approval.enabled`; both require signed bundle mode. Control adds bounded
+pending TTL/active request/lease limits. Gateway adds a fixed HTTPS Control origin,
+external `tokenSecret`/`signingSecret` references, `keyRevision`, bounded timeout
+and permit lifetime (maximum 10000 ms). Permit/private policy keys must be different
+and are mounted into their owning service only. Read-only 0440 Secret mounts use
+fsGroup 65532. Approval timeout must leave time within ingress deadline. The existing
+intentional Control/DNS egress includes the approval `controlPort`. No additional
+infrastructure is deployed. See [approval operations](../../../docs/control-plane/approvals.md).

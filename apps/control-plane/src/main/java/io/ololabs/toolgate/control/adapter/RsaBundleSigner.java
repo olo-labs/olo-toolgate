@@ -21,8 +21,11 @@ public final class RsaBundleSigner implements BundleSigner {
         this.key = key; this.codec = codec;
         this.header = encode(codec.json(new BundleHeader("RS256", "toolgate-policy-bundle+jws", Ids.valid(keyId))));
     }
-    public SignedPolicyBundle sign(BundlePayload payload) {
-        var document = codec.json(payload); codec.model(document, BundlePayload.class);
+    public SignedPolicyBundle sign(Object payload) {
+        var document = codec.json(payload);
+        if (payload instanceof BundlePayload) codec.model(document, BundlePayload.class);
+        else if (payload instanceof ApprovalBundlePayload) codec.model(document, ApprovalBundlePayload.class);
+        else throw Failure.validation();
         var message = header + "." + encode(document);
         try {
             var signature = java.security.Signature.getInstance("SHA256withRSA");

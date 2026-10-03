@@ -1,0 +1,61 @@
+// Copyright 2026 OLO Labs
+// SPDX-License-Identifier: Apache-2.0
+package io.ololabs.toolgate.control.adapter;
+
+import io.ololabs.toolgate.control.application.*;
+import io.ololabs.toolgate.control.domain.Ids;
+import io.ololabs.toolgate.contracts.ErrorCode;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.smallrye.common.annotation.Blocking;
+import jakarta.annotation.security.RolesAllowed;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.jwt.JsonWebToken;
+
+/** Human and Gateway approval APIs have separate roles; admin alone grants neither role. */
+@Path("/api/control/v1/approvals")
+@Produces("application/json")
+@Blocking
+@RolesAllowed("toolgate-approver")
+public class ApprovalResource {
+    @Inject ApprovalService service;
+    @Inject JsonWebToken jwt;
+    @Inject Correlation correlation;
+    @Inject MeterRegistry metrics;
+    private ApprovalService.Actor actor() {
+        var tenant=jwt.getClaim("tenant_id"); long now=java.time.Instant.now().getEpochSecond();
+        if (!(tenant instanceof String value) || jwt.getSubject()==null || jwt.getSubject().isBlank()
+                || jwt.getIssuedAtTime()>now || jwt.getIssuedAtTime()<now-900 || jwt.getExpirationTime()<=now
+                || jwt.getExpirationTime()<=jwt.getIssuedAtTime() || jwt.getExpirationTime()-jwt.getIssuedAtTime()>900) {
+            throw new Failure(ErrorCode.UNAUTHORIZED,401,"Invalid identity claims");
+        }
+        try {
+            var identity=new DirectoryService.Actor(new Ids.TenantId(value),DirectoryService.digest(jwt.getIssuer()+"\n"+jwt.getSubject()),false);
+            Object claim=jwt.getClaim("user_id");
+            if (claim!=null && !(claim instanceof String)) throw new IllegalArgumentException();
+            return new ApprovalService.Actor(identity,(String)claim,jwt.getGroups().contains("toolgate-approver"),jwt.getGroups().contains("toolgate-approval-gateway"));
+        } catch (IllegalArgumentException e) { throw new Failure(ErrorCode.UNAUTHORIZED,401,"Invalid identity mapping"); }
+    }
+    private String body(String document) {
+        if (document==null || document.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>16384) throw Failure.validation(); return document;
+    }
+    private Response response(Store.Reply reply,String operation) {
+        metrics.counter("toolgate_control_approval_operations_total","operation",operation).increment();
+        return Response.status(reply.status()).header("ETag","\""+reply.revision()+"\"").header("Cache-Control","no-store").entity(reply.body()).build();
+    }
+    @GET
+    public Response page(@QueryParam("cursor") String cursor,@QueryParam("limit") @DefaultValue("50") int limit) {
+        return response(service.page(actor(),cursor,limit,correlation.id()),"READ");
+    }
+    @GET @Path("{id}")
+    public Response get(@PathParam("id") String id) { return response(service.get(actor(),id,correlation.id()),"READ"); }
+    @POST @Path("{id}/decision") @Consumes("application/json")
+    public Response decide(@PathParam("id") String id,@HeaderParam("Idempotency-Key") String key,String document) {
+        return response(service.decide(actor(),id,body(document),key,correlation.id()),"DECIDE");
+    }
+    @POST @Path("resolve") @Consumes("application/json") @RolesAllowed("toolgate-approval-gateway")
+    public Response resolve(String document) { return response(service.resolve(actor(),body(document),correlation.id()),"RESOLVE"); }
+    @POST @Path("permits/consume") @Consumes("application/json") @RolesAllowed("toolgate-approval-gateway")
+    public Response consume(String document) { return response(service.consume(actor(),body(document),correlation.id()),"CONSUME"); }
+}

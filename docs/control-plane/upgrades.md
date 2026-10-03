@@ -73,3 +73,8 @@ fix coordinated with application compatibility. Never use Flyway clean as recove
 The current application requires V3 schema. See the
 [signed bundle migration/restore runbook](policy-bundles.md) before downgrading
 a deployed signed-policy source or restoring older publication history. Export/import configuration is not a database or audit backup.
+
+Module 05 adds Flyway V4 approval, lease and persistent clock tables. Preserve
+unexpired tombstones and spent-jti evidence across upgrade, rollback and restore.
+Upgrade all Gateways to format-2 readers before publishing ASK. See
+[approval migration and compatibility](approvals.md).

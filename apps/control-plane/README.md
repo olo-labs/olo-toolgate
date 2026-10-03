@@ -39,3 +39,7 @@ immutable PostgreSQL publication history and signed publish/rollback APIs. The
 JCA signing adapter requires an external dedicated key. Run `make policy-e2e`
 for production-image integration and read
 [bundle protocol and operations](../../docs/control-plane/policy-bundles.md).
+
+Module 05 adds dedicated approver/Gateway approval APIs, PostgreSQL-backed lifecycle
+and consumption, and Flyway V4. ASK policies publish signed format 2. No new queue
+or cache is required. [Approval configuration and runbook](../../docs/control-plane/approvals.md).

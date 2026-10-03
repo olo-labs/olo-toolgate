@@ -25,7 +25,9 @@ public final class PolicyCompiler {
             if (selected.decision() != Decision.ALLOW) throw Failure.validation();
         }
         directory.validate(512, 1048576); codec.validatePolicies(directory);
-        var rules = new ArrayList<BundleRule>();
+        boolean approvals=directory.entries().values().stream().filter(e->e.enabled() && e.id().kind()==Kind.POLICY)
+            .anyMatch(e->codec.model(e.document(),ControlPolicy.class).decision()==Decision.ASK);
+        var rules = new ArrayList<ApprovalBundleRule>();
         directory.entries().values().stream().filter(e -> e.enabled() && e.id().kind() == Kind.POLICY)
             .sorted(java.util.Comparator.comparing(e -> e.id().value())).forEach(entry -> {
                 var policy = codec.model(entry.document(), ControlPolicy.class);
@@ -40,12 +42,13 @@ public final class PolicyCompiler {
                 policy.agentIds().forEach(id -> required(directory, Kind.AGENT, id));
                 policy.deviceIds().forEach(id -> required(directory, Kind.DEVICE, id));
                 required(directory, Kind.TOOL, policy.toolId());
-                rules.add(new BundleRule(policy.id(), List.copyOf(users), sorted(policy.agentIds()), sorted(policy.deviceIds()),
-                    policy.toolId(), policy.action(), policy.resource(), grace.contains(policy.id()), BundleEffect.valueOf(policy.decision().name())));
+                rules.add(new ApprovalBundleRule(policy.id(), List.copyOf(users), sorted(policy.agentIds()), sorted(policy.deviceIds()),
+                    policy.toolId(), policy.action(), policy.resource(), grace.contains(policy.id()), policy.decision()));
             });
-        var document = codec.json(new CompiledPolicy(1L, rules));
+        var document = approvals ? codec.json(new ApprovalCompiledPolicy(2L,rules)) : codec.json(new CompiledPolicy(1L,
+            rules.stream().map(r->new BundleRule(r.policyId(),r.userIds(),r.agentIds(),r.deviceIds(),r.toolId(),r.action(),r.resource(),r.graceAllowed(),BundleEffect.valueOf(r.effect().name()))).toList()));
         if (document.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 786432) throw Failure.validation();
-        codec.model(document, CompiledPolicy.class); return document;
+        if (approvals) codec.model(document,ApprovalCompiledPolicy.class); else codec.model(document,CompiledPolicy.class); return document;
     }
     private Directory.Entry required(Directory directory, Kind kind, String id) {
         var entry = directory.entries().get(kind.id(id));

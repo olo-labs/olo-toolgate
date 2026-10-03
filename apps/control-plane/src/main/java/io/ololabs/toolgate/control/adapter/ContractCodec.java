@@ -42,7 +42,7 @@ public class ContractCodec implements Codec {
         mapper = JsonMapper.builder(factory).enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).build();
         try {
             var definitions = mapper.createObjectNode();
-            for (var file : java.util.List.of("common", "identifiers", "error", "resource", "tool", "policy", "package", "client", "deployment", "runtime", "control", "bundle")) {
+            for (var file : java.util.List.of("common", "identifiers", "error", "resource", "tool", "policy", "package", "client", "deployment", "runtime", "control", "bundle", "approval")) {
                 var path = "/io/ololabs/toolgate/contracts/schemas/v1/" + file + ".schema.json";
                 try (var input = io.ololabs.toolgate.contracts.ContractSet.class.getResourceAsStream(path)) {
                     if (input == null) throw new IllegalStateException("Shared schema artifact is incomplete");
@@ -113,7 +113,6 @@ public class ContractCodec implements Codec {
             refs.add(new Ids.ToolId(node.get("toolId").asText()));
             add(refs, Kind.USER, node.get("userIds")); add(refs, Kind.TEAM, node.get("teamIds"));
             add(refs, Kind.AGENT, node.get("agentIds")); add(refs, Kind.DEVICE, node.get("deviceIds"));
-            if (node.get("decision").asText().equals("ASK")) throw Failure.validation();
             if (refs.size() == 1) throw Failure.validation();
         }
         return new Directory.Entry(id, node.get("enabled").asBoolean(), node.get("revision").asLong(), json(node), refs);

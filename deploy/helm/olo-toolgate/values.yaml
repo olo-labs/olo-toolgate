@@ -30,6 +30,20 @@ gateway:
     pollIntervalMs: 5000
     fetchTimeoutMs: 3000
     controlPort: 443
+  approval:
+    enabled: false
+    url: https://control.example.invalid
+    tokenSecret: ''
+    tokenKey: access-token
+    signingSecret: ''
+    signingKey: private.pem
+    keyId: permit-key-1
+    issuer: gateway
+    audience: endpoint
+    keyRevision: '1'
+    requestTimeoutMs: 1000
+    permitLifetimeMs: 10000
+    controlPort: 443
   config:
     listen: 0.0.0.0:8081
     managementListen: 0.0.0.0:9091
@@ -106,6 +120,11 @@ gateway:
     interval: 30s
 control:
   enabled: false
+  approval:
+    enabled: false
+    pendingTtlMs: 300000
+    maxActive: 1000
+    maxActivePermits: 4096
   bundle:
     enabled: false
     keyId: bundle-key-1

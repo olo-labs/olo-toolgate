@@ -34,3 +34,10 @@ The release matrix includes bundle format/algorithm and Flyway V3. Image scans a
 CycloneDX SBOMs include ring, rustls and reqwest. Runtime bundle signing keys remain
 external application inputs; they are unrelated to CI provenance or image signing.
 See [bundle operations](../control-plane/policy-bundles.md).
+
+Module 05 extends the mandatory reusable compatibility gate with genuine ASK,
+human decision, signature/binding, atomic consumption, outage and revocation E2E.
+It builds production images once, then also executes prior signed-bundle E2E and
+approval Helm install/upgrade/rotation negatives. Existing protected Maven/GHCR/OCI
+publication, scans, SBOMs and provenance remain required. No remote credentials are
+introduced for local checks; `make approval-e2e` produces local evidence.

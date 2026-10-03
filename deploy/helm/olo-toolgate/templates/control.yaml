@@ -28,6 +28,10 @@ data:
   TOOLGATE_CONTROL_TRACE_EXPORT_ENABLED: {{ $g.tracing.enabled | quote }}
   QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: {{ printf "https://%s:%v" $g.tracing.host $g.tracing.port | quote }}
   QUARKUS_OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: {{ $g.tracing.protocol | quote }}
+  TOOLGATE_CONTROL_APPROVAL_ENABLED: {{ $g.approval.enabled | quote }}
+  TOOLGATE_CONTROL_APPROVAL_PENDING_TTL_MS: {{ printf "%d" (int $g.approval.pendingTtlMs) | quote }}
+  TOOLGATE_CONTROL_APPROVAL_MAX_ACTIVE: {{ printf "%d" (int $g.approval.maxActive) | quote }}
+  TOOLGATE_CONTROL_APPROVAL_MAX_ACTIVE_PERMITS: {{ printf "%d" (int $g.approval.maxActivePermits) | quote }}
   TOOLGATE_CONTROL_BUNDLE_ENABLED: {{ $g.bundle.enabled | quote }}
   TOOLGATE_CONTROL_BUNDLE_ISSUER: {{ $g.bundle.issuer | quote }}
   TOOLGATE_CONTROL_BUNDLE_AUDIENCE: {{ $g.bundle.audience | quote }}

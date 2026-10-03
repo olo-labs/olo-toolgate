@@ -20,8 +20,23 @@ public interface Store {
         long bundleSequence();
         BundleRecord bundle(long sequence);
         void publishBundle(BundleRecord bundle);
+        ApprovalRecord approval(String id);
+        ApprovalRecord approvalBinding(String digest, long now);
+        java.util.List<ApprovalRecord> approvals(String after, int limit);
+        long activeApprovals(long now);
+        void saveApproval(ApprovalRecord approval);
+        PermitLease permit(String jti);
+        void lease(PermitLease permit);
+        void consumePermit(String jti, long consumedAt);
+        long approvalClock(long now);
+        long activePermits(long now);
     }
     /** Immutable signed wire bytes and compiler bytes, committed with audit/replay. */
     record BundleRecord(long sequence, String document, String policy, long directoryRevision) {}
+    /** Approval snapshots include only exact normalized identities and digests, never raw arguments. */
+    record ApprovalRecord(String id, String bindingDigest, String document, long expiresAt) {}
+    /** Globally unique random attempt IDs cannot issue or consume two capabilities. */
+    record PermitLease(String jti, String approvalId, String bindingDigest, String requestId,
+                       long issuedAt, long expiresAt, Long consumedAt) {}
     record Reply(int status, String body, long revision) {}
 }

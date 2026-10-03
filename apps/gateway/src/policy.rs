@@ -29,13 +29,18 @@ pub trait PolicyEvaluator: Send + Sync {
     fn decision_valid(&self, _decision: &PolicyDecision, _input: &PolicyInput, now: u64) -> bool {
         self.ready(now)
     }
+    /// Fresh ASK validity boundary. Missing evidence cannot mint an approval permit.
+    fn approval_deadline(&self, _input: &PolicyInput, _now: u64) -> Option<u64> {
+        None
+    }
 }
 
-/// Static inputs cannot express ASK before the approvals module exists.
+/// Trusted static rules use the same precedence as verified distributed policies.
 #[derive(Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum Effect {
     Allow,
+    Ask,
     Block,
 }
 
@@ -131,15 +136,24 @@ impl StaticPolicy {
             return self.block(&input.context.request_id, DecisionReason::Matched);
         }
         let mut allow = false;
+        let mut ask = false;
         for rule in &self.rules {
             if rule.matches(input) {
                 if rule.effect == Effect::Block {
                     return self.block(&input.context.request_id, DecisionReason::Matched);
                 }
-                allow = true;
+                ask |= rule.effect == Effect::Ask;
+                allow |= rule.effect == Effect::Allow;
             }
         }
-        if allow {
+        if ask {
+            PolicyDecision {
+                decision: Decision::Ask,
+                reason: DecisionReason::ApprovalRequired,
+                policy_version: self.version.clone(),
+                request_id: input.context.request_id.clone(),
+            }
+        } else if allow {
             PolicyDecision {
                 decision: Decision::Allow,
                 reason: DecisionReason::Matched,
@@ -162,5 +176,8 @@ impl PolicyEvaluator for StaticPolicy {
     }
     fn ready(&self, now: u64) -> bool {
         self.expires_at_unix_ms > now
+    }
+    fn decision_valid(&self, decision: &PolicyDecision, input: &PolicyInput, now: u64) -> bool {
+        self.decide(input, now) == *decision
     }
 }

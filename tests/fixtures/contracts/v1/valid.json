@@ -678,5 +678,219 @@
     "expectedSequence": 0,
     "lifetimeMs": 60000,
     "graceMs": 0
+  },
+  "ApprovalSubmission": {
+    "input": {
+      "context": {
+        "requestId": "request-1",
+        "tenantId": "tenant-1",
+        "userId": "user-1",
+        "agentId": "agent-1"
+      },
+      "toolId": "calculator",
+      "action": "evaluate",
+      "resource": {
+        "kind": "CUSTOM",
+        "locator": "calculator"
+      },
+      "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "policyVersion": "1.0.1"
+  },
+  "ApprovalPermitUse": {
+    "input": {
+      "context": {
+        "requestId": "request-1",
+        "tenantId": "tenant-1",
+        "userId": "user-1",
+        "agentId": "agent-1"
+      },
+      "toolId": "calculator",
+      "action": "evaluate",
+      "resource": {
+        "kind": "CUSTOM",
+        "locator": "calculator"
+      },
+      "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "policyVersion": "1.0.1",
+    "approvalId": "approval-1",
+    "permitId": "permit-1"
+  },
+  "ApprovalState": "PENDING",
+  "ApprovalChoice": "APPROVE_ONCE",
+  "ApprovalDecisionRequest": {
+    "decision": "APPROVE_ONCE",
+    "expectedRevision": 1
+  },
+  "ApprovalRecord": {
+    "id": "approval-1",
+    "revision": 1,
+    "state": "PENDING",
+    "input": {
+      "context": {
+        "requestId": "request-1",
+        "tenantId": "tenant-1",
+        "userId": "user-1",
+        "agentId": "agent-1"
+      },
+      "toolId": "calculator",
+      "action": "evaluate",
+      "resource": {
+        "kind": "CUSTOM",
+        "locator": "calculator"
+      },
+      "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "policyVersion": "1.0.1",
+    "createdAtUnixMs": 1,
+    "expiresAtUnixMs": 300001
+  },
+  "ApprovalPage": {
+    "items": [
+      {
+        "id": "approval-1",
+        "revision": 1,
+        "state": "PENDING",
+        "input": {
+          "context": {
+            "requestId": "request-1",
+            "tenantId": "tenant-1",
+            "userId": "user-1",
+            "agentId": "agent-1"
+          },
+          "toolId": "calculator",
+          "action": "evaluate",
+          "resource": {
+            "kind": "CUSTOM",
+            "locator": "calculator"
+          },
+          "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "policyVersion": "1.0.1",
+        "createdAtUnixMs": 1,
+        "expiresAtUnixMs": 300001
+      }
+    ]
+  },
+  "ApprovalResolution": {
+    "approvalId": "approval-1",
+    "state": "PENDING",
+    "input": {
+      "context": {
+        "requestId": "request-1",
+        "tenantId": "tenant-1",
+        "userId": "user-1",
+        "agentId": "agent-1"
+      },
+      "toolId": "calculator",
+      "action": "evaluate",
+      "resource": {
+        "kind": "CUSTOM",
+        "locator": "calculator"
+      },
+      "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "policyVersion": "1.0.1"
+  },
+  "ExecutionPermitHeader": {
+    "alg": "RS256",
+    "typ": "toolgate-execution-permit+jws",
+    "kid": "permit-key-1"
+  },
+  "ExecutionPermitClaims": {
+    "permitVersion": 1,
+    "issuer": "gateway",
+    "audience": "endpoint",
+    "tenantId": "tenant-1",
+    "userId": "user-1",
+    "agentId": "agent-1",
+    "toolId": "calculator",
+    "action": "evaluate",
+    "resource": {
+      "kind": "CUSTOM",
+      "locator": "calculator"
+    },
+    "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "requestId": "request-1",
+    "policyVersion": "1.0.1",
+    "approvalId": "approval-1",
+    "jti": "permit-1",
+    "issuedAtUnixMs": 1,
+    "expiresAtUnixMs": 10001
+  },
+  "SignedExecutionPermit": {
+    "jws": "c3RydWN0dXJhbA.c3R1Yg.c2lnbmF0dXJl"
+  },
+  "ExecutionPermitUseRequest": {
+    "permit": {
+      "jws": "c3RydWN0dXJhbA.c3R1Yg.c2lnbmF0dXJl"
+    },
+    "request": {
+      "toolId": "files.read",
+      "action": "read",
+      "arguments": {
+        "path": "workspace/readme.txt"
+      }
+    }
+  },
+  "AuthorizationOutcome": {
+    "decision": {
+      "decision": "BLOCK",
+      "reason": "NO_MATCH",
+      "policyVersion": "0.1.0-dev",
+      "requestId": "request-1"
+    }
+  },
+  "ApprovalBundleRule": {
+    "policyId": "allow-read",
+    "userIds": [
+      "alice"
+    ],
+    "agentIds": [],
+    "deviceIds": [],
+    "toolId": "files",
+    "action": "read",
+    "resource": {
+      "kind": "CUSTOM",
+      "locator": "calculator"
+    },
+    "graceAllowed": false,
+    "effect": "ASK"
+  },
+  "ApprovalCompiledPolicy": {
+    "formatVersion": 2,
+    "rules": [
+      {
+        "policyId": "allow-read",
+        "userIds": [
+          "alice"
+        ],
+        "agentIds": [],
+        "deviceIds": [],
+        "toolId": "files",
+        "action": "read",
+        "resource": {
+          "kind": "CUSTOM",
+          "locator": "calculator"
+        },
+        "graceAllowed": false,
+        "effect": "ASK"
+      }
+    ]
+  },
+  "ApprovalBundlePayload": {
+    "formatVersion": 2,
+    "issuer": "control",
+    "audience": "gateway",
+    "tenantId": "example",
+    "sequence": 1,
+    "version": "1.0.1",
+    "directoryRevision": 0,
+    "issuedAtUnixMs": 1700000000000,
+    "expiresAtUnixMs": 1700000060000,
+    "graceMs": 0,
+    "policySha256": "2bb1e5048a19bde93c340142b5d9ba1f5ead639dce7add67bfd02d6c3a49b7e1",
+    "policy": "eyJmb3JtYXRWZXJzaW9uIjoxLCJydWxlcyI6W3siYWN0aW9uIjoicmVhZCIsImFnZW50SWRzIjpbXSwiZGV2aWNlSWRzIjpbXSwiZWZmZWN0IjoiQUxMT1ciLCJncmFjZUFsbG93ZWQiOnRydWUsInBvbGljeUlkIjoiYWxsb3ctcmVhZCIsInJlc291cmNlIjp7ImtpbmQiOiJDVVNUT00iLCJsb2NhdG9yIjoiY2FsY3VsYXRvciJ9LCJ0b29sSWQiOiJmaWxlcyIsInVzZXJJZHMiOlsiYWxpY2UiXX1dfQ"
   }
 }

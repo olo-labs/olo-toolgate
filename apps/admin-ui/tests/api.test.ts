@@ -58,4 +58,18 @@ describe('Control transport contract', () => {
     const client = new ControlClient('token',vi.fn(),(_url,options) => new Promise((_resolve,reject) => options!.signal!.addEventListener('abort',() => reject(new Error('aborted')))));
     const pending = client.list('devices'); client.dispose(); await expect(pending).rejects.toMatchObject({name:'AbortError'});
   });
+  it('uses generated approval routes, bounded cursor pages and exact decision retries', async () => {
+    const transport = vi.fn<typeof fetch>().mockImplementation(async () => new Response(JSON.stringify({items:[]})));
+    const client = new ControlClient('token',vi.fn(),transport);
+    await client.approvals('approval/+'); await client.approval('approval:user/item');
+    const decision = {decision:'APPROVE_TEMPORARY' as const,expectedRevision:3,durationMs:600000};
+    await client.decideApproval('approval:user/item',decision,'approval-retry');
+    expect(transport.mock.calls[0][0]).toBe('/api/control/v1/approvals?limit=50&cursor=approval%2F%2B');
+    expect(transport.mock.calls[1][0]).toBe('/api/control/v1/approvals/approval%3Auser%2Fitem');
+    expect(transport.mock.calls[2][0]).toBe('/api/control/v1/approvals/approval%3Auser%2Fitem/decision');
+    const options = transport.mock.calls[2][1]!;
+    expect(options.method).toBe('POST'); expect(JSON.parse(options.body as string)).toEqual(decision);
+    expect(new Headers(options.headers).get('Idempotency-Key')).toBe('approval-retry');
+    expect(new Headers(options.headers).has('If-Match')).toBe(false);
+  });
 });

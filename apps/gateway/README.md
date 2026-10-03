@@ -41,3 +41,7 @@ Module 04 adds signed bundle verification, background distribution and atomic
 in-memory policy replacement. Choose `bundleSource` instead of static `policy`;
 invalid/outdated bundles retain only a still-valid verified snapshot. See
 [bundle trust, grace and operations](../../docs/control-plane/policy-bundles.md).
+
+Module 05 adds opt-in ASK coordination, `/v2/authorize`, separately signed ten-second
+maximum exact-bound permits and `/v1/permits/consume`. Approval outage or changed
+policy blocks. Legacy v1/MCP block ASK. [Approval protocol/configuration](../../docs/control-plane/approvals.md).

@@ -3,12 +3,190 @@
 openapi: 3.1.0
 info:
   title: OLO ToolGate Control Plane API
-  version: 0.4.0-dev
+  version: 0.5.0-dev
   description: Tenant-scoped administration and explicit signed policy publication. Directory policies become runtime
     configuration only after publication; bundle trust is separate from execution permits.
 security:
 - adminAccessToken: []
 paths:
+  /api/control/v1/approvals:
+    get:
+      operationId: listApprovals
+      description: Requires tenant-scoped toolgate-approver, signed user_id and enabled
+        directory user. Durable status; no raw arguments.
+      responses:
+        '200':
+          description: Success; no-store
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/approval.schema.json#/$defs/ApprovalPage
+        '400':
+          description: Invalid canonical input
+        '401':
+          description: Valid signed short-lived JWT required
+        '403':
+          description: Role, tenant or approver identity denied
+        '404':
+          description: Approval not found
+        '409':
+          description: Stale revision, obsolete policy or spent permit
+        '413':
+          description: Request too large
+        '503':
+          description: Approval dependency unavailable
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type: string
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+  /api/control/v1/approvals/{id}:
+    get:
+      operationId: getApproval
+      description: Same approver requirements; tenant isolation.
+      responses:
+        '200':
+          description: Success; no-store
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/approval.schema.json#/$defs/ApprovalRecord
+        '400':
+          description: Invalid canonical input
+        '401':
+          description: Valid signed short-lived JWT required
+        '403':
+          description: Role, tenant or approver identity denied
+        '404':
+          description: Approval not found
+        '409':
+          description: Stale revision, obsolete policy or spent permit
+        '413':
+          description: Request too large
+        '503':
+          description: Approval dependency unavailable
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+  /api/control/v1/approvals/{id}/decision:
+    post:
+      operationId: decideApproval
+      description: Dedicated approver role; requester cannot self-approve. Expected
+        revision and durable idempotency. Duration required only for APPROVE_TEMPORARY,
+        capped at 30 minutes and fresh current policy. Deny does not authorize execution.
+      responses:
+        '200':
+          description: Success; no-store
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/approval.schema.json#/$defs/ApprovalRecord
+        '400':
+          description: Invalid canonical input
+        '401':
+          description: Valid signed short-lived JWT required
+        '403':
+          description: Role, tenant or approver identity denied
+        '404':
+          description: Approval not found
+        '409':
+          description: Stale revision, obsolete policy or spent permit
+        '413':
+          description: Request too large
+        '503':
+          description: Approval dependency unavailable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/approval.schema.json#/$defs/ApprovalDecisionRequest
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+  /api/control/v1/approvals/resolve:
+    post:
+      operationId: resolveApproval
+      description: Dedicated toolgate-approval-gateway role only. Resolves or creates
+        exact-bound current ASK. Once grant is spent atomically at lease issuance; no
+        ALLOW replay. Temporary grants still require online resolution each attempt.
+      responses:
+        '200':
+          description: Success; no-store
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/approval.schema.json#/$defs/ApprovalResolution
+        '400':
+          description: Invalid canonical input
+        '401':
+          description: Valid signed short-lived JWT required
+        '403':
+          description: Role, tenant or approver identity denied
+        '404':
+          description: Approval not found
+        '409':
+          description: Stale revision, obsolete policy or spent permit
+        '413':
+          description: Request too large
+        '503':
+          description: Approval dependency unavailable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/approval.schema.json#/$defs/ApprovalSubmission
+  /api/control/v1/approvals/permits/consume:
+    post:
+      operationId: consumeApprovalPermit
+      description: Dedicated toolgate-approval-gateway role only. Atomically consumes
+        exact-bound unexpired jti once. Duplicate requests reject; no replayed success.
+      responses:
+        '200':
+          description: Success; no-store
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/approval.schema.json#/$defs/ApprovalResolution
+        '400':
+          description: Invalid canonical input
+        '401':
+          description: Valid signed short-lived JWT required
+        '403':
+          description: Role, tenant or approver identity denied
+        '404':
+          description: Approval not found
+        '409':
+          description: Stale revision, obsolete policy or spent permit
+        '413':
+          description: Request too large
+        '503':
+          description: Approval dependency unavailable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/approval.schema.json#/$defs/ApprovalPermitUse
   /api/control/v1/bundles/current:
     get:
       operationId: getCurrentPolicyBundle

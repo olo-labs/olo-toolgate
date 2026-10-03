@@ -3,6 +3,7 @@
 //! Service bootstrap. Secrets/config contents are never included in diagnostics.
 use olo_toolgate_gateway::{
     application::Gateway,
+    approvals::{ApprovalCoordinator, HttpApprovalCoordinator, PermitSigner},
     audit::JsonAudit,
     auth::{Authenticator, Credential},
     bundles::{BundleKeyring, BundleVerifier, VerifiedPolicy},
@@ -52,6 +53,26 @@ async fn run() -> Result<(), &'static str> {
     let credentials: Vec<Credential> = read_json(&credentials_path)?;
     let now = unix_ms().ok_or("system clock unavailable")?;
     config.validate(&contracts, now)?;
+    let (approval, permit_signer): (
+        Option<Arc<dyn ApprovalCoordinator>>,
+        Option<Arc<PermitSigner>>,
+    ) = if let Some(approval) = &config.approval {
+        if approval.private_key_path == credentials_path || approval.private_key_path == config_path
+        {
+            return Err("permit key and configuration paths must be separate");
+        }
+        let source = config
+            .bundle_source
+            .as_ref()
+            .ok_or("approvals require signed policy")?;
+        let forbidden: BundleKeyring = read_json(&source.keyring_path)?;
+        (
+            Some(Arc::new(HttpApprovalCoordinator::new(approval.clone())?)),
+            Some(Arc::new(PermitSigner::new(approval.clone(), &forbidden)?)),
+        )
+    } else {
+        (None, None)
+    };
     let auth = Authenticator::new(credentials, &contracts, now)?;
     let extractors = Registry::new(config.extractors.clone())?;
     let runtime = TcpListener::bind(config.listen)
@@ -93,6 +114,8 @@ async fn run() -> Result<(), &'static str> {
         extractors,
         policy,
         audit: Arc::new(audit),
+        approval,
+        permit_signer,
     };
     let state = Arc::new(AppState::new(gateway, auth, config.clone()));
     let runtime_task = tokio::spawn(server::serve(

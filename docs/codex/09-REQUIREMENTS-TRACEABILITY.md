@@ -227,3 +227,10 @@ A `BLOCKED` requirement means the module is not DONE.
   E2E, rotation/outage/expiry/recovery, local Maven proof, scans/SBOMs and
   two-replica signed publication/Helm upgrade/rollback pass. Protected releases
   require the new policy compatibility gate; no remote publication was performed.
+
+- Module 05: [pre-implementation coverage plan](modules/05-coverage.md) and
+  [completion matrix and verification evidence](modules/05-completion.md).
+  ASK approvals classify all 104 unique IDs: 102 COMPLETE and two NOT_APPLICABLE.
+  Real PostgreSQL/production signed-permit E2E, browser accessibility, local Maven,
+  scans/SBOMs and two-replica upgrade/rollback pass. Protected release compatibility
+  gates include approval behavior; remote publication remains CI only.

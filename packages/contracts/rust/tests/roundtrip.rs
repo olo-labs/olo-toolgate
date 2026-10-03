@@ -71,6 +71,22 @@ fn shared_fixture_round_trips() {
         BundlePayload,
         SignedPolicyBundle,
         BundlePublishRequest,
+        ApprovalState,
+        ApprovalChoice,
+        ApprovalSubmission,
+        ApprovalDecisionRequest,
+        ApprovalRecord,
+        ApprovalPage,
+        ApprovalResolution,
+        ApprovalPermitUse,
+        ExecutionPermitHeader,
+        ExecutionPermitClaims,
+        SignedExecutionPermit,
+        ExecutionPermitUseRequest,
+        AuthorizationOutcome,
+        ApprovalBundleRule,
+        ApprovalCompiledPolicy,
+        ApprovalBundlePayload,
     );
     assert_eq!(ContractSet::current().version, env!("CARGO_PKG_VERSION"));
     assert_eq!(ContractSet::current().name, "olo-toolgate-contracts");

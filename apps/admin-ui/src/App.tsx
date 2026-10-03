@@ -4,20 +4,16 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { ControlUser, ControlPolicy, ControlTool } from '@olo-labs/toolgate-contracts';
 import { ApiError, ControlClient } from './api';
 import type { DirectoryKind, DirectoryRecords, DirectoryPages } from './operations.generated';
+import { Failure } from './Failure';
+import { Approvals } from './Approvals';
 
 declare const __APP_VERSION__: string;
-const sections = [ ['overview', 'Overview'], ['users', 'Users'], ['teams', 'Teams'], ['tools', 'Tools'], ['policies', 'Policies'], ['devices', 'Clients'], ['agents', 'Agents'] ] as const;
+const directorySections = [ ['users', 'Users'], ['teams', 'Teams'], ['tools', 'Tools'], ['policies', 'Policies'], ['devices', 'Clients'], ['agents', 'Agents'] ] as const;
+const sections = [ ['overview', 'Overview'], ...directorySections, ['approvals', 'Approvals'] ] as const;
 type Route = typeof sections[number][0];
 type RecordValue = DirectoryRecords[DirectoryKind];
 const routeFromHash = (): Route => sections.find(([route]) => window.location.hash === `#${route}`)?.[0] ?? 'overview';
 const safeOrigin = () => window.location.protocol === 'https:' || ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
-
-function Failure({ error, retry }: { error: unknown; retry?: () => void }) {
-  const failure = error instanceof ApiError ? error : new ApiError(0, 'NETWORK');
-  return <div className="notice error" role="alert"><strong>{failure.message}</strong>
-    {failure.requestId && <small>Reference: {failure.requestId}</small>}
-    {retry && <button onClick={retry}>Try again</button>}</div>;
-}
 
 /** Authenticated shell; identities/roles are verified only by Control. */
 export function App() {
@@ -32,7 +28,15 @@ export function App() {
     setConnecting(true); setError(undefined);
     const candidate = new ControlClient(credential.trim(), () => { if (active.current === candidate) { disconnect(); setError(new ApiError(401, 'UNAUTHORIZED')); } });
     active.current = candidate; setCredential('');
-    try { await candidate.list('users'); if (active.current === candidate) setClient(candidate); }
+    try {
+      try { await candidate.list('users'); }
+      catch (failure) {
+        if (!(failure instanceof ApiError) || failure.status !== 403) throw failure;
+        await candidate.approvals();
+        if (active.current === candidate) { window.location.hash = '#approvals'; setRoute('approvals'); }
+      }
+      if (active.current === candidate) setClient(candidate);
+    }
     catch (failure) { if (active.current === candidate) { candidate.dispose(); active.current = undefined; setError(failure); } }
     finally { if (!active.current || active.current === candidate) setConnecting(false); }
   }
@@ -51,9 +55,9 @@ export function App() {
     : <div className="shell"><aside className="sidebar"><div className="brand"><span className="brand-mark">T</span> ToolGate</div>
       <p className="sidebar-caption">Workspace</p><nav aria-label="Main navigation">{sections.map(([value,label]) => <a key={value} href={`#${value}`} aria-current={route === value ? 'page' : undefined}><span className="nav-dot" />{label}</a>)}</nav>
       <div className="sidebar-bottom"><span className="connection">Connected to Control</span><small>v{__APP_VERSION__}</small><button onClick={disconnect}>Disconnect</button></div></aside>
-      <div className="workspace"><header className="topbar"><span>Administration</span><span className="tag">Directory foundation</span></header>
-        <main id="main" tabIndex={-1}>{route === 'overview' ? <Dashboard client={client} /> : <Directory key={route} client={client} kind={route} />}</main>
-        <footer>Control owns validation and permissions. Stored configuration does not grant runtime access.</footer></div></div>}
+      <div className="workspace"><header className="topbar"><span>Administration</span><span className="tag">Organization workspace</span></header>
+        <main id="main" tabIndex={-1}>{route === 'overview' ? <Dashboard client={client} /> : route === 'approvals' ? <Approvals client={client} /> : <Directory key={route} client={client} kind={route} />}</main>
+        <footer>Control verifies permissions. Gateway checks current policy for every runtime authorization.</footer></div></div>}
   </>;
 }
 
@@ -62,14 +66,14 @@ function Dashboard({ client }: { client: ControlClient }) {
   const [error,setError] = useState<unknown>(); const [attempt,setAttempt] = useState(0);
   useEffect(() => {
     const abort = new AbortController(); setCounts({}); setError(undefined);
-    Promise.all(sections.slice(1).map(async ([kind]) => { const page = await client.list(kind as DirectoryKind, undefined, abort.signal); return [kind,{ count:page.items.length, more:!!page.nextCursor }] as const; }))
+    Promise.all(directorySections.map(async ([kind]) => { const page = await client.list(kind, undefined, abort.signal); return [kind,{ count:page.items.length, more:!!page.nextCursor }] as const; }))
       .then(values => { if (!abort.signal.aborted) setCounts(Object.fromEntries(values)); })
       .catch(failure => { if (!abort.signal.aborted) setError(failure); });
     return () => abort.abort();
   },[client,attempt]);
   return <><p className="eyebrow">Workspace overview</p><h1>Your organization, at a glance</h1><p className="intro">A clear place to manage the people and capabilities in your directory.</p>
     {error ? <Failure error={error} retry={() => setAttempt(attempt+1)} /> : Object.keys(counts).length === 0 ? <p role="status">Loading your directory…</p> :
-      <div className="stats">{sections.slice(1).map(([kind,label]) => <a className="stat" key={kind} href={`#${kind}`}><span>{label}</span><strong>{counts[kind as DirectoryKind]?.count}{counts[kind as DirectoryKind]?.more ? '+' : ''}</strong><small>View directory →</small></a>)}</div>}
+      <div className="stats">{directorySections.map(([kind,label]) => <a className="stat" key={kind} href={`#${kind}`}><span>{label}</span><strong>{counts[kind]?.count}{counts[kind]?.more ? '+' : ''}</strong><small>View directory →</small></a>)}</div>}
     <section className="guidance"><span className="tag">Getting organized</span><h2>Start with the people who use your tools.</h2><p>Add users, then browse teams and registered capabilities. Policies describe stored configuration; runtime distribution is a separate step.</p><a href="#users" className="text-link">Open users →</a></section>
     <p className="hint">Counts show the first page (up to 50 records). A + means more pages are available. Clients show device records, without enrollment or online status.</p></>;
 }

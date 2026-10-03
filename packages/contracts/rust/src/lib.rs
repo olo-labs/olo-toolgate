@@ -3,6 +3,134 @@
 // SPDX-License-Identifier: Apache-2.0
 // GENERATED FILE — DO NOT EDIT DIRECTLY; tools/contracts/generate.py
 use serde::{Deserialize, Serialize};
+/// Signed format 2 envelope; compilation adds ASK; old readers reject safely.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApprovalBundlePayload {
+    pub format_version: u64,
+    pub issuer: String,
+    pub audience: String,
+    pub tenant_id: String,
+    pub sequence: u64,
+    pub version: String,
+    pub directory_revision: u64,
+    pub issued_at_unix_ms: u64,
+    pub expires_at_unix_ms: u64,
+    pub grace_ms: u64,
+    pub policy_sha256: String,
+    pub policy: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rollback_of: Option<u64>,
+}
+/// Format 2 exact rule; BLOCK > ASK > ALLOW. ASK never uses grace.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApprovalBundleRule {
+    pub policy_id: String,
+    pub user_ids: Vec<String>,
+    pub agent_ids: Vec<String>,
+    pub device_ids: Vec<String>,
+    pub tool_id: String,
+    pub action: String,
+    pub resource: ResourceDescriptor,
+    pub grace_allowed: bool,
+    pub effect: Decision,
+}
+/// Canonical ApprovalChoice wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ApprovalChoice {
+    #[serde(rename = "APPROVE_ONCE")]
+    ApproveOnce,
+    #[serde(rename = "APPROVE_TEMPORARY")]
+    ApproveTemporary,
+    #[serde(rename = "DENY")]
+    Deny,
+}
+/// Format 2 adds human approval without weakening default deny.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApprovalCompiledPolicy {
+    pub format_version: u64,
+    pub rules: Vec<ApprovalBundleRule>,
+}
+/// Optimistic human decision; duration is required only for temporary approval.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApprovalDecisionRequest {
+    pub decision: ApprovalChoice,
+    pub expected_revision: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration_ms: Option<u64>,
+}
+/// Bounded tenant-scoped approval page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApprovalPage {
+    pub items: Vec<ApprovalRecord>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
+/// Gateway-only atomic lease consumption; repeat use never grants again.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApprovalPermitUse {
+    pub approval_id: String,
+    pub permit_id: String,
+    pub input: PolicyInput,
+    pub policy_version: String,
+}
+/// Durable tenant approval status; identity/resource and digest only, never raw arguments.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApprovalRecord {
+    pub id: String,
+    pub revision: u64,
+    pub state: ApprovalState,
+    pub input: PolicyInput,
+    pub policy_version: String,
+    pub created_at_unix_ms: u64,
+    pub expires_at_unix_ms: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub decided_by: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub decided_at_unix_ms: Option<u64>,
+}
+/// Authenticated Control result for this exact Gateway attempt; lease fields occur only on a successful grant.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApprovalResolution {
+    pub approval_id: String,
+    pub state: ApprovalState,
+    pub input: PolicyInput,
+    pub policy_version: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub permit_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub permit_expires_at_unix_ms: Option<u64>,
+}
+/// Canonical ApprovalState wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ApprovalState {
+    #[serde(rename = "PENDING")]
+    Pending,
+    #[serde(rename = "APPROVED_ONCE")]
+    ApprovedOnce,
+    #[serde(rename = "APPROVED_TEMPORARY")]
+    ApprovedTemporary,
+    #[serde(rename = "DENIED")]
+    Denied,
+    #[serde(rename = "EXPIRED")]
+    Expired,
+    #[serde(rename = "CONSUMED")]
+    Consumed,
+}
+/// Gateway-only normalized ASK request. No raw arguments or credentials.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApprovalSubmission {
+    pub input: PolicyInput,
+    pub policy_version: String,
+}
 /// Immutable artifact identity; digest must be verified by consumers.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -10,6 +138,16 @@ pub struct ArtifactDescriptor {
     pub uri: String,
     pub sha256: String,
     pub size_bytes: u64,
+}
+/// V2 ASK outcome; pending ASK grants no execution; ALLOW for approved ASK requires a signed permit.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AuthorizationOutcome {
+    pub decision: PolicyDecision,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub approval_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub permit: Option<SignedExecutionPermit>,
 }
 /// Runtime request; principal context and resource identity are derived by the gateway, never asserted by the caller.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -393,6 +531,44 @@ pub struct ErrorEnvelope {
     pub request_id: String,
     pub retryable: bool,
 }
+/// Exact-operation capability; maximum ten seconds; authoritative consume boundary enforces replay.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ExecutionPermitClaims {
+    pub permit_version: u64,
+    pub issuer: String,
+    pub audience: String,
+    pub tenant_id: String,
+    pub user_id: String,
+    pub agent_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub device_id: Option<String>,
+    pub tool_id: String,
+    pub action: String,
+    pub resource: ResourceDescriptor,
+    pub arguments_digest: String,
+    pub request_id: String,
+    pub policy_version: String,
+    pub approval_id: String,
+    pub jti: String,
+    pub issued_at_unix_ms: u64,
+    pub expires_at_unix_ms: u64,
+}
+/// Dedicated runtime permit trust domain; no key negotiation or remote keys.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ExecutionPermitHeader {
+    pub alg: String,
+    pub typ: String,
+    pub kid: String,
+}
+/// Authenticated runtime request to verify and atomically consume one exact-bound permit.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ExecutionPermitUseRequest {
+    pub permit: SignedExecutionPermit,
+    pub request: AuthorizationRequest,
+}
 /// Marketplace trust only; never organization or runtime authorization.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -508,6 +684,12 @@ pub struct RuntimeAuditEvent {
     pub decision: PolicyDecision,
     pub trace_id: String,
 }
+/// RS256 compact JWS; structural validation alone does not establish trust.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SignedExecutionPermit {
+    pub jws: String,
+}
 /// RFC 7515 compact JWS; payload and hash must both verify before adoption.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -537,12 +719,16 @@ impl ContractSet {
     pub fn current() -> Self {
         Self {
             name: "olo-toolgate-contracts".into(),
-            version: "0.4.0-dev".into(),
+            version: "0.5.0-dev".into(),
         }
     }
 }
 /// Embedded canonical schemas for offline boundary validation.
 pub const CANONICAL_SCHEMAS: &[(&str, &str)] = &[
+    (
+        "https://schemas.ololabs.io/toolgate/v1/approval.schema.json",
+        include_str!("../schemas/v1/approval.schema.json"),
+    ),
     (
         "https://schemas.ololabs.io/toolgate/v1/bundle.schema.json",
         include_str!("../schemas/v1/bundle.schema.json"),

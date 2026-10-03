@@ -4,6 +4,15 @@ All notable project changes should be documented here.
 
 The project follows semantic versioning once stable versioning begins.
 
+## 0.5.0-dev — Module 05
+
+- Add exact-operation ASK review with dedicated approver identity, one-time and
+  temporary grants, deny, durable expiry, transaction races and audited state.
+- Add format-2 signed ASK policies, runtime v2, separate Gateway RS256 permits and
+  strict PostgreSQL-backed jti consumption. Approval outage/revocation blocks.
+- Add approval console, external Helm keys/configuration, migration V4 and genuine
+  contract, browser, production E2E, release compatibility and operational gates.
+
 ## Unreleased
 
 ### Module 04 — 0.4.0-dev

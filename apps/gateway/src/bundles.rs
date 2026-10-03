@@ -9,8 +9,9 @@ use crate::{
 };
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use olo_toolgate_contracts::{
-    BundleEffect, BundleHeader, BundlePayload, CompiledPolicy, Decision, DecisionReason,
-    PolicyDecision, PolicyInput, SignedPolicyBundle,
+    ApprovalBundlePayload, ApprovalBundleRule, ApprovalCompiledPolicy, BundleEffect, BundleHeader,
+    BundlePayload, CompiledPolicy, Decision, DecisionReason, PolicyDecision, PolicyInput,
+    SignedPolicyBundle,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -184,16 +185,37 @@ impl BundleVerifier {
         )
         .map_err(|_| "bundle signature rejected")?;
         let payload = strict_json(&decode(parts[1])?).map_err(|_| "invalid signed payload")?;
-        if !self.contracts.valid("BundlePayload", &payload) {
-            return Err("unsupported bundle payload");
-        }
-        let payload: BundlePayload =
-            serde_json::from_value(payload).map_err(|_| "invalid signed payload")?;
+        let payload: ApprovalBundlePayload =
+            match payload.get("formatVersion").and_then(|v| v.as_u64()) {
+                Some(1) if self.contracts.valid("BundlePayload", &payload) => {
+                    let old: BundlePayload =
+                        serde_json::from_value(payload).map_err(|_| "invalid signed payload")?;
+                    ApprovalBundlePayload {
+                        format_version: old.format_version,
+                        issuer: old.issuer,
+                        audience: old.audience,
+                        tenant_id: old.tenant_id,
+                        sequence: old.sequence,
+                        version: old.version,
+                        directory_revision: old.directory_revision,
+                        issued_at_unix_ms: old.issued_at_unix_ms,
+                        expires_at_unix_ms: old.expires_at_unix_ms,
+                        grace_ms: old.grace_ms,
+                        policy_sha256: old.policy_sha256,
+                        policy: old.policy,
+                        rollback_of: old.rollback_of,
+                    }
+                }
+                Some(2) if self.contracts.valid("ApprovalBundlePayload", &payload) => {
+                    serde_json::from_value(payload).map_err(|_| "invalid signed payload")?
+                }
+                _ => return Err("unsupported bundle payload"),
+            };
         if payload.issuer != self.config.issuer
             || payload.audience != self.config.audience
             || payload.tenant_id != self.config.tenant_id
             || payload.sequence < self.config.minimum_sequence
-            || payload.version != format!("1.0.{}", payload.sequence)
+            || payload.version != format!("{}.0.{}", payload.format_version, payload.sequence)
             || payload.issued_at_unix_ms > now
             || payload.expires_at_unix_ms <= now
             || payload.expires_at_unix_ms <= payload.issued_at_unix_ms
@@ -207,17 +229,43 @@ impl BundleVerifier {
             return Err("bundle hash rejected");
         }
         let policy = strict_json(&policy_bytes).map_err(|_| "invalid compiled policy")?;
-        if !self.contracts.valid("CompiledPolicy", &policy) {
-            return Err("unsupported compiled policy");
-        }
-        let policy: CompiledPolicy =
-            serde_json::from_value(policy).map_err(|_| "invalid compiled policy")?;
+        let policy: ApprovalCompiledPolicy = match payload.format_version {
+            1 if self.contracts.valid("CompiledPolicy", &policy) => {
+                let old: CompiledPolicy =
+                    serde_json::from_value(policy).map_err(|_| "invalid compiled policy")?;
+                ApprovalCompiledPolicy {
+                    format_version: 1,
+                    rules: old
+                        .rules
+                        .into_iter()
+                        .map(|r| ApprovalBundleRule {
+                            policy_id: r.policy_id,
+                            user_ids: r.user_ids,
+                            agent_ids: r.agent_ids,
+                            device_ids: r.device_ids,
+                            tool_id: r.tool_id,
+                            action: r.action,
+                            resource: r.resource,
+                            grace_allowed: r.grace_allowed,
+                            effect: if r.effect == BundleEffect::Block {
+                                Decision::Block
+                            } else {
+                                Decision::Allow
+                            },
+                        })
+                        .collect(),
+                }
+            }
+            2 if self.contracts.valid("ApprovalCompiledPolicy", &policy) => {
+                serde_json::from_value(policy).map_err(|_| "invalid compiled policy")?
+            }
+            _ => return Err("unsupported compiled policy"),
+        };
         let mut policy_ids = std::collections::BTreeSet::new();
-        if policy
-            .rules
-            .iter()
-            .any(|r| !policy_ids.insert(r.policy_id.clone()))
-        {
+        if policy.rules.iter().any(|r| {
+            !policy_ids.insert(r.policy_id.clone())
+                || (r.effect == Decision::Ask && r.grace_allowed)
+        }) {
             return Err("duplicate policy identity");
         }
         let deadline = payload
@@ -237,8 +285,8 @@ impl BundleVerifier {
 }
 
 struct Snapshot {
-    payload: BundlePayload,
-    policy: CompiledPolicy,
+    payload: ApprovalBundlePayload,
+    policy: ApprovalCompiledPolicy,
     deadline: u64,
     wire_digest: String,
     monotonic_expiry: Instant,
@@ -332,6 +380,8 @@ impl VerifiedPolicy {
         };
         let mut decision = Decision::Block;
         let mut reason = DecisionReason::NoMatch;
+        let mut explicit_block = false;
+        let mut expired_ask = false;
         if input.context.tenant_id == snapshot.payload.tenant_id {
             for r in &snapshot.policy.rules {
                 if r.tool_id != input.tool_id
@@ -349,25 +399,44 @@ impl VerifiedPolicy {
                     continue;
                 }
                 reason = DecisionReason::Matched;
-                if r.effect == BundleEffect::Block {
+                if r.effect == Decision::Block {
                     decision = Decision::Block;
+                    explicit_block = true;
                     break;
                 }
                 if (now >= snapshot.payload.expires_at_unix_ms
                     || (self.monotonic_clock)() >= snapshot.monotonic_expiry)
-                    && !r.grace_allowed
+                    && (!r.grace_allowed || r.effect == Decision::Ask)
                 {
+                    // A matching ASK can never be bypassed by another ALLOW in grace.
+                    if r.effect == Decision::Ask {
+                        expired_ask = true;
+                        continue;
+                    }
                     if decision != Decision::Allow {
                         reason = DecisionReason::PolicyUnavailable;
                     }
                     continue;
                 }
-                decision = Decision::Allow;
+                if r.effect == Decision::Ask {
+                    decision = Decision::Ask;
+                    reason = DecisionReason::ApprovalRequired;
+                } else if decision != Decision::Ask {
+                    decision = Decision::Allow;
+                }
             }
         }
+        if expired_ask && !explicit_block {
+            decision = Decision::Block;
+            reason = DecisionReason::PolicyUnavailable;
+        }
         PolicyDecision {
+            reason: if decision == Decision::Ask {
+                DecisionReason::ApprovalRequired
+            } else {
+                reason
+            },
             decision,
-            reason,
             policy_version: snapshot.payload.version.clone(),
             request_id: input.context.request_id.clone(),
         }
@@ -393,6 +462,21 @@ impl PolicyEvaluator for VerifiedPolicy {
     }
     fn decision_valid(&self, decision: &PolicyDecision, input: &PolicyInput, now: u64) -> bool {
         self.decide(input, now) == *decision
+    }
+    fn approval_deadline(&self, input: &PolicyInput, now: u64) -> Option<u64> {
+        if self.decide(input, now).decision != Decision::Ask {
+            return None;
+        }
+        let snapshot = self.current.read().ok()?.clone()?;
+        let remaining = snapshot
+            .monotonic_expiry
+            .checked_duration_since((self.monotonic_clock)())?;
+        Some(
+            snapshot
+                .payload
+                .expires_at_unix_ms
+                .min(now.checked_add(u64::try_from(remaining.as_millis()).ok()?)?),
+        )
     }
     fn metrics(&self, now: u64) -> String {
         let current = self.current.read().ok().and_then(|v| v.clone());

@@ -62,3 +62,8 @@ idempotent and transactional, with expected directory revision/current sequence.
 Rollback republishes historical policy as a higher sequence. The dedicated
 `toolgate-bundle-reader` role can read current bundles only. See
 [protocol, examples, grace and key rotation](../control-plane/policy-bundles.md).
+
+Module 05 exposes `/api/control/v1/approvals`: bounded list/get, human `/{id}/decision`
+with expected revision and Idempotency-Key, and separate machine `/resolve` and
+`/permits/consume`. Dedicated IdP roles and signed approver user mapping are required;
+admin alone does not grant approval. [Exact binding, states and errors](../control-plane/approvals.md).

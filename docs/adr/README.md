@@ -19,3 +19,5 @@ Use `000-template.md`.
 - [003: Control Plane transactions and identity](003-control-plane-transactions.md)
 - [004: Embedded administration console](004-embedded-admin-console.md)
 - [005: Signed policy publication and verified snapshots](005-signed-policy-bundles.md)
+
+- [006: Durable exact-operation ASK approvals and single-use permits](006-ask-approvals.md)

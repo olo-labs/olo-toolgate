@@ -120,3 +120,8 @@
 
 - [Module 04 coverage plan](codex/modules/04-coverage.md)
 - [Module 04 completion evidence](codex/modules/04-completion.md)
+
+- [ASK approvals and execution permits](control-plane/approvals.md)
+- [006: Durable ASK workflow and permit consumption](adr/006-ask-approvals.md)
+- [Module 05 coverage plan](codex/modules/05-coverage.md)
+- [Module 05 completion evidence](codex/modules/05-completion.md)

@@ -58,3 +58,7 @@ token, verifies signed current bundles, and swaps whole snapshots atomically.
 Readiness reflects verified freshness; grace allows only explicitly classified
 low-risk reads, and expiry blocks every action. See the complete
 [bundle configuration and failure runbook](../control-plane/policy-bundles.md).
+
+The optional `approval` object requires signed bundle mode and dedicated external
+Gateway permit signing material. [Approval configuration](../control-plane/approvals.md)
+documents fixed origin, machine JWT refresh, strict trust, deadlines and atomic use.

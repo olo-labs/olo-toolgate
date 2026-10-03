@@ -3,13 +3,87 @@
 openapi: 3.1.0
 info:
   title: OLO ToolGate Gateway Core
-  version: 0.4.0-dev
-  description: Decisions only; no execution or permits. Management uses a separate restricted listener.
+  version: 0.5.0-dev
+  description: Stateless runtime decisions, exact-bound human approvals and single-use execution permits. No tool execution. Management uses a separate restricted listener.
 servers:
   - url: https://gateway.example.invalid
 security:
   - runtimeBearer: []
 paths:
+  /v2/authorize:
+    post:
+      operationId: authorizeWithApproval
+      description: ASK creates a durable pending request. Approved ASK returns ALLOW
+        and a dedicated signed short-lived permit; execution requires atomic consume.
+        Approval failure BLOCK. Legacy v1/MCP remain fail closed on ASK.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: https://schemas.ololabs.io/toolgate/v1/runtime.schema.json#/$defs/AuthorizationRequest
+      responses:
+        '200':
+          description: Explicit result; no-store
+          content:
+            application/json:
+              schema:
+                $ref: https://schemas.ololabs.io/toolgate/v1/approval.schema.json#/$defs/AuthorizationOutcome
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '413':
+          $ref: '#/components/responses/Error'
+        '415':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        '504':
+          $ref: '#/components/responses/Error'
+  /v1/permits/consume:
+    post:
+      operationId: consumeExecutionPermit
+      description: Verify signature, dedicated trust, exact authenticated identity/tool/action/resource/arguments
+        and original request binding, then atomically spend jti and recheck current
+        policy. Repeated use or approval outage blocks.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: https://schemas.ololabs.io/toolgate/v1/approval.schema.json#/$defs/ExecutionPermitUseRequest
+      responses:
+        '200':
+          description: Explicit result; no-store
+          content:
+            application/json:
+              schema:
+                $ref: https://schemas.ololabs.io/toolgate/v1/policy.schema.json#/$defs/PolicyDecision
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '413':
+          $ref: '#/components/responses/Error'
+        '415':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        '504':
+          $ref: '#/components/responses/Error'
   /v1/authorize:
     post:
       operationId: authorize

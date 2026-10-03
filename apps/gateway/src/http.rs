@@ -19,7 +19,8 @@ use axum::{
     Json, Router,
 };
 use olo_toolgate_contracts::{
-    AuthorizationRequest, Decision, ErrorCode, ErrorEnvelope, RequestContext,
+    AuthorizationRequest, Decision, ErrorCode, ErrorEnvelope, ExecutionPermitUseRequest,
+    RequestContext,
 };
 use serde_json::Value;
 use std::sync::{
@@ -51,6 +52,8 @@ pub(crate) struct Correlation {
     pub(crate) trace_id: String,
     traceparent: String,
 }
+#[derive(Clone, Copy)]
+struct CredentialDeadline(u64);
 
 impl AppState {
     /// Construct only after startup validation and credential loading.
@@ -106,6 +109,8 @@ impl AppState {
 pub fn runtime_router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/v1/authorize", post(authorize))
+        .route("/v2/authorize", post(authorize_v2))
+        .route("/v1/permits/consume", post(consume_permit))
         .route("/mcp", post(crate::mcp::ingress))
         .route("/v1/permits", post(unsupported))
         .fallback(not_found)
@@ -134,9 +139,13 @@ pub fn management_router(state: Arc<AppState>) -> Router {
                 (
                     [("content-type", "text/plain; version=0.0.4")],
                     format!(
-                        "{}{}",
+                        "{}{}{}",
                         s.metrics.render(),
-                        s.gateway.policy.metrics(unix_ms().unwrap_or(0))
+                        s.gateway.policy.metrics(unix_ms().unwrap_or(0)),
+                        s.gateway
+                            .approval
+                            .as_ref()
+                            .map_or_else(String::new, |a| a.metrics())
                     ),
                 )
             }),
@@ -247,6 +256,9 @@ async fn guard(State(s): State<Arc<AppState>>, mut request: Request, next: Next)
             return error(ErrorCode::Unauthorized, &correlation.request_id);
         };
         request.extensions_mut().insert(context);
+        request
+            .extensions_mut()
+            .insert(CredentialDeadline(credential_expiry));
         match timeout(
             Duration::from_millis(s.config.limits.request_timeout_ms),
             next.run(request),
@@ -359,6 +371,86 @@ async fn authorize(State(s): State<Arc<AppState>>, request: Request) -> Response
             match decision.decision {
                 Decision::Allow => &s.metrics.allow,
                 _ => &s.metrics.block,
+            }
+            .fetch_add(1, Ordering::Relaxed);
+            Json(decision).into_response()
+        }
+        Err(code) => error(code, &correlation.request_id),
+    }
+}
+
+async fn authorize_v2(State(s): State<Arc<AppState>>, request: Request) -> Response {
+    let deadline = request
+        .extensions()
+        .get::<CredentialDeadline>()
+        .expect("guard credential expiry")
+        .0;
+    let (value, context, correlation, _) = match parse(&s, request).await {
+        Ok(v) => v,
+        Err(r) => return r,
+    };
+    if !s.gateway.contracts.valid("AuthorizationRequest", &value) {
+        return error(ErrorCode::Validation, &correlation.request_id);
+    }
+    let request: AuthorizationRequest = match serde_json::from_value(value) {
+        Ok(v) => v,
+        Err(_) => return error(ErrorCode::Validation, &correlation.request_id),
+    };
+    let Some(now) = unix_ms() else {
+        return error(ErrorCode::DependencyUnavailable, &correlation.request_id);
+    };
+    match s
+        .gateway
+        .authorize_v2(request, context, correlation.trace_id, now, deadline)
+        .await
+    {
+        Ok(outcome) => {
+            if outcome.decision.decision == Decision::Allow {
+                &s.metrics.allow
+            } else {
+                &s.metrics.block
+            }
+            .fetch_add(1, Ordering::Relaxed);
+            Json(outcome).into_response()
+        }
+        Err(code) => error(code, &correlation.request_id),
+    }
+}
+
+async fn consume_permit(State(s): State<Arc<AppState>>, request: Request) -> Response {
+    let deadline = request
+        .extensions()
+        .get::<CredentialDeadline>()
+        .expect("guard credential expiry")
+        .0;
+    let (value, context, correlation, _) = match parse(&s, request).await {
+        Ok(v) => v,
+        Err(r) => return r,
+    };
+    if !s
+        .gateway
+        .contracts
+        .valid("ExecutionPermitUseRequest", &value)
+    {
+        return error(ErrorCode::Validation, &correlation.request_id);
+    }
+    let request: ExecutionPermitUseRequest = match serde_json::from_value(value) {
+        Ok(v) => v,
+        Err(_) => return error(ErrorCode::Validation, &correlation.request_id),
+    };
+    let Some(now) = unix_ms() else {
+        return error(ErrorCode::DependencyUnavailable, &correlation.request_id);
+    };
+    match s
+        .gateway
+        .consume_permit(request, context, correlation.trace_id, now, deadline)
+        .await
+    {
+        Ok(decision) => {
+            if decision.decision == Decision::Allow {
+                &s.metrics.allow
+            } else {
+                &s.metrics.block
             }
             .fetch_add(1, Ordering::Relaxed);
             Json(decision).into_response()

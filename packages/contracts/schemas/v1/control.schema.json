@@ -269,6 +269,7 @@
           "$ref": "policy.schema.json#/$defs/Decision",
           "enum": [
             "ALLOW",
+            "ASK",
             "BLOCK"
           ]
         },

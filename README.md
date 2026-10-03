@@ -343,8 +343,7 @@ Module 01 adds the stateless [Gateway core](apps/gateway/README.md), static runt
 authorization and an opt-in Helm gateway workload. Module 02 adds the
 [Control Plane backend](apps/control-plane/README.md), tenant-scoped records,
 PostgreSQL/Flyway, signed administrative JWTs, atomic audit/replay and JSON/YAML
-import/export. Marketplace services remain build scaffolds. No tool execution,
-policy distribution or permit issuance is available yet.
+import/export. Marketplace services remain build scaffolds. Tool execution remains outside the delivered modules.
 Module 03 adds the [embedded Admin UI](apps/admin-ui/README.md): signed-token
 session shell, bounded dashboard, directory navigation and user management.
 
@@ -354,3 +353,8 @@ verification and atomic last-known-good snapshots, explicit read-only grace,
 forward rollback and external key rotation. Run `make policy-e2e` for the real
 PostgreSQL/Control/Gateway flow and `make benchmark` for signed evaluation evidence.
 Publication requires a reviewed directory and dedicated external signing key.
+
+Module 05 adds [ASK approvals](docs/control-plane/approvals.md): a dedicated human
+approval queue, one-time/temporary/deny decisions, durable expiry and race safety,
+Gateway-signed exact-operation permits and atomic single-use consumption. Control
+outages block ASK. Run `make approval-e2e`; no new mandatory infrastructure is added.

@@ -35,6 +35,16 @@ impl Contracts {
             ("BundlePayload", "bundle"),
             ("CompiledPolicy", "bundle"),
             ("SignedPolicyBundle", "bundle"),
+            ("ApprovalBundlePayload", "approval"),
+            ("ApprovalCompiledPolicy", "approval"),
+            ("ApprovalSubmission", "approval"),
+            ("ApprovalResolution", "approval"),
+            ("ApprovalPermitUse", "approval"),
+            ("ExecutionPermitHeader", "approval"),
+            ("ExecutionPermitClaims", "approval"),
+            ("SignedExecutionPermit", "approval"),
+            ("ExecutionPermitUseRequest", "approval"),
+            ("AuthorizationOutcome", "approval"),
         ] {
             let options = jsonschema::options().with_registry(&registry);
             let schema = json!({"$schema":"https://json-schema.org/draft/2020-12/schema", "$ref":format!("https://schemas.ololabs.io/toolgate/v1/{file}.schema.json#/$defs/{name}")});

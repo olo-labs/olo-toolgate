@@ -90,6 +90,8 @@ def helm_checks():
     control_helm_checks()
     from policy.helm import checks as policy_helm_checks
     policy_helm_checks()
+    from approval.helm import checks as approval_helm_checks
+    approval_helm_checks()
 
 
 def scans():

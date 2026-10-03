@@ -18,9 +18,10 @@ def main():
         if not line.startswith('{'):continue
         sample=json.loads(line)
         sample.update(host=platform.platform(),hostCpu=platform.processor(),toolchain='Rust 1.94.1',execution='Docker rust:1.94-bookworm' if DOCKER else 'native',networkIncluded=False,collectorIoIncluded=False)
-        if sample['benchmark']=='signed-policy-evaluation':
+        if sample['benchmark'] in ('signed-policy-evaluation', 'signed-ask-policy-evaluation'):
             sample['monotonicClock']='fixed for reproducible full-scan samples; production Instant sampling cost excluded'
-        name='benchmark.json' if sample['benchmark']=='authorization-core' else 'bundle-benchmark.json'
+        name={'authorization-core':'benchmark.json','signed-policy-evaluation':'bundle-benchmark.json',
+              'signed-ask-policy-evaluation':'approval-benchmark.json'}[sample['benchmark']]
         (folder/name).write_text(json.dumps(sample,indent=2)+'\n',encoding='utf-8',newline='\n')
         print(json.dumps(sample,indent=2))
 

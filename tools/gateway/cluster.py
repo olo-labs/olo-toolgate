@@ -22,7 +22,7 @@ ROOT=Path(__file__).resolve().parents[2]
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--image',default='olo-toolgate-gateway:module04')
+    parser.add_argument('--image',default='olo-toolgate-gateway:module05')
     args=parser.parse_args()
     names={k:os.environ.get('TOOLGATE_'+k.upper()+'_PATH') or shutil.which(k) for k in ('kind','kubectl','helm')}
     if any(not p for p in names.values()): raise SystemExit('Kind, kubectl and native Helm are required; see gateway deployment docs')

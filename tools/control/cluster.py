@@ -13,13 +13,16 @@ from pathlib import Path
 
 import yaml
 from check import ROOT, POSTGRES, free_port, http_tests, keypair, ready, request, token
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from approval.fixtures import seed_approvals
 
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--image',default='olo-toolgate-control:module04');args=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--image',default='olo-toolgate-control:module05');args=parser.parse_args()
     paths={name:os.environ.get('TOOLGATE_'+name.upper()+'_PATH') or shutil.which(name) for name in ('kind','kubectl','helm')}
     if any(not value for value in paths.values()): raise SystemExit('Native Kind, Helm and kubectl are required')
-    cluster='control-module04-'+uuid.uuid4().hex[:8];folder=ROOT/'.dev'/cluster;folder.mkdir(parents=True)
+    cluster='control-module05-'+uuid.uuid4().hex[:8];folder=ROOT/'.dev'/cluster;folder.mkdir(parents=True)
     config=folder/'kubeconfig';env=dict(os.environ,KUBECONFIG=str(config))
     def run(tool,*rest,capture=False,input=None):
         print('+ '+tool+' '+' '.join(rest[:3]),flush=True)
@@ -65,6 +68,7 @@ def main():
         registry,tag=args.image.rsplit(':',1);namespace,repo=registry.rsplit('/',1) if '/' in registry else ('docker.io/library',registry)
         values={'global':{'imageRegistry':namespace},'control':{'enabled':True,'developmentMode':True,'publicKeySecret':'control-identity',
             'bundle':{'enabled':True,'signingSecret':'policy-signing','keyId':'bundle-cluster-1'},
+            'approval':{'enabled':True},
             'image':{'repository':repo,'tag':tag,'pullPolicy':'Never'},'database':{'host':'control-postgres','name':'control','credentialsSecret':'control-db','sslMode':'disable'},
             'networkPolicy':{'runtimeFrom':[{'podSelector':{}}],'databaseTo':[{'podSelector':{'matchLabels':{'app':'control-postgres'}}}],
                              'dnsTo':[{'namespaceSelector':{'matchLabels':{'kubernetes.io/metadata.name':'kube-system'}}}]}}}
@@ -97,20 +101,36 @@ def main():
         parts=json.loads(signed)['jws'].split('.')
         signing.public_key().verify(base64.urlsafe_b64decode(parts[2]+'=='),(parts[0]+'.'+parts[1]).encode(),padding.PKCS1v15(),hashes.SHA256())
         assert request(runtime+api+'/bundles/current',admin)[1]==signed
+        approver,approval_ids=seed_approvals(runtime,key,tenant='cluster-approval')
+        approval_api=runtime+api+'/approvals'
+        once_id=approval_ids['once']
+        decided=request(approval_api+'/'+once_id+'/decision',approver,{'decision':'APPROVE_ONCE','expectedRevision':1},'POST',{'Idempotency-Key':'cluster-approve'})
+        assert decided[0]==200,decided[:2]
+        record=json.loads(request(approval_api+'/'+once_id,approver)[1])
+        machine=token(key,tenant_id='cluster-approval',groups=['toolgate-approval-gateway'])
+        lease=request(approval_api+'/resolve',machine,{'input':record['input'],'policyVersion':record['policyVersion']},'POST')
+        assert lease[0]==200,lease[:2]
+        lease=json.loads(lease[1]);assert lease['state']=='CONSUMED'
+        use={'input':lease['input'],'policyVersion':lease['policyVersion'],'approvalId':lease['approvalId'],'permitId':lease['permitId']}
+        assert request(approval_api+'/permits/consume',machine,use,'POST')[0]==200
+        assert request(approval_api+'/permits/consume',machine,use,'POST')[0]==409
+        consumed_record=request(approval_api+'/'+once_id,approver)[1]
         values['control']['limits']={'maxRecords':511};path.write_text(yaml.safe_dump(values),encoding='utf-8')
         run('helm','upgrade',release,chart,'-f',str(path),'--wait','--timeout','180s')
         runtime,management=connect()
         assert request(runtime+'/api/control/v1/users/user',token(key))[0]==200
         assert request(runtime+api+'/bundles/current',token(key))[1]==signed
+        assert request(runtime+api+'/approvals/'+once_id,approver)[1]==consumed_record
         run('helm','rollback',release,'1','--wait','--timeout','180s')
         runtime,management=connect()
         assert request(runtime+'/api/control/v1/users/user',token(key))[0]==200
         assert request(runtime+api+'/bundles/versions/1',token(key))[1]==signed
+        assert request(runtime+api+'/approvals/'+once_id,approver)[1]==consumed_record
         configmap=json.loads(run('kubectl','get','configmap',deployment,'-o','json',capture=True).stdout)
         assert configmap['data']['TOOLGATE_CONTROL_MAX_RECORDS']=='512'
         output=ROOT/'build/control';output.mkdir(parents=True,exist_ok=True)
         image_id=subprocess.check_output(['docker','image','inspect','--format','{{.Id}}',args.image],text=True).strip()
-        (output/'cluster-smoke.json').write_text(json.dumps({'image':args.image,'imageId':image_id,'postgres':True,'replicas':2,'installReady':True,'jwtRolesIsolation':True,'persistentUpgrade':True,'rollbackReady':True,'externalSigningSecret':True,'signedPublicationVerified':True,'immutableBundleSurvivesUpgradeRollback':True,'kindVersion':'0.27.0','kubernetes':'1.32.2'},indent=2)+'\n',encoding='utf-8')
+        (output/'cluster-smoke.json').write_text(json.dumps({'image':args.image,'imageId':image_id,'postgres':True,'replicas':2,'installReady':True,'jwtRolesIsolation':True,'persistentUpgrade':True,'rollbackReady':True,'externalSigningSecret':True,'signedPublicationVerified':True,'immutableBundleSurvivesUpgradeRollback':True,'approvalAtomicConsume':True,'spentApprovalSurvivesUpgradeRollback':True,'kindVersion':'0.27.0','kubernetes':'1.32.2'},indent=2)+'\n',encoding='utf-8')
         print('Control Kind HA install, authenticated API, persistent upgrade and rollback passed')
     except Exception:
         # Preserve local diagnostics without printing pod environment or Secret data.

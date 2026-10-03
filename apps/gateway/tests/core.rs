@@ -128,6 +128,8 @@ fn state(
             extractors: Registry::new(cfg.extractors.clone()).unwrap(),
             policy,
             audit,
+            approval: None,
+            permit_signer: None,
         },
         auth,
         cfg,
@@ -233,7 +235,7 @@ fn config_rejects_unknown_unbounded_expired_or_unsafe_settings() {
     invalid.policy.as_mut().unwrap().expires_at_unix_ms = 1;
     assert!(invalid.validate(&contracts, 1).is_err());
     let mut invalid = serde_json::to_value(config()).unwrap();
-    invalid["policy"]["rules"][0]["effect"] = json!("ASK");
+    invalid["policy"]["rules"][0]["effect"] = json!("IMPLICIT_GRANT");
     assert!(serde_json::from_value::<Config>(invalid).is_err());
 }
 
@@ -474,6 +476,8 @@ async fn extractor_port_failure_rejects_and_expired_policy_blocks() {
         extractors: registry,
         policy: Arc::new(cfg.policy.unwrap()),
         audit: Arc::new(RecordingAudit::default()),
+        approval: None,
+        permit_signer: None,
     };
     assert_eq!(
         ErrorCode::Validation,

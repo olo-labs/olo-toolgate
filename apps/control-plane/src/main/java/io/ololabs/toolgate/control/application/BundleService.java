@@ -49,15 +49,18 @@ public final class BundleService {
                 if (request.rollbackOf() > previous) throw Failure.conflict();
                 var old = tx.bundle(request.rollbackOf());
                 if (old == null) throw new Failure(ErrorCode.NOT_FOUND, 404, "Bundle not found");
-                policy = old.policy(); codec.model(policy, CompiledPolicy.class);
+                policy = old.policy(); validateCompiled(policy);
                 sourceRevision = old.directoryRevision();
             }
             long sequence = previous + 1;
             long issued = clock.millis();
             if (issued < 0 || issued > 9007199254740991L - request.lifetimeMs()) throw Failure.unavailable();
-            var payload = new BundlePayload(1L, issuer, audience, actor.tenant().value(), sequence, "1.0." + sequence,
-                sourceRevision, issued, issued + request.lifetimeMs(), request.graceMs(), DirectoryService.digest(policy),
-                Base64.getUrlEncoder().withoutPadding().encodeToString(policy.getBytes(StandardCharsets.UTF_8)), request.rollbackOf());
+            boolean approvals=validateCompiled(policy);
+            var bytes=Base64.getUrlEncoder().withoutPadding().encodeToString(policy.getBytes(StandardCharsets.UTF_8));
+            Object payload = approvals ? new ApprovalBundlePayload(2L,issuer,audience,actor.tenant().value(),sequence,"2.0."+sequence,
+                sourceRevision,issued,issued+request.lifetimeMs(),request.graceMs(),DirectoryService.digest(policy),bytes,request.rollbackOf())
+                : new BundlePayload(1L, issuer, audience, actor.tenant().value(), sequence, "1.0." + sequence,
+                    sourceRevision, issued, issued + request.lifetimeMs(), request.graceMs(), DirectoryService.digest(policy),bytes,request.rollbackOf());
             var signed = codec.json(signer.sign(payload));
             codec.model(signed, SignedPolicyBundle.class);
             tx.publishBundle(new Store.BundleRecord(sequence, signed, policy, sourceRevision));
@@ -66,5 +69,9 @@ public final class BundleService {
             var reply = new Store.Reply(201, signed, sequence);
             tx.remember(actor.id(), key, digest, reply); return reply;
         });
+    }
+    private boolean validateCompiled(String policy) {
+        try { codec.model(policy,CompiledPolicy.class); return false; }
+        catch (Failure incompatible) { codec.model(policy,ApprovalCompiledPolicy.class); return true; }
     }
 }

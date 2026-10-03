@@ -4,6 +4,32 @@ React 19 / TypeScript / Vite console, embedded in Control at `/console/`.
 Dashboard and paginated users, teams, tools, policies, clients/device records and
 agents use real Control v1 APIs. User create/edit/delete supports optimistic
 revisions and exact-request idempotency. Other sections provide readable inspection.
+The approvals queue supports approve once, temporary approval and denial for
+Gateway-created ASK requests. It shows the exact operation binding, authoritative
+state, revision and deadlines, with explicit human confirmation before a decision.
+
+## Human approval
+
+Connect using an organization-issued token with the tenant-scoped
+`toolgate-approver` role and a signed `user_id` identifying an enabled directory
+user. Control verifies both; an administrator role alone does not grant approval
+permission. An approver without directory access opens directly in Approvals.
+The UI never decodes tokens to infer roles.
+
+The queue and details refresh every 15 seconds. Page controls fetch up to 50
+records at a time; the pending filter applies to the current page. Review tenant,
+requester, agent, device presence, exact tool/action/resource, arguments digest
+and policy version. Approve once covers one execution. Temporary approval offers
+a maximum of ten or thirty minutes, capped by Control at current policy expiry.
+The UI displays digests rather than raw arguments or credentials.
+
+Every decision uses the displayed revision and an idempotency key retained for an
+exact retry after a connection failure. A changed decision or revision gets a new
+key. A conflict reloads the current record before any further decision. Expired,
+denied and consumed records have no decision controls. The requester retries
+through Gateway; a recorded approval cannot bypass a changed policy or an
+unavailable approval service. Notifications are optional and require no chat
+integration to use this queue.
 
 ## Develop and verify
 
@@ -48,4 +74,4 @@ and checksums in `build/ui/`. `make check` includes unit, drift and browser gate
 
 See [authentication and operations](../../docs/control-plane/admin-ui.md),
 [ADR 004](../../docs/adr/004-embedded-admin-console.md) and
-[coverage plan](../../docs/codex/modules/03-coverage.md).
+[approval architecture](../../docs/adr/006-ask-approvals.md).

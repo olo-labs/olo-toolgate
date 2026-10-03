@@ -92,7 +92,7 @@ def smoke(image):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--image',default='olo-toolgate-gateway:module04')
+    parser.add_argument('--image',default='olo-toolgate-gateway:module05')
     parser.add_argument('--no-build',action='store_true')
     args=parser.parse_args()
     if not args.no_build:

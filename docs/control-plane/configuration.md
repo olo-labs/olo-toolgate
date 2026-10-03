@@ -67,3 +67,7 @@ check database connectivity/TLS, NetworkPolicy DB/DNS peers, pool pressure and
 readiness. For a 401, check issuer/audience/key, token claims and clock synchronization.
 For a 409, refresh revisions and validate references, retired IDs and tenant quotas.
 Do not bypass these checks to make a deployment ready.
+
+Module 05 approval behavior defaults disabled. Enable bundle signing and set the
+four `TOOLGATE_CONTROL_APPROVAL_*` fields in [approval configuration](approvals.md).
+The dedicated approver role and signed `user_id` cannot be replaced by admin role.

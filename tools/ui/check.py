@@ -16,6 +16,8 @@ from pathlib import Path
 from cryptography.hazmat.primitives.asymmetric import rsa
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from control.check import ROOT, database, environment, free_port, keypair, ready, request, token
+from approval.fixtures import seed_approvals
+from policy.check import signing_key
 
 
 def seed(runtime, key):
@@ -42,9 +44,9 @@ def seed(runtime, key):
 
 
 def browser(runtime, key, work):
-    credentials=seed(runtime,key); path=work/'browser-credentials.json'
+    credentials=seed(runtime,key); approver,approval_ids=seed_approvals(runtime,key); credentials['approver']=approver; path=work/'browser-credentials.json'
     path.write_text(json.dumps(credentials),encoding='utf-8');path.chmod(0o600)
-    env=dict(os.environ,UI_TEST_ORIGIN=runtime,UI_TEST_CREDENTIALS=str(path))
+    env=dict(os.environ,UI_TEST_ORIGIN=runtime,UI_TEST_CREDENTIALS=str(path),UI_TEST_APPROVAL_IDS=json.dumps(approval_ids))
     result=subprocess.run(['npm.cmd' if os.name=='nt' else 'npm','--workspace','@olo-labs/toolgate-admin-ui','run','e2e'],cwd=ROOT,env=env,capture_output=True,text=True,encoding='utf-8')
     # Reporters can include locator arguments on failure. Test credentials must
     # not survive in uploaded JSON/text evidence either.
@@ -60,7 +62,7 @@ def browser(runtime, key, work):
     evidence=ROOT/'build/ui';evidence.mkdir(parents=True,exist_ok=True)
     (evidence/'smoke.json').write_text(json.dumps({'realPostgres':True,'signedTokens':True,'readerDenied':True,'expiredRejected':True,
         'embeddedAssets':True,'strictCsp':True,'noTokenStorage':True,'revisionConflict':True,'userCrud':True,'cursorPaging':True,
-        'wcagAutomatedChecks':True,'keyboardFocus':True,'desktopMobile':True},indent=2)+'\n',encoding='utf-8')
+        'wcagAutomatedChecks':True,'keyboardFocus':True,'desktopMobile':True,'approvalOnceTemporaryDeny':True,'approvalConflict':True,'approverOnlySession':True},indent=2)+'\n',encoding='utf-8')
 
 
 def main():
@@ -68,6 +70,8 @@ def main():
     (ROOT/'.dev').mkdir(exist_ok=True)
     with database() as db, tempfile.TemporaryDirectory(prefix='ui-browser-',dir=ROOT/'.dev') as temp:
         work=Path(temp);key,public=keypair(work);env=environment(db,public)
+        _,signing_path,_=signing_key(work,'browser-bundle')
+        env.update(TOOLGATE_CONTROL_BUNDLE_ENABLED='true',TOOLGATE_CONTROL_BUNDLE_KEY_ID='browser-bundle',TOOLGATE_CONTROL_BUNDLE_PRIVATE_KEY_PATH=str(signing_path),TOOLGATE_CONTROL_APPROVAL_ENABLED='true')
         env.update(CONTROL_TEST_URL=db['CONTROL_TEST_URL'],CONTROL_TEST_PASSWORD=db['CONTROL_TEST_PASSWORD'])
         if not args.no_build:
             subprocess.run([str(ROOT/('gradlew.bat' if os.name=='nt' else 'gradlew')),'--no-daemon',':control-plane:build'],cwd=ROOT,env=env,check=True)

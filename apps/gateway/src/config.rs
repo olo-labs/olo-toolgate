@@ -51,6 +51,8 @@ pub struct Config {
     pub policy: Option<StaticPolicy>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bundle_source: Option<crate::bundles::BundleSourceConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub approval: Option<crate::approvals::ApprovalConfig>,
     pub extractors: Vec<ExtractorBinding>,
 }
 
@@ -100,6 +102,20 @@ impl Config {
             (Some(policy), None) => policy.validate(contracts, now)?,
             (None, Some(source)) => source.validate()?,
             _ => return Err("exactly one static or signed policy source is required"),
+        }
+        if let Some(approval) = &self.approval {
+            approval.validate()?;
+            let source = self
+                .bundle_source
+                .as_ref()
+                .ok_or("approvals require signed policy")?;
+            if approval.private_key_path == source.keyring_path
+                || approval.private_key_path == source.token_path
+                || approval.private_key_path == approval.token_path
+                || approval.request_timeout_ms >= l.request_timeout_ms
+            {
+                return Err("approval key domains or timeout invalid");
+            }
         }
         crate::extraction::Registry::new(self.extractors.clone())?;
         Ok(())

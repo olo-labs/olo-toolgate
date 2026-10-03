@@ -904,7 +904,7 @@ dependencies = [
 
 [[package]]
 name = "olo-toolgate-contracts"
-version = "0.4.0-dev"
+version = "0.5.0-dev"
 dependencies = [
  "serde",
  "serde_json",
@@ -912,7 +912,7 @@ dependencies = [
 
 [[package]]
 name = "olo-toolgate-gateway"
-version = "0.4.0-dev"
+version = "0.5.0-dev"
 dependencies = [
  "axum",
  "base64 0.22.1",

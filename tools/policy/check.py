@@ -51,8 +51,8 @@ def until(probe, expected, description, timeout=30):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--control-image',default='olo-toolgate-control:module04')
-    parser.add_argument('--gateway-image',default='olo-toolgate-gateway:module04')
+    parser.add_argument('--control-image',default='olo-toolgate-control:module05')
+    parser.add_argument('--gateway-image',default='olo-toolgate-gateway:module05')
     parser.add_argument('--build',action='store_true',help='Build both production images before the real E2E gate')
     args=parser.parse_args()
     if args.build:

@@ -65,6 +65,7 @@ final class PolicyBundleTest {
         assertEquals("old-key",codec.model(new String(Base64.getUrlDecoder().decode(parts[0]),StandardCharsets.UTF_8),BundleHeader.class).kid());
         assertEquals(first,codec.json(signer(keys,"old-key").sign(payload)));
         assertNotEquals(first,codec.json(signer(keys,"new-key").sign(payload)));
+        assertThrows(Failure.class,()->signer(keys,"old-key").sign(Map.of("untrusted","payload")));
         var weak=java.security.KeyPairGenerator.getInstance("RSA"); weak.initialize(1024);
         assertThrows(IllegalArgumentException.class,()->signer(weak.generateKeyPair(),"weak"));
         var unsupported=java.security.KeyPairGenerator.getInstance("RSA");
@@ -84,7 +85,7 @@ final class PolicyBundleTest {
         try (var connection=java.sql.DriverManager.getConnection(base,"control_migrator",password);var statement=connection.createStatement()) { statement.execute("CREATE DATABASE "+database); }
         var url=base.replace("/control?","/"+database+"?");
         var flyway=org.flywaydb.core.Flyway.configure().dataSource(url,"control_migrator",password).target("2").load(); flyway.migrate();
-        assertEquals(1,org.flywaydb.core.Flyway.configure().dataSource(url,"control_migrator",password).load().migrate().migrationsExecuted);
+        assertEquals(2,org.flywaydb.core.Flyway.configure().dataSource(url,"control_migrator",password).load().migrate().migrationsExecuted);
         var source=new org.postgresql.ds.PGSimpleDataSource(); source.setURL(url);source.setUser("control_app");source.setPassword(password);
         var store=new PostgresStore(source,codec); var directory=new DirectoryService(store,codec,512,1048576);
         var actor=new DirectoryService.Actor(new Ids.TenantId("bundle-tenant"),"a".repeat(64),true);

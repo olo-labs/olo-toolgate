@@ -146,7 +146,7 @@ def http_tests(runtime, management, key):
         assert status == 201, (kind,status,body)
         assert request(api+'/'+kind+'/'+record['id'],reader)[0] == 200
         assert request(api+'/'+kind,reader)[0] == 200
-    assert request(api+'/policies',admin,{**records['policies'],'id':'ask-policy','decision':'ASK'},'POST',{'Idempotency-Key':'ask-policy'})[0] == 400
+    assert request(api+'/policies',admin,{**records['policies'],'id':'ask-policy','decision':'ASK','untrustedApprover':'user'},'POST',{'Idempotency-Key':'ask-policy'})[0] == 400
     assert request(api+'/users/user',admin,method='DELETE',headers={'If-Match':'"1"','Idempotency-Key':'referenced-delete'})[0] == 409
     assert request(api+'/users/user',admin,{**user,'revision':1},'PUT',{'If-Match':'"0"','Idempotency-Key':'stale-update'})[0] == 409
     assert request(api+'/users',admin,{**user,'id':'page-user'},'POST',{'Idempotency-Key':'page-user'})[0] == 201
