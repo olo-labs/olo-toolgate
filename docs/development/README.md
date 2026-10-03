@@ -1,5 +1,9 @@
 # Development
 
+Use the [current execution guide](../operations/execution-guide.md) and
+[debugging guide](../operations/debugging.md) for implemented commands.
+`make dev` remains a scaffold; the contributor contract below is the target experience.
+
 ## Contributor Contract
 
 A contributor should be able to:

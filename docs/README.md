@@ -11,6 +11,9 @@ This documentation is designed for two goals:
 
 ## Start Here
 
+- [Run and configure the implemented system](operations/execution-guide.md)
+- [Debug local and production execution](operations/debugging.md)
+
 ### I just want to run it
 
 Read:

@@ -1,5 +1,8 @@
 # Documentation Index
 
+- [How to run and use ToolGate](operations/execution-guide.md)
+- [How to debug ToolGate](operations/debugging.md)
+
 ## Getting Started
 
 - `getting-started/one-minute-quickstart.md`

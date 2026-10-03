@@ -1,5 +1,9 @@
 # OLO ToolGate
 
+For current execution commands, configuration and troubleshooting, read
+[how to run and use ToolGate](docs/operations/execution-guide.md) and
+[how to debug ToolGate](docs/operations/debugging.md).
+
 > **Control what AI can do.**
 
 OLO ToolGate is an open-source control plane for **building, distributing, authorizing, and governing AI tools** across users, agents, devices, and resources.
