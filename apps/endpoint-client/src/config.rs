@@ -8,6 +8,8 @@ use std::path::PathBuf;
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Config {
+    #[serde(default)]
+    pub tools: Option<crate::builtins::Settings>,
     pub server_url: String,
     pub state_directory: PathBuf,
     pub ipc_endpoint: String,
@@ -17,6 +19,9 @@ pub struct Config {
 }
 impl Config {
     pub fn validate(&self) -> Result<()> {
+        if let Some(tools) = &self.tools {
+            tools.validate()?;
+        }
         origin(&self.server_url)?;
         if !self.state_directory.is_absolute()
             || self.authorized_peers.is_empty()

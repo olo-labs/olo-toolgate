@@ -27,6 +27,7 @@ struct Journal {
 }
 /// One instance per machine, protected by OS lease and serialized command handling.
 pub struct ClientService {
+    tools: Option<crate::builtins::Executor>,
     store: ProtectedStore,
     _lease: ServiceLease,
     key: Arc<DeviceKey>,
@@ -83,7 +84,17 @@ impl ClientService {
         } else {
             EndpointState::Unenrolled
         };
+        let tools = if let Some(settings) = &config.tools {
+            let contracts = Arc::new(crate::contracts::Contracts::new()?);
+            Some(crate::builtins::Executor::new(
+                settings,
+                Arc::new(crate::tool_gateway::HttpsGateway::new(settings, contracts)?),
+            )?)
+        } else {
+            None
+        };
         Ok(Self {
+            tools,
             store,
             _lease: lease,
             key,
@@ -116,6 +127,45 @@ impl ClientService {
         self.journal.observed_time = now;
         self.save()?;
         Ok(now)
+    }
+    pub fn tool_catalog(&self) -> Vec<BuiltinToolInfo> {
+        self.tools.as_ref().map(|e| e.catalog()).unwrap_or_default()
+    }
+    pub async fn execute_tool(
+        &mut self,
+        invocation: BuiltinInvocation,
+    ) -> Result<std::collections::BTreeMap<String, serde_json::Value>> {
+        let now = self.clock()?;
+        if !self.health().ready {
+            return Err(Failure::Unavailable);
+        }
+        let identity = self
+            .journal
+            .identity
+            .as_ref()
+            .ok_or(Failure::Unauthorized)?;
+        if self
+            .config
+            .tools
+            .as_ref()
+            .is_none_or(|s| s.device_id != identity.device_id)
+        {
+            return Err(Failure::Unauthorized);
+        }
+        let valid_until = identity.expires_at_unix_ms.min(
+            self.journal
+                .last_success
+                .unwrap_or(0)
+                .saturating_add(120000),
+        );
+        if valid_until < now.saturating_add(20000) {
+            return Err(Failure::Expired);
+        }
+        self.tools
+            .as_mut()
+            .ok_or(Failure::Unsupported)?
+            .execute(invocation, valid_until)
+            .await
     }
     fn save(&self) -> Result<()> {
         self.store.write(
@@ -181,6 +231,8 @@ impl ClientService {
             }
         }
         let envelope = self.control.discovery().await?;
+        // Signed issuance occurs after the outgoing request. Validate against receipt time.
+        let now = self.clock()?;
         let pin = self
             .journal
             .manifest
@@ -204,6 +256,7 @@ impl ClientService {
             capabilities: vec!["endpoint.identity.v1".into(), "endpoint.check-in.v1".into()],
         };
         let challenge = self.control.start(request).await?;
+        let now = self.clock()?;
         if challenge.verification_uri != manifest.verification_uri
             || challenge.expires_at_unix_ms <= now
             || challenge.expires_at_unix_ms - now > 600000

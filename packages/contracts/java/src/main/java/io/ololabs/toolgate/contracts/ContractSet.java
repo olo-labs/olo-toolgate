@@ -25,7 +25,7 @@ public record ContractSet(
     /** Stable package identity. */
     public static final String NAME = "olo-toolgate-contracts";
     /** Canonical contract-set version. */
-    public static final String VERSION = "0.6.0-dev";
+    public static final String VERSION = "0.7.0-dev";
     /** Current contract-set marker.
      * @return the canonical identity and version
      */

@@ -243,7 +243,22 @@ pub mod windows {
         }
     }
     pub fn protect_acl(path: &Path) -> Result<()> {
-        let descriptor = Descriptor::new(&[current_sid()?])?;
+        // Files created under a protected directory inherit custody, never a user's default DACL.
+        let sid = current_sid()?;
+        let sddl = format!("D:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FA;;;{sid})");
+        let mut raw = ptr::null_mut();
+        if unsafe {
+            ConvertStringSecurityDescriptorToSecurityDescriptorW(
+                wide(&sddl).as_ptr(),
+                SDDL_REVISION_1,
+                &mut raw,
+                ptr::null_mut(),
+            )
+        } == 0
+        {
+            return Err(Failure::Unauthorized);
+        }
+        let descriptor = Descriptor { allocation: raw };
         unsafe {
             let mut present = 0;
             let mut defaulted = 0;
@@ -323,6 +338,14 @@ pub mod windows {
         }
     }
     pub fn check_acl(path: &Path, private: bool) -> Result<()> {
+        check_acl_for(path, private, true)
+    }
+    /// Elevated installation must not trust directories writable by the installer's
+    /// ordinary user token. Only OS/admin custody may contain a LocalSystem executable.
+    pub fn check_install_acl(path: &Path, private: bool) -> Result<()> {
+        check_acl_for(path, private, false)
+    }
+    fn check_acl_for(path: &Path, private: bool, allow_caller: bool) -> Result<()> {
         unsafe {
             let mut owner = ptr::null_mut();
             let mut dacl = ptr::null_mut();
@@ -341,11 +364,15 @@ pub mod windows {
                 return Err(Failure::Unauthorized);
             }
             let allocation = Allocation(descriptor);
-            let allowed = [
+            let mut allowed = vec![
                 "S-1-5-18".to_string(),
                 "S-1-5-32-544".to_string(),
-                current_sid()?,
+                // Windows Resource Protection owns the system volume on supported Windows.
+                "S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464".to_string(),
             ];
+            if allow_caller {
+                allowed.push(current_sid()?);
+            }
             if !allowed.contains(&sid_text(owner)?) || dacl.is_null() {
                 return Err(Failure::Unauthorized);
             }
@@ -355,6 +382,10 @@ pub mod windows {
                     return Err(Failure::Unauthorized);
                 }
                 let header = &*raw.cast::<ACE_HEADER>();
+                // INHERIT_ONLY_ACE grants no access to this ancestor itself.
+                if header.AceFlags & 0x08 != 0 {
+                    continue;
+                }
                 // Win32 ACE_HEADER values: ACCESS_ALLOWED_ACE_TYPE=0, ACCESS_DENIED_ACE_TYPE=1.
                 if header.AceType == 0 {
                     let ace = &*raw.cast::<ACCESS_ALLOWED_ACE>();

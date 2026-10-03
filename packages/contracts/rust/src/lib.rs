@@ -157,6 +157,53 @@ pub struct AuthorizationRequest {
     pub action: String,
     pub arguments: std::collections::BTreeMap<String, serde_json::Value>,
 }
+/// Fixed service tool boundary; validate schema before use.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BuiltinInvocation {
+    pub tool_id: String,
+    pub arguments: std::collections::BTreeMap<String, serde_json::Value>,
+}
+/// Fixed service tool boundary; validate schema before use.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BuiltinIpcRequest {
+    pub protocol_version: u64,
+    pub request_id: String,
+    pub operation: BuiltinOperation,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub invocation: Option<BuiltinInvocation>,
+}
+/// Fixed service tool boundary; validate schema before use.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BuiltinIpcResponse {
+    pub request_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tools: Option<Vec<BuiltinToolInfo>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output: Option<std::collections::BTreeMap<String, serde_json::Value>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<ErrorCode>,
+}
+/// Canonical BuiltinOperation wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BuiltinOperation {
+    #[serde(rename = "CATALOG")]
+    Catalog,
+    #[serde(rename = "CALL")]
+    Call,
+}
+/// Fixed service tool boundary; validate schema before use.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BuiltinToolInfo {
+    pub tool_id: String,
+    pub action: String,
+    pub description: String,
+    pub enabled: bool,
+    pub input_schema: std::collections::BTreeMap<String, serde_json::Value>,
+}
 /// Canonical BundleEffect wire values.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BundleEffect {
@@ -234,6 +281,23 @@ pub struct ClientDiscovery {
     pub issued_at_unix_ms: u64,
     pub expires_at_unix_ms: u64,
     pub issuer_certificate_pem: String,
+}
+/// Fixed service tool boundary; validate schema before use.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ClientDownloadArtifact {
+    pub platform: ClientPlatform,
+    pub target: String,
+    pub filename: String,
+    pub sha256: String,
+    pub bytes: u64,
+}
+/// Fixed service tool boundary; validate schema before use.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ClientDownloadManifest {
+    pub version: String,
+    pub artifacts: Vec<ClientDownloadArtifact>,
 }
 /// Device identity and capabilities. Enrollment credentials travel separately.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -949,7 +1013,7 @@ impl ContractSet {
     pub fn current() -> Self {
         Self {
             name: "olo-toolgate-contracts".into(),
-            version: "0.6.0-dev".into(),
+            version: "0.7.0-dev".into(),
         }
     }
 }
@@ -958,6 +1022,10 @@ pub const CANONICAL_SCHEMAS: &[(&str, &str)] = &[
     (
         "https://schemas.ololabs.io/toolgate/v1/approval.schema.json",
         include_str!("../schemas/v1/approval.schema.json"),
+    ),
+    (
+        "https://schemas.ololabs.io/toolgate/v1/builtins.schema.json",
+        include_str!("../schemas/v1/builtins.schema.json"),
     ),
     (
         "https://schemas.ololabs.io/toolgate/v1/bundle.schema.json",

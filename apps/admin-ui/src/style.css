@@ -499,3 +499,8 @@ footer {
   padding:20px;
   font-size:10px}
 }
+/* Public installation entry point shares the accessible console surface. */
+.client-downloads { max-width: 70rem; margin: 2rem auto; padding: 2rem; background: var(--surface, #fff); border-radius: 1rem; }
+.download-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(14rem,1fr)); gap: 1rem; }
+.download-grid article { padding: 1rem; border: 1px solid #d7deea; border-radius: .75rem; }
+.download-grid code { overflow-wrap: anywhere; white-space: normal; }

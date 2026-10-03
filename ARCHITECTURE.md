@@ -1,5 +1,14 @@
 # Architecture
 
+Module 07's native system service exposes only the fixed canonical built-in
+catalog through OS-authenticated IPC. Capability-relative HotFolder access
+requires enrolled readiness and fresh Gateway authorization before each effect;
+copy/move authorize both endpoints. It continues independently of interactive
+login. Control's anonymous home page can serve an immutable verified three-OS
+client bundle; administrative APIs retain their existing authentication.
+See [ADR 008](docs/adr/008-hotfolder-builtins.md) and
+[the operations guide](docs/client/hotfolder.md).
+
 ## One Sentence
 
 OLO ToolGate separates **administration**, **runtime authorization**, **local execution**, and **community package distribution** into explicit trust boundaries.

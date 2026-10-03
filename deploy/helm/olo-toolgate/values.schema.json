@@ -1566,6 +1566,12 @@
             }
           }
         },
+        "clientDownloads": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled"],
+          "properties": {"enabled": {"type": "boolean"}}
+        },
         "endpoint": {
           "type": "object",
           "additionalProperties": false,

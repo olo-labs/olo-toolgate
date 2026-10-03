@@ -48,10 +48,15 @@ def smoke(image):
 
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--image',default='olo-toolgate-control:module05');parser.add_argument('--no-build',action='store_true');args=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--image',default='olo-toolgate-control:module05');parser.add_argument('--no-build',action='store_true');parser.add_argument('--client-assets',type=Path);args=parser.parse_args()
     if not args.no_build:
         version=(ROOT/'VERSION').read_text().strip();revision=run(['git','rev-parse','HEAD'],capture_output=True,text=True).stdout.strip()
-        run(['docker','build','-f','apps/control-plane/Dockerfile','--build-arg','VERSION='+version,'--build-arg','REVISION='+revision,'-t',args.image,'.'])
+        assets=[]
+        if args.client_assets:
+            path=args.client_assets.resolve();relative=path.relative_to(ROOT).as_posix()
+            if not (path/'manifest.json').is_file():raise ValueError('Verified public bundle required')
+            assets=['--build-arg','CLIENT_ASSETS_DIR='+relative,'--build-arg','CLIENT_DOWNLOADS_DIRECTORY=/opt/toolgate/client-downloads']
+        run(['docker','build','-f','apps/control-plane/Dockerfile','--build-arg','VERSION='+version,'--build-arg','REVISION='+revision,*assets,'-t',args.image,'.'])
     smoke(args.image)
 
 

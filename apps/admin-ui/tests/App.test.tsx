@@ -32,7 +32,7 @@ describe('Management shell states', () => {
     expect(screen.getByRole('link',{name:'Clients'}).getAttribute('aria-current')).toBe('page');
   });
   it('renders directory loading/error/retry states', async () => {
-    window.location.hash = '#teams'; const fetcher = vi.fn().mockResolvedValueOnce(response()).mockResolvedValueOnce(new Response('{}',{status:503})).mockResolvedValue(response()); vi.stubGlobal('fetch',fetcher);
+    window.location.hash = '#teams'; const directory = vi.fn().mockResolvedValueOnce(response()).mockResolvedValueOnce(new Response('{}',{status:503})).mockResolvedValue(response()); const fetcher = vi.fn().mockImplementation((url:string) => url.startsWith('/api/public/') ? Promise.resolve(new Response('{}',{status:503})) : directory()); vi.stubGlobal('fetch',fetcher);
     render(<App />); await connect(); expect((await screen.findByRole('alert')).textContent).toContain('could not complete');
     fireEvent.click(screen.getByRole('button',{name:'Try again'})); await screen.findByRole('heading',{name:'No teams on this page'});
   });

@@ -108,6 +108,15 @@
       "licenseUrls": [
         "https://cdla.dev/permissive-2-0/"
       ]
+    },
+    "winx:0.36.4": {
+      "expression": "Apache-2.0 WITH LLVM-exception",
+      "scope": null,
+      "reason": "Unmodified Windows filesystem helper required by cap-std no-follow capabilities. Apache-2.0 permits runtime redistribution; the LLVM exception additionally permits embedded object-code portions without restricting the application license. Complete upstream license and exception retained in client release packages. Exact published Cargo package LICENSE reviewed.",
+      "sourceArtifact": "https://crates.io/api/v1/crates/winx/0.36.4/download",
+      "licenseUrls": [
+        "https://github.com/sunfishcode/winx/blob/v0.36.4/LICENSE"
+      ]
     }
   }
 }

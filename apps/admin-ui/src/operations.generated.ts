@@ -3,6 +3,8 @@
 // GENERATED FILE — DO NOT EDIT; python tools/ui/generate.py
 import type { ControlAgent, ControlAgentPage, ControlDevice, ControlDevicePage, ControlPolicy, ControlPolicyPage, ControlTeam, ControlTeamPage, ControlTool, ControlToolPage, ControlUser, ControlUserPage } from '@olo-labs/toolgate-contracts';
 export const operations = {
+  publicClientDownloads: { method: 'GET', path: '/api/public/v1/clients' },
+  publicClientBinary: { method: 'GET', path: '/api/public/v1/clients/{filename}' },
   clientDiscovery: { method: 'GET', path: '/.well-known/olo-toolgate-client' },
   startEndpointEnrollment: { method: 'POST', path: '/api/control/v1/endpoint/enrollments' },
   pollEndpointEnrollment: { method: 'POST', path: '/api/control/v1/endpoint/enrollments/poll' },

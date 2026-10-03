@@ -214,3 +214,4 @@ release-manifest.json
 *.rej
 *.pid
 *.log
+deploy/client-assets/release/

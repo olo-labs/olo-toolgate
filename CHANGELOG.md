@@ -4,6 +4,18 @@ All notable project changes should be documented here.
 
 The project follows semantic versioning once stable versioning begins.
 
+## 0.7.0-dev — Module 07
+
+- Add protected HotFolder tools with capability-relative paths, no-follow links,
+  extension/size limits, atomic writes, bounded events and fixed safe utilities.
+- Require ready enrolled identity and fresh Gateway authorization on every call;
+  bind copy/move to both paths and consume approved ASK permits online.
+- Add anonymous Windows/macOS/Linux downloads, real native archive validation,
+  checksum/SBOM/license packaging, six-target native service CI and release hooks.
+- Preserve system-service operation across logout/lock; fix prerequisite enrollment
+  timestamp, endpoint routing, TLS build configuration and Windows custody handling.
+- See Module 07 verification for executed checks and outstanding release gates.
+
 ## 0.6.0-dev — Module 06 in progress
 
 - Add canonical endpoint enrollment, discovery, identity, check-in and IPC models.

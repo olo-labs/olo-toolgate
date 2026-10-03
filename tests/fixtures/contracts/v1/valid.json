@@ -1017,5 +1017,71 @@
     "expiresAtUnixMs": 1,
     "pollIntervalSeconds": 2,
     "keyFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "BuiltinOperation": "CALL",
+  "BuiltinToolInfo": {
+    "toolId": "hotfolder.read_text",
+    "action": "read",
+    "description": "Read bounded UTF-8 content.",
+    "enabled": true,
+    "inputSchema": {
+      "type": "object"
+    }
+  },
+  "BuiltinInvocation": {
+    "toolId": "hotfolder.read_text",
+    "arguments": {
+      "path": "note.txt"
+    }
+  },
+  "BuiltinIpcRequest": {
+    "protocolVersion": 2,
+    "requestId": "request-07",
+    "operation": "CALL",
+    "invocation": {
+      "toolId": "hotfolder.read_text",
+      "arguments": {
+        "path": "note.txt"
+      }
+    }
+  },
+  "BuiltinIpcResponse": {
+    "requestId": "request-07",
+    "output": {
+      "text": "hello"
+    }
+  },
+  "ClientDownloadArtifact": {
+    "platform": "LINUX",
+    "target": "x86_64-unknown-linux-gnu",
+    "filename": "olo-toolgate-client-0.7.0-dev-x86_64-unknown-linux-gnu.tar.gz",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "bytes": 12345
+  },
+  "ClientDownloadManifest": {
+    "version": "0.7.0-dev",
+    "artifacts": [
+      {
+        "platform": "LINUX",
+        "target": "x86_64-unknown-linux-gnu",
+        "filename": "olo-toolgate-client-0.7.0-dev-x86_64-unknown-linux-gnu.tar.gz",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 12345
+      },
+      {
+        "platform": "WINDOWS",
+        "target": "x86_64-pc-windows-msvc",
+        "filename": "olo-toolgate-client-0.7.0-dev-x86_64-pc-windows-msvc.zip",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 12345
+      },
+      {
+        "platform": "MACOS",
+        "target": "x86_64-apple-darwin",
+        "filename": "olo-toolgate-client-0.7.0-dev-x86_64-apple-darwin.tar.gz",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 12345
+      }
+    ]
   }
 }

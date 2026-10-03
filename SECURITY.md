@@ -2,6 +2,13 @@
 
 Security issues should **not** be reported through a public GitHub issue.
 
+Endpoint built-ins require OS-authenticated IPC, enrolled readiness and a fresh
+online Gateway grant on every call. HotFolder rejects traversal, symlinks,
+reparse points and hardlinks, with bounded closed inputs and atomic replacement.
+Delete and arbitrary execution are absent. Downloading an anonymous native client
+does not grant enrollment or runtime permission. See the
+[custody and recovery guide](docs/client/hotfolder.md).
+
 ## Reporting a Vulnerability
 
 Preferred:

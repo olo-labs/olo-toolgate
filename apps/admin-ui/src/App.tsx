@@ -7,6 +7,7 @@ import type { DirectoryKind, DirectoryRecords, DirectoryPages } from './operatio
 import { Failure } from './Failure';
 import { Approvals } from './Approvals';
 import { Enrollment } from './Enrollment';
+import { ClientDownloads } from './ClientDownloads';
 
 declare const __APP_VERSION__: string;
 const directorySections = [ ['users', 'Users'], ['teams', 'Teams'], ['tools', 'Tools'], ['policies', 'Policies'], ['devices', 'Clients'], ['agents', 'Agents'] ] as const;
@@ -52,7 +53,7 @@ export function App() {
           <p id="token-help" className="hint">Kept in memory for this session. Refreshing or disconnecting clears it.</p>
           <button className="primary" disabled={connecting || !safeOrigin()}>{connecting ? 'Connecting…' : 'Connect to workspace'}</button>
           {connecting && <p role="status">Verifying your session with Control…</p>}
-        </form></div><footer>ToolGate {__APP_VERSION__} · Organization administration</footer></main>
+        </form></div><ClientDownloads /><footer>ToolGate {__APP_VERSION__} · Organization administration</footer></main>
     : <div className="shell"><aside className="sidebar"><div className="brand"><span className="brand-mark">T</span> ToolGate</div>
       <p className="sidebar-caption">Workspace</p><nav aria-label="Main navigation">{sections.map(([value,label]) => <a key={value} href={`#${value}`} aria-current={route === value ? 'page' : undefined}><span className="nav-dot" />{label}</a>)}</nav>
       <div className="sidebar-bottom"><span className="connection">Connected to Control</span><small>v{__APP_VERSION__}</small><button onClick={disconnect}>Disconnect</button></div></aside>

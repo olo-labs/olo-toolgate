@@ -236,3 +236,9 @@ A `BLOCKED` requirement means the module is not DONE.
   gates include approval behavior; remote publication remains CI only.
 
 - Module 06: [coverage plan](modules/06-coverage.md) and [verification report](modules/06-completion.md). In progress: 101 BLOCKED and 3 NOT_APPLICABLE; commit records current work without claiming definition-of-done completion.
+
+- Module 07: [pre-implementation coverage](modules/07-coverage.md) and
+  [verification report](modules/07-completion.md). Implementation includes fixed
+  HotFolder/built-ins, fresh Gateway protection, system-service logout independence,
+  and anonymous three-OS downloads. There are 99 COMPLETE, two BLOCKED and three
+  NOT_APPLICABLE IDs; native service-manager CI must execute before declaring DONE.

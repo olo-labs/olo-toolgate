@@ -3,12 +3,49 @@
 openapi: 3.1.0
 info:
   title: OLO ToolGate Control Plane API
-  version: 0.6.0-dev
+  version: 0.7.0-dev
   description: Tenant-scoped administration and explicit signed policy publication. Directory policies become runtime
     configuration only after publication; bundle trust is separate from execution permits.
 security:
 - adminAccessToken: []
 paths:
+  /api/public/v1/clients:
+    get:
+      operationId: publicClientDownloads
+      security: []
+      responses:
+        '200':
+          description: Verified immutable client release packages
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/builtins.schema.json#/$defs/ClientDownloadManifest
+        '503':
+          description: No published release bundle
+  /api/public/v1/clients/{filename}:
+    get:
+      operationId: publicClientBinary
+      security: []
+      parameters:
+      - name: filename
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Checksum-verified archive with dependency SBOM
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Filename is not in the immutable manifest
+        '429':
+          description: Public transfer capacity reached
+        '503':
+          description: Release unavailable or integrity validation failed
   /.well-known/olo-toolgate-client:
     get:
       operationId: clientDiscovery
@@ -535,7 +572,7 @@ paths:
     post:
       operationId: publishPolicyBundle
       description: Admin only. Compile current directoryRevision and atomically publish expectedSequence+1 with audit
-        and durable replay. rollbackOf must be absent. Lifetime is 1 secondÃ¢â‚¬â€œ24 hours; grace is 0Ã¢â‚¬â€œ5 minutes. Publication
+        and durable replay. rollbackOf must be absent. Lifetime is 1 secondÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“24 hours; grace is 0ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“5 minutes. Publication
         does not execute tools.
       parameters:
       - name: Idempotency-Key

@@ -100,7 +100,9 @@ pub fn verify_discovery(
         || manifest.issued_at_unix_ms > now
         || manifest.expires_at_unix_ms <= now
         || manifest.expires_at_unix_ms - manifest.issued_at_unix_ms > 300000
-        || manifest.minimum_client_version != env!("CARGO_PKG_VERSION")
+        || semver::Version::parse(&manifest.minimum_client_version)
+            .map_err(|_| Failure::Validation)?
+            > semver::Version::parse(env!("CARGO_PKG_VERSION")).map_err(|_| Failure::Validation)?
     {
         return Err(Failure::Unauthorized);
     }

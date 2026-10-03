@@ -190,6 +190,8 @@ control:
     labels: {}
     interval: 30s
   developmentMode: false
+  clientDownloads:
+    enabled: false
   endpoint:
     enabled: false
     tenantId: ''

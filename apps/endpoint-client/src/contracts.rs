@@ -14,7 +14,17 @@ impl Contracts {
         for (uri, bytes) in olo_toolgate_contracts::CANONICAL_SCHEMAS {
             let value: serde_json::Value =
                 serde_json::from_str(bytes).map_err(|_| Failure::Validation)?;
-            if uri.ends_with("/endpoint.schema.json") || uri.ends_with("/client.schema.json") {
+            if [
+                "/endpoint.schema.json",
+                "/client.schema.json",
+                "/builtins.schema.json",
+                "/runtime.schema.json",
+                "/policy.schema.json",
+                "/approval.schema.json",
+            ]
+            .iter()
+            .any(|suffix| uri.ends_with(suffix))
+            {
                 for name in value["$defs"]
                     .as_object()
                     .ok_or(Failure::Validation)?
@@ -44,7 +54,7 @@ impl Contracts {
             return Err(Failure::Validation);
         }
         let value: serde_json::Value =
-            serde_json::from_slice(bytes).map_err(|_| Failure::Validation)?;
+            crate::json::strict_json(bytes).map_err(|_| Failure::Validation)?;
         if !self
             .validators
             .get(name)

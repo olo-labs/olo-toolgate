@@ -18,9 +18,12 @@ concurrency:
   group: control-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  clients:
+    uses: ./.github/workflows/client.yml
   policy-compatibility:
     uses: ./.github/workflows/policy.yml
   container-and-cluster:
+    needs: clients
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -69,13 +72,21 @@ jobs:
           python tools/ui/package.py
           python tools/check.py --scans
           python tools/control/helm.py
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: public-client-bundle
+          path: deploy/client-assets/release
       - name: Build, smoke and scan production image
         run: |
-          python tools/control/container.py
+          python tools/control/container.py --client-assets deploy/client-assets/release
+          python tools/client/downloads.py --image olo-toolgate-control:module05
+          python tools/client/extract.py --target x86_64-unknown-linux-gnu --output build/client/native/olo-toolgate-client
+          docker build -f apps/gateway/Dockerfile --build-arg VERSION="$(cat VERSION)" --build-arg REVISION="$(git rev-parse HEAD)" -t olo-toolgate-gateway:module07 .
+          python tools/client/integration.py --control-image olo-toolgate-control:module05 --binary build/client/native/olo-toolgate-client
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.61.1 image --no-progress --exit-code 1 --severity HIGH,CRITICAL olo-toolgate-control:module05
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/build/control:/evidence" aquasec/trivy:0.61.1 image --no-progress --format cyclonedx --output /evidence/control-sbom.cdx.json olo-toolgate-control:module05
           python tools/ui/merge_sbom.py
-          python tools/control/cluster.py
+          python tools/control/cluster.py --client-downloads
           docker save olo-toolgate-control:module05 -o build/control/image.tar
           cp -r build/ui build/control/ui-evidence
           cp CHANGELOG.md docs/control-plane/upgrades.md build/control/
@@ -91,7 +102,7 @@ jobs:
     runs-on: ubuntu-24.04
     environment: control-release
     permissions:
-      contents: read
+      contents: write
       packages: write
       id-token: write
       attestations: write
@@ -101,6 +112,17 @@ jobs:
         with:
           name: control-evidence
           path: build/control
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: public-client-bundle
+          path: deploy/client-assets/release
+      - name: Publish verified native client assets to the protected tagged release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python tools/client/release.py
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: deploy/client-assets/release/*
       - name: Publish the exact scanned image
         id: push
         env:

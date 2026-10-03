@@ -23,6 +23,8 @@ def expected():
     manifest = ROOT/'packages/contracts/contract-set.yaml'
     outputs[manifest] = re.sub(r'^version: .*', f'version: {contracts}', manifest.read_text(), flags=re.M)
     cargo = ROOT/'Cargo.toml'
+    for lock in sorted((ROOT/'apps').glob('*/gradle-artifact.lockfile')):
+        outputs[lock]=re.sub(r'(?m)^(io\.ololabs\.toolgate:toolgate-contracts:)[^=]+=',lambda m:m[1]+contracts+'=',lock.read_text())
     outputs[cargo] = re.sub(r'^version = "[^"]+"', f'version = "{contracts}"', cargo.read_text(), flags=re.M)
     outputs[cargo] = re.sub(r'(olo-toolgate-contracts = \{[^\n]*version = ")[^"]+', lambda m: m[1]+contracts, outputs[cargo])
     for path in ('package.json','packages/contracts/typescript/package.json','apps/admin-ui/package.json'):

@@ -98,6 +98,34 @@ export interface AuthorizationRequest {
   readonly action: string;
   readonly arguments: Record<string, unknown>;
 }
+/** Fixed service tool boundary; validate schema before use. */
+export interface BuiltinInvocation {
+  readonly toolId: string;
+  readonly arguments: Record<string, unknown>;
+}
+/** Fixed service tool boundary; validate schema before use. */
+export interface BuiltinIpcRequest {
+  readonly protocolVersion: number;
+  readonly requestId: string;
+  readonly operation: BuiltinOperation;
+  readonly invocation?: BuiltinInvocation;
+}
+/** Fixed service tool boundary; validate schema before use. */
+export interface BuiltinIpcResponse {
+  readonly requestId: string;
+  readonly tools?: ReadonlyArray<BuiltinToolInfo>;
+  readonly output?: Record<string, unknown>;
+  readonly error?: ErrorCode;
+}
+export type BuiltinOperation = "CATALOG" | "CALL";
+/** Fixed service tool boundary; validate schema before use. */
+export interface BuiltinToolInfo {
+  readonly toolId: string;
+  readonly action: string;
+  readonly description: string;
+  readonly enabled: boolean;
+  readonly inputSchema: Record<string, unknown>;
+}
 export type BundleEffect = "ALLOW" | "BLOCK";
 /** Strict JWS protected header; no remote or embedded keys and no algorithm negotiation. */
 export interface BundleHeader {
@@ -155,6 +183,19 @@ export interface ClientDiscovery {
   readonly issuedAtUnixMs: number;
   readonly expiresAtUnixMs: number;
   readonly issuerCertificatePem: string;
+}
+/** Fixed service tool boundary; validate schema before use. */
+export interface ClientDownloadArtifact {
+  readonly platform: ClientPlatform;
+  readonly target: string;
+  readonly filename: string;
+  readonly sha256: string;
+  readonly bytes: number;
+}
+/** Fixed service tool boundary; validate schema before use. */
+export interface ClientDownloadManifest {
+  readonly version: string;
+  readonly artifacts: ReadonlyArray<ClientDownloadArtifact>;
 }
 /** Device identity and capabilities. Enrollment credentials travel separately. */
 export interface ClientEnrollmentRequest {
@@ -588,5 +629,5 @@ export interface ToolDefinition {
   readonly inputSchema: Record<string, unknown>;
   readonly outputSchema: Record<string, unknown>;
 }
-export const CONTRACT_SET_VERSION = "0.6.0-dev" as const;
+export const CONTRACT_SET_VERSION = "0.7.0-dev" as const;
 export const CONTRACT_SET_NAME = "olo-toolgate-contracts" as const;

@@ -18,8 +18,7 @@ fn main() {
         }
         return;
     }
-    let result = tokio::runtime::Runtime::new()
-        .map_err(|_| Failure::Unavailable)
+    let result = olo_toolgate_client::runtime::executor()
         .and_then(|runtime| runtime.block_on(command(arguments)));
     if let Err(failure) = result {
         tracing::error!(event="client_command",result="rejected",error=?failure);
@@ -31,6 +30,34 @@ async fn command(arguments: Vec<String>) -> Result<()> {
         return Err(Failure::Validation);
     };
     match operation {
+        "tools" if arguments.len() == 1 || arguments.len() == 3 => {
+            let invocation = if arguments.len() == 3 {
+                Some(olo_toolgate_contracts::BuiltinInvocation {
+                    tool_id: arguments[1].clone(),
+                    arguments: serde_json::from_str(&arguments[2])
+                        .map_err(|_| Failure::Validation)?,
+                })
+            } else {
+                None
+            };
+            let response = tokio::time::timeout(
+                std::time::Duration::from_secs(20),
+                olo_toolgate_client::ipc::call_tool(
+                    &olo_toolgate_client::install::ipc_endpoint(),
+                    invocation,
+                ),
+            )
+            .await
+            .map_err(|_| Failure::Unavailable)??;
+            println!(
+                "{}",
+                serde_json::to_string(&response).map_err(|_| Failure::Validation)?
+            );
+            if response.error.is_some() {
+                return Err(Failure::Unauthorized);
+            }
+            Ok(())
+        }
         "version" if arguments.len() == 1 => {
             println!("{}", env!("CARGO_PKG_VERSION"));
             Ok(())
@@ -82,6 +109,10 @@ async fn command(arguments: Vec<String>) -> Result<()> {
             .await
             .map_err(|_| Failure::Unavailable)??;
             if response.error.is_some() {
+                println!(
+                    "{}",
+                    serde_json::to_string(&response).map_err(|_| Failure::Validation)?
+                );
                 return Err(Failure::Unavailable);
             }
             if let Some(challenge) = response.challenge {

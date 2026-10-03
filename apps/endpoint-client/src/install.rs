@@ -35,9 +35,13 @@ pub fn ipc_endpoint() -> String {
     }
 }
 pub fn binary_path() -> PathBuf {
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     {
         PathBuf::from("/usr/local/lib/olo-toolgate/olo-toolgate-client")
+    }
+    #[cfg(target_os = "macos")]
+    {
+        PathBuf::from("/Library/Application Support/OLO/ToolGate/bin/olo-toolgate-client")
     }
     #[cfg(windows)]
     {
@@ -50,7 +54,7 @@ fn directory(path: &Path, private: bool) -> Result<()> {
         if !parent.exists() {
             directory(parent, false)?;
         }
-        crate::storage::check_owned(parent, false)?;
+        check_directory(parent, false)?;
         let builder = std::fs::DirBuilder::new();
         #[cfg(unix)]
         let mut builder = builder;
@@ -65,7 +69,19 @@ fn directory(path: &Path, private: bool) -> Result<()> {
         #[cfg(windows)]
         crate::platform::windows::protect_install_acl(path, !private)?;
     }
-    crate::storage::check_owned(path, private)
+    check_directory(path, private)
+}
+fn check_directory(path: &Path, private: bool) -> Result<()> {
+    crate::storage::check_owned(path, private)?;
+    #[cfg(windows)]
+    {
+        crate::platform::windows::check_install_acl(path, private)?;
+        for ancestor in path.ancestors().skip(1) {
+            crate::storage::check_owned(ancestor, false)?;
+            crate::platform::windows::check_install_acl(ancestor, false)?;
+        }
+    }
+    Ok(())
 }
 fn admin() -> Result<()> {
     #[cfg(unix)]
@@ -135,6 +151,7 @@ pub fn install(server: &str) -> Result<()> {
         false,
     )?;
     let settings = Config {
+        tools: None,
         server_url: origin,
         state_directory: state,
         ipc_endpoint: ipc_endpoint(),
@@ -272,6 +289,29 @@ pub fn uninstall(purge: bool) -> Result<()> {
             r"C:\Windows\System32\sc.exe",
             &["stop", "OloToolGateClient"],
         )?;
+        let manager = windows_service::service_manager::ServiceManager::local_computer(
+            None::<&str>,
+            windows_service::service_manager::ServiceManagerAccess::CONNECT,
+        )
+        .map_err(|_| Failure::Unavailable)?;
+        let service = manager
+            .open_service(
+                "OloToolGateClient",
+                windows_service::service::ServiceAccess::QUERY_STATUS,
+            )
+            .map_err(|_| Failure::Unavailable)?;
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+        while service
+            .query_status()
+            .map_err(|_| Failure::Unavailable)?
+            .current_state
+            != windows_service::service::ServiceState::Stopped
+        {
+            if std::time::Instant::now() >= deadline {
+                return Err(Failure::Unavailable);
+            }
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
         command(
             r"C:\Windows\System32\sc.exe",
             &["delete", "OloToolGateClient"],
@@ -296,7 +336,11 @@ pub fn uninstall(purge: bool) -> Result<()> {
                 std::fs::remove_file(path).map_err(|_| Failure::Unavailable)?;
             }
         }
-        std::fs::remove_dir(expected).map_err(|_| Failure::Unavailable)?;
+        match std::fs::remove_dir(expected) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::DirectoryNotEmpty => {}
+            Err(_) => return Err(Failure::Unavailable),
+        }
     }
     std::fs::remove_file(config_path()).map_err(|_| Failure::Unavailable)?;
     std::fs::remove_file(binary_path()).map_err(|_| Failure::Unavailable)?;

@@ -19,7 +19,7 @@ from approval.fixtures import seed_approvals
 
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--image',default='olo-toolgate-control:module05');args=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--image',default='olo-toolgate-control:module05');parser.add_argument('--client-downloads',action='store_true');args=parser.parse_args()
     paths={name:os.environ.get('TOOLGATE_'+name.upper()+'_PATH') or shutil.which(name) for name in ('kind','kubectl','helm')}
     if any(not value for value in paths.values()): raise SystemExit('Native Kind, Helm and kubectl are required')
     cluster='control-module05-'+uuid.uuid4().hex[:8];folder=ROOT/'.dev'/cluster;folder.mkdir(parents=True)
@@ -69,6 +69,7 @@ def main():
         values={'global':{'imageRegistry':namespace},'control':{'enabled':True,'developmentMode':True,'publicKeySecret':'control-identity',
             'bundle':{'enabled':True,'signingSecret':'policy-signing','keyId':'bundle-cluster-1'},
             'approval':{'enabled':True},
+            'clientDownloads':{'enabled':args.client_downloads},
             'image':{'repository':repo,'tag':tag,'pullPolicy':'Never'},'database':{'host':'control-postgres','name':'control','credentialsSecret':'control-db','sslMode':'disable'},
             'networkPolicy':{'runtimeFrom':[{'podSelector':{}}],'databaseTo':[{'podSelector':{'matchLabels':{'app':'control-postgres'}}}],
                              'dnsTo':[{'namespaceSelector':{'matchLabels':{'kubernetes.io/metadata.name':'kube-system'}}}]}}}
@@ -86,7 +87,12 @@ def main():
             with (folder/'port-forward.log').open('a',encoding='utf-8') as log:
                 forward=subprocess.Popen([paths['kubectl'],'port-forward','pod/'+active[0]['metadata']['name'],f'{api_port}:8082',f'{management_port}:9092'],cwd=ROOT,env=env,stdout=log,stderr=log)
             management=f'http://127.0.0.1:{management_port}';ready(management,forward)
-            return f'http://127.0.0.1:{api_port}',management
+            runtime=f'http://127.0.0.1:{api_port}'
+            if args.client_downloads:
+                status,document,_=request(runtime+'/api/public/v1/clients')
+                assert status==200
+                assert {a['platform'] for a in json.loads(document)['artifacts']}=={'WINDOWS','MACOS','LINUX'}
+            return runtime,management
         runtime,management=connect();http_tests(runtime,management,key)
         # The transport oversize check above closes kubectl's tunnel; reconnect.
         runtime,management=connect()

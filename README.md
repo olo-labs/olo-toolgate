@@ -6,6 +6,14 @@ OLO ToolGate is an open-source control plane for **building, distributing, autho
 
 MCP is part of the story — not the limit.
 
+The endpoint client now includes protected HotFolder and safe built-in tools.
+It installs as a system service and continues while users are logged out or the
+screen is locked. A Control image containing verified native packages exposes
+Windows, macOS and Linux downloads on its anonymous home page. See the
+[client guide](docs/client/hotfolder.md) for installation, enrollment and policy
+configuration, and the [Module 07 report](docs/codex/modules/07-completion.md)
+for verification status.
+
 ToolGate is designed to govern:
 
 ```text

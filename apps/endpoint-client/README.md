@@ -1,7 +1,23 @@
-# Endpoint Client Foundation
+# Endpoint Client and HotFolder
 
-Module 06 adds a native protected service and unprivileged CLI. It does not
-execute tools, install packages, or issue Gateway runtime credentials.
+The native protected service provides enrollment, check-in and eighteen fixed
+built-in tools. It never executes arbitrary code or issues Gateway credentials.
+See [HotFolder configuration and operations](../../docs/client/hotfolder.md) and
+[ADR 008](../../docs/adr/008-hotfolder-builtins.md).
+
+Download the Windows, macOS or Linux archive from the Control home page without
+signing in. Check its SHA-256 against the displayed manifest before extracting.
+Use an elevated PowerShell on Windows (`.\olo-toolgate-client.exe install --server
+https://control.example.com`) or `sudo ./olo-toolgate-client install --server
+https://control.example.com` on Linux/macOS. Installation requires administrator
+rights; downloading does not grant enrollment or tool permission.
+
+The installer registers an automatic **system** service: Windows LocalSystem,
+macOS system LaunchDaemon, or Linux systemd multi-user service. It continues when
+all users log out and while the screen is locked. The computer must remain powered
+on and awake. Enrollment initially requires a person to confirm the browser code;
+after enrollment, heartbeat and configured protected calls need no logged-in user.
+Network loss, revoked identity and missing authorization block tool execution.
 
 Build with `cargo build -p olo-toolgate-client --locked`; test with
 `cargo test -p olo-toolgate-client --locked`. The service uses the shared
@@ -62,13 +78,18 @@ in addition to the server's 32 active enrollment records per tenant and five
 second polling limit. Existing Control readiness/metrics and HA remain in use.
 
 Uninstall stops/removes the OS service and retains identity by default.
-`uninstall --purge` explicitly deletes only the fixed protected state files.
+`uninstall --purge` explicitly deletes only the fixed protected identity/state files.
+HotFolder documents are preserved, including when they reside inside the state directory.
 Revoke the identity in Control before retiring a machine. A failed partial
 installation requires administrator recovery of the fixed service/config paths;
 automatic repair and expired-certificate re-enrollment are not implemented.
 
 CI builds six native OS/architecture combinations. `tools/client/package.py`
 produces deterministic tar/zip archives, SHA-256 checksums and a dependency SBOM.
-This is a release skeleton: protected signing and GitHub Release publication,
-full native installation tests, and real TLS enrollment/reconnect browser E2E
-still require completion before Module 06 can be declared done.
+Archives contain third-party license notices and the same install/uninstall CLI
+on all three operating systems. Native CI tests the real service manager and
+builds x64 and ARM64 packages. A protected tagged-release job publishes verified
+packages and provenance; signing hooks require externally provisioned OS/KMS
+identities. Local development packages are unsigned and macOS notarization is
+not configured. Module 06's historical completion report remains unchanged;
+current verification and any open gates are recorded in the Module 07 report.

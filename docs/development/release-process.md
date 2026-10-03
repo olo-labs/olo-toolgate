@@ -1,5 +1,15 @@
 # Release Process
 
+Module 07's Control workflow calls the six-target native client workflow before
+embedding the verified public bundle. Native jobs run unit/security checks and
+real system-service installation smoke. Control verifies anonymous browser
+downloads and enrolled TLS/Gateway tools alongside image/cluster gates.
+The protected tagged publish job uploads immutable native archives, checksums
+and manifest to GitHub Releases and attests the bundle. Assets are never
+overwritten. Native signing hooks require external OS/KMS identities;
+development binaries are unsigned and macOS notarization is not configured.
+See [the native operations guide](../client/hotfolder.md).
+
 ## Purpose
 
 Build/test/sign three customer containers, native clients, SBOM/provenance/checksums, compatibility matrix and separate Marketplace platform artifacts.

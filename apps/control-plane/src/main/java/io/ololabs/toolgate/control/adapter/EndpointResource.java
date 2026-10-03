@@ -15,7 +15,7 @@ import org.eclipse.microprofile.jwt.JsonWebToken;
 import io.vertx.ext.web.RoutingContext;
 
 /** Direct TLS peer authentication; proxy headers and request device assertions cannot authenticate. */
-@Path("/") @Produces("application/json") @Blocking @PermitAll
+@Path("/api/control/v1/endpoint") @Produces("application/json") @Blocking @PermitAll
 public class EndpointResource {
     @Inject EndpointService service;
     @Inject RoutingContext routing;
@@ -37,12 +37,11 @@ public class EndpointResource {
     private String user(){Object user=jwt.getClaim("user_id");if(!(user instanceof String value))throw new Failure(ErrorCode.FORBIDDEN,403,"Enabled directory user required");return value;}
     private String body(String body){if(body==null||body.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>65536)throw Failure.validation();return body;}
     private Response response(Store.Reply reply,String operation){metrics.counter("toolgate_control_endpoint_operations_total","operation",operation).increment();return Response.status(reply.status()).header("Cache-Control","no-store").header("ETag","\""+reply.revision()+"\"").entity(reply.body()).build();}
-    @GET @Path(".well-known/olo-toolgate-client") public Response discovery(){tls();return response(service.discovery(),"DISCOVERY");}
-    @POST @Path("api/control/v1/endpoint/enrollments") @Consumes("application/json") public Response start(String document){tls();return response(service.start(body(document),correlation.id()),"START");}
-    @POST @Path("api/control/v1/endpoint/enrollments/poll") @Consumes("application/json") public Response poll(String document){tls();return response(service.poll(body(document),correlation.id()),"POLL");}
-    @GET @Path("api/control/v1/endpoint/enrollments/review") @RolesAllowed("toolgate-enroller") public Response review(@QueryParam("code")String code){return response(service.review(actor(),user(),code),"REVIEW");}
-    @POST @Path("api/control/v1/endpoint/enrollments/decision") @Consumes("application/json") @RolesAllowed("toolgate-enroller") public Response decide(@HeaderParam("Idempotency-Key")String key,String document){return response(service.decide(actor(),user(),body(document),key,correlation.id()),"DECIDE");}
-    @POST @Path("api/control/v1/endpoint/check-in") @Consumes("application/json") public Response checkIn(String document){return response(service.checkIn(peer(),body(document),correlation.id()),"CHECK_IN");}
-    @GET @Path("api/control/v1/endpoint/devices/{id}") @RolesAllowed("toolgate-admin") public Response device(@PathParam("id")String id){return response(service.device(actor(),id),"DEVICE");}
-    @POST @Path("api/control/v1/endpoint/devices/{id}/revoke") @Consumes("application/json") @RolesAllowed("toolgate-admin") public Response revoke(@PathParam("id")String id,@HeaderParam("Idempotency-Key")String key,String document){return response(service.revoke(actor(),id,body(document),key,correlation.id()),"REVOKE");}
+    @POST @Path("enrollments") @Consumes("application/json") public Response start(String document){tls();return response(service.start(body(document),correlation.id()),"START");}
+    @POST @Path("enrollments/poll") @Consumes("application/json") public Response poll(String document){tls();return response(service.poll(body(document),correlation.id()),"POLL");}
+    @GET @Path("enrollments/review") @RolesAllowed("toolgate-enroller") public Response review(@QueryParam("code")String code){return response(service.review(actor(),user(),code),"REVIEW");}
+    @POST @Path("enrollments/decision") @Consumes("application/json") @RolesAllowed("toolgate-enroller") public Response decide(@HeaderParam("Idempotency-Key")String key,String document){return response(service.decide(actor(),user(),body(document),key,correlation.id()),"DECIDE");}
+    @POST @Path("check-in") @Consumes("application/json") public Response checkIn(String document){return response(service.checkIn(peer(),body(document),correlation.id()),"CHECK_IN");}
+    @GET @Path("devices/{id}") @RolesAllowed("toolgate-admin") public Response device(@PathParam("id")String id){return response(service.device(actor(),id),"DEVICE");}
+    @POST @Path("devices/{id}/revoke") @Consumes("application/json") @RolesAllowed("toolgate-admin") public Response revoke(@PathParam("id")String id,@HeaderParam("Idempotency-Key")String key,String document){return response(service.revoke(actor(),id,body(document),key,correlation.id()),"REVOKE");}
 }

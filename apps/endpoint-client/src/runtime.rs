@@ -6,6 +6,16 @@ use crate::{
     storage::ProtectedStore, transport::HttpsControl, Failure, Result,
 };
 use std::sync::Arc;
+/// Fixed worker limits keep system services within their OS task/memory budget,
+/// including machines with many logical CPUs. No environment-driven thread explosion.
+pub fn executor() -> Result<tokio::runtime::Runtime> {
+    tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .max_blocking_threads(8)
+        .enable_all()
+        .build()
+        .map_err(|_| Failure::Unavailable)
+}
 pub async fn run(config: Config, shutdown: tokio::sync::watch::Receiver<bool>) -> Result<()> {
     crate::platform::require_service_identity()?;
     let store = ProtectedStore::open(config.state_directory.clone())?;
@@ -100,9 +110,7 @@ pub mod windows {
             handle
                 .set_service_status(status(ServiceState::Running, 0))
                 .map_err(|_| Failure::Unavailable)?;
-            tokio::runtime::Runtime::new()
-                .map_err(|_| Failure::Unavailable)?
-                .block_on(run(config, rx))
+            executor()?.block_on(run(config, rx))
         })();
         let _ = handle.set_service_status(status(
             ServiceState::Stopped,

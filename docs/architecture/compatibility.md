@@ -47,3 +47,15 @@ ASK, which its existing generated Decision already decodes. Earlier administrato
 may reject ASK on schema validation; runtime readers require format 2. The original
 foundation frozen corpus remains unchanged.
 Gateway-issued permits use separate RS256 trust and strict Control-backed consumption.
+
+## Module 07
+
+Product, shared contracts and chart are 0.7.0-dev. Endpoint tools add protocol 2;
+the frozen protocol 1 health/enrollment/check-in corpus remains supported. The
+canonical built-in catalog and public download manifest are additive v1 models.
+Control still requires Flyway V5. Gateway runtime v2 is required for client tools
+and ASK; source/destination operations require separate exact-path grants. Older
+clients lack tool IPC and fail unsupported operations safely. Discovery SemVer
+minimum accepts a newer compatible client; origin, CA and identity verification
+remain mandatory. The Windows local cross-build uses GNU x64 while native release
+CI produces MSVC x64/ARM64; macOS/Linux CI produces native x64/ARM64 archives.

@@ -16,7 +16,11 @@ use std::{path::PathBuf, sync::Arc};
 struct Directory(PathBuf);
 impl Directory {
     fn new() -> Self {
-        let path = std::env::temp_dir().join(format!(
+        #[cfg(windows)]
+        let base = PathBuf::from(std::env::var_os("ProgramData").unwrap());
+        #[cfg(unix)]
+        let base = std::env::temp_dir();
+        let path = base.join(format!(
             "toolgate-client-{}",
             olo_toolgate_client::identity::nonce().unwrap()
         ));
@@ -61,6 +65,7 @@ impl ControlPort for Offline {
 }
 fn config(directory: &Directory) -> Config {
     Config {
+        tools: None,
         server_url: "https://control.example.test".into(),
         state_directory: directory.0.clone(),
         ipc_endpoint: {

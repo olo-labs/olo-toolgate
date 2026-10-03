@@ -22,6 +22,10 @@ def checks():
     assert config['QUARKUS_HTTP_INSECURE_REQUESTS']=='disabled'
     assert config['QUARKUS_HTTP_SSL_CLIENT_AUTH']=='request'
     assert config['QUARKUS_HTTP_SSL_PORT']=='8082'
+    assert config['TOOLGATE_CLIENT_DOWNLOADS_DIRECTORY']==''
+    enabled=dict(settings);enabled['control.clientDownloads.enabled']='true'
+    enabled_docs=list(yaml.safe_load_all(run(arguments(enabled),capture=True).stdout))
+    assert next(doc for doc in enabled_docs if doc['kind']=='ConfigMap')['data']['TOOLGATE_CLIENT_DOWNLOADS_DIRECTORY']=='/opt/toolgate/client-downloads'
     deployment = next(doc for doc in documents if doc['kind']=='Deployment')
     volumes = deployment['spec']['template']['spec']['volumes']
     assert {v['secret']['secretName'] for v in volumes if v['name'] in ('device-ca','server-tls','device-trust')} == {'device-ca','server-tls','device-trust'}

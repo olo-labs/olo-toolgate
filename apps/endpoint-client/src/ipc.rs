@@ -5,12 +5,13 @@ use crate::{contracts::Contracts, service::ClientService, Failure, Result};
 use olo_toolgate_contracts::*;
 use std::{sync::Arc, time::Duration};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use tracing::Instrument;
 pub fn authorized(peer: &str, allowed: &[String]) -> bool {
     allowed.iter().any(|entry| entry == peer)
 }
 async fn read<S: AsyncRead + Unpin>(stream: &mut S) -> Result<Vec<u8>> {
     let size = stream.read_u32().await.map_err(|_| Failure::Unavailable)? as usize;
-    if size == 0 || size > 4096 {
+    if size == 0 || size > 131072 {
         return Err(Failure::Validation);
     }
     let mut bytes = vec![0; size];
@@ -21,7 +22,7 @@ async fn read<S: AsyncRead + Unpin>(stream: &mut S) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 async fn write<S: AsyncWrite + Unpin>(stream: &mut S, bytes: &[u8]) -> Result<()> {
-    if bytes.len() > 16384 {
+    if bytes.len() > 131072 {
         return Err(Failure::Validation);
     }
     stream
@@ -70,6 +71,52 @@ async fn handle<S: AsyncWrite + Unpin>(
     if !authorized(peer, peers) {
         return Err(Failure::Unauthorized);
     }
+    let envelope: serde_json::Value =
+        serde_json::from_slice(bytes).map_err(|_| Failure::Validation)?;
+    if envelope["protocolVersion"] == 2 {
+        let request: BuiltinIpcRequest = contracts.decode("BuiltinIpcRequest", bytes)?;
+        let mut response = BuiltinIpcResponse {
+            request_id: request.request_id,
+            tools: None,
+            output: None,
+            error: None,
+        };
+        let mut state = match service.try_lock() {
+            Ok(state) => state,
+            Err(_) => {
+                response.error = Some(ErrorCode::Conflict);
+                return write(stream, &contracts.encode("BuiltinIpcResponse", &response)?).await;
+            }
+        };
+        let result = match request.operation {
+            BuiltinOperation::Catalog if request.invocation.is_none() => {
+                response.tools = Some(state.tool_catalog());
+                Ok(())
+            }
+            BuiltinOperation::Call => match request.invocation {
+                Some(invocation) => {
+                    let span = tracing::info_span!("builtin_call",request_id=%response.request_id,tool_id=%invocation.tool_id);
+                    state
+                        .execute_tool(invocation)
+                        .instrument(span)
+                        .await
+                        .map(|output| response.output = Some(output))
+                }
+                None => Err(Failure::Validation),
+            },
+            _ => Err(Failure::Validation),
+        };
+        if let Err(failure) = result {
+            response.error = Some(code(failure));
+            tracing::warn!(event="builtin_execution",result="rejected",error=?failure);
+        }
+        let bytes = contracts.encode("BuiltinIpcResponse", &response)?;
+        drop(state);
+        return write(stream, &bytes).await;
+    }
+    if bytes.len() > 4096 {
+        return Err(Failure::Validation);
+    }
     let request: ClientIpcRequest = contracts.decode("ClientIpcRequest", bytes)?;
     let mut response = ClientIpcResponse {
         request_id: request.request_id,
@@ -78,7 +125,13 @@ async fn handle<S: AsyncWrite + Unpin>(
         error: None,
     };
     // Busy service returns backpressure instead of accumulating an unbounded local queue.
-    let mut state = service.try_lock().map_err(|_| Failure::Conflict)?;
+    let mut state = match service.try_lock() {
+        Ok(state) => state,
+        Err(_) => {
+            response.error = Some(ErrorCode::Conflict);
+            return write(stream, &contracts.encode("ClientIpcResponse", &response)?).await;
+        }
+    };
     let result = match request.operation {
         ClientIpcOperation::Health => {
             response.health = Some(state.health());
@@ -206,6 +259,39 @@ pub async fn call(endpoint: &str, operation: ClientIpcOperation) -> Result<Clien
         operation,
     };
     let bytes = contracts.encode("ClientIpcRequest", &request)?;
+    let bytes = exchange(endpoint, &bytes, 16384).await?;
+    let response: ClientIpcResponse = contracts.decode("ClientIpcResponse", &bytes)?;
+    if response.request_id != request.request_id {
+        return Err(Failure::Unauthorized);
+    }
+    Ok(response)
+}
+pub async fn call_tool(
+    endpoint: &str,
+    invocation: Option<BuiltinInvocation>,
+) -> Result<BuiltinIpcResponse> {
+    let contracts = Contracts::new()?;
+    let request = BuiltinIpcRequest {
+        protocol_version: 2,
+        request_id: crate::identity::nonce()?,
+        operation: if invocation.is_some() {
+            BuiltinOperation::Call
+        } else {
+            BuiltinOperation::Catalog
+        },
+        invocation,
+    };
+    let bytes = contracts.encode("BuiltinIpcRequest", &request)?;
+    let response: BuiltinIpcResponse = contracts.decode(
+        "BuiltinIpcResponse",
+        &exchange(endpoint, &bytes, 131072).await?,
+    )?;
+    if response.request_id != request.request_id {
+        return Err(Failure::Unauthorized);
+    }
+    Ok(response)
+}
+async fn exchange(endpoint: &str, bytes: &[u8], max: usize) -> Result<Vec<u8>> {
     #[cfg(unix)]
     let mut stream = tokio::net::UnixStream::connect(endpoint)
         .await
@@ -225,9 +311,9 @@ pub async fn call(endpoint: &str, operation: ClientIpcOperation) -> Result<Clien
             return Err(Failure::Unauthorized);
         }
     }
-    write(&mut stream, &bytes).await?;
+    write(&mut stream, bytes).await?;
     let size = stream.read_u32().await.map_err(|_| Failure::Unavailable)? as usize;
-    if size == 0 || size > 16384 {
+    if size == 0 || size > max {
         return Err(Failure::Validation);
     }
     let mut bytes = vec![0; size];
@@ -235,9 +321,5 @@ pub async fn call(endpoint: &str, operation: ClientIpcOperation) -> Result<Clien
         .read_exact(&mut bytes)
         .await
         .map_err(|_| Failure::Unavailable)?;
-    let response: ClientIpcResponse = contracts.decode("ClientIpcResponse", &bytes)?;
-    if response.request_id != request.request_id {
-        return Err(Failure::Unauthorized);
-    }
-    Ok(response)
+    Ok(bytes)
 }
