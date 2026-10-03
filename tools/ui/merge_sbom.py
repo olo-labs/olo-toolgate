@@ -7,6 +7,8 @@ browser assets. The separately verified production npm graph closes that gap.
 """
 import argparse
 import json
+import os
+import tempfile
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
 
@@ -37,7 +39,18 @@ def main():
     image=json.loads(target.read_text(encoding='utf-8'));ui=json.loads((ROOT/'build/ui/ui-sbom.cdx.json').read_text(encoding='utf-8'))
     result=merge(image,ui)
     if not any(component.get('purl','').startswith('pkg:npm/react@') for component in result['components']):raise ValueError('Embedded React dependency missing from image SBOM')
-    target.write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
+    # Docker scanners can create a root-owned file in our writable evidence directory.
+    # Replace it atomically with a runner-owned file rather than modifying its inode.
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', newline='\n',
+                                         dir=target.parent, prefix=target.name+'.', delete=False) as output:
+            temporary = Path(output.name)
+            output.write(json.dumps(result,indent=2)+'\n')
+        os.replace(temporary, target)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
     print(f'Image SBOM includes embedded UI: {len(result["components"])} components')
 
 

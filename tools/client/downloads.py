@@ -19,7 +19,7 @@ def main():
         work=Path(temp);_,public=keypair(work);env=environment(db,Path('/config/jwt-public.pem'))
         env.update(QUARKUS_DATASOURCE_JDBC_URL='jdbc:postgresql://127.0.0.1:5432/control?sslmode=disable',TOOLGATE_CONTROL_ENDPOINT_ENABLED='false')
         (work/'control.env').write_text('\n'.join(k+'='+v for k,v in env.items() if k.startswith(('QUARKUS_','MP_JWT_','TOOLGATE_CONTROL_')))+'\n')
-        container=run(['docker','run','-d','--read-only','--cap-drop=ALL','--security-opt=no-new-privileges','--memory=768m','--network','container:'+db['container'],'--tmpfs','/tmp:rw,noexec,nosuid,size=64m,uid=65532,gid=65532','--env-file',str(work/'control.env'),'-v',f'{work.as_posix()}:/config:ro',args.image],capture_output=True,text=True).stdout.strip()
+        container=run(['docker','run','-d','--read-only','--cap-drop=ALL','--security-opt=no-new-privileges','--memory=768m','--network','container:'+db['container'],'--tmpfs','/tmp:rw,noexec,nosuid,size=64m,uid=65532,gid=65532','--env-file',str(work/'control.env'),'-v',f'{public.as_posix()}:/config/jwt-public.pem:ro',args.image],capture_output=True,text=True).stdout.strip()
         try:
             ready('http://127.0.0.1:'+db['managementPort']);runtime='http://127.0.0.1:'+db['runtimePort'];url=runtime+'/api/public/v1/clients'
             status,raw,_=request(url);assert status==200;manifest=json.loads(raw)
