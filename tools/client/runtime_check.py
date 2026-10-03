@@ -63,6 +63,7 @@ def main():
     endpoint = 'npipe:////./pipe/dockerDesktopLinuxEngine' if os.name == 'nt' else 'unix:///var/run/docker.sock'
     tags = []
     try:
+        (ROOT/'.dev').mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix='runtime-images-', dir=ROOT/'.dev') as temporary:
             work = Path(temporary)
             for source in (ROOT/'tools/client/runtime-fixtures').iterdir():

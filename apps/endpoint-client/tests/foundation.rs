@@ -30,8 +30,6 @@ impl Directory {
         let builder = std::fs::DirBuilder::new();
         #[cfg(unix)]
         let mut builder = builder;
-        #[cfg(windows)]
-        let builder = builder;
         #[cfg(unix)]
         {
             use std::os::unix::fs::DirBuilderExt;

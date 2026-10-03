@@ -35,6 +35,7 @@ def main():
     ids = {name:run(['docker', 'image', 'inspect', '--format', '{{.Id}}', image], capture_output=True, text=True).stdout.strip()
            for name, image in [('control', args.control_image), ('gateway', args.gateway_image)]}
     output = ROOT/'build/approval'; output.mkdir(parents=True, exist_ok=True)
+    (ROOT/'.dev').mkdir(parents=True, exist_ok=True)
     with database() as db, tempfile.TemporaryDirectory(prefix='approval-e2e-', dir=ROOT/'.dev') as temp:
         work = Path(temp); control_work = work/'control'; gateway_work = work/'gateway'
         control_work.mkdir(); gateway_work.mkdir()

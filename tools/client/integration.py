@@ -44,6 +44,7 @@ def certificate(work,name,ca=False):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--control-image',default='olo-toolgate-control:module07');parser.add_argument('--gateway-image',default='olo-toolgate-gateway:module07');parser.add_argument('--binary',type=Path,default=ROOT/'target/client-release/x86_64-unknown-linux-gnu/release/olo-toolgate-client');parser.add_argument('--fleet',action='store_true');parser.add_argument('--builder',action='store_true');parser.add_argument('--runtime-image');parser.add_argument('--runtime-version');parser.add_argument('--docker-cli',type=Path);args=parser.parse_args();args.fleet=args.fleet or args.builder
+    (ROOT/'.dev').mkdir(parents=True, exist_ok=True)
     with database() as db,tempfile.TemporaryDirectory(prefix='client-tools-e2e-',dir=ROOT/'.dev') as temp:
         work=Path(temp);identity,public=keypair(work);certificate(work,'device-ca',True);certificate(work,'server');certificate(work,'gateway-tls')
         password=secrets.token_hex(16)

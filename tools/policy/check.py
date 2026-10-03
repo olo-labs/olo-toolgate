@@ -63,6 +63,7 @@ def main():
     control_id=run(['docker','image','inspect','--format','{{.Id}}',args.control_image],capture_output=True,text=True).stdout.strip()
     gateway_id=run(['docker','image','inspect','--format','{{.Id}}',args.gateway_image],capture_output=True,text=True).stdout.strip()
     output=ROOT/'build/policy'; output.mkdir(parents=True,exist_ok=True)
+    (ROOT/'.dev').mkdir(parents=True, exist_ok=True)
     with database() as db, tempfile.TemporaryDirectory(prefix='policy-e2e-',dir=ROOT/'.dev') as temp:
         work=Path(temp);control_work=work/'control';gateway_work=work/'gateway'
         control_work.mkdir(mode=0o755);gateway_work.mkdir(mode=0o755)

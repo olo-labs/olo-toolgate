@@ -76,6 +76,7 @@ def publication_proof():
     tasks = [f':{service}:build' for service in ('control-plane','marketplace-api','marketplace-worker')]
     updates = ['--write-locks'] if os.environ.get('TOOLGATE_UPDATE_LOCKS') == '1' else []
     run(['gradle','-PusePublishedContracts=true',f'-PcontractsRepository={local.as_posix()}','--rerun-tasks',*updates,*tasks])
+    (ROOT/'.dev').mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='missing-contracts-', dir=ROOT/'.dev') as empty:
         negative = run(['gradle','-PusePublishedContracts=true',f'-PcontractsRepository={Path(empty).as_posix()}','--rerun-tasks',':control-plane:compileJava'], expect_failure=True)
         if 'toolgate-contracts' not in negative.stdout+negative.stderr:

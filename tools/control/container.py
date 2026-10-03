@@ -10,6 +10,7 @@ from check import ROOT, database, environment, http_tests, keypair, ready, reque
 
 
 def smoke(image):
+    (ROOT/'.dev').mkdir(parents=True, exist_ok=True)
     with database() as db, tempfile.TemporaryDirectory(prefix='control-image-',dir=ROOT/'.dev') as temp:
         work = Path(temp); key, public = keypair(work)
         env = environment(db,Path('/etc/toolgate/public.pem'))

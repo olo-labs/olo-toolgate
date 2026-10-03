@@ -27,6 +27,7 @@ def main():
     if not cli.is_file() or not args.binary.is_file():raise ValueError('Real Linux client and Docker CLI required')
     tag='olo-toolgate-fleet-fixture:'+secrets.token_hex(12)
     try:
+        (ROOT/'.dev').mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix='fleet-image-',dir=ROOT/'.dev') as temporary:
             work=Path(temporary);shutil.copyfile(ROOT/'tools/client/runtime-fixtures/python.py',work/'python.py')
             (work/'Dockerfile').write_text('# Copyright 2026 OLO Labs\n# SPDX-License-Identifier: Apache-2.0\nFROM '+PYTHON+'\nCOPY --chmod=0444 python.py /opt/tool/tool.py\nRUN chmod 0755 /opt /opt/tool\n',encoding='utf-8')

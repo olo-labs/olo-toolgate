@@ -68,6 +68,7 @@ def browser(runtime, key, work):
 def main():
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--no-build',action='store_true');parser.add_argument('--serve',action='store_true',help='Keep an isolated development workspace running until Ctrl+C');args=parser.parse_args()
     (ROOT/'.dev').mkdir(exist_ok=True)
+    (ROOT/'.dev').mkdir(parents=True, exist_ok=True)
     with database() as db, tempfile.TemporaryDirectory(prefix='ui-browser-',dir=ROOT/'.dev') as temp:
         work=Path(temp);key,public=keypair(work);env=environment(db,public)
         _,signing_path,_=signing_key(work,'browser-bundle')

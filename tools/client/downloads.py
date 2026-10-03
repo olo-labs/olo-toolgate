@@ -14,6 +14,7 @@ from control.check import ROOT, database, environment, keypair, ready, request, 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--image',default='olo-toolgate-control:module07-downloads');args=parser.parse_args()
+    (ROOT/'.dev').mkdir(parents=True, exist_ok=True)
     with database() as db,tempfile.TemporaryDirectory(prefix='client-downloads-',dir=ROOT/'.dev') as temp:
         work=Path(temp);_,public=keypair(work);env=environment(db,Path('/config/jwt-public.pem'))
         env.update(QUARKUS_DATASOURCE_JDBC_URL='jdbc:postgresql://127.0.0.1:5432/control?sslmode=disable',TOOLGATE_CONTROL_ENDPOINT_ENABLED='false')

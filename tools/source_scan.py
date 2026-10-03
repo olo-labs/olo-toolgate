@@ -16,6 +16,7 @@ ROOT=Path(__file__).resolve().parents[1]
 
 def scan():
     names=subprocess.check_output(['git','ls-files','--cached','--others','--exclude-standard','-z'],cwd=ROOT).decode('utf-8').split('\0')
+    (ROOT/'.dev').mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='source-scan-',dir=ROOT/'.dev') as temporary:
         archive=Path(temporary)/'source.tar'
         count=0

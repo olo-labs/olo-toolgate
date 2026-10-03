@@ -13,6 +13,7 @@ ROOT=Path(__file__).resolve().parents[2]
 
 def checks():
     public=json.loads((ROOT/'tests/fixtures/policy/signed-v1.json').read_text())['bundles']['allow']['jws']
+    (ROOT/'.dev').mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='fixture-secret-proof-',dir=ROOT/'.dev') as temporary:
         work=Path(temporary);(work/'.gitleaks.toml').write_bytes((ROOT/'.gitleaks.toml').read_bytes())
         def scan(expected):
