@@ -17,6 +17,11 @@ CONTRACTS = ROOT / 'packages/contracts'
 HEADER = 'Copyright 2026 OLO Labs\nSPDX-License-Identifier: Apache-2.0\nGENERATED FILE — DO NOT EDIT DIRECTLY; tools/contracts/generate.py'
 
 
+def source_sha256(path):
+    """Hash canonical LF text, independent of checkout newline conversion."""
+    return hashlib.sha256(path.read_text(encoding="utf-8").encode("utf-8")).hexdigest()
+
+
 def definitions():
     result = {}
     for path in sorted((CONTRACTS / 'schemas/v1').glob('*.json')):
@@ -176,7 +181,7 @@ def render():
     outputs['packages/contracts/typescript/src/index.ts'] = '\n'.join(ts) + '\n'
     for language in ('java','rust','typescript','php'):
         outputs[f'packages/contracts/{language}/LICENSE'] = (ROOT/'LICENSE').read_text(encoding='utf-8')
-    manifest = {'version':version, 'schemaSha256':{str(p.relative_to(ROOT)).replace('\\','/'): hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted((CONTRACTS/'schemas/v1').glob('*.json'))}, 'generatorSha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), 'outputs': sorted(outputs)}
+    manifest = {'version':version, 'schemaSha256':{str(p.relative_to(ROOT)).replace('\\','/'): source_sha256(p) for p in sorted((CONTRACTS/'schemas/v1').glob('*.json'))}, 'generatorSha256':source_sha256(Path(__file__)), 'outputs': sorted(outputs)}
     outputs['packages/contracts/generated-manifest.json'] = json.dumps(manifest, indent=2) + '\n'
     return outputs
 

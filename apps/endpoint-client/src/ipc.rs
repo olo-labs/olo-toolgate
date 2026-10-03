@@ -289,7 +289,8 @@ pub async fn listen(
                 let service=service.clone();let contracts=contracts.clone();let peers=peers.clone();
                 tasks.spawn(async move{let _permit=permit;let _=tokio::time::timeout(Duration::from_secs(230),async{
                     // Impersonation authenticates the token associated with data actually read.
-                    let bytes=read(&mut stream).await?;let peer=crate::platform::windows::peer_sid(stream.as_raw_handle())?;
+                    // SAFETY: stream owns the live connected server pipe during the query.
+                    let bytes=read(&mut stream).await?;let peer=unsafe { crate::platform::windows::peer_sid(stream.as_raw_handle()) }?;
                     handle(&mut stream,&peer,&peers,&service,&contracts,&bytes).await
                 }).await;});
             },
@@ -381,7 +382,8 @@ async fn exchange(endpoint: &str, bytes: &[u8], max: usize) -> Result<Vec<u8>> {
     #[cfg(windows)]
     {
         use std::os::windows::io::AsRawHandle;
-        if crate::platform::windows::server_sid(stream.as_raw_handle())? != "S-1-5-18" {
+        // SAFETY: stream owns the live pipe handle throughout the synchronous query.
+        if unsafe { crate::platform::windows::server_sid(stream.as_raw_handle()) }? != "S-1-5-18" {
             return Err(Failure::Unauthorized);
         }
     }

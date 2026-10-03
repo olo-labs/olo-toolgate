@@ -18,7 +18,10 @@ impl Directory {
     fn new() -> Self {
         #[cfg(windows)]
         let base = PathBuf::from(std::env::var_os("ProgramData").unwrap());
-        #[cfg(unix)]
+        // macOS /tmp is a symlink; exercise custody through its real protected parent.
+        #[cfg(target_os = "macos")]
+        let base = PathBuf::from("/private/tmp");
+        #[cfg(all(unix, not(target_os = "macos")))]
         let base = std::env::temp_dir();
         let path = base.join(format!(
             "toolgate-client-{}",

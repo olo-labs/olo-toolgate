@@ -43,7 +43,7 @@ pub fn open_browser(url: &str) -> Result<()> {
         .status();
     #[cfg(windows)]
     {
-        return windows::open_browser(url);
+        windows::open_browser(url)
     }
     #[cfg(unix)]
     {
@@ -132,7 +132,9 @@ pub mod windows {
         }
     }
     /// Authenticate the service process behind a local pipe before accepting its browser prompt.
-    pub fn server_sid(pipe: HANDLE) -> Result<String> {
+    /// # Safety
+    /// `pipe` must be a live named pipe handle for the duration of this call.
+    pub unsafe fn server_sid(pipe: HANDLE) -> Result<String> {
         unsafe {
             let mut pid = 0;
             if GetNamedPipeServerProcessId(pipe, &mut pid) == 0 {
@@ -173,7 +175,9 @@ pub mod windows {
         }
     }
     /// Named pipe peer is identified by the impersonation token, never caller-supplied bytes.
-    pub fn peer_sid(pipe: HANDLE) -> Result<String> {
+    /// # Safety
+    /// `pipe` must be a live connected server pipe handle for the duration of this call.
+    pub unsafe fn peer_sid(pipe: HANDLE) -> Result<String> {
         unsafe {
             if ImpersonateNamedPipeClient(pipe) == 0 {
                 return Err(Failure::Unauthorized);

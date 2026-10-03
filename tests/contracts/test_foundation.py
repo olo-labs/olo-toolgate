@@ -9,6 +9,7 @@ import subprocess
 import sys
 import unittest
 import tomllib
+import tempfile
 from pathlib import Path
 
 import yaml
@@ -257,6 +258,20 @@ class FoundationTests(unittest.TestCase):
                 if '://' in target or target.startswith('#'): continue
                 self.assertTrue((path.parent/target.split('#')[0]).is_file(), f'{path}: {target}')
 
+
+
+
+class GeneratorNewlineTests(unittest.TestCase):
+    def test_source_hash_is_identical_for_lf_and_crlf_checkouts(self):
+        spec = importlib.util.spec_from_file_location('generator', ROOT/'tools/contracts/generate.py')
+        generator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(generator)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/'schema.json'
+            path.write_bytes(b'{\n  "type": "object"\n}\n')
+            expected = generator.source_sha256(path)
+            path.write_bytes(path.read_bytes().replace(b'\n', b'\r\n'))
+            self.assertEqual(generator.source_sha256(path), expected)
 
 if __name__ == '__main__':
     unittest.main()

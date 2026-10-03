@@ -71,7 +71,11 @@ fn signatures_hashes_wrong_trust_and_rotation_fail_closed() {
 #[cfg(unix)]
 #[test]
 fn intent_survives_interruption_stale_wrong_assignment_expiry_and_offline() {
-    let path = std::env::temp_dir().join(format!(
+    #[cfg(target_os = "macos")]
+    let base = std::path::PathBuf::from("/private/tmp");
+    #[cfg(not(target_os = "macos"))]
+    let base = std::env::temp_dir();
+    let path = base.join(format!(
         "fleet-test-{}",
         olo_toolgate_client::identity::nonce().unwrap()
     ));
@@ -155,6 +159,6 @@ fn intent_survives_interruption_stale_wrong_assignment_expiry_and_offline() {
         )
         .is_err());
     assert!(!state.activated);
-    assert_eq!(path.parent(), Some(std::env::temp_dir().as_path()));
+    assert_eq!(path.parent(), Some(base.as_path()));
     std::fs::remove_dir_all(path).unwrap();
 }
