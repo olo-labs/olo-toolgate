@@ -856,6 +856,137 @@ pub struct ExecutionPermitUseRequest {
     pub permit: SignedExecutionPermit,
     pub request: AuthorizationRequest,
 }
+/// Bounded per-service execution counters and sandbox state.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct LocalRuntimeHealth {
+    pub ready: bool,
+    pub successful_executions: u64,
+    pub failed_executions: u64,
+    pub runtimes: Vec<LocalRuntimeStatus>,
+}
+/// OS-authorized additive IPC revision; callers cannot select runtime images, paths or launch arguments.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct LocalRuntimeIpcRequest {
+    pub protocol_version: u64,
+    pub request_id: String,
+    pub operation: LocalRuntimeOperation,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub invocation: Option<LocalToolInput>,
+}
+/// Canonical redacted execution/status response for IPC revision 3.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct LocalRuntimeIpcResponse {
+    pub request_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub health: Option<LocalRuntimeHealth>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result: Option<LocalToolOutput>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<ErrorCode>,
+}
+/// Canonical LocalRuntimeKind wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum LocalRuntimeKind {
+    #[serde(rename = "NATIVE")]
+    Native,
+    #[serde(rename = "PYTHON")]
+    Python,
+    #[serde(rename = "NODE")]
+    Node,
+    #[serde(rename = "POWERSHELL")]
+    Powershell,
+    #[serde(rename = "BATCH")]
+    Batch,
+    #[serde(rename = "SHELL")]
+    Shell,
+    #[serde(rename = "JAVA_JAR")]
+    JavaJar,
+    #[serde(rename = "DOTNET")]
+    Dotnet,
+    #[serde(rename = "WASM")]
+    Wasm,
+}
+/// Bounded local sandbox budget; limits never grant host access.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct LocalRuntimeLimits {
+    pub timeout_ms: u64,
+    pub memory_mi_b: u64,
+    pub max_input_bytes: u64,
+    pub max_output_bytes: u64,
+}
+/// Canonical LocalRuntimeOperation wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum LocalRuntimeOperation {
+    #[serde(rename = "STATUS")]
+    Status,
+    #[serde(rename = "PREPARE")]
+    Prepare,
+    #[serde(rename = "INVOKE")]
+    Invoke,
+}
+/// Canonical LocalRuntimeState wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum LocalRuntimeState {
+    #[serde(rename = "MISSING")]
+    Missing,
+    #[serde(rename = "READY")]
+    Ready,
+    #[serde(rename = "FAILED")]
+    Failed,
+    #[serde(rename = "UNSUPPORTED")]
+    Unsupported,
+}
+/// Redacted runtime readiness and capability, never engine output or credential contents.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct LocalRuntimeStatus {
+    pub runtime_id: String,
+    pub kind: LocalRuntimeKind,
+    pub state: LocalRuntimeState,
+    pub version: String,
+}
+/// One JSON stdin document; arguments never become process command strings.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct LocalToolInput {
+    pub protocol_version: u64,
+    pub request_id: String,
+    pub tool_id: String,
+    pub arguments: std::collections::BTreeMap<String, serde_json::Value>,
+}
+/// One bounded JSON stdout document; request binding and output schema are verified.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct LocalToolOutput {
+    pub protocol_version: u64,
+    pub request_id: String,
+    pub output: std::collections::BTreeMap<String, serde_json::Value>,
+}
+/// Protected local organization registration, separate from marketplace trust and online Gateway authorization.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct LocalToolRegistration {
+    pub tool_id: String,
+    pub action: String,
+    pub runtime_id: String,
+    pub entry_point: String,
+    pub input_schema: std::collections::BTreeMap<String, serde_json::Value>,
+    pub output_schema: std::collections::BTreeMap<String, serde_json::Value>,
+    pub limits: LocalRuntimeLimits,
+}
+/// Administrator-selected immutable tool/runtime image; runtime provisioning is not execution authorization.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ManagedRuntime {
+    pub id: String,
+    pub kind: LocalRuntimeKind,
+    pub image: String,
+    pub version: String,
+}
 /// Marketplace trust only; never organization or runtime authorization.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -1013,7 +1144,7 @@ impl ContractSet {
     pub fn current() -> Self {
         Self {
             name: "olo-toolgate-contracts".into(),
-            version: "0.7.0-dev".into(),
+            version: "0.8.0-dev".into(),
         }
     }
 }
@@ -1054,6 +1185,10 @@ pub const CANONICAL_SCHEMAS: &[(&str, &str)] = &[
     (
         "https://schemas.ololabs.io/toolgate/v1/error.schema.json",
         include_str!("../schemas/v1/error.schema.json"),
+    ),
+    (
+        "https://schemas.ololabs.io/toolgate/v1/execution.schema.json",
+        include_str!("../schemas/v1/execution.schema.json"),
     ),
     (
         "https://schemas.ololabs.io/toolgate/v1/identifiers.schema.json",

@@ -132,6 +132,9 @@ impl HttpsGateway {
 }
 impl AuthorizationPort for HttpsGateway {
     fn authorize(&self, request: AuthorizationRequest) -> Call<'_, ()> {
+        Box::pin(async move { self.authorize_bound(request).await.map(|_| ()) })
+    }
+    fn authorize_bound(&self, request: AuthorizationRequest) -> Call<'_, Option<u64>> {
         Box::pin(async move {
             let correlation = crate::identity::nonce()?;
             let (outcome, response_id): (AuthorizationOutcome, String) = self
@@ -143,7 +146,18 @@ impl AuthorizationPort for HttpsGateway {
                 )
                 .await?;
             tracing::info!(event="gateway_authorization",request_id=%correlation,tool_id=%request.tool_id,decision=?outcome.decision.decision);
+            let mut deadline = None;
             if let Some(permit) = grant(outcome, &response_id)? {
+                use base64::Engine;
+                let parts: Vec<_> = permit.jws.split('.').collect();
+                if parts.len() != 3 {
+                    return Err(Failure::Unauthorized);
+                }
+                let payload = base64::engine::general_purpose::URL_SAFE_NO_PAD
+                    .decode(parts[1])
+                    .map_err(|_| Failure::Unauthorized)?;
+                let claims: ExecutionPermitClaims =
+                    self.contracts.decode("ExecutionPermitClaims", &payload)?;
                 let use_request = ExecutionPermitUseRequest { permit, request };
                 let (decision, response_id): (PolicyDecision, String) = self
                     .post(
@@ -157,8 +171,14 @@ impl AuthorizationPort for HttpsGateway {
                 if decision.request_id != response_id || decision.decision != Decision::Allow {
                     return Err(Failure::Unauthorized);
                 }
+                // The authenticated Gateway has just cryptographically verified and
+                // consumed these exact claims. Parsing alone never grants permission.
+                if claims.expires_at_unix_ms <= crate::now() {
+                    return Err(Failure::Expired);
+                }
+                deadline = Some(claims.expires_at_unix_ms);
             }
-            Ok(())
+            Ok(deadline)
         })
     }
 }

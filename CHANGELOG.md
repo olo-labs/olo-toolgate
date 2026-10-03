@@ -4,6 +4,14 @@ All notable project changes should be documented here.
 
 The project follows semantic versioning once stable versioning begins.
 
+## 0.8.0-dev
+
+- Add canonical JSON local invocation and IPC revision 3, managed image preparation,
+  fixed runtime vectors, online Gateway binding and disposable OCI resource isolation.
+- Add first-use interpreter provisioning from approved immutable images; host Python
+  is unnecessary. Document external engine, Batch/CMD/WASM and native CI limitations.
+- Add malicious real-runtime fixtures, health/counters, cleanup and runtime operations.
+
 ## 0.7.0-dev — Module 07
 
 - Add protected HotFolder tools with capability-relative paths, no-follow links,

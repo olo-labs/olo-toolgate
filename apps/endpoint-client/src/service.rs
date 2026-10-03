@@ -27,6 +27,7 @@ struct Journal {
 }
 /// One instance per machine, protected by OS lease and serialized command handling.
 pub struct ClientService {
+    execution: Option<crate::execution::Manager>,
     tools: Option<crate::builtins::Executor>,
     store: ProtectedStore,
     _lease: ServiceLease,
@@ -93,7 +94,19 @@ impl ClientService {
         } else {
             None
         };
+        let execution = if let (Some(settings), Some(tools)) = (&config.execution, &config.tools) {
+            Some(crate::execution::Manager::new(
+                settings.clone(),
+                Arc::new(crate::tool_gateway::HttpsGateway::new(
+                    tools,
+                    Arc::new(crate::contracts::Contracts::new()?),
+                )?),
+            )?)
+        } else {
+            None
+        };
         Ok(Self {
+            execution,
             tools,
             store,
             _lease: lease,
@@ -172,6 +185,56 @@ impl ClientService {
             "journal.json",
             &serde_json::to_vec(&self.journal).map_err(|_| Failure::Validation)?,
         )
+    }
+    /// Runtime status is distinct from enrolled-device readiness.
+    pub fn runtime_health(&self) -> Result<LocalRuntimeHealth> {
+        self.execution
+            .as_ref()
+            .map(|m| m.health())
+            .ok_or(Failure::Unsupported)
+    }
+    pub async fn prepare_runtimes(&mut self) -> Result<LocalRuntimeHealth> {
+        self.execution
+            .as_mut()
+            .ok_or(Failure::Unsupported)?
+            .prepare()
+            .await
+    }
+    pub async fn shutdown_runtimes(&self) -> Result<()> {
+        if let Some(manager) = &self.execution {
+            manager.shutdown().await?;
+        }
+        Ok(())
+    }
+    pub async fn invoke_runtime(&mut self, input: LocalToolInput) -> Result<LocalToolOutput> {
+        self.clock()?;
+        if !self.health().ready {
+            return Err(Failure::Unavailable);
+        }
+        let identity = self
+            .journal
+            .identity
+            .as_ref()
+            .ok_or(Failure::Unauthorized)?;
+        if self
+            .config
+            .tools
+            .as_ref()
+            .is_none_or(|s| s.device_id != identity.device_id)
+        {
+            return Err(Failure::Unauthorized);
+        }
+        let valid_until = identity.expires_at_unix_ms.min(
+            self.journal
+                .last_success
+                .unwrap_or(0)
+                .saturating_add(120000),
+        );
+        self.execution
+            .as_mut()
+            .ok_or(Failure::Unsupported)?
+            .invoke(input, valid_until)
+            .await
     }
     fn device(&self) -> String {
         format!("device-{}", &self.key.fingerprint()[..32])

@@ -73,6 +73,55 @@ async fn handle<S: AsyncWrite + Unpin>(
     }
     let envelope: serde_json::Value =
         serde_json::from_slice(bytes).map_err(|_| Failure::Validation)?;
+    if envelope["protocolVersion"] == 3 {
+        let request: LocalRuntimeIpcRequest = contracts.decode("LocalRuntimeIpcRequest", bytes)?;
+        let mut response = LocalRuntimeIpcResponse {
+            request_id: request.request_id.clone(),
+            health: None,
+            result: None,
+            error: None,
+        };
+        let mut state = match service.try_lock() {
+            Ok(state) => state,
+            Err(_) => {
+                response.error = Some(ErrorCode::Conflict);
+                return write(
+                    stream,
+                    &contracts.encode("LocalRuntimeIpcResponse", &response)?,
+                )
+                .await;
+            }
+        };
+        let result = match request.operation {
+            LocalRuntimeOperation::Status if request.invocation.is_none() => {
+                state.runtime_health().map(|h| response.health = Some(h))
+            }
+            LocalRuntimeOperation::Prepare if request.invocation.is_none() => state
+                .prepare_runtimes()
+                .await
+                .map(|h| response.health = Some(h)),
+            LocalRuntimeOperation::Invoke => match request.invocation {
+                Some(input) if input.request_id == request.request_id => {
+                    let span = tracing::info_span!("local_runtime",request_id=%request.request_id,tool_id=%input.tool_id);
+                    state
+                        .invoke_runtime(input)
+                        .instrument(span)
+                        .await
+                        .map(|out| response.result = Some(out))
+                }
+                _ => Err(Failure::Validation),
+            },
+            _ => Err(Failure::Unauthorized),
+        };
+        if let Err(e) = result {
+            response.error = Some(code(e));
+        }
+        return write(
+            stream,
+            &contracts.encode("LocalRuntimeIpcResponse", &response)?,
+        )
+        .await;
+    }
     if envelope["protocolVersion"] == 2 {
         let request: BuiltinIpcRequest = contracts.decode("BuiltinIpcRequest", bytes)?;
         let mut response = BuiltinIpcResponse {
@@ -187,7 +236,7 @@ pub async fn listen(
                 let(mut stream,_)=incoming.map_err(|_|Failure::Unavailable)?;let permit=match limit.clone().try_acquire_owned(){Ok(p)=>p,Err(_)=>continue};
                 let peer=stream.peer_cred().map_err(|_|Failure::Unauthorized)?.uid().to_string();
                 let service=service.clone();let contracts=contracts.clone();let peers=peers.clone();
-                tasks.spawn(async move{let _permit=permit;let _=tokio::time::timeout(Duration::from_secs(20),connection(&mut stream,&peer,&peers,&service,&contracts)).await;});
+                tasks.spawn(async move{let _permit=permit;let _=tokio::time::timeout(Duration::from_secs(230),connection(&mut stream,&peer,&peers,&service,&contracts)).await;});
             },
             Some(_)=tasks.join_next()=>{},
         }
@@ -238,7 +287,7 @@ pub async fn listen(
                 let next=create(endpoint,&peers,false)?;
                 let mut stream=std::mem::replace(&mut pipe,next);let permit=match limit.clone().try_acquire_owned(){Ok(p)=>p,Err(_)=>continue};
                 let service=service.clone();let contracts=contracts.clone();let peers=peers.clone();
-                tasks.spawn(async move{let _permit=permit;let _=tokio::time::timeout(Duration::from_secs(20),async{
+                tasks.spawn(async move{let _permit=permit;let _=tokio::time::timeout(Duration::from_secs(230),async{
                     // Impersonation authenticates the token associated with data actually read.
                     let bytes=read(&mut stream).await?;let peer=crate::platform::windows::peer_sid(stream.as_raw_handle())?;
                     handle(&mut stream,&peer,&peers,&service,&contracts,&bytes).await
@@ -284,6 +333,31 @@ pub async fn call_tool(
     let bytes = contracts.encode("BuiltinIpcRequest", &request)?;
     let response: BuiltinIpcResponse = contracts.decode(
         "BuiltinIpcResponse",
+        &exchange(endpoint, &bytes, 131072).await?,
+    )?;
+    if response.request_id != request.request_id {
+        return Err(Failure::Unauthorized);
+    }
+    Ok(response)
+}
+pub async fn call_runtime(
+    endpoint: &str,
+    operation: LocalRuntimeOperation,
+    invocation: Option<LocalToolInput>,
+) -> Result<LocalRuntimeIpcResponse> {
+    let contracts = Contracts::new()?;
+    let request = LocalRuntimeIpcRequest {
+        protocol_version: 3,
+        request_id: invocation
+            .as_ref()
+            .map(|i| i.request_id.clone())
+            .unwrap_or(crate::identity::nonce()?),
+        operation,
+        invocation,
+    };
+    let bytes = contracts.encode("LocalRuntimeIpcRequest", &request)?;
+    let response: LocalRuntimeIpcResponse = contracts.decode(
+        "LocalRuntimeIpcResponse",
         &exchange(endpoint, &bytes, 131072).await?,
     )?;
     if response.request_id != request.request_id {

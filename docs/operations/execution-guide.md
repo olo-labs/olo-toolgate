@@ -6,6 +6,11 @@ Admin UI, Gateway, and the native endpoint client. Read the
 The repository is pre-alpha; native OS service CI gates remain open in the
 [Module 07 report](../codex/modules/07-completion.md).
 
+Module 08 adds [managed runtime configuration and first-use installation](../client/local-runtimes.md).
+It requires a system-accessible Linux engine; registering an image does not
+authorize execution. The [Module 08 report](../codex/modules/08-completion.md)
+records current capability/verification limitations.
+
 ## Choose an environment
 
 | Environment | Execution | Configuration and identity |

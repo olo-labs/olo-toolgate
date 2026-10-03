@@ -1,5 +1,10 @@
 # How to debug ToolGate
 
+For managed runtimes, start with `olo-toolgate-client runtimes status` and
+`runtimes prepare`. Check exact image/version, local engine access and resource/
+seccomp capability, plus the [runtime troubleshooting guide](../client/local-runtimes.md#limits-health-and-recovery).
+UNSUPPORTED Batch/CMD/WASM cannot be fixed by enabling host execution.
+
 Start with the [execution and configuration guide](execution-guide.md). Collect
 the software version, UTC time, component, response status/error code and server
 request ID before changing configuration. Correlate request/trace IDs in sanitized

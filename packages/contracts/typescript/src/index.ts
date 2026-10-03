@@ -529,6 +529,74 @@ export interface ExecutionPermitUseRequest {
   readonly request: AuthorizationRequest;
 }
 export type Identifier = string;
+/** Bounded per-service execution counters and sandbox state. */
+export interface LocalRuntimeHealth {
+  readonly ready: boolean;
+  readonly successfulExecutions: number;
+  readonly failedExecutions: number;
+  readonly runtimes: ReadonlyArray<LocalRuntimeStatus>;
+}
+/** OS-authorized additive IPC revision; callers cannot select runtime images, paths or launch arguments. */
+export interface LocalRuntimeIpcRequest {
+  readonly protocolVersion: number;
+  readonly requestId: string;
+  readonly operation: LocalRuntimeOperation;
+  readonly invocation?: LocalToolInput;
+}
+/** Canonical redacted execution/status response for IPC revision 3. */
+export interface LocalRuntimeIpcResponse {
+  readonly requestId: string;
+  readonly health?: LocalRuntimeHealth;
+  readonly result?: LocalToolOutput;
+  readonly error?: ErrorCode;
+}
+export type LocalRuntimeKind = "NATIVE" | "PYTHON" | "NODE" | "POWERSHELL" | "BATCH" | "SHELL" | "JAVA_JAR" | "DOTNET" | "WASM";
+/** Bounded local sandbox budget; limits never grant host access. */
+export interface LocalRuntimeLimits {
+  readonly timeoutMs: number;
+  readonly memoryMiB: number;
+  readonly maxInputBytes: number;
+  readonly maxOutputBytes: number;
+}
+export type LocalRuntimeOperation = "STATUS" | "PREPARE" | "INVOKE";
+export type LocalRuntimeState = "MISSING" | "READY" | "FAILED" | "UNSUPPORTED";
+/** Redacted runtime readiness and capability, never engine output or credential contents. */
+export interface LocalRuntimeStatus {
+  readonly runtimeId: string;
+  readonly kind: LocalRuntimeKind;
+  readonly state: LocalRuntimeState;
+  readonly version: string;
+}
+/** One JSON stdin document; arguments never become process command strings. */
+export interface LocalToolInput {
+  readonly protocolVersion: number;
+  readonly requestId: string;
+  readonly toolId: string;
+  readonly arguments: Record<string, unknown>;
+}
+/** One bounded JSON stdout document; request binding and output schema are verified. */
+export interface LocalToolOutput {
+  readonly protocolVersion: number;
+  readonly requestId: string;
+  readonly output: Record<string, unknown>;
+}
+/** Protected local organization registration, separate from marketplace trust and online Gateway authorization. */
+export interface LocalToolRegistration {
+  readonly toolId: string;
+  readonly action: string;
+  readonly runtimeId: string;
+  readonly entryPoint: string;
+  readonly inputSchema: Record<string, unknown>;
+  readonly outputSchema: Record<string, unknown>;
+  readonly limits: LocalRuntimeLimits;
+}
+/** Administrator-selected immutable tool/runtime image; runtime provisioning is not execution authorization. */
+export interface ManagedRuntime {
+  readonly id: string;
+  readonly kind: LocalRuntimeKind;
+  readonly image: string;
+  readonly version: string;
+}
 /** Marketplace trust only; never organization or runtime authorization. */
 export interface MarketplaceRelease {
   readonly packageId: string;
@@ -629,5 +697,5 @@ export interface ToolDefinition {
   readonly inputSchema: Record<string, unknown>;
   readonly outputSchema: Record<string, unknown>;
 }
-export const CONTRACT_SET_VERSION = "0.7.0-dev" as const;
+export const CONTRACT_SET_VERSION = "0.8.0-dev" as const;
 export const CONTRACT_SET_NAME = "olo-toolgate-contracts" as const;

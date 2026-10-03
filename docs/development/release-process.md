@@ -51,3 +51,14 @@ It builds production images once, then also executes prior signed-bundle E2E and
 approval Helm install/upgrade/rotation negatives. Existing protected Maven/GHCR/OCI
 publication, scans, SBOMs and provenance remain required. No remote credentials are
 introduced for local checks; `make approval-e2e` produces local evidence.
+
+## Module 08 runtime dependencies
+
+Native client archives include managed runtime documentation and the fixed seccomp
+profile. Interpreter/tool image layers remain separate approved OCI dependencies;
+record their exact digest, runtime version, license inventory, SBOM, vulnerability
+scan and provenance before deployment. First-use pull requires an explicitly
+approved pinned image and local system-accessible engine. No engine installer or
+registry secret is embedded. Native Linux CI executes real adapter/sandbox tests.
+Batch/CMD has no secure backend yet; native cross-platform gates must run before
+claiming module completion.

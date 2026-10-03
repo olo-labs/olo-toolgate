@@ -52,7 +52,7 @@ pub async fn run(config: Config, shutdown: tokio::sync::watch::Receiver<bool>) -
     let result = crate::ipc::listen(
         &config.ipc_endpoint,
         config.authorized_peers,
-        service,
+        service.clone(),
         contracts,
         shutdown,
     )
@@ -66,7 +66,11 @@ pub async fn run(config: Config, shutdown: tokio::sync::watch::Receiver<bool>) -
         }
     })?;
     tracing::info!(event = "client_service", result = "stopped");
-    result
+    let cleanup = service.lock().await.shutdown_runtimes().await;
+    if let Err(failure) = cleanup {
+        tracing::warn!(event="runtime_shutdown",error=?failure);
+    }
+    result.and(cleanup)
 }
 #[cfg(windows)]
 pub mod windows {

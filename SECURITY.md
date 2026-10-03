@@ -1,5 +1,10 @@
 # Security Policy
 
+Managed local runtime tools execute only in a non-root, digest-pinned sandbox
+without host mounts, credentials, network or child processes. Missing or unsupported
+runtime capabilities fail closed. Keep the trusted local engine/kernel patched;
+the sandbox shares that kernel. [Runtime security](docs/client/local-runtimes.md).
+
 Security issues should **not** be reported through a public GitHub issue.
 
 Endpoint built-ins require OS-authenticated IPC, enrolled readiness and a fresh

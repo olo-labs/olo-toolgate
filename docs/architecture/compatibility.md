@@ -59,3 +59,11 @@ clients lack tool IPC and fail unsupported operations safely. Discovery SemVer
 minimum accepts a newer compatible client; origin, CA and identity verification
 remain mandatory. The Windows local cross-build uses GNU x64 while native release
 CI produces MSVC x64/ARM64; macOS/Linux CI produces native x64/ARM64 archives.
+
+## Module 08 managed execution
+
+Product/contracts/chart advance to 0.8.0-dev. Twelve new execution types and IPC
+revision 3 are additive; frozen identity/built-in protocols remain unchanged.
+No database or REST route is added. Explicit local registration and Linux OCI
+engine are opt-in. Batch/CMD and WASM are unsupported. Existing HotFolder stays
+available without an engine. Read docs/client/local-runtimes.md for migration.

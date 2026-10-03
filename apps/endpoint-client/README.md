@@ -1,5 +1,10 @@
 # Endpoint Client and HotFolder
 
+Module 08 adds opt-in [managed local runtimes](../../docs/client/local-runtimes.md).
+Approved images contain Python and other dependencies and can be provisioned
+automatically on first use. A system-accessible Linux OCI engine is required;
+Batch/CMD and WASM currently report UNSUPPORTED. Host interpreters are never a fallback.
+
 The native protected service provides enrollment, check-in and eighteen fixed
 built-in tools. It never executes arbitrary code or issues Gateway credentials.
 See [HotFolder configuration and operations](../../docs/client/hotfolder.md) and

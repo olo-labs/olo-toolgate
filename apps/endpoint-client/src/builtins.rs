@@ -65,6 +65,11 @@ impl Settings {
 /// The adapter must return only after validating/consuming a grant for this exact request.
 pub trait AuthorizationPort: Send + Sync {
     fn authorize(&self, request: AuthorizationRequest) -> Call<'_, ()>;
+    /// Managed execution needs the consumed permit's deadline. An adapter that
+    /// cannot provide bounded authorization is unsupported, never implicitly ALLOW.
+    fn authorize_bound(&self, _request: AuthorizationRequest) -> Call<'_, Option<u64>> {
+        Box::pin(async { Err(Failure::Unsupported) })
+    }
 }
 
 pub struct Executor {

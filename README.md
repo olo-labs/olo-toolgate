@@ -1,5 +1,9 @@
 # OLO ToolGate
 
+The client supports opt-in [contained local tool runtimes](docs/client/local-runtimes.md)
+with digest-pinned interpreter/tool images and automatic first-use preparation.
+See the guide for engine prerequisites and platform limitations.
+
 For current execution commands, configuration and troubleshooting, read
 [how to run and use ToolGate](docs/operations/execution-guide.md) and
 [how to debug ToolGate](docs/operations/debugging.md).

@@ -1,5 +1,10 @@
 # Architecture
 
+Module 08 separates privileged identity custody from untrusted execution through
+a local OCI sandbox port. Protected image/tool registration and fresh Gateway
+authorization are separate inputs; JSON stdin/stdout never becomes command text.
+See [ADR 009](docs/adr/009-managed-local-runtime-sandbox.md).
+
 Module 07's native system service exposes only the fixed canonical built-in
 catalog through OS-authenticated IPC. Capability-relative HotFolder access
 requires enrolled readiness and fresh Gateway authorization before each effect;

@@ -4,6 +4,7 @@
 pub mod builtins;
 pub mod config;
 pub mod contracts;
+pub mod execution;
 pub mod hotfolder;
 pub mod identity;
 pub mod install;

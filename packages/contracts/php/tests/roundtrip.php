@@ -24,7 +24,7 @@ foreach ($fixtures as $name => $fixture) {
     }
     $count++;
 }
-if ($count !== 97) { throw new RuntimeException('Incomplete fixture coverage'); }
+if ($count !== 109) { throw new RuntimeException('Incomplete fixture coverage'); }
 foreach ([['decision' => 'UNKNOWN'], ['bypass' => true], ['decision' => null]] as $change) {
     try {
         $bad = array_replace($fixtures['PolicyDecision'], $change);
@@ -34,4 +34,4 @@ foreach ([['decision' => 'UNKNOWN'], ['bypass' => true], ['decision' => null]] a
     }
     throw new RuntimeException('Invalid policy accepted');
 }
-echo "PHP: 97 model round trips and security negatives passed\n";
+echo "PHP: 109 model round trips and security negatives passed\n";

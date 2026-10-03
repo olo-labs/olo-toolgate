@@ -42,7 +42,7 @@ def certificate(work,name,ca=False):
     return cert
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--control-image',default='olo-toolgate-control:module07');parser.add_argument('--gateway-image',default='olo-toolgate-gateway:module07');parser.add_argument('--binary',type=Path,default=ROOT/'target/client-release/x86_64-unknown-linux-gnu/release/olo-toolgate-client');args=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--control-image',default='olo-toolgate-control:module07');parser.add_argument('--gateway-image',default='olo-toolgate-gateway:module07');parser.add_argument('--binary',type=Path,default=ROOT/'target/client-release/x86_64-unknown-linux-gnu/release/olo-toolgate-client');parser.add_argument('--runtime-image');parser.add_argument('--runtime-version');parser.add_argument('--docker-cli',type=Path);args=parser.parse_args()
     with database() as db,tempfile.TemporaryDirectory(prefix='client-tools-e2e-',dir=ROOT/'.dev') as temp:
         work=Path(temp);identity,public=keypair(work);certificate(work,'device-ca',True);certificate(work,'server');certificate(work,'gateway-tls')
         password=secrets.token_hex(16)
@@ -85,10 +85,19 @@ def main():
             runtime_token=secrets.token_urlsafe(48);(work/'gateway-token').write_text(runtime_token)
             config={'serverUrl':'https://127.0.0.1:8082','stateDirectory':'/state/private','ipcEndpoint':'/run/olo-toolgate/client.sock','authorizedPeers':['0'],'caCertificatePath':'/state/server.crt','requestTimeoutSeconds':5,
                 'tools':{'hotfolder':{'root':'/state/private/hotfolder','maxFileBytes':65536,'maxEntries':128,'extensions':['txt','json']},'gatewayUrl':'https://127.0.0.1:8443','gatewayTokenPath':'/state/gateway-token','gatewayCaPath':'/state/gateway-tls.crt','deviceId':'pending-enrollment','webSearchTokenPath':None}}
+            if args.runtime_image:
+                if not args.runtime_version or not args.docker_cli: raise ValueError('Runtime version and Linux Docker CLI required')
+                config['execution']={'enginePath':'/state/docker-cli','engineEndpoint':'unix:///var/run/docker.sock','stateDirectory':'/state/private/runtimes','allowFirstUsePull':False,'pullTimeoutSeconds':30,
+                    'runtimes':[{'id':'python-test','kind':'PYTHON','image':args.runtime_image,'version':args.runtime_version}],
+                    'tools':[{'toolId':'local.echo','action':'execute','runtimeId':'python-test','entryPoint':'/opt/tool/tool.py',
+                        'inputSchema':{'type':'object','additionalProperties':False,'properties':{'text':{'type':'string','maxLength':256},'mode':{'type':'string'}},'required':['text','mode']},
+                        'outputSchema':{'type':'object','additionalProperties':False,'properties':{'text':{'type':'string'}},'required':['text']},
+                        'limits':{'timeoutMs':3000,'memoryMiB':128,'maxInputBytes':4096,'maxOutputBytes':4096}}]}
             (work/'client.json').write_text(json.dumps(config))
             volume=run(['docker','volume','create','toolgate-client-e2e-'+secrets.token_hex(8)],capture_output=True,text=True).stdout.strip()
-            boot='mkdir -p /run/olo-toolgate; if [ ! -f /state/client.json ]; then cp /input/client.json /input/server.crt /input/gateway-tls.crt /input/gateway-token /state/; chmod 600 /state/*; fi; exec /client service --config /state/client.json'
-            client=start(['docker','run','-d','--read-only','--cap-drop=ALL','--security-opt=no-new-privileges','--network','container:'+db['container'],'--tmpfs','/run:rw,nosuid,size=8m','--mount','type=volume,source='+volume+',target=/state','-v',f'{work.as_posix()}:/input:ro','-v',f'{args.binary.resolve().as_posix()}:/client:ro','rust:1.94-bookworm','sh','-c',boot])
+            boot='mkdir -p /run/olo-toolgate; if [ ! -f /state/client.json ]; then cp /input/client.json /input/server.crt /input/gateway-tls.crt /input/gateway-token /state/; chmod 600 /state/*; fi; if [ -f /docker-cli ]; then cp /docker-cli /state/docker-cli; chmod 555 /state/docker-cli; fi; exec /client service --config /state/client.json'
+            engine_mounts=['-v',f'{args.docker_cli.resolve().as_posix()}:/docker-cli:ro','-v','/var/run/docker.sock:/var/run/docker.sock'] if args.runtime_image else []
+            client=start(['docker','run','-d','--read-only','--cap-drop=ALL','--security-opt=no-new-privileges','--network','container:'+db['container'],'--tmpfs','/run:rw,nosuid,size=8m','--mount','type=volume,source='+volume+',target=/state','-v',f'{work.as_posix()}:/input:ro','-v',f'{args.binary.resolve().as_posix()}:/client:ro',*engine_mounts,'ubuntu:24.04','sh','-c',boot])
             until(lambda:execute(client,['/client','health'],check=False).returncode,0,'service IPC')
             health=json.loads(execute(client,['/client','health']).stdout);assert not health['ready']
             prompt=execute(client,['/client','enroll']).stdout
@@ -110,6 +119,9 @@ def main():
             gateway['extractors']=[{'toolId':t['toolId'],'action':t['action'],'pointer':'/path','kind':'FILE' if t['toolId'].startswith('hotfolder.') else 'CUSTOM'} for t in catalog]
             gateway['policy']['version']=(ROOT/'VERSION').read_text().strip();gateway['policy']['expiresAtUnixMs']=int(time.time()*1000)+600000
             gateway['policy']['rules']=[{'tenantId':'http-tenant','userId':'alice','agentId':'agent-demo','deviceId':device,'toolId':t['toolId'],'action':t['action'],'resource':{'kind':'FILE' if t['toolId'].startswith('hotfolder.') else 'CUSTOM','locator':p},'effect':'ALLOW'} for t in catalog if t['toolId']!='web.search' for p in ('a.txt','b.txt','hotfolder')]
+            if args.runtime_image:
+                gateway['extractors'].append({'toolId':'local.echo','action':'execute','pointer':'/path','kind':'CUSTOM'})
+                gateway['policy']['rules'].append({'tenantId':'http-tenant','userId':'alice','agentId':'agent-demo','deviceId':device,'toolId':'local.echo','action':'execute','resource':{'kind':'CUSTOM','locator':'runtime/local.echo'},'effect':'ALLOW'})
             (work/'gateway.json').write_text(json.dumps(gateway))
             nginx='events {} http { access_log off; error_log /dev/stderr warn; server { listen 8443 ssl; ssl_certificate /config/gateway-tls.crt; ssl_certificate_key /config/gateway-tls.pem; location / { proxy_pass http://127.0.0.1:8081; proxy_set_header X-Forwarded-Proto https; proxy_set_header X-Request-ID $http_x_request_id; } } }'
             (work/'nginx.conf').write_text(nginx)
@@ -127,8 +139,16 @@ def main():
             tool('hotfolder.copy',{'path':'a.txt','destination':'c.txt'},False)
             tool('hotfolder.read_text',{'path':'../outside.txt'},False);tool('hotfolder.delete',{'path':'a.txt'},False)
             assert execute(client,['/client','tools','system.info','{}'],user='1000',check=False).returncode!=0
+            def managed(success=True, user=None):
+                result=execute(client,['/client','run','local.echo',json.dumps({'text':'safe; $(touch /escape)','mode':'echo'})],user=user,check=False)
+                assert (result.returncode==0)==success,(result.returncode,result.stdout,result.stderr)
+                if success: assert json.loads(result.stdout)['result']['output']['text']=='safe; $(touch /escape)'
+            if args.runtime_image:
+                managed();managed(False,'1000')
             run(['docker','pause',gw],capture_output=True)
-            try:tool('hotfolder.write_text',{'path':'a.txt','text':'must not write'},False)
+            try:
+                tool('hotfolder.write_text',{'path':'a.txt','text':'must not write'},False)
+                if args.runtime_image: managed(False)
             finally:run(['docker','unpause',gw],capture_output=True)
             assert tool('hotfolder.read_text',{'path':'a.txt'})['output']['text']=='logged-out service'
             record=request('/endpoint/devices/'+device,admin)[1]
@@ -136,12 +156,15 @@ def main():
             assert revoked[0]==200,revoked
             until(lambda:execute(client,['/client','check-in'],check=False).returncode,1,'revoked device check-in',timeout=25)
             tool('system.info',{},False)
+            if args.runtime_image: managed(False)
             info=json.loads(run(['docker','inspect',client],capture_output=True,text=True).stdout)[0]
             assert not info['Config']['Tty'] and not info['Config']['OpenStdin']
             threads=int(re.search(r'Threads:\s+(\d+)',execute(client,['cat','/proc/1/status']).stdout).group(1))
             assert threads<=16,threads
             output=ROOT/'build/client';output.mkdir(parents=True,exist_ok=True)
             (output/'module07-integration.json').write_text(json.dumps({'realControlTls':True,'realDeviceEnrollmentMtls':True,'persistentRestart':True,'realGatewayHttps':True,'freshAuthorization':True,'sourceDestinationBinding':True,'unauthorizedOsPeerRejected':True,'gatewayOutageBlocked':True,'revokedDeviceBlocked':True,'noInteractiveSession':True},indent=2)+'\n')
+            if args.runtime_image:
+                (output/'module08-integration.json').write_text(json.dumps({'realControlEnrollmentMtls':True,'realGatewayHttps':True,'managedJsonInvocation':True,'osPeerDenied':True,'gatewayOutageBlocked':True,'revokedDeviceBlocked':True,'noInteractiveSession':True},indent=2)+'\n')
             print('Real TLS enrollment, mTLS check-in, protected service IPC, HTTPS Gateway tools, outage and revocation passed')
         finally:
             for container in reversed(containers):

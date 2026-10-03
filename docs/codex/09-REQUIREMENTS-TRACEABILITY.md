@@ -242,3 +242,8 @@ A `BLOCKED` requirement means the module is not DONE.
   HotFolder/built-ins, fresh Gateway protection, system-service logout independence,
   and anonymous three-OS downloads. There are 99 COMPLETE, two BLOCKED and three
   NOT_APPLICABLE IDs; native service-manager CI must execute before declaring DONE.
+
+- Module 08: [pre-implementation coverage](modules/08-coverage.md) and
+  [verification report](modules/08-completion.md). Managed local OCI runtimes and
+  first-use provisioning are implemented; Batch/CMD and native OS/ARM runtime
+  certification remain BLOCKED. Module is NOT DONE; no Module 09 is started.

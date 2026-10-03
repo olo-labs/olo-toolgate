@@ -30,6 +30,63 @@ async fn command(arguments: Vec<String>) -> Result<()> {
         return Err(Failure::Validation);
     };
     match operation {
+        "runtimes"
+            if arguments.len() == 2 && ["status", "prepare"].contains(&arguments[1].as_str()) =>
+        {
+            let op = if arguments[1] == "status" {
+                olo_toolgate_contracts::LocalRuntimeOperation::Status
+            } else {
+                olo_toolgate_contracts::LocalRuntimeOperation::Prepare
+            };
+            let response = tokio::time::timeout(
+                std::time::Duration::from_secs(220),
+                olo_toolgate_client::ipc::call_runtime(
+                    &olo_toolgate_client::install::ipc_endpoint(),
+                    op,
+                    None,
+                ),
+            )
+            .await
+            .map_err(|_| Failure::Expired)??;
+            println!(
+                "{}",
+                serde_json::to_string(&response).map_err(|_| Failure::Validation)?
+            );
+            if response.error.is_some()
+                || response
+                    .health
+                    .is_some_and(|h| arguments[1] == "prepare" && !h.ready)
+            {
+                return Err(Failure::Unavailable);
+            }
+            Ok(())
+        }
+        "run" if arguments.len() == 3 => {
+            let input = olo_toolgate_contracts::LocalToolInput {
+                protocol_version: 1,
+                request_id: olo_toolgate_client::identity::nonce()?,
+                tool_id: arguments[1].clone(),
+                arguments: serde_json::from_str(&arguments[2]).map_err(|_| Failure::Validation)?,
+            };
+            let response = tokio::time::timeout(
+                std::time::Duration::from_secs(220),
+                olo_toolgate_client::ipc::call_runtime(
+                    &olo_toolgate_client::install::ipc_endpoint(),
+                    olo_toolgate_contracts::LocalRuntimeOperation::Invoke,
+                    Some(input),
+                ),
+            )
+            .await
+            .map_err(|_| Failure::Expired)??;
+            println!(
+                "{}",
+                serde_json::to_string(&response).map_err(|_| Failure::Validation)?
+            );
+            if response.error.is_some() {
+                return Err(Failure::Unavailable);
+            }
+            Ok(())
+        }
         "tools" if arguments.len() == 1 || arguments.len() == 3 => {
             let invocation = if arguments.len() == 3 {
                 Some(olo_toolgate_contracts::BuiltinInvocation {

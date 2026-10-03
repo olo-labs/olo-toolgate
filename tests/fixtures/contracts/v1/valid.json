@@ -1083,5 +1083,95 @@
         "bytes": 12345
       }
     ]
+  },
+  "LocalRuntimeKind": "PYTHON",
+  "LocalRuntimeState": "MISSING",
+  "LocalRuntimeOperation": "INVOKE",
+  "LocalRuntimeLimits": {
+    "timeoutMs": 2000,
+    "memoryMiB": 128,
+    "maxInputBytes": 4096,
+    "maxOutputBytes": 4096
+  },
+  "ManagedRuntime": {
+    "id": "python-echo",
+    "kind": "PYTHON",
+    "image": "registry.example.com/toolgate/python-echo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "version": "3.14.0"
+  },
+  "LocalToolRegistration": {
+    "toolId": "local.echo",
+    "action": "execute",
+    "runtimeId": "python-echo",
+    "entryPoint": "/opt/tool/tool.py",
+    "inputSchema": {
+      "type": "object"
+    },
+    "outputSchema": {
+      "type": "object"
+    },
+    "limits": {
+      "timeoutMs": 2000,
+      "memoryMiB": 128,
+      "maxInputBytes": 4096,
+      "maxOutputBytes": 4096
+    }
+  },
+  "LocalToolInput": {
+    "protocolVersion": 1,
+    "requestId": "request-runtime",
+    "toolId": "local.echo",
+    "arguments": {
+      "text": "hello"
+    }
+  },
+  "LocalToolOutput": {
+    "protocolVersion": 1,
+    "requestId": "request-runtime",
+    "output": {
+      "text": "hello"
+    }
+  },
+  "LocalRuntimeStatus": {
+    "runtimeId": "python-echo",
+    "kind": "PYTHON",
+    "state": "MISSING",
+    "version": "3.14.0"
+  },
+  "LocalRuntimeHealth": {
+    "ready": false,
+    "successfulExecutions": 0,
+    "failedExecutions": 0,
+    "runtimes": [
+      {
+        "runtimeId": "python-echo",
+        "kind": "PYTHON",
+        "state": "MISSING",
+        "version": "3.14.0"
+      }
+    ]
+  },
+  "LocalRuntimeIpcRequest": {
+    "protocolVersion": 3,
+    "requestId": "request-runtime",
+    "operation": "INVOKE",
+    "invocation": {
+      "protocolVersion": 1,
+      "requestId": "request-runtime",
+      "toolId": "local.echo",
+      "arguments": {
+        "text": "hello"
+      }
+    }
+  },
+  "LocalRuntimeIpcResponse": {
+    "requestId": "request-runtime",
+    "result": {
+      "protocolVersion": 1,
+      "requestId": "request-runtime",
+      "output": {
+        "text": "hello"
+      }
+    }
   }
 }

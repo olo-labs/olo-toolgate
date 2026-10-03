@@ -3,7 +3,7 @@
 openapi: 3.1.0
 info:
   title: OLO ToolGate Control Plane API
-  version: 0.7.0-dev
+  version: 0.8.0-dev
   description: Tenant-scoped administration and explicit signed policy publication. Directory policies become runtime
     configuration only after publication; bundle trust is separate from execution permits.
 security:
@@ -572,7 +572,7 @@ paths:
     post:
       operationId: publishPolicyBundle
       description: Admin only. Compile current directoryRevision and atomically publish expectedSequence+1 with audit
-        and durable replay. rollbackOf must be absent. Lifetime is 1 secondÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“24 hours; grace is 0ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“5 minutes. Publication
+        and durable replay. rollbackOf must be absent. Lifetime is 1 secondÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ24 hours; grace is 0ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ5 minutes. Publication
         does not execute tools.
       parameters:
       - name: Idempotency-Key
