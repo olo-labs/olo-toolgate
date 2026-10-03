@@ -1098,6 +1098,7 @@ dependencies = [
 name = "olo-toolgate-client"
 version = "0.10.0-dev"
 dependencies = [
+ "axum",
  "base64 0.22.1",
  "cap-fs-ext",
  "cap-std",
@@ -1112,6 +1113,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "subtle",
  "tokio",
  "tracing",
  "tracing-subscriber",

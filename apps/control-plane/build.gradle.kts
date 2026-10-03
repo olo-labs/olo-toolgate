@@ -13,6 +13,7 @@ dependencies {
         "micrometer-registry-prometheus", "opentelemetry", "logging-json", "smallrye-openapi")
         .forEach { implementation("io.quarkus:quarkus-$it") }
     implementation("org.flywaydb:flyway-database-postgresql")
+    implementation(libs.sqlite.jdbc)
     implementation(libs.jackson.yaml)
     implementation(libs.json.schema)
     implementation(libs.bouncycastle.pkix)

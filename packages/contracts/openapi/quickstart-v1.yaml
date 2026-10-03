@@ -1,0 +1,141 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+openapi: 3.1.0
+info:
+  title: ToolGate single-node Quickstart composition API
+  version: 0.10.0-dev
+  description: Local evaluation only. Admin sessions are RS256 bearer JWTs; no cookies. Never expose loopback HTTP publicly.
+security:
+  - adminJwt: []
+paths:
+  /api/quickstart/v1/status:
+    get:
+      operationId: quickstartStatus
+      security: []
+      responses:
+        '200':
+          description: Explicit Quickstart/non-HA status and composed readiness.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [mode, nonHa, ready, version]
+                properties:
+                  mode: {const: Quickstart}
+                  nonHa: {const: true}
+                  ready: {type: boolean}
+                  version: {type: string}
+  /api/quickstart/v1/login:
+    post:
+      operationId: quickstartLogin
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [password]
+              properties:
+                password: {type: string, maxLength: 128}
+                newPassword: {type: string, minLength: 16, maxLength: 128}
+      responses:
+        '200':
+          description: First login requires a different strong password; returns a 15-minute JWT kept in memory.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [accessToken]
+                properties:
+                  accessToken: {type: string, maxLength: 16384}
+        '400': {$ref: '#/components/responses/Validation'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '429': {$ref: '#/components/responses/Limited'}
+  /api/quickstart/v1/tools:
+    get:
+      operationId: quickstartTools
+      responses:
+        '200': {description: Fixed canonical catalog from packages/contracts/tools/builtins.json; web.search disabled until a provider is configured.}
+  /api/quickstart/v1/invoke:
+    post:
+      operationId: quickstartInvoke
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/builtins.schema.json#/$defs/BuiltinInvocation
+      responses:
+        '200': {description: Protected fixed-tool result object.}
+        '202': {description: ASK pending; decision and approvalId returned, no tool effect. Approve in Control then retry identical arguments.}
+        '400': {$ref: '#/components/responses/Validation'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/quickstart/v1/vault:
+    get:
+      operationId: quickstartVaultNames
+      responses:
+        '200':
+          description: Names only, never values.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [names]
+                properties:
+                  names: {type: array, maxItems: 256, items: {type: string, maxLength: 128}}
+    post:
+      operationId: quickstartVaultPut
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name, value]
+              properties:
+                name: {type: string, pattern: '^[a-z0-9][a-z0-9/-]{0,127}$'}
+                value: {type: string, minLength: 1, maxLength: 32768}
+      responses:
+        '201': {description: AES-256-GCM ciphertext and audit committed atomically. No plaintext read/export API.}
+        '400': {$ref: '#/components/responses/Validation'}
+components:
+  responses:
+    Validation:
+      description: Closed input, password rules, size or path validation failed.
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+    Unauthorized:
+      description: Invalid, expired or absent administrator credential.
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+    Forbidden:
+      description: Current policy denies execution; no tool effect.
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+    Unavailable:
+      description: Dependency unavailable; protected execution fails closed.
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+    Limited:
+      description: Global login attempt limit reached; retry later.
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+  securitySchemes:
+    adminJwt: {type: http, scheme: bearer, bearerFormat: JWT}

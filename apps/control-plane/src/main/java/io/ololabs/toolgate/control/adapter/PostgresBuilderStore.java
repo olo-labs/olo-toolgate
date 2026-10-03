@@ -11,7 +11,7 @@ final class PostgresBuilderStore implements BuilderStore {
     private final Connection connection;
     private final String tenant;
     PostgresBuilderStore(Connection connection,String tenant){this.connection=connection;this.tenant=tenant;}
-    private PreparedStatement statement(String sql,Kind kind)throws SQLException{var s=connection.prepareStatement(sql);s.setString(1,tenant);s.setString(2,kind.name());return s;}
+    private PreparedStatement statement(String sql,Kind kind)throws SQLException{var s=connection.prepareStatement(SqliteState.sql(connection,sql));s.setString(1,tenant);s.setString(2,kind.name());return s;}
     public Row get(Kind kind,String id){try(var s=statement("SELECT record_id,revision,document FROM control_builder WHERE tenant_id=? AND kind=? AND record_id=?",kind)){s.setString(3,id);try(var r=s.executeQuery()){return r.next()?new Row(r.getString(1),r.getLong(2),r.getString(3)):null;}}catch(SQLException failure){throw Failure.unavailable();}}
     public List<Row> page(Kind kind,String after,int limit){if(limit<1||limit>33)throw Failure.validation();try(var s=statement("SELECT record_id,revision,document FROM control_builder WHERE tenant_id=? AND kind=? AND record_id>? ORDER BY record_id LIMIT ?",kind)){s.setString(3,after);s.setInt(4,limit);try(var r=s.executeQuery()){var rows=new ArrayList<Row>();while(r.next())rows.add(new Row(r.getString(1),r.getLong(2),r.getString(3)));return List.copyOf(rows);}}catch(SQLException failure){throw Failure.unavailable();}}
     public long count(Kind kind){try(var s=statement("SELECT count(*) FROM control_builder WHERE tenant_id=? AND kind=?",kind);var r=s.executeQuery()){r.next();return r.getLong(1);}catch(SQLException failure){throw Failure.unavailable();}}

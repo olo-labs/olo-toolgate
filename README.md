@@ -1,5 +1,12 @@
 # OLO ToolGate
 
+The [one-container Quickstart](docs/getting-started/one-minute-quickstart.md)
+now combines Gateway, Control and the console with persistent SQLite, a local
+encrypted vault, password bootstrap, safe built-ins and human approval. It is
+explicitly single-node and non-HA. See the
+[production/debug operations guide](docs/deployment/quickstart.md) for building,
+configuration, upgrades and backup/restore.
+
 The client supports opt-in [contained local tool runtimes](docs/client/local-runtimes.md)
 with digest-pinned interpreter/tool images and automatic first-use preparation.
 See the guide for engine prerequisites and platform limitations.
@@ -99,16 +106,17 @@ ToolGate is trying to become:
 
 without forcing teams to understand MCP internals, policy languages, or complex infrastructure.
 
-## Quickstart vision
+## One-container Quickstart
 
-The goal is a one-command personal/community experience:
+After [building the image](docs/deployment/quickstart.md), start the local
+single-node/non-HA experience:
 
 ```bash
-docker run --rm \
+docker run -d \
   --name olo-toolgate \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 -p 127.0.0.1:8443:8443 \
   -v olo-toolgate-data:/data \
-  ghcr.io/olo-labs/olo-toolgate-quickstart:latest
+  olo-toolgate-quickstart:module11
 ```
 
 Then open:
@@ -128,7 +136,12 @@ and immediately get:
 - audit history
 - JSON/YAML import/export
 
-> **Project status:** early-stage / pre-alpha. The architecture is defined and implementation is being built. The quickstart command above represents the target release experience and may not be available until the first packaged release.
+Retrieve the private bootstrap password with
+`docker exec olo-toolgate cat /data/bootstrap-password`; the console requires a
+different strong password at first login. The [walkthrough](docs/getting-started/one-minute-quickstart.md)
+covers protected tools, ASK, vault and enrollment. Tagged CI publishes
+`ghcr.io/olo-labs/olo-toolgate-quickstart:<released-version>`; no remote image is
+claimed published by the local build. The project remains pre-alpha.
 
 ## Built-in safe tools planned for first start
 

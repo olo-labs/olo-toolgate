@@ -6,6 +6,14 @@ The project follows semantic versioning once stable versioning begins.
 
 ## 0.10.0-dev
 
+- Add the one-image non-HA Quickstart with real Gateway/Control/console,
+  transactional SQLite, persistent `/data`, forced password change and separate
+  generated identity/policy/permit/device/vault keys.
+- Add protected built-in execution, exact-scope ASK, encrypted name-only vault,
+  verified anonymous Windows/macOS/Linux downloads and direct mTLS enrollment.
+- Add checksummed offline backup/restore, schema upgrade tests, production/debug
+  runbooks and protected image publication with scans, SBOM and provenance.
+
 - Add custom local tool authoring with code/runtime/schema/AI metadata,
   permission/resource/credential declarations and bounded secret scanning.
 - Add durable signed designated-client sandbox tests and immutable organization

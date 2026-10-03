@@ -89,3 +89,16 @@ independent. Sealed versions survive upgrades/restores and cannot be edited.
 Python/Node/PowerShell/Shell source is confined; Native/Java/.NET use reviewed
 image artifacts. No new Helm configuration or Gateway wire version is introduced.
 See [production/debug authoring](../client/tool-builder.md) and its native limits.
+
+## Module 11 Quickstart
+
+This additive composition retains the unreleased 0.10.0-dev product/contracts
+version and existing native download versions. Gateway runtime v2 and signed
+policy format 2 are unchanged. Quickstart uses explicit Quarkus build profile
+`quickstart`, local layout 1 and SQLite migrations 1–2; production Control keeps
+PostgreSQL/Flyway V7. Newer unknown layouts/schema versions reject startup.
+The first Quickstart package has no earlier released image compatibility claim;
+its tested schema-1 volume upgrades to schema 2 without resetting identity or
+defaults. Image rollback requires a pre-upgrade backup in a new volume.
+Separate native OS/ARM service and managed-runtime certification limits remain
+in Modules 06–10; shipping verified archives does not certify those paths.

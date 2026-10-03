@@ -52,6 +52,9 @@ export class ControlClient {
   constructor(token: string, private readonly onUnauthorized: () => void, private readonly transport: typeof fetch = (input, init) => fetch(input, init)) {
     this.token = token;
   }
+  quickstart<T>(path: 'tools' | 'invoke' | 'vault', body?: unknown): Promise<T> {
+    return this.send<T>({method: body === undefined ? 'GET' : 'POST', path: `/api/quickstart/v1/${path}`}, body === undefined ? {} : {body});
+  }
   dispose(): void { this.token = ''; this.lifetime.abort(); }
 
   private async send<T>(operation: Operation, options: { id?: string; query?: URLSearchParams; body?: unknown; revision?: number; key?: string; signal?: AbortSignal } = {}): Promise<T> {

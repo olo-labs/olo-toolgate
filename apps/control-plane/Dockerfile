@@ -20,7 +20,8 @@ COPY apps/control-plane/ apps/control-plane/
 COPY --from=console /workspace/apps/admin-ui/dist/ apps/admin-ui/dist/
 COPY apps/marketplace-api/build.gradle.kts apps/marketplace-api/build.gradle.kts
 COPY apps/marketplace-worker/build.gradle.kts apps/marketplace-worker/build.gradle.kts
-RUN --mount=type=cache,target=/root/.gradle chmod +x gradlew && ./gradlew --no-daemon -PprebuiltAdminUi=true :control-plane:quarkusBuild
+ARG QUARKUS_PROFILE=prod
+RUN --mount=type=cache,target=/root/.gradle chmod +x gradlew && ./gradlew --no-daemon -PprebuiltAdminUi=true -Dquarkus.profile=${QUARKUS_PROFILE} :control-plane:quarkusBuild
 
 FROM eclipse-temurin:21-jre-noble@sha256:22138efd69393501fccd8176ae16b01791ed71ff801b28f0359415389b17c766
 ARG VERSION

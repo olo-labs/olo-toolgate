@@ -23,18 +23,24 @@ public class PostgresStore implements Store {
     private final javax.sql.DataSource dataSource;
     private final ContractCodec codec;
     @Inject
-    public PostgresStore(AgroalDataSource dataSource, ContractCodec codec) { this((javax.sql.DataSource) dataSource, codec); }
+    public PostgresStore(jakarta.enterprise.inject.Instance<AgroalDataSource> dataSource, ContractCodec codec, org.eclipse.microprofile.config.Config config) {
+        this(config.getOptionalValue("toolgate.quickstart.enabled", Boolean.class).orElse(false)
+            ? SqliteState.open(java.nio.file.Path.of(config.getValue("toolgate.quickstart.database", String.class))) : (javax.sql.DataSource) dataSource.get(), codec);
+    }
     public PostgresStore(javax.sql.DataSource dataSource, ContractCodec codec) { this.dataSource = dataSource; this.codec = codec; }
     public <T> T transaction(TenantId tenant, boolean write, Function<Session, T> work) {
         try (var connection = dataSource.getConnection()) {
             connection.setAutoCommit(false);
-            connection.setTransactionIsolation(write ? Connection.TRANSACTION_READ_COMMITTED : Connection.TRANSACTION_REPEATABLE_READ);
-            connection.setReadOnly(!write);
+            boolean local = SqliteState.local(connection);
+            if (!local) {
+                connection.setTransactionIsolation(write ? Connection.TRANSACTION_READ_COMMITTED : Connection.TRANSACTION_REPEATABLE_READ);
+                connection.setReadOnly(!write);
+            }
             try {
-                try (var statement = connection.createStatement()) {
+                if (!local) try (var statement = connection.createStatement()) {
                     statement.execute("SET LOCAL statement_timeout = '5s'"); statement.execute("SET LOCAL lock_timeout = '3s'");
                 }
-                if (write) try (var statement = connection.prepareStatement("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))")) {
+                if (write && !local) try (var statement = connection.prepareStatement("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))")) {
                     statement.setString(1, tenant.value()); statement.execute();
                 }
                 var result = work.apply(new JdbcSession(connection, tenant.value())); connection.commit(); return result;
@@ -173,7 +179,7 @@ public class PostgresStore implements Store {
             } catch (SQLException e) { throw Failure.unavailable(); }
         }
         private java.sql.PreparedStatement statement(String sql, Object... params) throws SQLException {
-            var statement = connection.prepareStatement(sql); statement.setString(1, tenant);
+            var statement = connection.prepareStatement(SqliteState.sql(connection, sql)); statement.setString(1, tenant);
             for (int i = 0; i < params.length; i++) statement.setObject(i + 2, params[i]); return statement;
         }
         public Directory load() {
@@ -244,7 +250,7 @@ public class PostgresStore implements Store {
                     sequence = rows.getLong(1);
                     items.add(Map.of("sequence", sequence, "tenantId", tenant, "actorId", rows.getString(2), "operation", rows.getString(3),
                         "target", rows.getString(4), "revision", rows.getLong(5), "requestId", rows.getString(6), "requestDigest", rows.getString(7),
-                        "occurredAt", rows.getObject(8, java.time.OffsetDateTime.class).toInstant().toString()));
+                        "occurredAt", SqliteState.local(connection) ? rows.getString(8) : rows.getObject(8, java.time.OffsetDateTime.class).toInstant().toString()));
                 }
                 return codec.json(more ? Map.of("items", items, "nextCursor", Long.toString(sequence)) : Map.of("items", items));
             } catch (SQLException e) { throw Failure.unavailable(); }

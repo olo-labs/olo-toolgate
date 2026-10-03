@@ -28,7 +28,7 @@ public class EndpointBootstrap {
         boolean enabled=config.getValue("toolgate.control.endpoint.enabled",Boolean.class);DeviceIssuer issuer=null;
         String tenant="disabled",server="disabled",organization="disabled",control="https://disabled.invalid",gateway="https://disabled.invalid";
         if(enabled)try{
-            if(!config.getValue("quarkus.http.insecure-requests",String.class).equalsIgnoreCase("disabled")
+            if((!config.getValue("quarkus.http.insecure-requests",String.class).equalsIgnoreCase("disabled") && !config.getOptionalValue("toolgate.quickstart.enabled",Boolean.class).orElse(false))
                 || !config.getValue("quarkus.http.ssl.client-auth",String.class).equalsIgnoreCase("request")
                 || config.getOptionalValue("quarkus.http.ssl.certificate.trust-store-file",String.class).isEmpty())throw new IllegalArgumentException();
             issuer=new X509DeviceIssuer(pem("private-key-path"),pem("ca-certificate-path"),System.currentTimeMillis());

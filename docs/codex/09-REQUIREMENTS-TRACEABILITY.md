@@ -261,3 +261,10 @@ A `BLOCKED` requirement means the module is not DONE.
   packages, independent release/deployment and publication preparation pass the
   real Linux path. 84 COMPLETE, 4 BLOCKED and 16 NOT_APPLICABLE IDs; native
   system-engine/logout/boot and ARM certification remain open. NOT DONE; no Module 11.
+
+- Module 11: [pre-implementation coverage](modules/11-coverage.md) and
+  [verification report/individual matrix](modules/11-completion.md). Linux/amd64
+  non-HA Quickstart passes real Gateway/SQLite/UI/ASK/mTLS/bootstrap, persistence,
+  upgrade and backup/restore gates. 84 COMPLETE, 20 NOT_APPLICABLE, zero
+  module-scope BLOCKED IDs. Earlier native certification remains open; remote
+  publication is protected CI-only. No Module 12 is started.

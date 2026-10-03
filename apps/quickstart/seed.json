@@ -1,0 +1,19 @@
+{
+  "id": "policy-1",
+  "name": "User",
+  "enabled": true,
+  "revision": 1,
+  "toolId": "calculator",
+  "action": "evaluate",
+  "resource": {
+    "kind": "CUSTOM",
+    "locator": "calculator"
+  },
+  "decision": "BLOCK",
+  "userIds": [
+    "user-1"
+  ],
+  "teamIds": [],
+  "agentIds": [],
+  "deviceIds": []
+}

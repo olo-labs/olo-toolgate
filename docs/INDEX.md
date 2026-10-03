@@ -2,6 +2,8 @@
 
 - [How to run and use ToolGate](operations/execution-guide.md)
 - [How to debug ToolGate](operations/debugging.md)
+- [One-container Quickstart](getting-started/one-minute-quickstart.md)
+- [Quickstart production/debug configuration and recovery](deployment/quickstart.md)
 
 ## Getting Started
 

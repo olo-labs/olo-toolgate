@@ -1,63 +1,68 @@
 # One-Minute Quickstart
 
-## Purpose
+The real Gateway, SQLite-backed Control, Admin UI and Rust fixed tools run in one
+non-root container. **Single-node, non-HA; local evaluation only.** No external
+PostgreSQL, Redis, Vault or Kubernetes is needed. Custom author code still runs
+only on separately configured designated clients.
 
-Run a single-user OLO ToolGate environment with no external database, Redis, Vault, or Kubernetes.
-
-## Requirements
-
-- Docker 24+ or compatible container runtime.
-- One free local port.
-
-## Run
+The GHCR image is published by protected tagged CI. Until a release is published,
+[build locally](../deployment/quickstart.md) and substitute
+`olo-toolgate-quickstart:module11` below. Docker 24+ and approximately 1 GiB available
+memory are required. Image pull time is additional to first-boot key generation.
 
 ```bash
-docker volume create olo-toolgate-data
-
-docker run --rm   --name olo-toolgate   -p 8080:8080   -v olo-toolgate-data:/data   ghcr.io/olo-labs/olo-toolgate-quickstart:latest
+docker run -d --name olo-toolgate --restart unless-stopped \
+  -p 127.0.0.1:8080:8080 -p 127.0.0.1:8443:8443 \
+  -v olo-toolgate-data:/data \
+  ghcr.io/olo-labs/olo-toolgate-quickstart:<released-version>
 ```
 
-Open:
+Open [http://localhost:8080](http://localhost:8080). Keep HTTP bound to host loopback.
+Retrieve the generated bootstrap password from its private file:
 
-```text
-http://localhost:8080
+```bash
+docker exec olo-toolgate cat /data/bootstrap-password
 ```
 
-On first boot:
+Enter it in **Password**, and a different 16–128-character password with eight
+or more distinct printable ASCII characters in **New password**. First login
+requires the change and deletes the bootstrap file. Subsequent logins need only
+Password. Credentials never appear in service logs; the signed 15-minute browser
+session stays in memory. Disconnect clears it.
 
-- ToolGate creates embedded state.
-- ToolGate creates the built-in encrypted vault.
-- ToolGate creates the default single-user workspace.
-- ToolGate enables the safe built-in tool pack.
-- A one-time admin bootstrap credential is generated unless explicitly provided.
+1. Open **Built-in tools and vault**. Run the calculator; the default result is 14.
+2. Select `hotfolder.read_text` and enter `{"path":"welcome.txt"}`.
+3. Select `hotfolder.write_text`, enter
+   `{"path":"welcome.txt","text":"My approved note"}`, and run. ASK changes no
+   file. Open **Approvals**, approve once, then rerun the exact call.
+4. Store a named vault credential. Only names are listed; no plaintext read/export
+   API exists. Custom credential binding remains unavailable and fails closed.
+5. Download a Windows, macOS or Linux client from the anonymous home page.
 
-## Verify
+Defaults grant compute and exact demo reads. File writes require ASK; unselected
+paths, unknown tools and deletion remain blocked. `web.search` stays disabled
+without a configured provider. Gateway failure prevents protected execution.
+The immediately useful HotFolder belongs to this container, not a host directory.
 
-The dashboard should show:
+## Client enrollment
 
-```text
-Mode: Quickstart
-Gateway: Ready
-Control Plane: Ready
-Built-in Tools: Ready
-Client Downloads: Available
+The independent device CA is public and can be exported:
+
+```bash
+docker cp olo-toolgate:/data/keys/device-ca.crt ./toolgate-quickstart-ca.crt
 ```
 
-## Next
+Trust it on the evaluation machine; never disable TLS checks. Follow the
+[client guide](../client/hotfolder.md) with `https://localhost:8443` and this CA.
+Browser review opens the password-enabled TLS console. Review the fingerprint,
+approve, and the client receives its bound mTLS identity for check-in. Client
+execution separately needs its Gateway credential/policy and system engine
+configuration. Native logout/boot/ARM certification remains open in client reports.
 
-1. Change the bootstrap password.
-2. Open **Tools → Built-In**.
-3. Download the endpoint client.
-4. Install it using only the server URL.
-5. Confirm `HotFolder` is created.
-6. Test `hotfolder.write_text` and `hotfolder.read_text`.
+## Persistence
 
-## Important
-
-Quickstart is:
-
-- single-node.
-- non-HA.
-- intended for personal/community evaluation.
-
-Production uses separate stateless Gateway and Control Plane containers with external state.
+Retain `/data` across replacement containers: directory, audit, approvals, device
+identity, encrypted vault, private custody and HotFolder persist. One instance
+owns the volume. Container removal preserves a named volume; volume removal loses
+state. See [build/configuration, upgrades, backup/restore and debugging](../deployment/quickstart.md).
+Production uses separate stateless services and external state/custody.

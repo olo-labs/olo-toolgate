@@ -3,7 +3,7 @@
 SHELL := /bin/sh
 PYTHON ?= python3
 
-.PHONY: help java-check java-projects publish-contracts-local dev stop check test integration e2e policy-e2e approval-e2e builder-e2e security benchmark containers client docs contracts contracts-check contracts-release-dry-run clean tree
+.PHONY: help java-check java-projects publish-contracts-local dev stop check quickstart-check test integration e2e policy-e2e approval-e2e builder-e2e security benchmark containers client docs contracts contracts-check contracts-release-dry-run clean tree
 
 help:
 	@printf '%s\n' \
@@ -35,6 +35,9 @@ stop:
 
 check:
 	@$(PYTHON) tools/check.py
+
+quickstart-check:
+	@$(PYTHON) tools/quickstart/check.py --build
 
 test:
 	@$(PYTHON) -m unittest discover -s tests/contracts -v

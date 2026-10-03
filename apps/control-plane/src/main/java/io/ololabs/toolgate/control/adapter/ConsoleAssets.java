@@ -11,7 +11,16 @@ import jakarta.enterprise.event.Observes;
  */
 @ApplicationScoped
 public class ConsoleAssets {
+    @jakarta.inject.Inject org.eclipse.microprofile.config.Config config;
     void routes(@Observes Router router) {
+        if (config.getOptionalValue("toolgate.quickstart.enabled", Boolean.class).orElse(false)) {
+            final String shell;
+            try (var input=ConsoleAssets.class.getResourceAsStream("/META-INF/resources/console/index.html")) {
+                if(input==null)throw new java.io.IOException();
+                shell=new String(input.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8).replace("<head>","<head><meta name=\"toolgate-mode\" content=\"quickstart\">");
+            } catch(java.io.IOException failure){throw new IllegalStateException("Quickstart console artifact unavailable");}
+            for(var path:new String[]{"/console/","/console/index.html"})router.get(path).order(-900).handler(context->context.response().putHeader("Content-Type","text/html; charset=UTF-8").end(shell));
+        }
         router.route("/console/*").order(-1000).handler(context -> {
             context.addHeadersEndHandler(ignored -> {
             var headers = context.response().headers();

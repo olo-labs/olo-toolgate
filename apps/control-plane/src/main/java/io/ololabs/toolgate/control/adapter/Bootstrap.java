@@ -17,7 +17,7 @@ import java.nio.file.Path;
 @ApplicationScoped
 public class Bootstrap {
     @Inject Config config;
-    @Inject AgroalDataSource source;
+    @Inject jakarta.enterprise.inject.Instance<AgroalDataSource> source;
     @Produces @ApplicationScoped
     DirectoryService service(PostgresStore store, ContractCodec codec) {
         var limits = limits();
@@ -49,6 +49,7 @@ public class Bootstrap {
         } catch (java.io.IOException | java.security.GeneralSecurityException | IllegalArgumentException e) {
             throw new IllegalStateException("A local RSA public verification key is required");
         }
+        if (config.getOptionalValue("toolgate.quickstart.enabled", Boolean.class).orElse(false)) return;
         var runtimeUser = config.getValue("quarkus.datasource.username", String.class);
         var url = config.getValue("quarkus.datasource.jdbc.url", String.class);
         if (!url.startsWith("jdbc:postgresql://") || (!config.getValue("toolgate.control.development-mode", Boolean.class)
@@ -56,7 +57,7 @@ public class Bootstrap {
         var migrationUser = config.getValue("quarkus.flyway.username", String.class);
         config.getValue("quarkus.flyway.password", String.class);
         if (runtimeUser.equals(migrationUser)) throw new IllegalStateException("Separate runtime and migration credentials required");
-        try (var connection = source.getConnection(); var statement = connection.createStatement();
+        try (var connection = source.get().getConnection(); var statement = connection.createStatement();
              var rows = statement.executeQuery("SELECT has_table_privilege(current_user,'control_audit','UPDATE') OR has_table_privilege(current_user,'control_policy_bundles','UPDATE'), has_table_privilege(current_user,'control_audit','DELETE') OR has_table_privilege(current_user,'control_policy_bundles','DELETE'), has_schema_privilege(current_user,'public','CREATE'), rolsuper FROM pg_roles WHERE rolname=current_user")) {
             if (!rows.next() || rows.getBoolean(1) || rows.getBoolean(2) || rows.getBoolean(3) || rows.getBoolean(4)) throw new IllegalStateException("Runtime database role is overprivileged");
         } catch (java.sql.SQLException e) { throw new IllegalStateException("Runtime database role validation failed"); }

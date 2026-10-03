@@ -9,11 +9,12 @@ import { Approvals } from './Approvals';
 import { Fleet } from './Fleet';
 import { Builder } from './Builder';
 import { Enrollment } from './Enrollment';
+import { QuickstartTools } from './QuickstartTools';
 import { ClientDownloads } from './ClientDownloads';
 
 declare const __APP_VERSION__: string;
 const directorySections = [ ['users', 'Users'], ['teams', 'Teams'], ['tools', 'Tools'], ['policies', 'Policies'], ['devices', 'Clients'], ['agents', 'Agents'] ] as const;
-const sections = [ ['overview', 'Overview'], ...directorySections, ['approvals', 'Approvals'], ['fleet', 'Packages'], ['builder', 'Tool builder'], ['enroll', 'Enroll device'] ] as const;
+const sections = [ ['overview', 'Overview'], ...directorySections, ['approvals', 'Approvals'], ['fleet', 'Packages'], ['builder', 'Tool builder'], ['enroll', 'Enroll device'], ['local', 'Built-in tools and vault'] ] as const;
 type Route = typeof sections[number][0];
 type RecordValue = DirectoryRecords[DirectoryKind];
 const routeFromHash = (): Route => sections.find(([route]) => window.location.hash.split('?')[0] === `#${route}`)?.[0] ?? 'overview';
@@ -21,6 +22,8 @@ const safeOrigin = () => window.location.protocol === 'https:' || ['localhost', 
 
 /** Authenticated shell; identities/roles are verified only by Control. */
 export function App() {
+  const quickstart = document.querySelector('meta[name=toolgate-mode]')?.getAttribute('content') === 'quickstart';
+  const [newPassword, setNewPassword] = useState('');
   const [client, setClient] = useState<ControlClient>();
   const [credential, setCredential] = useState(''); const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<unknown>(); const [route, setRoute] = useState<Route>(routeFromHash);
@@ -30,7 +33,17 @@ export function App() {
   async function connect(event: FormEvent) {
     event.preventDefault(); if (connecting || !safeOrigin()) return;
     setConnecting(true); setError(undefined);
-    const candidate = new ControlClient(credential.trim(), () => { if (active.current === candidate) { disconnect(); setError(new ApiError(401, 'UNAUTHORIZED')); } });
+    let accessToken = credential.trim();
+    if (quickstart) {
+      try {
+        const response = await fetch('/api/quickstart/v1/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({password:credential, ...(newPassword ? {newPassword} : {})}), credentials:'omit', redirect:'error' });
+        if (!response.ok) throw new ApiError(response.status, 'LOGIN_FAILED');
+        const body: unknown = await response.json();
+        if (!body || typeof body !== 'object' || !('accessToken' in body) || typeof body.accessToken !== 'string' || body.accessToken.length > 16384) throw new ApiError(502, 'INVALID_RESPONSE');
+        accessToken = body.accessToken; setNewPassword('');
+      } catch (failure) { setCredential(''); setNewPassword(''); setError(failure); setConnecting(false); return; }
+    }
+    const candidate = new ControlClient(accessToken, () => { if (active.current === candidate) { disconnect(); setError(new ApiError(401, 'UNAUTHORIZED')); } });
     active.current = candidate; setCredential('');
     try {
       try { if (route === 'enroll') { await candidate.enrollment(new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('code') ?? ''); } else { await candidate.list('users'); } }
@@ -47,20 +60,21 @@ export function App() {
   return <><a className="skip" href="#main" onClick={event => { event.preventDefault(); document.getElementById('main')?.focus(); }}>Skip to content</a>
     {!client ? <main id="main" tabIndex={-1} className="connect-page"><div className="brand"><span className="brand-mark">T</span> ToolGate</div>
       <div className="connect-card"><p className="eyebrow">Organization console</p><h1>Manage your workspace</h1>
-        <p>Connect to Control with an access token issued by your organizationâ€™s identity provider.</p>
+        {quickstart ? <p role="status" className="notice">Quickstart · Single node · Non-HA. First login requires a new strong password.</p> : <p>Connect to Control with an access token issued by your organizationâ€™s identity provider.</p>}
         {!safeOrigin() && <div role="alert" className="notice error">Open this console over HTTPS before connecting.</div>}
         {Boolean(error) && <Failure error={error} />}
-        <form onSubmit={connect}><label htmlFor="access-token">Access token</label>
+        <form onSubmit={connect}><label htmlFor="access-token">{quickstart ? 'Password' : 'Access token'}</label>
           <input id="access-token" type="password" autoComplete="off" spellCheck={false} maxLength={16384} required value={credential} onChange={e => setCredential(e.target.value)} disabled={connecting || !safeOrigin()} aria-describedby="token-help" />
+          {quickstart && <><label htmlFor="new-password">New password (required on first login)</label><input id="new-password" type="password" autoComplete="new-password" minLength={16} maxLength={128} value={newPassword} onChange={e => setNewPassword(e.target.value)} disabled={connecting} /></>}
           <p id="token-help" className="hint">Kept in memory for this session. Refreshing or disconnecting clears it.</p>
           <button className="primary" disabled={connecting || !safeOrigin()}>{connecting ? 'Connectingâ€¦' : 'Connect to workspace'}</button>
           {connecting && <p role="status">Verifying your session with Controlâ€¦</p>}
         </form></div><ClientDownloads /><footer>ToolGate {__APP_VERSION__} Â· Organization administration</footer></main>
     : <div className="shell"><aside className="sidebar"><div className="brand"><span className="brand-mark">T</span> ToolGate</div>
-      <p className="sidebar-caption">Workspace</p><nav aria-label="Main navigation">{sections.map(([value,label]) => <a key={value} href={`#${value}`} aria-current={route === value ? 'page' : undefined}><span className="nav-dot" />{label}</a>)}</nav>
+      <p className="sidebar-caption">Workspace</p><nav aria-label="Main navigation">{sections.filter(([value]) => quickstart || value !== 'local').map(([value,label]) => <a key={value} href={`#${value}`} aria-current={route === value ? 'page' : undefined}><span className="nav-dot" />{label}</a>)}</nav>
       <div className="sidebar-bottom"><span className="connection">Connected to Control</span><small>v{__APP_VERSION__}</small><button onClick={disconnect}>Disconnect</button></div></aside>
-      <div className="workspace"><header className="topbar"><span>Administration</span><span className="tag">Organization workspace</span></header>
-        <main id="main" tabIndex={-1}>{route === 'overview' ? <Dashboard client={client} /> : route === 'approvals' ? <Approvals client={client} /> : route === 'fleet' ? <Fleet client={client} /> : route === 'builder' ? <Builder client={client} /> : route === 'enroll' ? <Enrollment client={client} /> : <Directory key={route} client={client} kind={route} />}</main>
+      <div className="workspace"><header className="topbar"><span>Administration</span><span className="tag">{quickstart ? 'Quickstart · Non-HA' : 'Organization workspace'}</span></header>
+        <main id="main" tabIndex={-1}>{route === 'local' ? quickstart ? <QuickstartTools client={client} /> : <p>Local tools are available in Quickstart.</p> : route === 'overview' ? <Dashboard client={client} /> : route === 'approvals' ? <Approvals client={client} /> : route === 'fleet' ? <Fleet client={client} /> : route === 'builder' ? <Builder client={client} /> : route === 'enroll' ? <Enrollment client={client} /> : <Directory key={route} client={client} kind={route} />}</main>
         <footer>Control verifies permissions. Gateway checks current policy for every runtime authorization.</footer></div></div>}
   </>;
 }

@@ -5,6 +5,7 @@
 Trivy's image scan detects the JAR/OS graph but not libraries inside minified
 browser assets. The separately verified production npm graph closes that gap.
 """
+import argparse
 import json
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
@@ -30,12 +31,14 @@ def merge(image,ui):
 
 
 def main():
-    target=ROOT/'build/control/control-sbom.cdx.json'
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--image-sbom',type=Path,default=ROOT/'build/control/control-sbom.cdx.json')
+    target=parser.parse_args().image_sbom
     image=json.loads(target.read_text(encoding='utf-8'));ui=json.loads((ROOT/'build/ui/ui-sbom.cdx.json').read_text(encoding='utf-8'))
     result=merge(image,ui)
     if not any(component.get('purl','').startswith('pkg:npm/react@') for component in result['components']):raise ValueError('Embedded React dependency missing from image SBOM')
     target.write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
-    print(f'Control image SBOM includes embedded UI: {len(result["components"])} components')
+    print(f'Image SBOM includes embedded UI: {len(result["components"])} components')
 
 
 if __name__=='__main__':main()
