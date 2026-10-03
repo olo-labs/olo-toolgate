@@ -13,5 +13,5 @@ id = "jwt"
   description = "Public JWS signature fixtures, not access credentials; other fields/rules still scan"
   condition = "AND"
   regexTarget = "line"
-  paths = ['''(^|/)tests/fixtures/(policy/signed-v1|approval/signed-v2|contracts/v1/valid|fleet/v1/signed)\.json$''']
+  paths = ['''(^|/)tests/fixtures/(policy/signed-v1|approval/signed-v2|contracts/v1/valid|fleet/v1/signed|builder/v1/signed)\.json$''']
   regexes = ['''^\s*"jws":\s*"''']

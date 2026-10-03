@@ -229,6 +229,57 @@ async fn real_managed_runtime_security_boundary() {
             deadline: None,
             calls: Mutex::new(Vec::new()),
         });
+        if matches!(
+            kind,
+            LocalRuntimeKind::Python
+                | LocalRuntimeKind::Node
+                | LocalRuntimeKind::Powershell
+                | LocalRuntimeKind::Shell
+        ) {
+            let code=match kind {
+                LocalRuntimeKind::Python=>"def tool(arguments):\n    return {'text':arguments['text']}\n",
+                LocalRuntimeKind::Node=>"function tool(arguments){return {text:arguments.text};}",
+                LocalRuntimeKind::Powershell=>"function tool($arguments) { return @{text=$arguments.text} }",
+                // Fixed self-test request/result using Bash builtins, without launching JSON helpers.
+                LocalRuntimeKind::Shell=>"tool() { printf '%s\\n' '{\"protocolVersion\":1,\"requestId\":\"request\",\"output\":{\"text\":\"inline-shell\"}}'; }",
+                _=>unreachable!(),
+            };
+            let mut inline = settings.clone();
+            inline.state_directory = base.join(format!("source-{index}"));
+            let hash = ring::digest::digest(&ring::digest::SHA256, code.as_bytes())
+                .as_ref()
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect();
+            inline.tools[0].source = Some(LocalToolSource {
+                code: code.into(),
+                sha256: hash,
+            });
+            let mut runner = Manager::new(inline, policy.clone()).unwrap();
+            let mut invocation = input("inline-shell", "echo");
+            invocation.request_id = "request".into();
+            assert_eq!(
+                runner
+                    .invoke(invocation, olo_toolgate_client::now() + 60000)
+                    .await
+                    .unwrap()
+                    .output["text"],
+                json!("inline-shell"),
+                "inline {kind:?}"
+            );
+            runner.shutdown().await.unwrap();
+            let calls = policy.calls.lock().unwrap();
+            assert_eq!(
+                calls[0].arguments["registrationDigest"]
+                    .as_str()
+                    .unwrap()
+                    .len(),
+                64
+            );
+            assert!(!serde_json::to_string(&calls[0]).unwrap().contains(code));
+            drop(calls);
+            policy.calls.lock().unwrap().clear();
+        }
         let mut manager = Manager::new(settings.clone(), policy.clone()).unwrap();
         assert!(!manager.health().ready);
         assert!(

@@ -14,12 +14,13 @@ final readonly class LocalToolRegistration implements \JsonSerializable {
         public string $entryPoint,
         public \stdClass $inputSchema,
         public \stdClass $outputSchema,
-        public LocalRuntimeLimits $limits
+        public LocalRuntimeLimits $limits,
+        public ?LocalToolSource $source = null
     ) {}
 
     /** Decode a structural model; canonical schema validation is also required. */
     public static function fromArray(array $data): self {
-        if (array_diff(array_keys($data), ['toolId', 'action', 'runtimeId', 'entryPoint', 'inputSchema', 'outputSchema', 'limits']) || array_diff(['toolId', 'action', 'runtimeId', 'entryPoint', 'inputSchema', 'outputSchema', 'limits'], array_keys($data))) {
+        if (array_diff(array_keys($data), ['toolId', 'action', 'runtimeId', 'entryPoint', 'inputSchema', 'outputSchema', 'limits', 'source']) || array_diff(['toolId', 'action', 'runtimeId', 'entryPoint', 'inputSchema', 'outputSchema', 'limits'], array_keys($data))) {
             throw new \InvalidArgumentException('Unknown or missing contract fields');
         }
         return new self(
@@ -29,7 +30,8 @@ final readonly class LocalToolRegistration implements \JsonSerializable {
             $data['entryPoint'],
             (object) $data['inputSchema'],
             (object) $data['outputSchema'],
-            LocalRuntimeLimits::fromArray($data['limits'])
+            LocalRuntimeLimits::fromArray($data['limits']),
+            array_key_exists('source', $data) ? LocalToolSource::fromArray($data['source']) : null
         );
     }
 

@@ -55,6 +55,10 @@ pub fn invocation_arguments(kind: &Kind, tool: &LocalToolRegistration) -> Result
     {
         return Err(Failure::Validation);
     }
+    if tool.source.is_some() {
+        super::source::validate(kind, tool)?;
+        return super::source::command(kind);
+    }
     let mut args: Vec<String> = match kind {
         Kind::Native if entry == "/opt/tool/run" => vec![entry.clone()],
         Kind::Native => return Err(Failure::Validation),

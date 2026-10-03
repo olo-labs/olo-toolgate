@@ -359,7 +359,8 @@ Module 01 adds the stateless [Gateway core](apps/gateway/README.md), static runt
 authorization and an opt-in Helm gateway workload. Module 02 adds the
 [Control Plane backend](apps/control-plane/README.md), tenant-scoped records,
 PostgreSQL/Flyway, signed administrative JWTs, atomic audit/replay and JSON/YAML
-import/export. Marketplace services remain build scaffolds. Tool execution remains outside the delivered modules.
+import/export. Marketplace services remain build scaffolds. Tool execution runs
+in the protected endpoint service's confined runtime.
 Module 03 adds the [embedded Admin UI](apps/admin-ui/README.md): signed-token
 session shell, bounded dashboard, directory navigation and user management.
 
@@ -380,3 +381,8 @@ Gateway-signed exact-operation permits and atomic single-use consumption. Contro
 outages block ASK. Run `make approval-e2e`; no new mandatory infrastructure is added.
 
 Module 09 signed fleet lifecycle: [production usage, configuration and debugging](docs/client/package-deployment.md).
+
+Module 10 adds the [custom local tool builder](docs/client/tool-builder.md):
+code/schema/AI metadata authoring, designated-client sandbox tests, immutable
+organization packages, independently verified release/deployment and publication
+preparation. Native platform verification limits remain in its completion report.

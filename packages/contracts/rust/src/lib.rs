@@ -157,6 +157,152 @@ pub struct AuthorizationRequest {
     pub action: String,
     pub arguments: std::collections::BTreeMap<String, serde_json::Value>,
 }
+/// Canonical bounded authoring protocol; declarations never grant execution privileges.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BuilderDefinition {
+    pub package_id: String,
+    pub version: String,
+    pub name: String,
+    pub description: String,
+    pub use_when: String,
+    pub do_not_use_when: String,
+    pub runtime: ManagedRuntime,
+    pub tool: LocalToolRegistration,
+    pub platforms: Vec<ClientPlatform>,
+    pub architectures: Vec<FleetArchitecture>,
+    pub examples: Vec<FleetSelfTest>,
+    pub permissions: Vec<BuilderPermission>,
+    pub resource: ResourceDescriptor,
+    pub credential_requirements: Vec<String>,
+}
+/// Canonical bounded authoring protocol; declarations never grant execution privileges.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BuilderDraft {
+    pub id: String,
+    pub revision: u64,
+    pub definition: BuilderDefinition,
+    pub definition_digest: String,
+    pub sealed: bool,
+    pub package_document: FleetPackageDocument,
+}
+/// Canonical bounded authoring protocol; declarations never grant execution privileges.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BuilderDraftPage {
+    pub items: Vec<BuilderDraft>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
+/// Canonical bounded authoring protocol; declarations never grant execution privileges.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BuilderDraftRequest {
+    pub id: String,
+    pub expected_revision: u64,
+    pub definition: BuilderDefinition,
+}
+/// Canonical BuilderPermission wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BuilderPermission {
+    #[serde(rename = "COMPUTE")]
+    Compute,
+    #[serde(rename = "FILE_READ")]
+    FileRead,
+    #[serde(rename = "FILE_WRITE")]
+    FileWrite,
+    #[serde(rename = "NETWORK")]
+    Network,
+    #[serde(rename = "CREDENTIALS")]
+    Credentials,
+}
+/// Canonical bounded authoring protocol; declarations never grant execution privileges.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BuilderRevisionRequest {
+    pub expected_revision: u64,
+}
+/// Canonical bounded authoring protocol; declarations never grant execution privileges.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BuilderTestPage {
+    pub items: Vec<BuilderTestRecord>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
+/// Canonical bounded authoring protocol; declarations never grant execution privileges.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BuilderTestPoll {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub task: Option<FleetSignedDocument>,
+}
+/// Canonical bounded authoring protocol; declarations never grant execution privileges.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BuilderTestRecord {
+    pub id: String,
+    pub draft_id: String,
+    pub definition_digest: String,
+    pub device_id: String,
+    pub state: BuilderTestState,
+    pub revision: u64,
+    pub created_at_unix_ms: u64,
+    pub expires_at_unix_ms: u64,
+    pub attempt: u64,
+    pub lease_id: String,
+    pub example_index: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<ErrorCode>,
+}
+/// Canonical bounded authoring protocol; declarations never grant execution privileges.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BuilderTestRequest {
+    pub id: String,
+    pub draft_id: String,
+    pub expected_revision: u64,
+    pub device_id: String,
+    pub example_index: u64,
+}
+/// Canonical bounded authoring protocol; declarations never grant execution privileges.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BuilderTestResult {
+    pub job_id: String,
+    pub lease_id: String,
+    pub definition_digest: String,
+    pub success: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<ErrorCode>,
+}
+/// Canonical BuilderTestState wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BuilderTestState {
+    #[serde(rename = "QUEUED")]
+    Queued,
+    #[serde(rename = "RUNNING")]
+    Running,
+    #[serde(rename = "PASSED")]
+    Passed,
+    #[serde(rename = "FAILED")]
+    Failed,
+    #[serde(rename = "EXPIRED")]
+    Expired,
+}
+/// Canonical bounded authoring protocol; declarations never grant execution privileges.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BuilderTestTask {
+    pub format_version: u64,
+    pub tenant_id: String,
+    pub server_id: String,
+    pub device_id: String,
+    pub job: BuilderTestRecord,
+    pub definition: BuilderDefinition,
+    pub expires_at_unix_ms: u64,
+}
 /// Fixed service tool boundary; validate schema before use.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -1164,6 +1310,15 @@ pub struct LocalToolRegistration {
     pub input_schema: std::collections::BTreeMap<String, serde_json::Value>,
     pub output_schema: std::collections::BTreeMap<String, serde_json::Value>,
     pub limits: LocalRuntimeLimits,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<LocalToolSource>,
+}
+/// Canonical bounded authoring protocol; declarations never grant execution privileges.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct LocalToolSource {
+    pub code: String,
+    pub sha256: String,
 }
 /// Administrator-selected immutable tool/runtime image; runtime provisioning is not execution authorization.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1331,7 +1486,7 @@ impl ContractSet {
     pub fn current() -> Self {
         Self {
             name: "olo-toolgate-contracts".into(),
-            version: "0.9.0-dev".into(),
+            version: "0.10.0-dev".into(),
         }
     }
 }
@@ -1340,6 +1495,10 @@ pub const CANONICAL_SCHEMAS: &[(&str, &str)] = &[
     (
         "https://schemas.ololabs.io/toolgate/v1/approval.schema.json",
         include_str!("../schemas/v1/approval.schema.json"),
+    ),
+    (
+        "https://schemas.ololabs.io/toolgate/v1/builder.schema.json",
+        include_str!("../schemas/v1/builder.schema.json"),
     ),
     (
         "https://schemas.ololabs.io/toolgate/v1/builtins.schema.json",

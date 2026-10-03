@@ -64,6 +64,16 @@ export const operations = {
   getFleetDesired: { method: 'GET', path: '/api/control/v1/fleet/desired' },
   createFleetArtifactGrant: { method: 'POST', path: '/api/control/v1/fleet/artifact-grants' },
   downloadFleetArtifact: { method: 'POST', path: '/api/control/v1/fleet/artifacts/download' },
+  listBuilderDrafts: { method: 'GET', path: '/api/control/v1/builder/drafts' },
+  saveBuilderDraft: { method: 'POST', path: '/api/control/v1/builder/drafts' },
+  listBuilderTests: { method: 'GET', path: '/api/control/v1/builder/tests' },
+  createBuilderTest: { method: 'POST', path: '/api/control/v1/builder/tests' },
+  pollBuilderTest: { method: 'GET', path: '/api/control/v1/builder/tests/poll' },
+  completeBuilderTest: { method: 'POST', path: '/api/control/v1/builder/tests/results' },
+  sealBuilderDraft: { method: 'POST', path: '/api/control/v1/builder/drafts/{id}/seal' },
+  prepareBuilderPublication: { method: 'POST', path: '/api/control/v1/builder/drafts/{id}/publication' },
+  publishBuilderRelease: { method: 'POST', path: '/api/control/v1/builder/drafts/{id}/release' },
+  deployBuilderDraft: { method: 'POST', path: '/api/control/v1/builder/drafts/{id}/deploy' },
 } as const;
 export interface DirectoryRecords {
   agents: ControlAgent;

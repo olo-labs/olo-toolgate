@@ -98,6 +98,99 @@ export interface AuthorizationRequest {
   readonly action: string;
   readonly arguments: Record<string, unknown>;
 }
+/** Canonical bounded authoring protocol; declarations never grant execution privileges. */
+export interface BuilderDefinition {
+  readonly packageId: string;
+  readonly version: string;
+  readonly name: string;
+  readonly description: string;
+  readonly useWhen: string;
+  readonly doNotUseWhen: string;
+  readonly runtime: ManagedRuntime;
+  readonly tool: LocalToolRegistration;
+  readonly platforms: ReadonlyArray<ClientPlatform>;
+  readonly architectures: ReadonlyArray<FleetArchitecture>;
+  readonly examples: ReadonlyArray<FleetSelfTest>;
+  readonly permissions: ReadonlyArray<BuilderPermission>;
+  readonly resource: ResourceDescriptor;
+  readonly credentialRequirements: ReadonlyArray<string>;
+}
+/** Canonical bounded authoring protocol; declarations never grant execution privileges. */
+export interface BuilderDraft {
+  readonly id: string;
+  readonly revision: number;
+  readonly definition: BuilderDefinition;
+  readonly definitionDigest: string;
+  readonly sealed: boolean;
+  readonly packageDocument: FleetPackageDocument;
+}
+/** Canonical bounded authoring protocol; declarations never grant execution privileges. */
+export interface BuilderDraftPage {
+  readonly items: ReadonlyArray<BuilderDraft>;
+  readonly nextCursor?: string;
+}
+/** Canonical bounded authoring protocol; declarations never grant execution privileges. */
+export interface BuilderDraftRequest {
+  readonly id: string;
+  readonly expectedRevision: number;
+  readonly definition: BuilderDefinition;
+}
+export type BuilderPermission = "COMPUTE" | "FILE_READ" | "FILE_WRITE" | "NETWORK" | "CREDENTIALS";
+/** Canonical bounded authoring protocol; declarations never grant execution privileges. */
+export interface BuilderRevisionRequest {
+  readonly expectedRevision: number;
+}
+/** Canonical bounded authoring protocol; declarations never grant execution privileges. */
+export interface BuilderTestPage {
+  readonly items: ReadonlyArray<BuilderTestRecord>;
+  readonly nextCursor?: string;
+}
+/** Canonical bounded authoring protocol; declarations never grant execution privileges. */
+export interface BuilderTestPoll {
+  readonly task?: FleetSignedDocument;
+}
+/** Canonical bounded authoring protocol; declarations never grant execution privileges. */
+export interface BuilderTestRecord {
+  readonly id: string;
+  readonly draftId: string;
+  readonly definitionDigest: string;
+  readonly deviceId: string;
+  readonly state: BuilderTestState;
+  readonly revision: number;
+  readonly createdAtUnixMs: number;
+  readonly expiresAtUnixMs: number;
+  readonly attempt: number;
+  readonly leaseId: string;
+  readonly exampleIndex: number;
+  readonly error?: ErrorCode;
+}
+/** Canonical bounded authoring protocol; declarations never grant execution privileges. */
+export interface BuilderTestRequest {
+  readonly id: string;
+  readonly draftId: string;
+  readonly expectedRevision: number;
+  readonly deviceId: string;
+  readonly exampleIndex: number;
+}
+/** Canonical bounded authoring protocol; declarations never grant execution privileges. */
+export interface BuilderTestResult {
+  readonly jobId: string;
+  readonly leaseId: string;
+  readonly definitionDigest: string;
+  readonly success: boolean;
+  readonly error?: ErrorCode;
+}
+export type BuilderTestState = "QUEUED" | "RUNNING" | "PASSED" | "FAILED" | "EXPIRED";
+/** Canonical bounded authoring protocol; declarations never grant execution privileges. */
+export interface BuilderTestTask {
+  readonly formatVersion: number;
+  readonly tenantId: string;
+  readonly serverId: string;
+  readonly deviceId: string;
+  readonly job: BuilderTestRecord;
+  readonly definition: BuilderDefinition;
+  readonly expiresAtUnixMs: number;
+}
 /** Fixed service tool boundary; validate schema before use. */
 export interface BuiltinInvocation {
   readonly toolId: string;
@@ -728,6 +821,12 @@ export interface LocalToolRegistration {
   readonly inputSchema: Record<string, unknown>;
   readonly outputSchema: Record<string, unknown>;
   readonly limits: LocalRuntimeLimits;
+  readonly source?: LocalToolSource;
+}
+/** Canonical bounded authoring protocol; declarations never grant execution privileges. */
+export interface LocalToolSource {
+  readonly code: string;
+  readonly sha256: string;
 }
 /** Administrator-selected immutable tool/runtime image; runtime provisioning is not execution authorization. */
 export interface ManagedRuntime {
@@ -836,5 +935,5 @@ export interface ToolDefinition {
   readonly inputSchema: Record<string, unknown>;
   readonly outputSchema: Record<string, unknown>;
 }
-export const CONTRACT_SET_VERSION = "0.9.0-dev" as const;
+export const CONTRACT_SET_VERSION = "0.10.0-dev" as const;
 export const CONTRACT_SET_NAME = "olo-toolgate-contracts" as const;

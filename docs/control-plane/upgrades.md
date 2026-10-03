@@ -82,3 +82,11 @@ Upgrade all Gateways to format-2 readers before publishing ASK. See
 Module 09 uses immutable signed descriptors and monotonic device generations.
 See the [fleet usage, upgrade and debug guide](../client/package-deployment.md) for external trust/store
 configuration, health-gated activation, rollback/uninstall and client compatibility.
+
+Module 10 adds Flyway V7 authoring/test records. Upgrade enrolled designated
+clients to 0.10 before testing source packages; retained old descriptors remain
+valid. Preserve sealed drafts, immutable package versions, release authority
+trust and test/audit evidence. Do not downgrade to a pre-V7 writer against this
+database or edit reserved versions to recover a failed release. Restore a
+consistent database/mirror/trust backup or apply a forward migration. No new
+Helm values are required; existing fleet/device TLS configuration is reused.

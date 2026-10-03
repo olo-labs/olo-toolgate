@@ -1357,5 +1357,653 @@
     "kid": "device-1",
     "n": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "e": "AQAB"
+  },
+  "LocalToolSource": {
+    "code": "def tool(arguments):\n    return {'text': arguments['text']}\n",
+    "sha256": "f9ac9cea83359f08537fcddff8b29026d216f9f2d7685ba96c135643b4ffb6e9"
+  },
+  "BuilderPermission": "COMPUTE",
+  "BuilderDefinition": {
+    "packageId": "custom-echo",
+    "version": "1.0.0",
+    "name": "Echo",
+    "description": "Returns a bounded text value.",
+    "useWhen": "Return a test text value.",
+    "doNotUseWhen": "Reading files or accessing network.",
+    "runtime": {
+      "id": "builder-python",
+      "kind": "PYTHON",
+      "image": "registry.example.com/toolgate/python-echo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "version": "3.14.0"
+    },
+    "tool": {
+      "toolId": "custom.echo",
+      "action": "execute",
+      "runtimeId": "builder-python",
+      "entryPoint": "/opt/tool/tool.py",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "limits": {
+        "timeoutMs": 2000,
+        "memoryMiB": 128,
+        "maxInputBytes": 4096,
+        "maxOutputBytes": 4096
+      },
+      "source": {
+        "code": "def tool(arguments):\n    return {'text': arguments['text']}\n",
+        "sha256": "f9ac9cea83359f08537fcddff8b29026d216f9f2d7685ba96c135643b4ffb6e9"
+      }
+    },
+    "platforms": [
+      "LINUX"
+    ],
+    "architectures": [
+      "x86_64"
+    ],
+    "examples": [
+      {
+        "toolId": "custom.echo",
+        "arguments": {
+          "text": "hello"
+        },
+        "expectedOutput": {
+          "text": "hello"
+        }
+      }
+    ],
+    "permissions": [
+      "COMPUTE"
+    ],
+    "resource": {
+      "kind": "CUSTOM",
+      "locator": "runtime/custom.echo"
+    },
+    "credentialRequirements": []
+  },
+  "BuilderDraftRequest": {
+    "id": "draft-example",
+    "expectedRevision": 0,
+    "definition": {
+      "packageId": "custom-echo",
+      "version": "1.0.0",
+      "name": "Echo",
+      "description": "Returns a bounded text value.",
+      "useWhen": "Return a test text value.",
+      "doNotUseWhen": "Reading files or accessing network.",
+      "runtime": {
+        "id": "builder-python",
+        "kind": "PYTHON",
+        "image": "registry.example.com/toolgate/python-echo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "version": "3.14.0"
+      },
+      "tool": {
+        "toolId": "custom.echo",
+        "action": "execute",
+        "runtimeId": "builder-python",
+        "entryPoint": "/opt/tool/tool.py",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "text"
+          ]
+        },
+        "outputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "text"
+          ]
+        },
+        "limits": {
+          "timeoutMs": 2000,
+          "memoryMiB": 128,
+          "maxInputBytes": 4096,
+          "maxOutputBytes": 4096
+        },
+        "source": {
+          "code": "def tool(arguments):\n    return {'text': arguments['text']}\n",
+          "sha256": "f9ac9cea83359f08537fcddff8b29026d216f9f2d7685ba96c135643b4ffb6e9"
+        }
+      },
+      "platforms": [
+        "LINUX"
+      ],
+      "architectures": [
+        "x86_64"
+      ],
+      "examples": [
+        {
+          "toolId": "custom.echo",
+          "arguments": {
+            "text": "hello"
+          },
+          "expectedOutput": {
+            "text": "hello"
+          }
+        }
+      ],
+      "permissions": [
+        "COMPUTE"
+      ],
+      "resource": {
+        "kind": "CUSTOM",
+        "locator": "runtime/custom.echo"
+      },
+      "credentialRequirements": []
+    }
+  },
+  "BuilderDraft": {
+    "id": "draft-example",
+    "revision": 1,
+    "definition": {
+      "packageId": "custom-echo",
+      "version": "1.0.0",
+      "name": "Echo",
+      "description": "Returns a bounded text value.",
+      "useWhen": "Return a test text value.",
+      "doNotUseWhen": "Reading files or accessing network.",
+      "runtime": {
+        "id": "builder-python",
+        "kind": "PYTHON",
+        "image": "registry.example.com/toolgate/python-echo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "version": "3.14.0"
+      },
+      "tool": {
+        "toolId": "custom.echo",
+        "action": "execute",
+        "runtimeId": "builder-python",
+        "entryPoint": "/opt/tool/tool.py",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "text"
+          ]
+        },
+        "outputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "text"
+          ]
+        },
+        "limits": {
+          "timeoutMs": 2000,
+          "memoryMiB": 128,
+          "maxInputBytes": 4096,
+          "maxOutputBytes": 4096
+        },
+        "source": {
+          "code": "def tool(arguments):\n    return {'text': arguments['text']}\n",
+          "sha256": "f9ac9cea83359f08537fcddff8b29026d216f9f2d7685ba96c135643b4ffb6e9"
+        }
+      },
+      "platforms": [
+        "LINUX"
+      ],
+      "architectures": [
+        "x86_64"
+      ],
+      "examples": [
+        {
+          "toolId": "custom.echo",
+          "arguments": {
+            "text": "hello"
+          },
+          "expectedOutput": {
+            "text": "hello"
+          }
+        }
+      ],
+      "permissions": [
+        "COMPUTE"
+      ],
+      "resource": {
+        "kind": "CUSTOM",
+        "locator": "runtime/custom.echo"
+      },
+      "credentialRequirements": []
+    },
+    "definitionDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "sealed": false,
+    "packageDocument": {
+      "formatVersion": 1,
+      "packageId": "custom-echo",
+      "version": "1.0.0",
+      "platforms": [
+        "LINUX"
+      ],
+      "architectures": [
+        "x86_64"
+      ],
+      "minimumClientVersion": "0.10.0-dev",
+      "runtimes": [
+        {
+          "id": "builder-python",
+          "kind": "PYTHON",
+          "image": "registry.example.com/toolgate/python-echo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": "3.14.0"
+        }
+      ],
+      "tools": [
+        {
+          "toolId": "custom.echo",
+          "action": "execute",
+          "runtimeId": "builder-python",
+          "entryPoint": "/opt/tool/tool.py",
+          "inputSchema": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "text"
+            ]
+          },
+          "outputSchema": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "text"
+            ]
+          },
+          "limits": {
+            "timeoutMs": 2000,
+            "memoryMiB": 128,
+            "maxInputBytes": 4096,
+            "maxOutputBytes": 4096
+          },
+          "source": {
+            "code": "def tool(arguments):\n    return {'text': arguments['text']}\n",
+            "sha256": "f9ac9cea83359f08537fcddff8b29026d216f9f2d7685ba96c135643b4ffb6e9"
+          }
+        }
+      ],
+      "selfTests": [
+        {
+          "toolId": "custom.echo",
+          "arguments": {
+            "text": "hello"
+          },
+          "expectedOutput": {
+            "text": "hello"
+          }
+        }
+      ]
+    }
+  },
+  "BuilderDraftPage": {
+    "items": [
+      {
+        "id": "draft-example",
+        "revision": 1,
+        "definition": {
+          "packageId": "custom-echo",
+          "version": "1.0.0",
+          "name": "Echo",
+          "description": "Returns a bounded text value.",
+          "useWhen": "Return a test text value.",
+          "doNotUseWhen": "Reading files or accessing network.",
+          "runtime": {
+            "id": "builder-python",
+            "kind": "PYTHON",
+            "image": "registry.example.com/toolgate/python-echo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "version": "3.14.0"
+          },
+          "tool": {
+            "toolId": "custom.echo",
+            "action": "execute",
+            "runtimeId": "builder-python",
+            "entryPoint": "/opt/tool/tool.py",
+            "inputSchema": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "maxLength": 256
+                }
+              },
+              "required": [
+                "text"
+              ]
+            },
+            "outputSchema": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "maxLength": 256
+                }
+              },
+              "required": [
+                "text"
+              ]
+            },
+            "limits": {
+              "timeoutMs": 2000,
+              "memoryMiB": 128,
+              "maxInputBytes": 4096,
+              "maxOutputBytes": 4096
+            },
+            "source": {
+              "code": "def tool(arguments):\n    return {'text': arguments['text']}\n",
+              "sha256": "f9ac9cea83359f08537fcddff8b29026d216f9f2d7685ba96c135643b4ffb6e9"
+            }
+          },
+          "platforms": [
+            "LINUX"
+          ],
+          "architectures": [
+            "x86_64"
+          ],
+          "examples": [
+            {
+              "toolId": "custom.echo",
+              "arguments": {
+                "text": "hello"
+              },
+              "expectedOutput": {
+                "text": "hello"
+              }
+            }
+          ],
+          "permissions": [
+            "COMPUTE"
+          ],
+          "resource": {
+            "kind": "CUSTOM",
+            "locator": "runtime/custom.echo"
+          },
+          "credentialRequirements": []
+        },
+        "definitionDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sealed": false,
+        "packageDocument": {
+          "formatVersion": 1,
+          "packageId": "custom-echo",
+          "version": "1.0.0",
+          "platforms": [
+            "LINUX"
+          ],
+          "architectures": [
+            "x86_64"
+          ],
+          "minimumClientVersion": "0.10.0-dev",
+          "runtimes": [
+            {
+              "id": "builder-python",
+              "kind": "PYTHON",
+              "image": "registry.example.com/toolgate/python-echo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "version": "3.14.0"
+            }
+          ],
+          "tools": [
+            {
+              "toolId": "custom.echo",
+              "action": "execute",
+              "runtimeId": "builder-python",
+              "entryPoint": "/opt/tool/tool.py",
+              "inputSchema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "maxLength": 256
+                  }
+                },
+                "required": [
+                  "text"
+                ]
+              },
+              "outputSchema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "maxLength": 256
+                  }
+                },
+                "required": [
+                  "text"
+                ]
+              },
+              "limits": {
+                "timeoutMs": 2000,
+                "memoryMiB": 128,
+                "maxInputBytes": 4096,
+                "maxOutputBytes": 4096
+              },
+              "source": {
+                "code": "def tool(arguments):\n    return {'text': arguments['text']}\n",
+                "sha256": "f9ac9cea83359f08537fcddff8b29026d216f9f2d7685ba96c135643b4ffb6e9"
+              }
+            }
+          ],
+          "selfTests": [
+            {
+              "toolId": "custom.echo",
+              "arguments": {
+                "text": "hello"
+              },
+              "expectedOutput": {
+                "text": "hello"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "BuilderTestState": "QUEUED",
+  "BuilderTestRequest": {
+    "id": "test-example",
+    "draftId": "draft-example",
+    "expectedRevision": 1,
+    "deviceId": "device-1",
+    "exampleIndex": 0
+  },
+  "BuilderTestRecord": {
+    "id": "test-example",
+    "draftId": "draft-example",
+    "definitionDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "deviceId": "device-1",
+    "state": "QUEUED",
+    "revision": 1,
+    "createdAtUnixMs": 1700000000000,
+    "expiresAtUnixMs": 1700000600000,
+    "attempt": 0,
+    "leaseId": "lease-example",
+    "exampleIndex": 0
+  },
+  "BuilderTestPage": {
+    "items": [
+      {
+        "id": "test-example",
+        "draftId": "draft-example",
+        "definitionDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "deviceId": "device-1",
+        "state": "QUEUED",
+        "revision": 1,
+        "createdAtUnixMs": 1700000000000,
+        "expiresAtUnixMs": 1700000600000,
+        "attempt": 0,
+        "leaseId": "lease-example",
+        "exampleIndex": 0
+      }
+    ]
+  },
+  "BuilderTestTask": {
+    "formatVersion": 1,
+    "tenantId": "tenant",
+    "serverId": "server",
+    "deviceId": "device-1",
+    "job": {
+      "id": "test-example",
+      "draftId": "draft-example",
+      "definitionDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "deviceId": "device-1",
+      "state": "RUNNING",
+      "revision": 2,
+      "createdAtUnixMs": 1700000000000,
+      "expiresAtUnixMs": 1700000600000,
+      "attempt": 1,
+      "leaseId": "lease-example",
+      "exampleIndex": 0
+    },
+    "definition": {
+      "packageId": "custom-echo",
+      "version": "1.0.0",
+      "name": "Echo",
+      "description": "Returns a bounded text value.",
+      "useWhen": "Return a test text value.",
+      "doNotUseWhen": "Reading files or accessing network.",
+      "runtime": {
+        "id": "builder-python",
+        "kind": "PYTHON",
+        "image": "registry.example.com/toolgate/python-echo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "version": "3.14.0"
+      },
+      "tool": {
+        "toolId": "custom.echo",
+        "action": "execute",
+        "runtimeId": "builder-python",
+        "entryPoint": "/opt/tool/tool.py",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "text"
+          ]
+        },
+        "outputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "text"
+          ]
+        },
+        "limits": {
+          "timeoutMs": 2000,
+          "memoryMiB": 128,
+          "maxInputBytes": 4096,
+          "maxOutputBytes": 4096
+        },
+        "source": {
+          "code": "def tool(arguments):\n    return {'text': arguments['text']}\n",
+          "sha256": "f9ac9cea83359f08537fcddff8b29026d216f9f2d7685ba96c135643b4ffb6e9"
+        }
+      },
+      "platforms": [
+        "LINUX"
+      ],
+      "architectures": [
+        "x86_64"
+      ],
+      "examples": [
+        {
+          "toolId": "custom.echo",
+          "arguments": {
+            "text": "hello"
+          },
+          "expectedOutput": {
+            "text": "hello"
+          }
+        }
+      ],
+      "permissions": [
+        "COMPUTE"
+      ],
+      "resource": {
+        "kind": "CUSTOM",
+        "locator": "runtime/custom.echo"
+      },
+      "credentialRequirements": []
+    },
+    "expiresAtUnixMs": 1700000600000
+  },
+  "BuilderTestPoll": {},
+  "BuilderTestResult": {
+    "jobId": "test-example",
+    "leaseId": "lease-example",
+    "definitionDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "success": true
+  },
+  "BuilderRevisionRequest": {
+    "expectedRevision": 1
   }
 }

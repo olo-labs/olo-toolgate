@@ -236,3 +236,6 @@ it is not an arbitrary scheduler. Verify native service startup and logout behav
 on your target OS before production rollout. To retire a device, revoke it in
 Control, then run elevated `uninstall`; `--purge` removes fixed identity files
 while preserving HotFolder documents.
+
+For authoring, designated-client tests, independent release signing and deployment,
+follow the [custom tool builder production/debug process](../client/tool-builder.md).

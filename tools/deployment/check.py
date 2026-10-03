@@ -21,6 +21,7 @@ def main():
     parser.add_argument('--gateway-image',default='olo-toolgate-gateway:module07')
     parser.add_argument('--binary',type=Path,default=ROOT/'target/release/olo-toolgate-client')
     parser.add_argument('--docker-cli',type=Path)
+    parser.add_argument('--builder',action='store_true',help='Include real designated-client authoring tests and deployment')
     args=parser.parse_args()
     cli=args.docker_cli or (ROOT/'.dev/bin/docker-linux' if os.name=='nt' else Path(shutil.which('docker') or 'missing'))
     if not cli.is_file() or not args.binary.is_file():raise ValueError('Real Linux client and Docker CLI required')
@@ -34,7 +35,7 @@ def main():
             version=subprocess.check_output(['docker','run','--rm','--network','none','--entrypoint','/usr/local/bin/python3',image,'--version'],text=True).strip()
             match=re.fullmatch(r'Python (\d+\.\d+\.\d+)',version)
             if not match:raise ValueError('Exact runtime version required')
-            subprocess.run([sys.executable,str(ROOT/'tools/client/integration.py'),'--fleet','--control-image',args.control_image,'--gateway-image',args.gateway_image,'--binary',str(args.binary.resolve()),'--runtime-image',image,'--runtime-version',match[1],'--docker-cli',str(cli.resolve())],check=True,cwd=ROOT)
+            subprocess.run([sys.executable,str(ROOT/'tools/client/integration.py'),'--fleet',*(['--builder'] if args.builder else []),'--control-image',args.control_image,'--gateway-image',args.gateway_image,'--binary',str(args.binary.resolve()),'--runtime-image',image,'--runtime-version',match[1],'--docker-cli',str(cli.resolve())],check=True,cwd=ROOT)
     finally:
         subprocess.run(['docker','image','rm',tag],capture_output=True,cwd=ROOT)
 if __name__=='__main__':main()

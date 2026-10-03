@@ -3,6 +3,7 @@
 //! Managed interpreter provisioning and organization-reviewed, online-authorized execution.
 pub mod adapters;
 pub mod engine;
+pub mod source;
 use crate::{builtins::AuthorizationPort, contracts::Contracts, Failure, Result};
 use olo_toolgate_contracts::*;
 use serde::{Deserialize, Serialize};
@@ -68,6 +69,7 @@ impl Settings {
                 .ok_or(Failure::Validation)?
                 .kind;
             if !matches!(kind, LocalRuntimeKind::Batch | LocalRuntimeKind::Wasm) {
+                source::validate(kind, tool)?;
                 adapters::invocation_arguments(kind, tool)?;
             }
             closed_schema(&tool.input_schema)?;
@@ -278,18 +280,18 @@ impl Manager {
             tool_id: test.tool_id.clone(),
             arguments: test.arguments.clone(),
         };
-        let mut input = self.contracts.encode("LocalToolInput", &invocation)?;
+        let input = self.contracts.encode("LocalToolInput", &invocation)?;
         if input.len() as u64 > tool.limits.max_input_bytes
             || !closed_schema(&tool.input_schema)?
                 .is_valid(&serde_json::to_value(&test.arguments).map_err(|_| Failure::Validation)?)
         {
             return Err(Failure::Validation);
         }
-        input.push(b'\n');
+        let (input, limits) = source::input(&tool, &input)?;
         let command = adapters::invocation_arguments(&runtime.kind, &tool)?;
         let output = self
             .engine
-            .run(&runtime.image, &command, &input, &tool.limits)
+            .run(&runtime.image, &command, &input, &limits)
             .await?;
         if !output.stderr.is_empty() {
             return Err(Failure::Validation);
@@ -354,7 +356,7 @@ impl Manager {
         }
         // Bind semantic input and immutable image, not the transport nonce:
         // ASK retries must retain their operation scope while correlation IDs change.
-        let arguments = BTreeMap::from([
+        let mut arguments = BTreeMap::from([
             (
                 "path".into(),
                 serde_json::json!(format!("runtime/{}", tool.tool_id)),
@@ -365,6 +367,18 @@ impl Manager {
             ),
             ("runtimeImage".into(), serde_json::json!(runtime.image)),
         ]);
+        // Inline code can change while the reviewed base image stays identical.
+        // Bind ASK/permit scope to the entire immutable registration, without sending source.
+        if tool.source.is_some() {
+            let registration =
+                serde_json::to_vec(&(&runtime, &tool)).map_err(|_| Failure::Validation)?;
+            let digest = ring::digest::digest(&ring::digest::SHA256, &registration)
+                .as_ref()
+                .iter()
+                .map(|byte| format!("{byte:02x}"))
+                .collect::<String>();
+            arguments.insert("registrationDigest".into(), serde_json::json!(digest));
+        }
         if crate::now().saturating_add(20000) >= valid_until {
             return Err(Failure::Expired);
         }
@@ -381,12 +395,10 @@ impl Manager {
             return Err(Failure::Expired);
         }
         let command = adapters::invocation_arguments(&runtime.kind, &tool)?;
-        let mut input = input;
-        input.push(b'\n');
+        let (input, limits) = source::input(&tool, &input)?;
         let data = tokio::time::timeout(
             std::time::Duration::from_millis(deadline.saturating_sub(crate::now())),
-            self.engine
-                .run(&runtime.image, &command, &input, &tool.limits),
+            self.engine.run(&runtime.image, &command, &input, &limits),
         )
         .await
         .map_err(|_| Failure::Expired)??;

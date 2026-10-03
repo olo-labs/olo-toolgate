@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { FleetReleasePage, FleetRolloutPage, FleetRolloutRequest, FleetRolloutRecord, FleetPackageRelease, ApprovalDecisionRequest, ApprovalPage, ApprovalRecord, ControlUser, ErrorEnvelope, EndpointEnrollmentReview, EndpointEnrollmentDecision } from '@olo-labs/toolgate-contracts';
 import { listOperations, operations, type DirectoryKind, type DirectoryPages } from './operations.generated';
+import type { BuilderDraft, BuilderDraftPage, BuilderDraftRequest, BuilderTestPage, BuilderTestRequest, BuilderTestRecord, BuilderDefinition } from '@olo-labs/toolgate-contracts';
 
 /** Human-safe messages never render server text, exception bodies or credentials. */
 export class ApiError extends Error {
@@ -85,6 +86,14 @@ export class ControlClient {
   }
 
   fleetReleases(cursor?:string,signal?:AbortSignal):Promise<FleetReleasePage>{const query=new URLSearchParams();if(cursor)query.set('cursor',cursor);return this.send(operations.listFleetReleases,{query,signal});}
+  builderDrafts(cursor?:string,signal?:AbortSignal):Promise<BuilderDraftPage>{const query=new URLSearchParams();if(cursor)query.set('cursor',cursor);return this.send(operations.listBuilderDrafts,{query,signal});}
+  builderTests(cursor?:string,signal?:AbortSignal):Promise<BuilderTestPage>{const query=new URLSearchParams();if(cursor)query.set('cursor',cursor);return this.send(operations.listBuilderTests,{query,signal});}
+  saveDraft(body:BuilderDraftRequest,key:string):Promise<BuilderDraft>{return this.send(operations.saveBuilderDraft,{body,key});}
+  testDraft(body:BuilderTestRequest,key:string):Promise<BuilderTestRecord>{return this.send(operations.createBuilderTest,{body,key});}
+  sealDraft(id:string,expectedRevision:number,key:string):Promise<BuilderDraft>{return this.send(operations.sealBuilderDraft,{id,key,body:{expectedRevision}});}
+  publicationDraft(id:string):Promise<BuilderDefinition>{return this.send(operations.prepareBuilderPublication,{id});}
+  releaseDraft(id:string,body:FleetPackageRelease,key:string):Promise<FleetPackageRelease>{return this.send(operations.publishBuilderRelease,{id,body,key});}
+  deployDraft(id:string,body:FleetRolloutRequest,key:string):Promise<FleetRolloutRecord>{return this.send(operations.deployBuilderDraft,{id,body,key});}
   fleetRollouts(cursor?:string,signal?:AbortSignal):Promise<FleetRolloutPage>{const query=new URLSearchParams();if(cursor)query.set('cursor',cursor);return this.send(operations.listFleetRollouts,{query,signal});}
   publishRelease(release:FleetPackageRelease,key:string):Promise<FleetPackageRelease>{return this.send(operations.publishFleetRelease,{body:release,key});}
   assignPackage(request:FleetRolloutRequest,key:string):Promise<FleetRolloutRecord>{return this.send(operations.createFleetRollout,{body:request,key});}

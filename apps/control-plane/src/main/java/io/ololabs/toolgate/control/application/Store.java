@@ -11,6 +11,7 @@ public interface Store {
     <T> T transaction(TenantId tenant, boolean write, Function<Session, T> work);
     interface Session {
         default FleetStore fleet() { throw Failure.unavailable(); }
+        default BuilderStore builder() { throw Failure.unavailable(); }
         Directory load();
         boolean used(io.ololabs.toolgate.control.domain.Ids.RecordId id);
         void save(Directory before, Directory after);

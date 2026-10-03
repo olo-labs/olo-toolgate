@@ -253,4 +253,11 @@ A `BLOCKED` requirement means the module is not DONE.
   Signed immutable releases, desired generations, canaries, reconciliation,
   rollback/uninstall, artifact grants and Packages UI are implemented for the
   checked Linux path. Native Windows/macOS/ARM certification and fleet-enabled
-  cluster routing remain BLOCKED. Module is NOT DONE; no Module 10 is started.
+  cluster routing remain BLOCKED. Module is NOT DONE; its historical report retains the certification blockers.
+
+- Module 10: [pre-implementation coverage](modules/10-coverage.md) and
+  [verification report/individual matrix](modules/10-completion.md). Custom tool
+  authoring, signed designated-client sandbox testing, immutable organization
+  packages, independent release/deployment and publication preparation pass the
+  real Linux path. 84 COMPLETE, 4 BLOCKED and 16 NOT_APPLICABLE IDs; native
+  system-engine/logout/boot and ARM certification remain open. NOT DONE; no Module 11.

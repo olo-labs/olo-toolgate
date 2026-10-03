@@ -75,3 +75,8 @@ and checksums in `build/ui/`. `make check` includes unit, drift and browser gate
 See [authentication and operations](../../docs/control-plane/admin-ui.md),
 [ADR 004](../../docs/adr/004-embedded-admin-console.md) and
 [approval architecture](../../docs/adr/006-ask-approvals.md).
+## Custom tools
+
+The **Tool builder** route authors bounded code/schema/AI metadata, displays
+designated-client results and prepares immutable packages for signed deployment.
+See [production/debug instructions](../../docs/client/tool-builder.md).

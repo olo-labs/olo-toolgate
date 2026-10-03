@@ -382,6 +382,48 @@ impl ClientService {
     fn device(&self) -> String {
         format!("device-{}", &self.key.fingerprint()[..32])
     }
+    async fn builder_test(&mut self, identity: &DeviceIdentity) -> Result<()> {
+        let Some(settings) = self.config.deployment.clone() else {
+            return Ok(());
+        };
+        let poll = self.control.builder_poll(identity.clone()).await?;
+        let Some(signed) = poll.task else {
+            return Ok(());
+        };
+        let server = self
+            .journal
+            .manifest
+            .as_ref()
+            .ok_or(Failure::Unauthorized)?
+            .server_id
+            .clone();
+        let task = crate::builder::verify(&settings, &signed, identity, &server, self.clock()?)?;
+        let outcome = crate::builder::run(&self.config, &task).await;
+        let error = outcome.as_ref().err().map(|failure| match failure {
+            Failure::Unsupported => ErrorCode::Unsupported,
+            Failure::Expired => ErrorCode::Timeout,
+            Failure::Unauthorized | Failure::Revoked => ErrorCode::Forbidden,
+            _ => ErrorCode::Validation,
+        });
+        let response = self
+            .control
+            .builder_result(
+                identity.clone(),
+                BuilderTestResult {
+                    job_id: task.job.id.clone(),
+                    lease_id: task.job.lease_id.clone(),
+                    definition_digest: task.job.definition_digest.clone(),
+                    success: outcome.is_ok(),
+                    error,
+                },
+            )
+            .await?;
+        if response.id != task.job.id || response.definition_digest != task.job.definition_digest {
+            return Err(Failure::Unauthorized);
+        }
+        tracing::info!(event="builder_test",job_id=%task.job.id,result=if outcome.is_ok(){"passed"}else{"failed"});
+        Ok(())
+    }
     pub fn health(&self) -> ClientHealth {
         let now = crate::now().max(
             self.boot_time.saturating_add(
@@ -548,6 +590,12 @@ impl ClientService {
             return Ok(());
         }
         if self.journal.pending_report.is_none() {
+            if let Err(failure) = self.builder_test(&identity).await {
+                tracing::warn!(event="builder_test",result="rejected",error=?failure);
+                if failure == Failure::Revoked {
+                    return Err(failure);
+                }
+            }
             if let Err(failure) = self.reconcile(&identity).await {
                 if self
                     .deployment

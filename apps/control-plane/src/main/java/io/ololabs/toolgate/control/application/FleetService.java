@@ -46,11 +46,14 @@ public final class FleetService {
     public static void validatePackage(FleetPackageDocument document){
         var runtimes=new HashSet<String>();for(var runtime:document.runtimes())if(!runtimes.add(runtime.id()))throw Failure.validation();
         var tools=new HashSet<String>();for(var tool:document.tools())if(!tools.add(tool.toolId())||!runtimes.contains(tool.runtimeId()))throw Failure.validation();
+        for(var tool:document.tools())BuilderValidation.source(document.runtimes().stream().filter(r->r.id().equals(tool.runtimeId())).findFirst().orElseThrow(Failure::validation),tool);
         var tested=new HashSet<String>();for(var test:document.selfTests())if(!tools.contains(test.toolId())||!tested.add(test.toolId()))throw Failure.validation();
         if(!tested.equals(tools)||new HashSet<>(document.platforms()).size()!=document.platforms().size()
             ||new HashSet<>(document.architectures()).size()!=document.architectures().size())throw Failure.validation();
     }
     public static String digest(byte[] bytes){try{return HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes));}catch(java.security.NoSuchAlgorithmException failure){throw new IllegalStateException(failure);}}
+    /** Immutable release identity must equal the sealed builder package before a deploy action. */
+    public void requireRelease(DirectoryService.Actor actor,FleetPackageDocument document){admin(actor);store.transaction(tenant,false,tx->{if(!crypto.release(release(tx,document.packageId(),document.version()).release()).model().equals(document))throw forbidden();return null;});}
     public Store.Reply releases(DirectoryService.Actor actor,String after){admin(actor);if(after!=null&&!after.matches("[a-f0-9]{64}"))throw Failure.validation();
         return store.transaction(tenant,false,tx->{var rows=tx.fleet().page(RELEASE,after==null?"":after,33);var items=rows.stream().limit(32).map(r->codec.model(r.document(),FleetPackageRelease.class)).toList();return reply(new FleetReleasePage(items,rows.size()>32?rows.get(31).id():null),0);});}
     private FleetDesiredSnapshot snapshot(Store.Session tx,String device){var row=tx.fleet().get(DESIRED,device);return row==null?new FleetDesiredSnapshot(device,1L,List.of()):codec.model(row.document(),FleetDesiredSnapshot.class);}

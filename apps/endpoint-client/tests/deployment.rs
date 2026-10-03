@@ -1,10 +1,8 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
-use olo_toolgate_client::{
-    deployment::{Settings, State},
-    storage::ProtectedStore,
-    Failure,
-};
+use olo_toolgate_client::{deployment::Settings, Failure};
+#[cfg(unix)]
+use olo_toolgate_client::{deployment::State, storage::ProtectedStore};
 use olo_toolgate_contracts::*;
 fn fixture() -> serde_json::Value {
     serde_json::from_str(include_str!("../../../tests/fixtures/fleet/v1/signed.json")).unwrap()
@@ -16,6 +14,7 @@ fn settings() -> Settings {
         organization_keys: serde_json::from_value(f["organizationKeys"].clone()).unwrap(),
     }
 }
+#[cfg(unix)]
 fn identity() -> DeviceIdentity {
     DeviceIdentity {
         device_id: "device".into(),

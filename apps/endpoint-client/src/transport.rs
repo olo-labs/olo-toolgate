@@ -6,6 +6,16 @@ use olo_toolgate_contracts::*;
 use std::{future::Future, pin::Pin, sync::Arc, time::Duration};
 pub type Call<'a, T> = Pin<Box<dyn Future<Output = Result<T>> + Send + 'a>>;
 pub trait ControlPort: Send + Sync {
+    fn builder_poll(&self, _identity: DeviceIdentity) -> Call<'_, BuilderTestPoll> {
+        Box::pin(async { Err(Failure::Unsupported) })
+    }
+    fn builder_result(
+        &self,
+        _identity: DeviceIdentity,
+        _result: BuilderTestResult,
+    ) -> Call<'_, BuilderTestRecord> {
+        Box::pin(async { Err(Failure::Unsupported) })
+    }
     fn desired(&self, _identity: DeviceIdentity) -> Call<'_, FleetSignedDocument> {
         Box::pin(async { Err(Failure::Unsupported) })
     }
@@ -126,6 +136,40 @@ impl HttpsControl {
     }
 }
 impl ControlPort for HttpsControl {
+    fn builder_poll(&self, identity: DeviceIdentity) -> Call<'_, BuilderTestPoll> {
+        Box::pin(async move {
+            let client = Self::builder(&self.config)?
+                .identity(self.key.tls_identity(&identity)?)
+                .build()
+                .map_err(|_| Failure::Unavailable)?;
+            self.request(
+                &client,
+                "/api/control/v1/builder/tests/poll",
+                None,
+                "BuilderTestPoll",
+            )
+            .await
+        })
+    }
+    fn builder_result(
+        &self,
+        identity: DeviceIdentity,
+        result: BuilderTestResult,
+    ) -> Call<'_, BuilderTestRecord> {
+        Box::pin(async move {
+            let client = Self::builder(&self.config)?
+                .identity(self.key.tls_identity(&identity)?)
+                .build()
+                .map_err(|_| Failure::Unavailable)?;
+            self.request(
+                &client,
+                "/api/control/v1/builder/tests/results",
+                Some(self.contracts.encode("BuilderTestResult", &result)?),
+                "BuilderTestRecord",
+            )
+            .await
+        })
+    }
     fn desired(&self, identity: DeviceIdentity) -> Call<'_, FleetSignedDocument> {
         Box::pin(async move {
             let client = Self::builder(&self.config)?

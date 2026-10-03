@@ -39,3 +39,10 @@ Managed execution
 ```
 
 Uploaded code is always untrusted until isolated and validated.
+
+Module 10 authoring never executes uploaded code in Control. Only an explicitly
+designated enrolled endpoint receives an organization-signed, expiring mTLS test
+lease. Tests are confined compute probes and cannot assign a tool or grant a
+runtime permit. Sealed package releases still require an independent release
+authority and signed fleet assignment. Inline invocation approval scopes include
+the full runtime/tool registration digest, so a source update changes the scope.

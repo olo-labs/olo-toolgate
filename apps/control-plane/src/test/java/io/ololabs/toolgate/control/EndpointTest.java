@@ -44,7 +44,7 @@ final class EndpointTest {
         try(var connection=java.sql.DriverManager.getConnection(base,"control_migrator",password);var statement=connection.createStatement()){statement.execute("CREATE DATABASE "+database);}
         var url=base.replace("/control?","/"+database+"?");
         org.flywaydb.core.Flyway.configure().dataSource(url,"control_migrator",password).target("4").load().migrate();
-        assertEquals(2,org.flywaydb.core.Flyway.configure().dataSource(url,"control_migrator",password).load().migrate().migrationsExecuted);
+        assertEquals(3,org.flywaydb.core.Flyway.configure().dataSource(url,"control_migrator",password).load().migrate().migrationsExecuted);
         var source=new org.postgresql.ds.PGSimpleDataSource();source.setURL(url);source.setUser("control_app");source.setPassword(password);
         var store=new PostgresStore(source,codec);var directory=new DirectoryService(store,codec,512,1048576);var admin=new DirectoryService.Actor(new Ids.TenantId("endpoint"),"a".repeat(64),true);
         for(var user:List.of("owner","other"))directory.mutate(admin,Ids.Kind.USER,user,"CREATE",DomainTest.user(user,1),0,user,"request");

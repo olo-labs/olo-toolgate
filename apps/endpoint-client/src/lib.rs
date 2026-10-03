@@ -1,6 +1,7 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
 //! Protected endpoint identity, enrollment and batched health reporting.
+pub mod builder;
 pub mod builtins;
 pub mod config;
 pub mod contracts;

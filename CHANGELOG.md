@@ -4,6 +4,16 @@ All notable project changes should be documented here.
 
 The project follows semantic versioning once stable versioning begins.
 
+## 0.10.0-dev
+
+- Add custom local tool authoring with code/runtime/schema/AI metadata,
+  permission/resource/credential declarations and bounded secret scanning.
+- Add durable signed designated-client sandbox tests and immutable organization
+  packages, independent offline release signing, deployment and publication preparation.
+- Add fixed inline Python/Node/PowerShell/Shell runners inside existing OCI
+  confinement; Control never executes author code. Native platform certification
+  limits remain explicit in the Module 10 report.
+
 ## 0.9.0-dev
 
 - Add independent signed package releases, device-scoped desired generations and

@@ -47,3 +47,9 @@ or cache is required. [Approval configuration and runbook](../../docs/control-pl
 Module 09 uses immutable signed descriptors and monotonic device generations.
 See the [fleet usage, upgrade and debug guide](../../docs/client/package-deployment.md) for external trust/store
 configuration, health-gated activation, rollback/uninstall and client compatibility.
+## Tool authoring
+
+Flyway V7 persists tenant-scoped drafts, immutable versions and signed designated
+client test leases. Control never executes author programs. Existing fleet trust,
+direct mTLS and artifact configuration supplies the authoring path; see
+[the operator guide](../../docs/client/tool-builder.md).

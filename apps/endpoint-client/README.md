@@ -6,7 +6,8 @@ automatically on first use. A system-accessible Linux OCI engine is required;
 Batch/CMD and WASM currently report UNSUPPORTED. Host interpreters are never a fallback.
 
 The native protected service provides enrollment, check-in and eighteen fixed
-built-in tools. It never executes arbitrary code or issues Gateway credentials.
+built-in tools and signed local tools within the confined managed engine.
+Gateway credentials are provisioned externally.
 See [HotFolder configuration and operations](../../docs/client/hotfolder.md) and
 [ADR 008](../../docs/adr/008-hotfolder-builtins.md).
 
@@ -102,3 +103,9 @@ current verification and any open gates are recorded in the Module 07 report.
 Module 09 uses immutable signed descriptors and monotonic device generations.
 See the [fleet usage, upgrade and debug guide](../../docs/client/package-deployment.md) for external trust/store
 configuration, health-gated activation, rollback/uninstall and client compatibility.
+## Custom tool tests
+
+The protected service polls organization-signed designated-client authoring jobs
+through its existing fleet mTLS identity. Source runs only in the confined OCI
+engine. A successful test grants no ordinary tool invocation permission. See
+[the builder guide](../../docs/client/tool-builder.md).

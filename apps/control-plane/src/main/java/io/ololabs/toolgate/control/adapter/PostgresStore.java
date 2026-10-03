@@ -50,6 +50,7 @@ public class PostgresStore implements Store {
         private final String tenant;
         JdbcSession(Connection connection, String tenant) { this.connection = connection; this.tenant = tenant; }
         public io.ololabs.toolgate.control.application.FleetStore fleet() { return new PostgresFleetStore(connection, tenant); }
+        public io.ololabs.toolgate.control.application.BuilderStore builder() { return new PostgresBuilderStore(connection, tenant); }
         private EnrollmentRecord enrollmentRows(java.sql.PreparedStatement statement) throws SQLException {
             try (statement; var rows=statement.executeQuery()) {
                 return rows.next() ? new EnrollmentRecord(rows.getString(1),rows.getString(2),rows.getString(3),rows.getString(4),

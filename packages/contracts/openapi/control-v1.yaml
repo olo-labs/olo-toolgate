@@ -3,9 +3,10 @@
 openapi: 3.1.0
 info:
   title: OLO ToolGate Control Plane API
-  version: 0.9.0-dev
-  description: Tenant-scoped administration and explicit signed policy publication. Directory policies
-    become runtime configuration only after publication; bundle trust is separate from execution permits.
+  version: 0.10.0-dev
+  description: Tenant-scoped administration and explicit signed policy publication.
+    Directory policies become runtime configuration only after publication; bundle
+    trust is separate from execution permits.
 security:
 - adminAccessToken: []
 paths:
@@ -49,8 +50,8 @@ paths:
   /.well-known/olo-toolgate-client:
     get:
       operationId: clientDiscovery
-      description: Direct HTTPS. Detached RS256 signature over domain-prefixed exact payload bytes. TLS
-        origin bootstraps dedicated device CA.
+      description: Direct HTTPS. Detached RS256 signature over domain-prefixed exact
+        payload bytes. TLS origin bootstraps dedicated device CA.
       responses:
         '200':
           description: Success; no-store
@@ -72,8 +73,8 @@ paths:
   /api/control/v1/endpoint/enrollments:
     post:
       operationId: startEndpointEnrollment
-      description: Anonymous direct HTTPS, verified P-256 CSR, bounded pending quota. This challenge creation
-        is not a grant and may be repeated after a lost response.
+      description: Anonymous direct HTTPS, verified P-256 CSR, bounded pending quota.
+        This challenge creation is not a grant and may be repeated after a lost response.
       responses:
         '200':
           description: Success; no-store
@@ -101,8 +102,8 @@ paths:
   /api/control/v1/endpoint/enrollments/poll:
     post:
       operationId: pollEndpointEnrollment
-      description: Device code proves possession; minimum five-second poll interval, ten-minute expiry.
-        Exact certificate response may be recovered until expiry.
+      description: Device code proves possession; minimum five-second poll interval,
+        ten-minute expiry. Exact certificate response may be recovered until expiry.
       responses:
         '200':
           description: Success; no-store
@@ -130,8 +131,8 @@ paths:
   /api/control/v1/endpoint/enrollments/review:
     get:
       operationId: reviewEndpointEnrollment
-      description: Dedicated toolgate-enroller and signed user_id mapping to enabled same-tenant user.
-        Compare code and key fingerprint on the device.
+      description: Dedicated toolgate-enroller and signed user_id mapping to enabled
+        same-tenant user. Compare code and key fingerprint on the device.
       responses:
         '200':
           description: Success; no-store
@@ -159,8 +160,9 @@ paths:
   /api/control/v1/endpoint/enrollments/decision:
     post:
       operationId: decideEndpointEnrollment
-      description: Dedicated toolgate-enroller confirms device for their signed enabled user. Approval,
-        identity registration, directory metadata, audit and idempotency commit atomically.
+      description: Dedicated toolgate-enroller confirms device for their signed enabled
+        user. Approval, identity registration, directory metadata, audit and idempotency
+        commit atomically.
       responses:
         '200':
           description: Success; no-store
@@ -195,8 +197,9 @@ paths:
   /api/control/v1/endpoint/check-in:
     post:
       operationId: endpointCheckIn
-      description: Actual verified TLS peer certificate plus active registry. No bearer/header substitute.
-        Sequence and exact report replay are transactional; certificates renew before expiry.
+      description: Actual verified TLS peer certificate plus active registry. No bearer/header
+        substitute. Sequence and exact report replay are transactional; certificates
+        renew before expiry.
       responses:
         '200':
           description: Success; no-store
@@ -224,8 +227,8 @@ paths:
   /api/control/v1/endpoint/devices/{id}:
     get:
       operationId: getEndpointDevice
-      description: Administrative enrolled identity view. Directory metadata alone never authenticates
-        a device.
+      description: Administrative enrolled identity view. Directory metadata alone
+        never authenticates a device.
       responses:
         '200':
           description: Success; no-store
@@ -255,8 +258,8 @@ paths:
   /api/control/v1/endpoint/devices/{id}/revoke:
     post:
       operationId: revokeEndpointDevice
-      description: Administrator revocation; expected revision, durable idempotency and audit. Next check-in
-        rejects even before certificate expires.
+      description: Administrator revocation; expected revision, durable idempotency
+        and audit. Next check-in rejects even before certificate expires.
       responses:
         '200':
           description: Success; no-store
@@ -292,8 +295,8 @@ paths:
   /api/control/v1/approvals:
     get:
       operationId: listApprovals
-      description: Requires tenant-scoped toolgate-approver, signed user_id and enabled directory user.
-        Durable status; no raw arguments.
+      description: Requires tenant-scoped toolgate-approver, signed user_id and enabled
+        directory user. Durable status; no raw arguments.
       responses:
         '200':
           description: Success; no-store
@@ -361,9 +364,9 @@ paths:
   /api/control/v1/approvals/{id}/decision:
     post:
       operationId: decideApproval
-      description: Dedicated approver role; requester cannot self-approve. Expected revision and durable
-        idempotency. Duration required only for APPROVE_TEMPORARY, capped at 30 minutes and fresh current
-        policy. Deny does not authorize execution.
+      description: Dedicated approver role; requester cannot self-approve. Expected
+        revision and durable idempotency. Duration required only for APPROVE_TEMPORARY,
+        capped at 30 minutes and fresh current policy. Deny does not authorize execution.
       responses:
         '200':
           description: Success; no-store
@@ -405,9 +408,9 @@ paths:
   /api/control/v1/approvals/resolve:
     post:
       operationId: resolveApproval
-      description: Dedicated toolgate-approval-gateway role only. Resolves or creates exact-bound current
-        ASK. Once grant is spent atomically at lease issuance; no ALLOW replay. Temporary grants still
-        require online resolution each attempt.
+      description: Dedicated toolgate-approval-gateway role only. Resolves or creates
+        exact-bound current ASK. Once grant is spent atomically at lease issuance;
+        no ALLOW replay. Temporary grants still require online resolution each attempt.
       responses:
         '200':
           description: Success; no-store
@@ -438,8 +441,8 @@ paths:
   /api/control/v1/approvals/permits/consume:
     post:
       operationId: consumeApprovalPermit
-      description: Dedicated toolgate-approval-gateway role only. Atomically consumes exact-bound unexpired
-        jti once. Duplicate requests reject; no replayed success.
+      description: Dedicated toolgate-approval-gateway role only. Atomically consumes
+        exact-bound unexpired jti once. Duplicate requests reject; no replayed success.
       responses:
         '200':
           description: Success; no-store
@@ -470,12 +473,13 @@ paths:
   /api/control/v1/bundles/current:
     get:
       operationId: getCurrentPolicyBundle
-      description: Tenant-scoped immutable signed current bundle. Requires admin, reader or dedicated
-        toolgate-bundle-reader. No-store; ETag is sequence. Refresh authentication externally.
+      description: Tenant-scoped immutable signed current bundle. Requires admin,
+        reader or dedicated toolgate-bundle-reader. No-store; ETag is sequence. Refresh
+        authentication externally.
       responses:
         '200':
-          description: Signed bundle; clients must verify signature, hash, tenant, trust claims and freshness
-            before adoption
+          description: Signed bundle; clients must verify signature, hash, tenant,
+            trust claims and freshness before adoption
           headers:
             ETag:
               schema:
@@ -516,8 +520,8 @@ paths:
   /api/control/v1/bundles/versions/{sequence}:
     get:
       operationId: getPolicyBundleVersion
-      description: Exact immutable historical bytes. Requires admin or reader. Historical expiry is not
-        extended.
+      description: Exact immutable historical bytes. Requires admin or reader. Historical
+        expiry is not extended.
       parameters:
       - name: sequence
         in: path
@@ -528,8 +532,8 @@ paths:
           maximum: 9007199254740991
       responses:
         '200':
-          description: Signed bundle; clients must verify signature, hash, tenant, trust claims and freshness
-            before adoption
+          description: Signed bundle; clients must verify signature, hash, tenant,
+            trust claims and freshness before adoption
           headers:
             ETag:
               schema:
@@ -570,10 +574,14 @@ paths:
   /api/control/v1/bundles/publish:
     post:
       operationId: publishPolicyBundle
-      description: Admin only. Compile current directoryRevision and atomically publish expectedSequence+1
-        with audit and durable replay. rollbackOf must be absent. Lifetime is 1 secondÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ24
-        hours; grace is 0ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ5 minutes. Publication does not execute
-        tools.
+      description: "Admin only. Compile current directoryRevision and atomically publish\
+        \ expectedSequence+1 with audit and durable replay. rollbackOf must be absent.\
+        \ Lifetime is 1 second\xC3\u0192\xC6\u2019\xC3\u201A\xC2\xA2\xC3\u0192\xC2\
+        \xA2\xC3\xA2\xE2\u201A\xAC\xC5\xA1\xC3\u201A\xC2\xAC\xC3\u0192\xC2\xA2\xC3\
+        \xA2\xE2\u20AC\u0161\xC2\xAC\xC3\u2026\xE2\u20AC\u015324 hours; grace is 0\xC3\
+        \u0192\xC6\u2019\xC3\u201A\xC2\xA2\xC3\u0192\xC2\xA2\xC3\xA2\xE2\u201A\xAC\
+        \xC5\xA1\xC3\u201A\xC2\xAC\xC3\u0192\xC2\xA2\xC3\xA2\xE2\u20AC\u0161\xC2\xAC\
+        \xC3\u2026\xE2\u20AC\u01535 minutes. Publication does not execute tools."
       parameters:
       - name: Idempotency-Key
         in: header
@@ -588,8 +596,8 @@ paths:
               $ref: ../schemas/v1/bundle.schema.json#/$defs/BundlePublishRequest
       responses:
         '201':
-          description: Signed bundle; clients must verify signature, hash, tenant, trust claims and freshness
-            before adoption
+          description: Signed bundle; clients must verify signature, hash, tenant,
+            trust claims and freshness before adoption
           headers:
             ETag:
               schema:
@@ -642,9 +650,10 @@ paths:
   /api/control/v1/bundles/rollback:
     post:
       operationId: rollbackPolicyBundle
-      description: Admin only. rollbackOf is required and selects an existing tenant version. Copies its
-        exact policy bytes into expectedSequence+1 with fresh signed expiry, new signature, audit and
-        replay. Does not rewind sequence or mutate history.
+      description: Admin only. rollbackOf is required and selects an existing tenant
+        version. Copies its exact policy bytes into expectedSequence+1 with fresh
+        signed expiry, new signature, audit and replay. Does not rewind sequence or
+        mutate history.
       parameters:
       - name: Idempotency-Key
         in: header
@@ -659,8 +668,8 @@ paths:
               $ref: ../schemas/v1/bundle.schema.json#/$defs/BundlePublishRequest
       responses:
         '201':
-          description: Signed bundle; clients must verify signature, hash, tenant, trust claims and freshness
-            before adoption
+          description: Signed bundle; clients must verify signature, hash, tenant,
+            trust claims and freshness before adoption
           headers:
             ETag:
               schema:
@@ -713,8 +722,8 @@ paths:
   /api/control/v1/openapi:
     get:
       operationId: getControlOpenApi
-      description: Requires toolgate-admin or toolgate-reader and valid tenant identity claims. Returns
-        this API with all schemas embedded.
+      description: Requires toolgate-admin or toolgate-reader and valid tenant identity
+        claims. Returns this API with all schemas embedded.
       responses:
         '200':
           description: Self-contained OpenAPI 3.1 document
@@ -785,8 +794,8 @@ paths:
               schema:
                 $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
         '413': &id007
-          description: Transport request size limit; may be rejected before the API error envelope is
-            available
+          description: Transport request size limit; may be rejected before the API
+            error envelope is available
         '415': &id008
           description: Unsupported media type
           content:
@@ -851,8 +860,8 @@ paths:
         name: Idempotency-Key
         in: header
         required: true
-        description: Opaque request identity, scoped to verified tenant and actor, retained for seven
-          days. Reuse with a different request fails.
+        description: Opaque request identity, scoped to verified tenant and actor,
+          retained for seven days. Reuse with a different request fails.
         schema:
           type: string
           pattern: ^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$
@@ -931,7 +940,8 @@ paths:
         name: If-Match
         in: header
         required: true
-        description: Quoted current record revision, or tenant export revision for import.
+        description: Quoted current record revision, or tenant export revision for
+          import.
         schema:
           type: string
           pattern: ^"(0|[1-9][0-9]*)"$
@@ -2220,14 +2230,373 @@ paths:
           application/json:
             schema:
               $ref: ../schemas/v1/fleet.schema.json#/$defs/FleetSignedDocument
+  /api/control/v1/builder/drafts:
+    get:
+      operationId: listBuilderDrafts
+      summary: listBuilderDrafts
+      security:
+      - adminAccessToken: []
+      responses:
+        '200':
+          description: Authoritative bounded authoring result
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/builder.schema.json#/$defs/BuilderDraftPage
+        '400':
+          description: Invalid schema, source, secret or unsupported capability
+        '401':
+          description: Verified direct TLS identity required
+        '403':
+          description: Wrong role, tenant, client or lease
+        '404':
+          description: Draft unavailable
+        '409':
+          description: Revision, immutable version, test or replay conflict
+        '503':
+          description: Dependency unavailable
+      parameters:
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 128
+    post:
+      operationId: saveBuilderDraft
+      summary: saveBuilderDraft
+      security:
+      - adminAccessToken: []
+      responses:
+        '200':
+          description: Authoritative bounded authoring result
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/builder.schema.json#/$defs/BuilderDraft
+        '400':
+          description: Invalid schema, source, secret or unsupported capability
+        '401':
+          description: Verified direct TLS identity required
+        '403':
+          description: Wrong role, tenant, client or lease
+        '404':
+          description: Draft unavailable
+        '409':
+          description: Revision, immutable version, test or replay conflict
+        '503':
+          description: Dependency unavailable
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/builder.schema.json#/$defs/BuilderDraftRequest
+  /api/control/v1/builder/tests:
+    get:
+      operationId: listBuilderTests
+      summary: listBuilderTests
+      security:
+      - adminAccessToken: []
+      responses:
+        '200':
+          description: Authoritative bounded authoring result
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/builder.schema.json#/$defs/BuilderTestPage
+        '400':
+          description: Invalid schema, source, secret or unsupported capability
+        '401':
+          description: Verified direct TLS identity required
+        '403':
+          description: Wrong role, tenant, client or lease
+        '404':
+          description: Draft unavailable
+        '409':
+          description: Revision, immutable version, test or replay conflict
+        '503':
+          description: Dependency unavailable
+      parameters:
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 128
+    post:
+      operationId: createBuilderTest
+      summary: createBuilderTest
+      security:
+      - adminAccessToken: []
+      responses:
+        '200':
+          description: Authoritative bounded authoring result
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/builder.schema.json#/$defs/BuilderTestRecord
+        '400':
+          description: Invalid schema, source, secret or unsupported capability
+        '401':
+          description: Verified direct TLS identity required
+        '403':
+          description: Wrong role, tenant, client or lease
+        '404':
+          description: Draft unavailable
+        '409':
+          description: Revision, immutable version, test or replay conflict
+        '503':
+          description: Dependency unavailable
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/builder.schema.json#/$defs/BuilderTestRequest
+  /api/control/v1/builder/tests/poll:
+    get:
+      operationId: pollBuilderTest
+      summary: pollBuilderTest
+      security:
+      - deviceCertificate: []
+      responses:
+        '200':
+          description: Authoritative bounded authoring result
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/builder.schema.json#/$defs/BuilderTestPoll
+        '400':
+          description: Invalid schema, source, secret or unsupported capability
+        '401':
+          description: Verified direct TLS identity required
+        '403':
+          description: Wrong role, tenant, client or lease
+        '404':
+          description: Draft unavailable
+        '409':
+          description: Revision, immutable version, test or replay conflict
+        '503':
+          description: Dependency unavailable
+  /api/control/v1/builder/tests/results:
+    post:
+      operationId: completeBuilderTest
+      summary: completeBuilderTest
+      security:
+      - deviceCertificate: []
+      responses:
+        '200':
+          description: Authoritative bounded authoring result
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/builder.schema.json#/$defs/BuilderTestRecord
+        '400':
+          description: Invalid schema, source, secret or unsupported capability
+        '401':
+          description: Verified direct TLS identity required
+        '403':
+          description: Wrong role, tenant, client or lease
+        '404':
+          description: Draft unavailable
+        '409':
+          description: Revision, immutable version, test or replay conflict
+        '503':
+          description: Dependency unavailable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/builder.schema.json#/$defs/BuilderTestResult
+  /api/control/v1/builder/drafts/{id}/seal:
+    post:
+      operationId: sealBuilderDraft
+      summary: sealBuilderDraft
+      security:
+      - adminAccessToken: []
+      responses:
+        '200':
+          description: Authoritative bounded authoring result
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/builder.schema.json#/$defs/BuilderDraft
+        '400':
+          description: Invalid schema, source, secret or unsupported capability
+        '401':
+          description: Verified direct TLS identity required
+        '403':
+          description: Wrong role, tenant, client or lease
+        '404':
+          description: Draft unavailable
+        '409':
+          description: Revision, immutable version, test or replay conflict
+        '503':
+          description: Dependency unavailable
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/builder.schema.json#/$defs/BuilderRevisionRequest
+  /api/control/v1/builder/drafts/{id}/publication:
+    post:
+      operationId: prepareBuilderPublication
+      summary: prepareBuilderPublication
+      security:
+      - adminAccessToken: []
+      responses:
+        '200':
+          description: Authoritative bounded authoring result
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/builder.schema.json#/$defs/BuilderDefinition
+        '400':
+          description: Invalid schema, source, secret or unsupported capability
+        '401':
+          description: Verified direct TLS identity required
+        '403':
+          description: Wrong role, tenant, client or lease
+        '404':
+          description: Draft unavailable
+        '409':
+          description: Revision, immutable version, test or replay conflict
+        '503':
+          description: Dependency unavailable
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+  /api/control/v1/builder/drafts/{id}/release:
+    post:
+      operationId: publishBuilderRelease
+      summary: publishBuilderRelease
+      security:
+      - adminAccessToken: []
+      responses:
+        '200':
+          description: Authoritative bounded authoring result
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/fleet.schema.json#/$defs/FleetPackageRelease
+        '400':
+          description: Invalid schema, source, secret or unsupported capability
+        '401':
+          description: Verified direct TLS identity required
+        '403':
+          description: Wrong role, tenant, client or lease
+        '404':
+          description: Draft unavailable
+        '409':
+          description: Revision, immutable version, test or replay conflict
+        '503':
+          description: Dependency unavailable
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/fleet.schema.json#/$defs/FleetPackageRelease
+  /api/control/v1/builder/drafts/{id}/deploy:
+    post:
+      operationId: deployBuilderDraft
+      summary: deployBuilderDraft
+      security:
+      - adminAccessToken: []
+      responses:
+        '200':
+          description: Authoritative bounded authoring result
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/fleet.schema.json#/$defs/FleetRolloutRecord
+        '400':
+          description: Invalid schema, source, secret or unsupported capability
+        '401':
+          description: Verified direct TLS identity required
+        '403':
+          description: Wrong role, tenant, client or lease
+        '404':
+          description: Draft unavailable
+        '409':
+          description: Revision, immutable version, test or replay conflict
+        '503':
+          description: Dependency unavailable
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/fleet.schema.json#/$defs/FleetRolloutRequest
 components:
   securitySchemes:
     adminAccessToken:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: RS256 token with verified issuer/audience/expiry and signed tenant_id/groups. Not a
-        Gateway runtime credential.
+      description: RS256 token with verified issuer/audience/expiry and signed tenant_id/groups.
+        Not a Gateway runtime credential.
     deviceCertificate:
       type: mutualTLS
-      description: Direct verified device TLS identity; forwarded identity headers never authenticate.
+      description: Direct verified device TLS identity; forwarded identity headers
+        never authenticate.

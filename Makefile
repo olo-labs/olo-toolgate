@@ -3,7 +3,7 @@
 SHELL := /bin/sh
 PYTHON ?= python3
 
-.PHONY: help java-check java-projects publish-contracts-local dev stop check test integration e2e policy-e2e approval-e2e security benchmark containers client docs contracts contracts-check contracts-release-dry-run clean tree
+.PHONY: help java-check java-projects publish-contracts-local dev stop check test integration e2e policy-e2e approval-e2e builder-e2e security benchmark containers client docs contracts contracts-check contracts-release-dry-run clean tree
 
 help:
 	@printf '%s\n' \
@@ -93,3 +93,6 @@ java-check:
 
 publish-contracts-local:
 	@./gradlew :contracts-java:publishToMavenLocal
+
+builder-e2e:
+	@$(PYTHON) tools/deployment/check.py --builder --control-image olo-toolgate-control:module10

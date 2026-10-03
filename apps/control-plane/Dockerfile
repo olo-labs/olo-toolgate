@@ -6,6 +6,7 @@ COPY package.json package-lock.json VERSION LICENSE ./
 COPY packages/contracts/typescript/ packages/contracts/typescript/
 COPY packages/contracts/VERSION packages/contracts/VERSION
 COPY apps/admin-ui/ apps/admin-ui/
+COPY tests/fixtures/contracts/v1/valid.json tests/fixtures/contracts/v1/valid.json
 COPY tools/ui/build.mjs tools/ui/build.mjs
 RUN npm ci --ignore-scripts && npm run ui:build && node tools/ui/build.mjs --metadata-only
 

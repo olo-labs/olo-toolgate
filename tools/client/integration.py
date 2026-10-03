@@ -43,7 +43,7 @@ def certificate(work,name,ca=False):
     return cert
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--control-image',default='olo-toolgate-control:module07');parser.add_argument('--gateway-image',default='olo-toolgate-gateway:module07');parser.add_argument('--binary',type=Path,default=ROOT/'target/client-release/x86_64-unknown-linux-gnu/release/olo-toolgate-client');parser.add_argument('--fleet',action='store_true');parser.add_argument('--runtime-image');parser.add_argument('--runtime-version');parser.add_argument('--docker-cli',type=Path);args=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--control-image',default='olo-toolgate-control:module07');parser.add_argument('--gateway-image',default='olo-toolgate-gateway:module07');parser.add_argument('--binary',type=Path,default=ROOT/'target/client-release/x86_64-unknown-linux-gnu/release/olo-toolgate-client');parser.add_argument('--fleet',action='store_true');parser.add_argument('--builder',action='store_true');parser.add_argument('--runtime-image');parser.add_argument('--runtime-version');parser.add_argument('--docker-cli',type=Path);args=parser.parse_args();args.fleet=args.fleet or args.builder
     with database() as db,tempfile.TemporaryDirectory(prefix='client-tools-e2e-',dir=ROOT/'.dev') as temp:
         work=Path(temp);identity,public=keypair(work);certificate(work,'device-ca',True);certificate(work,'server');certificate(work,'gateway-tls')
         password=secrets.token_hex(16)
@@ -140,6 +140,10 @@ def main():
             if args.runtime_image:
                 gateway['extractors'].append({'toolId':'local.echo','action':'execute','pointer':'/path','kind':'CUSTOM'})
                 gateway['policy']['rules'].append({'tenantId':'http-tenant','userId':'alice','agentId':'agent-demo','deviceId':device,'toolId':'local.echo','action':'execute','resource':{'kind':'CUSTOM','locator':'runtime/local.echo'},'effect':'ALLOW'})
+            if args.builder:
+                for tool_id in ['custom.echo','custom.ui']:
+                    gateway['extractors'].append({'toolId':tool_id,'action':'execute','pointer':'/path','kind':'CUSTOM'})
+                    gateway['policy']['rules'].append({'tenantId':'http-tenant','userId':'alice','agentId':'agent-demo','deviceId':device,'toolId':tool_id,'action':'execute','resource':{'kind':'CUSTOM','locator':'runtime/'+tool_id},'effect':'ALLOW'})
             (work/'gateway.json').write_text(json.dumps(gateway))
             nginx='events {} http { access_log off; error_log /dev/stderr warn; server { listen 8443 ssl; ssl_certificate /config/gateway-tls.crt; ssl_certificate_key /config/gateway-tls.pem; location / { proxy_pass http://127.0.0.1:8081; proxy_set_header X-Forwarded-Proto https; proxy_set_header X-Request-ID $http_x_request_id; } } }'
             (work/'nginx.conf').write_text(nginx)
@@ -210,24 +214,35 @@ def main():
                 until(lambda:reported('1.0.0','READY'),True,'browser-created assignment reconciled',timeout=90)
 
 
+            builder_invoke=None
+            if args.builder:
+                from builder.integration import check as builder_check
+                # Real test issuer refresh: the expanded flow can exceed the original five-minute JWT.
+                admin=token(identity);enroller=token(identity,user_id='alice',groups=['toolgate-enroller'])
+                builder_invoke=builder_check(ROOT,work,request,execute,client,admin,enroller,device,package_runtime,release_key,until,api)
             if args.fleet:
                 run(['docker','pause',control],capture_output=True)
                 try:
                     until(lambda:execute(client,['/client','check-in'],check=False).returncode,1,'Control unavailable',timeout=35);managed(False)
+                    if builder_invoke:builder_invoke(False)
                 finally:run(['docker','unpause',control],capture_output=True)
                 until(lambda:healthy(client),True,'offline heartbeat recovery',timeout=45);managed()
+                if builder_invoke:builder_invoke(True)
             run(['docker','pause',gw],capture_output=True)
             try:
                 tool('hotfolder.write_text',{'path':'a.txt','text':'must not write'},False)
                 if args.runtime_image: managed(False)
+                if builder_invoke:builder_invoke(False)
             finally:run(['docker','unpause',gw],capture_output=True)
             assert tool('hotfolder.read_text',{'path':'a.txt'})['output']['text']=='logged-out service'
-            record=request('/endpoint/devices/'+device,admin)[1]
+            admin=token(identity)
+            status,record=request('/endpoint/devices/'+device,admin);assert status==200,record
             revoked=request('/endpoint/devices/'+device+'/revoke',admin,{'expectedRevision':record['revision']},'POST','revoke-device')
             assert revoked[0]==200,revoked
             until(lambda:execute(client,['/client','check-in'],check=False).returncode,1,'revoked device check-in',timeout=25)
             tool('system.info',{},False)
             if args.runtime_image: managed(False)
+            if builder_invoke:builder_invoke(False)
             info=json.loads(run(['docker','inspect',client],capture_output=True,text=True).stdout)[0]
             assert not info['Config']['Tty'] and not info['Config']['OpenStdin']
             threads=int(re.search(r'Threads:\s+(\d+)',execute(client,['cat','/proc/1/status']).stdout).group(1))

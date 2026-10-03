@@ -77,3 +77,15 @@ Earlier clients retain their existing tools and cannot consume fleet assignments
 Module 09 uses immutable signed descriptors and monotonic device generations.
 See the [fleet usage, upgrade and debug guide](../client/package-deployment.md) for external trust/store
 configuration, health-gated activation, rollback/uninstall and client compatibility.
+
+## Module 10 custom tool authoring
+
+Product/contracts/chart advance to 0.10.0-dev and Control requires Flyway V7.
+Fourteen builder/source models are additive. Optional signed tool source is
+consumed only by 0.10 clients; authored packages set minimumClientVersion 0.10.0-dev.
+Older package fixtures omit source and remain compatible. Organization-signed test
+leases use a distinct JWS type and direct mTLS identity; release signing remains
+independent. Sealed versions survive upgrades/restores and cannot be edited.
+Python/Node/PowerShell/Shell source is confined; Native/Java/.NET use reviewed
+image artifacts. No new Helm configuration or Gateway wire version is introduced.
+See [production/debug authoring](../client/tool-builder.md) and its native limits.
