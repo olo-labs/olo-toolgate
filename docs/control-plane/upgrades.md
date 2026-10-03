@@ -78,3 +78,7 @@ Module 05 adds Flyway V4 approval, lease and persistent clock tables. Preserve
 unexpired tombstones and spent-jti evidence across upgrade, rollback and restore.
 Upgrade all Gateways to format-2 readers before publishing ASK. See
 [approval migration and compatibility](approvals.md).
+
+Module 09 uses immutable signed descriptors and monotonic device generations.
+See the [fleet usage, upgrade and debug guide](../client/package-deployment.md) for external trust/store
+configuration, health-gated activation, rollback/uninstall and client compatibility.

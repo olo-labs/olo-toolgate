@@ -65,6 +65,7 @@ impl ControlPort for Offline {
 }
 fn config(directory: &Directory) -> Config {
     Config {
+        deployment: None,
         execution: None,
         tools: None,
         server_url: "https://control.example.test".into(),

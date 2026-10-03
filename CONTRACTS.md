@@ -190,3 +190,5 @@ Existing generated Decision already includes ASK; the administrative ControlPoli
 ASK; format 1 remains supported. Runtime `/v2/authorize` returns the shared
 `AuthorizationOutcome`; dedicated RS256 permit claims and atomic consume bind exact
 input, policy and jti. See [approval protocol](docs/control-plane/approvals.md).
+
+Module 09 adds `fleet.schema.json`: signed immutable package descriptors, device-bound desired generations, short artifact grants and rollout/status models. Frozen foundation models remain unchanged. See [fleet protocol](docs/client/package-deployment.md).

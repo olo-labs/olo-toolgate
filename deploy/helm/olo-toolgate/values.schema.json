@@ -974,7 +974,8 @@
         "database",
         "limits",
         "tracing",
-        "bundle"
+        "bundle",
+        "fleet"
       ],
       "properties": {
         "enabled": {
@@ -1227,7 +1228,8 @@
             "managementFrom",
             "databaseTo",
             "dnsTo",
-            "collectorTo"
+            "collectorTo",
+            "artifactTo"
           ],
           "properties": {
             "enabled": {
@@ -1262,6 +1264,13 @@
               }
             },
             "collectorTo": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "object"
+              }
+            },
+            "artifactTo": {
               "type": "array",
               "maxItems": 128,
               "items": {
@@ -1569,8 +1578,14 @@
         "clientDownloads": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["enabled"],
-          "properties": {"enabled": {"type": "boolean"}}
+          "required": [
+            "enabled"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            }
+          }
         },
         "endpoint": {
           "type": "object",
@@ -1657,6 +1672,77 @@
                   },
                   "gatewayUrl": {
                     "pattern": "^https://[^/@?#]+/?$"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "fleet": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "keyId",
+            "signingSecret",
+            "trustSecret",
+            "artifactOrigin",
+            "artifactSecret",
+            "artifactPort"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "keyId": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "signingSecret": {
+              "type": "string",
+              "maxLength": 253
+            },
+            "trustSecret": {
+              "type": "string",
+              "maxLength": 253
+            },
+            "artifactOrigin": {
+              "type": "string",
+              "maxLength": 1024
+            },
+            "artifactSecret": {
+              "type": "string",
+              "maxLength": 253
+            },
+            "artifactPort": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "keyId": {
+                    "minLength": 1
+                  },
+                  "signingSecret": {
+                    "minLength": 1
+                  },
+                  "trustSecret": {
+                    "minLength": 1
+                  },
+                  "artifactOrigin": {
+                    "minLength": 1,
+                    "pattern": "^https://[^/?#@]+/?$"
                   }
                 }
               }
@@ -1765,6 +1851,40 @@
                 "properties": {
                   "enabled": {
                     "const": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "fleet": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "enabled"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "endpoint": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                }
+              },
+              "networkPolicy": {
+                "properties": {
+                  "artifactTo": {
+                    "minItems": 1
                   }
                 }
               }

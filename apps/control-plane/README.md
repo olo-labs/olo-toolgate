@@ -43,3 +43,7 @@ for production-image integration and read
 Module 05 adds dedicated approver/Gateway approval APIs, PostgreSQL-backed lifecycle
 and consumption, and Flyway V4. ASK policies publish signed format 2. No new queue
 or cache is required. [Approval configuration and runbook](../../docs/control-plane/approvals.md).
+
+Module 09 uses immutable signed descriptors and monotonic device generations.
+See the [fleet usage, upgrade and debug guide](../../docs/client/package-deployment.md) for external trust/store
+configuration, health-gated activation, rollback/uninstall and client compatibility.

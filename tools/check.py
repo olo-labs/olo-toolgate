@@ -94,6 +94,8 @@ def helm_checks():
     approval_helm_checks()
     from client.helm import checks as endpoint_helm_checks
     endpoint_helm_checks()
+    from deployment.helm import checks as fleet_helm_checks
+    fleet_helm_checks()
 
 
 def scans():

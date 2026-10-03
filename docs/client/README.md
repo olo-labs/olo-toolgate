@@ -17,3 +17,5 @@ The Endpoint Client is a native managed service for Windows, Linux and macOS.
 ## Trust Rule
 
 A community Marketplace signature alone is never enough to install. The client also requires an organization deployment assignment/signature.
+
+Module 09 signed fleet lifecycle: [production usage, configuration and debugging](package-deployment.md).

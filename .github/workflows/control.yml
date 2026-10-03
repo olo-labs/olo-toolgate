@@ -83,6 +83,7 @@ jobs:
           python tools/client/extract.py --target x86_64-unknown-linux-gnu --output build/client/native/olo-toolgate-client
           docker build -f apps/gateway/Dockerfile --build-arg VERSION="$(cat VERSION)" --build-arg REVISION="$(git rev-parse HEAD)" -t olo-toolgate-gateway:module07 .
           python tools/client/integration.py --control-image olo-toolgate-control:module05 --binary build/client/native/olo-toolgate-client
+          python tools/deployment/check.py --control-image olo-toolgate-control:module05 --binary build/client/native/olo-toolgate-client
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.61.1 image --no-progress --exit-code 1 --severity HIGH,CRITICAL olo-toolgate-control:module05
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/build/control:/evidence" aquasec/trivy:0.61.1 image --no-progress --format cyclonedx --output /evidence/control-sbom.cdx.json olo-toolgate-control:module05
           python tools/ui/merge_sbom.py

@@ -26,7 +26,7 @@ pub struct Settings {
 impl Settings {
     /// Configuration is local administrator deployment trust, never an IPC upload.
     pub fn validate(&self) -> Result<()> {
-        if self.runtimes.is_empty()
+        if (self.runtimes.is_empty() && !self.tools.is_empty())
             || self.runtimes.len() > 16
             || self.tools.len() > 32
             || !self.state_directory.is_absolute()
@@ -254,6 +254,55 @@ impl Manager {
             },
         );
         tracing::warn!(event="runtime_prepare",runtime_id=%id,result="rejected",error=?failure);
+    }
+    /// Only the signed deployment reconciler calls this confined probe; no IPC endpoint bypasses authorization.
+    pub(crate) async fn probe(&mut self, test: &FleetSelfTest) -> Result<()> {
+        let tool = self
+            .settings
+            .tools
+            .iter()
+            .find(|t| t.tool_id == test.tool_id)
+            .cloned()
+            .ok_or(Failure::Validation)?;
+        let runtime = self
+            .settings
+            .runtimes
+            .iter()
+            .find(|r| r.id == tool.runtime_id)
+            .cloned()
+            .ok_or(Failure::Validation)?;
+        self.prepare_runtime(&runtime.id).await?;
+        let invocation = LocalToolInput {
+            protocol_version: 1,
+            request_id: crate::identity::nonce()?,
+            tool_id: test.tool_id.clone(),
+            arguments: test.arguments.clone(),
+        };
+        let mut input = self.contracts.encode("LocalToolInput", &invocation)?;
+        if input.len() as u64 > tool.limits.max_input_bytes
+            || !closed_schema(&tool.input_schema)?
+                .is_valid(&serde_json::to_value(&test.arguments).map_err(|_| Failure::Validation)?)
+        {
+            return Err(Failure::Validation);
+        }
+        input.push(b'\n');
+        let command = adapters::invocation_arguments(&runtime.kind, &tool)?;
+        let output = self
+            .engine
+            .run(&runtime.image, &command, &input, &tool.limits)
+            .await?;
+        if !output.stderr.is_empty() {
+            return Err(Failure::Validation);
+        }
+        let output: LocalToolOutput = self.contracts.decode("LocalToolOutput", &output.stdout)?;
+        if output.request_id != invocation.request_id
+            || output.output != test.expected_output
+            || !closed_schema(&tool.output_schema)?
+                .is_valid(&serde_json::to_value(&output.output).map_err(|_| Failure::Validation)?)
+        {
+            return Err(Failure::Validation);
+        }
+        Ok(())
     }
     /// Preparation precedes authorization. Neither a ready image nor registration
     /// grants execution: the online port validates/consumes this exact operation.

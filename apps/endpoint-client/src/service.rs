@@ -27,6 +27,7 @@ struct Journal {
 }
 /// One instance per machine, protected by OS lease and serialized command handling.
 pub struct ClientService {
+    deployment: crate::deployment::State,
     execution: Option<crate::execution::Manager>,
     tools: Option<crate::builtins::Executor>,
     store: ProtectedStore,
@@ -105,7 +106,13 @@ impl ClientService {
         } else {
             None
         };
+        let deployment = if let Some(settings) = &config.deployment {
+            crate::deployment::State::open(&store, settings)?
+        } else {
+            crate::deployment::State::default()
+        };
         Ok(Self {
+            deployment,
             execution,
             tools,
             store,
@@ -230,11 +237,147 @@ impl ClientService {
                 .unwrap_or(0)
                 .saturating_add(120000),
         );
+        let valid_until = if self.config.deployment.is_some()
+            && self
+                .config
+                .execution
+                .as_ref()
+                .is_none_or(|s| !s.tools.iter().any(|t| t.tool_id == input.tool_id))
+        {
+            valid_until.min(self.deployment.deadline()?)
+        } else {
+            valid_until
+        };
         self.execution
             .as_mut()
             .ok_or(Failure::Unsupported)?
             .invoke(input, valid_until)
             .await
+    }
+    pub fn fleet_status(&self) -> FleetClientStatus {
+        self.deployment.status.clone()
+    }
+    async fn reconcile(&mut self, identity: &DeviceIdentity) -> Result<()> {
+        let Some(settings) = self.config.deployment.clone() else {
+            return Ok(());
+        };
+        let signed = self.control.desired(identity.clone()).await?;
+        let now = self.clock()?;
+        settings.separate_device_ca(&identity.issuer_certificate_pem)?;
+        let server = self
+            .journal
+            .manifest
+            .as_ref()
+            .ok_or(Failure::Unauthorized)?
+            .server_id
+            .clone();
+        let changed =
+            self.deployment
+                .accept(&self.store, &settings, &signed, identity, &server, now)?;
+        if !changed {
+            return Ok(());
+        }
+        let base = self.config.execution.clone().ok_or(Failure::Unsupported)?;
+        let gateway_settings = self.config.tools.as_ref().ok_or(Failure::Unsupported)?;
+        let authorization = Arc::new(crate::tool_gateway::HttpsGateway::new(
+            gateway_settings,
+            Arc::new(crate::contracts::Contracts::new()?),
+        )?);
+        // Fence old assigned tools immediately, preserving only administrator-local registrations.
+        if let Some(old) = self.execution.take() {
+            old.shutdown().await?;
+        }
+        self.execution = Some(crate::execution::Manager::new(
+            base.clone(),
+            authorization.clone(),
+        )?);
+        let result: Result<crate::execution::Manager> = async {
+            let (candidate, documents) = self.deployment.candidate(&settings, &base)?;
+            let desired = self
+                .deployment
+                .desired
+                .as_ref()
+                .ok_or(Failure::Unavailable)?
+                .clone();
+            for assignment in &desired.assignments {
+                if assignment.desired_presence {
+                    let grant = self
+                        .control
+                        .artifact_grant(
+                            identity.clone(),
+                            FleetArtifactGrantRequest {
+                                generation: desired.generation,
+                                manifest_digest: assignment.release.manifest_digest.clone(),
+                            },
+                        )
+                        .await?;
+                    let (claims, _): (FleetArtifactGrantClaims, _) = settings.verify(
+                        &grant,
+                        "toolgate-fleet-artifact+jws",
+                        "FleetArtifactGrantClaims",
+                    )?;
+                    let now = self.clock()?;
+                    if claims.device_id != identity.device_id
+                        || claims.tenant_id != identity.tenant_id
+                        || claims.server_id != server
+                        || claims.generation != desired.generation
+                        || claims.manifest_digest != assignment.release.manifest_digest
+                        || claims.size_bytes != assignment.release.size_bytes
+                        || claims.issued_at_unix_ms > now
+                        || claims.expires_at_unix_ms <= now
+                        || claims
+                            .expires_at_unix_ms
+                            .saturating_sub(claims.issued_at_unix_ms)
+                            > 60000
+                    {
+                        return Err(Failure::Unauthorized);
+                    }
+                    let bytes = self.control.artifact(identity.clone(), grant).await?;
+                    if bytes.len() as u64 != assignment.release.size_bytes
+                        || crate::digest(&bytes) != assignment.release.manifest_digest
+                    {
+                        return Err(Failure::Unauthorized);
+                    }
+                    let (_, signed_bytes): (FleetPackageDocument, _) = settings.verify(
+                        &assignment.release.release,
+                        "toolgate-package-release+jws",
+                        "FleetPackageDocument",
+                    )?;
+                    if bytes != signed_bytes {
+                        return Err(Failure::Unauthorized);
+                    }
+                }
+            }
+            let mut candidate = crate::execution::Manager::new(candidate, authorization)?;
+            if !documents.is_empty() && !candidate.prepare().await?.ready {
+                return Err(Failure::Unavailable);
+            }
+            for document in documents {
+                for test in document.self_tests {
+                    candidate.probe(&test).await?;
+                }
+            }
+            self.clock()?;
+            self.deployment.activate(&self.store)?;
+            Ok(candidate)
+        }
+        .await;
+        match result {
+            Ok(candidate) => {
+                self.execution = Some(candidate);
+                tracing::info!(
+                    event = "fleet_reconcile",
+                    generation = self.deployment.status.generation,
+                    result = "ready"
+                );
+                Ok(())
+            }
+            Err(failure) => {
+                self.deployment.failed(failure);
+                tracing::warn!(event="fleet_reconcile",generation=self.deployment.status.generation,result="failed",error=?failure);
+                Err(failure)
+            }
+        }
     }
     fn device(&self) -> String {
         format!("device-{}", &self.key.fingerprint()[..32])
@@ -405,6 +548,19 @@ impl ClientService {
             return Ok(());
         }
         if self.journal.pending_report.is_none() {
+            if let Err(failure) = self.reconcile(&identity).await {
+                if self
+                    .deployment
+                    .desired
+                    .as_ref()
+                    .is_some_and(|d| d.expires_at_unix_ms <= crate::now())
+                {
+                    self.deployment.failed(Failure::Expired);
+                }
+                if failure == Failure::Revoked {
+                    return Err(failure);
+                }
+            }
             let request = EndpointCheckIn {
                 sequence: self
                     .journal
@@ -414,8 +570,8 @@ impl ClientService {
                 report: ClientReport {
                     device_id: self.device(),
                     client_version: env!("CARGO_PKG_VERSION").into(),
-                    applied_revision: 0,
-                    packages: vec![],
+                    applied_revision: self.deployment.status.generation,
+                    packages: self.deployment.status.packages.clone(),
                 },
             };
             self.journal.pending_report = Some(request);

@@ -67,3 +67,13 @@ revision 3 are additive; frozen identity/built-in protocols remain unchanged.
 No database or REST route is added. Explicit local registration and Linux OCI
 engine are opt-in. Batch/CMD and WASM are unsupported. Existing HotFolder stays
 available without an engine. Read docs/client/local-runtimes.md for migration.
+
+## Module 09 managed package deployment
+
+Product/contracts/chart advance to 0.9.0-dev; Control requires Flyway V6.
+Fleet is opt-in and requires enrolled 0.9 clients, independent release/organization
+keys, direct device mTLS and an external immutable HTTPS descriptor mirror.
+Earlier clients retain their existing tools and cannot consume fleet assignments.
+Module 09 uses immutable signed descriptors and monotonic device generations.
+See the [fleet usage, upgrade and debug guide](../client/package-deployment.md) for external trust/store
+configuration, health-gated activation, rollback/uninstall and client compatibility.

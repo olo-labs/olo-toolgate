@@ -856,6 +856,193 @@ pub struct ExecutionPermitUseRequest {
     pub permit: SignedExecutionPermit,
     pub request: AuthorizationRequest,
 }
+/// Canonical FleetArchitecture wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum FleetArchitecture {
+    #[serde(rename = "x86_64")]
+    X8664,
+    #[serde(rename = "aarch64")]
+    Aarch64,
+}
+/// Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FleetArtifactGrantClaims {
+    pub tenant_id: String,
+    pub server_id: String,
+    pub device_id: String,
+    pub generation: u64,
+    pub manifest_digest: String,
+    pub size_bytes: u64,
+    pub grant_id: String,
+    pub issued_at_unix_ms: u64,
+    pub expires_at_unix_ms: u64,
+}
+/// Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FleetArtifactGrantRequest {
+    pub generation: u64,
+    pub manifest_digest: String,
+}
+/// Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FleetAssignment {
+    pub release: FleetPackageRelease,
+    pub desired_presence: bool,
+}
+/// Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FleetClientStatus {
+    pub generation: u64,
+    pub ready: bool,
+    pub packages: Vec<ReportedPackage>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<ErrorCode>,
+}
+/// Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FleetDesiredDocument {
+    pub format_version: u64,
+    pub tenant_id: String,
+    pub server_id: String,
+    pub device_id: String,
+    pub generation: u64,
+    pub issued_at_unix_ms: u64,
+    pub expires_at_unix_ms: u64,
+    pub assignments: Vec<FleetAssignment>,
+}
+/// Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FleetDesiredSnapshot {
+    pub device_id: String,
+    pub generation: u64,
+    pub assignments: Vec<FleetAssignment>,
+}
+/// Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FleetPackageDocument {
+    pub format_version: u64,
+    pub package_id: String,
+    pub version: String,
+    pub platforms: Vec<ClientPlatform>,
+    pub architectures: Vec<FleetArchitecture>,
+    pub minimum_client_version: String,
+    pub runtimes: Vec<ManagedRuntime>,
+    pub tools: Vec<LocalToolRegistration>,
+    pub self_tests: Vec<FleetSelfTest>,
+}
+/// Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FleetPackageRelease {
+    pub package_id: String,
+    pub version: String,
+    pub manifest_digest: String,
+    pub size_bytes: u64,
+    pub release: FleetSignedDocument,
+}
+/// Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FleetReleasePage {
+    pub items: Vec<FleetPackageRelease>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
+/// Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FleetRolloutAdvance {
+    pub expected_revision: u64,
+    pub percentage: u64,
+}
+/// Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FleetRolloutMember {
+    pub device_id: String,
+    pub generation: u64,
+}
+/// Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FleetRolloutPage {
+    pub items: Vec<FleetRolloutStatus>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
+/// Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FleetRolloutRecord {
+    pub id: String,
+    pub package_id: String,
+    pub version: String,
+    pub desired_presence: bool,
+    pub percentage: u64,
+    pub revision: u64,
+    pub created_at_unix_ms: u64,
+    pub members: Vec<FleetRolloutMember>,
+}
+/// Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FleetRolloutRequest {
+    pub id: String,
+    pub package_id: String,
+    pub version: String,
+    pub device_ids: Vec<String>,
+    pub desired_presence: bool,
+    pub percentage: u64,
+}
+/// Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FleetRolloutStatus {
+    pub rollout: FleetRolloutRecord,
+    pub ready: u64,
+    pub failed: u64,
+    pub offline: u64,
+    pub waiting: u64,
+    pub pending: u64,
+    pub superseded: u64,
+}
+/// Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FleetSelfTest {
+    pub tool_id: String,
+    pub arguments: std::collections::BTreeMap<String, serde_json::Value>,
+    pub expected_output: std::collections::BTreeMap<String, serde_json::Value>,
+}
+/// Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FleetSignatureHeader {
+    pub alg: String,
+    pub typ: String,
+    pub kid: String,
+}
+/// Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FleetSignedDocument {
+    pub jws: String,
+}
+/// Explicit RSA public trust key; no private material or implicit domain sharing.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FleetTrustKey {
+    pub kid: String,
+    pub n: String,
+    pub e: String,
+}
 /// Bounded per-service execution counters and sandbox state.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -1144,7 +1331,7 @@ impl ContractSet {
     pub fn current() -> Self {
         Self {
             name: "olo-toolgate-contracts".into(),
-            version: "0.8.0-dev".into(),
+            version: "0.9.0-dev".into(),
         }
     }
 }
@@ -1189,6 +1376,10 @@ pub const CANONICAL_SCHEMAS: &[(&str, &str)] = &[
     (
         "https://schemas.ololabs.io/toolgate/v1/execution.schema.json",
         include_str!("../schemas/v1/execution.schema.json"),
+    ),
+    (
+        "https://schemas.ololabs.io/toolgate/v1/fleet.schema.json",
+        include_str!("../schemas/v1/fleet.schema.json"),
     ),
     (
         "https://schemas.ololabs.io/toolgate/v1/identifiers.schema.json",

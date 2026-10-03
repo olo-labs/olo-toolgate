@@ -130,11 +130,11 @@ public final class EndpointService {
     public Store.Reply checkIn(java.security.cert.X509Certificate peer,String body,String requestId) {
         available();
         var check=codec.model(body,EndpointCheckIn.class);Ids.valid(requestId);var fingerprint=issuer.peerFingerprint(peer,clock.millis());
-        if(!check.report().packages().isEmpty() || check.report().appliedRevision()!=0)throw new Failure(ErrorCode.UNSUPPORTED,400,"Package reporting requires deployment capability");
         var digest=DirectoryService.digest(codec.json(check));
         return transaction((tx,now)->{var row=tx.endpointKey(fingerprint);if(row==null)throw forbidden();
             var device=codec.model(row.document(),EndpointDeviceRecord.class);active(tx,device);
             if(!device.deviceId().equals(check.report().deviceId()))throw forbidden();
+            if(check.report().appliedRevision()!=0||!check.report().packages().isEmpty())FleetService.validateReport(tx,codec,check.report());
             if(check.sequence().equals(device.reportSequence())){if(!digest.equals(row.reportDigest()))throw Failure.conflict();return new Store.Reply(200,row.acknowledgment(),device.revision());}
             if(check.sequence()!=device.reportSequence()+1)throw Failure.conflict();
             if(device.reportSequence()>0 && now-device.lastSeenUnixMs()<10000)throw Failure.conflict();
@@ -145,7 +145,11 @@ public final class EndpointService {
             tx.audit(fingerprint,renewed==null?"DEVICE_CHECK_IN":"DEVICE_RENEW","endpoint:"+row.id(),updated.revision(),requestId,digest);return response;
         });
     }
-    private void active(Store.Session tx,EndpointDeviceRecord device){
+    public EndpointDeviceRecord authenticate(Store.Session tx,java.security.cert.X509Certificate peer,long now){
+        available();var fingerprint=issuer.peerFingerprint(peer,now);var row=tx.endpointKey(fingerprint);
+        if(row==null)throw forbidden();var device=codec.model(row.document(),EndpointDeviceRecord.class);active(tx,device);return device;
+    }
+    public void active(Store.Session tx,EndpointDeviceRecord device){
         if(device.state()!=EndpointState.ACTIVE)throw forbidden();enabledUser(tx,device.userId());
         var entry=tx.load().entries().get(Ids.Kind.DEVICE.id(device.deviceId()));
         if(entry==null||!entry.enabled()||!device.userId().equals(codec.model(entry.document(),ControlDevice.class).ownerUserId()))throw forbidden();

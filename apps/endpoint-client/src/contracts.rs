@@ -19,6 +19,7 @@ impl Contracts {
                 "/client.schema.json",
                 "/builtins.schema.json",
                 "/execution.schema.json",
+                "/fleet.schema.json",
                 "/runtime.schema.json",
                 "/policy.schema.json",
                 "/approval.schema.json",

@@ -1,6 +1,6 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
-import type { ApprovalDecisionRequest, ApprovalPage, ApprovalRecord, ControlUser, ErrorEnvelope, EndpointEnrollmentReview, EndpointEnrollmentDecision } from '@olo-labs/toolgate-contracts';
+import type { FleetReleasePage, FleetRolloutPage, FleetRolloutRequest, FleetRolloutRecord, FleetPackageRelease, ApprovalDecisionRequest, ApprovalPage, ApprovalRecord, ControlUser, ErrorEnvelope, EndpointEnrollmentReview, EndpointEnrollmentDecision } from '@olo-labs/toolgate-contracts';
 import { listOperations, operations, type DirectoryKind, type DirectoryPages } from './operations.generated';
 
 /** Human-safe messages never render server text, exception bodies or credentials. */
@@ -84,6 +84,11 @@ export class ControlClient {
     }
   }
 
+  fleetReleases(cursor?:string,signal?:AbortSignal):Promise<FleetReleasePage>{const query=new URLSearchParams();if(cursor)query.set('cursor',cursor);return this.send(operations.listFleetReleases,{query,signal});}
+  fleetRollouts(cursor?:string,signal?:AbortSignal):Promise<FleetRolloutPage>{const query=new URLSearchParams();if(cursor)query.set('cursor',cursor);return this.send(operations.listFleetRollouts,{query,signal});}
+  publishRelease(release:FleetPackageRelease,key:string):Promise<FleetPackageRelease>{return this.send(operations.publishFleetRelease,{body:release,key});}
+  assignPackage(request:FleetRolloutRequest,key:string):Promise<FleetRolloutRecord>{return this.send(operations.createFleetRollout,{body:request,key});}
+  advanceRollout(id:string,expectedRevision:number,percentage:number,key:string):Promise<FleetRolloutRecord>{return this.send(operations.advanceFleetRollout,{id,key,body:{expectedRevision,percentage}});}
   list<K extends DirectoryKind>(kind: K, cursor?: string, signal?: AbortSignal): Promise<DirectoryPages[K]> {
     const query = new URLSearchParams({ limit: '50' }); if (cursor) query.set('cursor', cursor);
     return this.send(listOperations[kind], { query, signal });

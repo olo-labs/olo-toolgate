@@ -1,6 +1,5 @@
 # Copyright 2026 OLO Labs
 # SPDX-License-Identifier: Apache-2.0
-# Services are opt-in; production PostgreSQL and credentials remain external.
 global:
   imageRegistry: ghcr.io/olo-labs
   imagePullSecrets: []
@@ -179,6 +178,7 @@ control:
     databaseTo: []
     dnsTo: []
     collectorTo: []
+    artifactTo: []
   ingress:
     enabled: false
     className: ''
@@ -223,3 +223,11 @@ control:
   limits:
     maxRecords: 512
     maxConfigBytes: 1048576
+  fleet:
+    enabled: false
+    keyId: ''
+    signingSecret: ''
+    trustSecret: ''
+    artifactOrigin: ''
+    artifactSecret: ''
+    artifactPort: 443

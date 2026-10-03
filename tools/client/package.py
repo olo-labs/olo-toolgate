@@ -57,12 +57,17 @@ def package(binary, target, output):
     files = {executable:binary.read_bytes(), 'LICENSE':(ROOT/'LICENSE').read_bytes(),
              'README.md':(ROOT/'apps/endpoint-client/README.md').read_text().replace('../../docs/','docs/').encode(),
              'sbom.cdx.json':(json.dumps(sbom,sort_keys=True,indent=2)+'\n').encode()}
-    for document in ['client/hotfolder.md','client/local-runtimes.md','client/runtime-support.md','client/runtime-isolation.md',
+    for document in ['client/package-deployment.md','adr/010-signed-fleet-reconciliation.md','client/hotfolder.md','client/local-runtimes.md','client/runtime-support.md','client/runtime-isolation.md',
                      'adr/009-managed-local-runtime-sandbox.md','adr/007-endpoint-enrollment.md','adr/008-hotfolder-builtins.md',
                      'operations/execution-guide.md','operations/debugging.md','codex/08-DEFINITION-OF-DONE.md',
-                     'codex/modules/07-completion.md','codex/modules/07-coverage.md','codex/modules/08-completion.md','codex/modules/08-coverage.md']:
+                     'codex/modules/07-completion.md','codex/modules/07-coverage.md','codex/modules/08-completion.md','codex/modules/08-coverage.md',
+                     'codex/modules/09-completion.md','codex/modules/09-coverage.md']:
         files['docs/'+document]=(ROOT/'docs'/document).read_bytes()
     files['packaging/runtime-seccomp.json']=(ROOT/'apps/endpoint-client/packaging/runtime-seccomp.json').read_bytes()
+    for schema in sorted((ROOT/'packages/contracts/schemas/v1').glob('*.json')):
+        files['packages/contracts/schemas/v1/'+schema.name]=schema.read_bytes()
+    files['packages/contracts/openapi/control-v1.yaml']=(ROOT/'packages/contracts/openapi/control-v1.yaml').read_bytes()
+    files['packages/contracts/VERSION']=(ROOT/'packages/contracts/VERSION').read_bytes()
     for example in (ROOT/'examples/local-runtime-python').iterdir():
         if example.is_file(): files['examples/local-runtime-python/'+example.name]=example.read_bytes()
     signature=binary.with_name(binary.name+'.sig')

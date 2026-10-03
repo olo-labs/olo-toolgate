@@ -25,3 +25,5 @@ The Control Plane is the organization administration service and serves the Admi
 ## Important
 
 It must **not execute arbitrary custom tool code inside the Java process**. Testing runs on a designated enrolled test client or isolated sandbox.
+
+Module 09 signed fleet lifecycle: [production usage, configuration and debugging](../client/package-deployment.md).

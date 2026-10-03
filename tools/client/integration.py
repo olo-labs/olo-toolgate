@@ -23,7 +23,8 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+import base64
 from cryptography.x509.oid import NameOID
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from control.check import ROOT, database, environment, keypair, ready, run, token
@@ -42,7 +43,7 @@ def certificate(work,name,ca=False):
     return cert
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--control-image',default='olo-toolgate-control:module07');parser.add_argument('--gateway-image',default='olo-toolgate-gateway:module07');parser.add_argument('--binary',type=Path,default=ROOT/'target/client-release/x86_64-unknown-linux-gnu/release/olo-toolgate-client');parser.add_argument('--runtime-image');parser.add_argument('--runtime-version');parser.add_argument('--docker-cli',type=Path);args=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--control-image',default='olo-toolgate-control:module07');parser.add_argument('--gateway-image',default='olo-toolgate-gateway:module07');parser.add_argument('--binary',type=Path,default=ROOT/'target/client-release/x86_64-unknown-linux-gnu/release/olo-toolgate-client');parser.add_argument('--fleet',action='store_true');parser.add_argument('--runtime-image');parser.add_argument('--runtime-version');parser.add_argument('--docker-cli',type=Path);args=parser.parse_args()
     with database() as db,tempfile.TemporaryDirectory(prefix='client-tools-e2e-',dir=ROOT/'.dev') as temp:
         work=Path(temp);identity,public=keypair(work);certificate(work,'device-ca',True);certificate(work,'server');certificate(work,'gateway-tls')
         password=secrets.token_hex(16)
@@ -62,6 +63,20 @@ def main():
             QUARKUS_HTTP_SSL_CERTIFICATE_FILES='/config/server.crt',QUARKUS_HTTP_SSL_CERTIFICATE_KEY_FILES='/config/server.pem',QUARKUS_HTTP_SSL_CERTIFICATE_TRUST_STORE_FILE='/config/trust.p12',QUARKUS_HTTP_SSL_CERTIFICATE_TRUST_STORE_PASSWORD=password,
             TOOLGATE_CONTROL_ENDPOINT_ENABLED='true',TOOLGATE_CONTROL_ENDPOINT_TENANT_ID='http-tenant',TOOLGATE_CONTROL_ENDPOINT_SERVER_ID='control-e2e',TOOLGATE_CONTROL_ENDPOINT_ORGANIZATION='Service smoke',
             TOOLGATE_CONTROL_ENDPOINT_CONTROL_URL='https://127.0.0.1:8082',TOOLGATE_CONTROL_ENDPOINT_GATEWAY_URL='https://127.0.0.1:8443',TOOLGATE_CONTROL_ENDPOINT_PRIVATE_KEY_PATH='/config/device-ca.pem',TOOLGATE_CONTROL_ENDPOINT_CA_CERTIFICATE_PATH='/config/device-ca.crt')
+        if args.fleet:
+            if not args.runtime_image: raise ValueError('Fleet requires a real reviewed runtime image')
+            def b64(data): return base64.urlsafe_b64encode(data).rstrip(b'=').decode()
+            release_key=rsa.generate_private_key(public_exponent=65537,key_size=2048)
+            organization_key=rsa.generate_private_key(public_exponent=65537,key_size=2048)
+            def jwk(key,kid):
+                n=key.public_key().public_numbers().n
+                return {'kid':kid,'n':b64(n.to_bytes((n.bit_length()+7)//8,'big')),'e':'AQAB'}
+            fleet_settings={'releaseKeys':[jwk(release_key,'release')],'organizationKeys':[jwk(organization_key,'organization')]}
+            (work/'fleet.pem').write_bytes(organization_key.private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.PKCS8,serialization.NoEncryption()))
+            (work/'release.json').write_text(json.dumps(fleet_settings['releaseKeys']))
+            (work/'organization.json').write_text(json.dumps(fleet_settings['organizationKeys']))
+            (work/'artifact-token').write_text('isolated-test-only')
+            env.update(TOOLGATE_CONTROL_FLEET_ENABLED='true',TOOLGATE_CONTROL_FLEET_KEY_ID='organization',TOOLGATE_CONTROL_FLEET_PRIVATE_KEY_PATH='/config/fleet.pem',TOOLGATE_CONTROL_FLEET_RELEASE_KEYS_PATH='/config/release.json',TOOLGATE_CONTROL_FLEET_ORGANIZATION_KEYS_PATH='/config/organization.json',TOOLGATE_CONTROL_FLEET_ARTIFACT_ORIGIN='https://127.0.0.1:8444',TOOLGATE_CONTROL_FLEET_ARTIFACT_CA_PATH='/config/server.crt')
         (work/'control.env').write_text('\n'.join(k+'='+v for k,v in env.items() if k.startswith(('QUARKUS_','MP_JWT_','TOOLGATE_CONTROL_')))+'\n')
         for path in work.iterdir():path.chmod(0o444)
         containers=[];volume=None
@@ -93,6 +108,9 @@ def main():
                         'inputSchema':{'type':'object','additionalProperties':False,'properties':{'text':{'type':'string','maxLength':256},'mode':{'type':'string'}},'required':['text','mode']},
                         'outputSchema':{'type':'object','additionalProperties':False,'properties':{'text':{'type':'string'}},'required':['text']},
                         'limits':{'timeoutMs':3000,'memoryMiB':128,'maxInputBytes':4096,'maxOutputBytes':4096}}]}
+            if args.fleet:
+                package_runtime=config['execution']['runtimes'][0];package_tool=config['execution']['tools'][0]
+                config['execution']['runtimes']=[];config['execution']['tools']=[];config['deployment']=fleet_settings
             (work/'client.json').write_text(json.dumps(config))
             volume=run(['docker','volume','create','toolgate-client-e2e-'+secrets.token_hex(8)],capture_output=True,text=True).stdout.strip()
             boot='mkdir -p /run/olo-toolgate; if [ ! -f /state/client.json ]; then cp /input/client.json /input/server.crt /input/gateway-tls.crt /input/gateway-token /state/; chmod 600 /state/*; fi; if [ -f /docker-cli ]; then cp /docker-cli /state/docker-cli; chmod 555 /state/docker-cli; fi; exec /client service --config /state/client.json'
@@ -129,6 +147,29 @@ def main():
             gw=start(['docker','run','-d','--read-only','--cap-drop=ALL','--security-opt=no-new-privileges','--network','container:'+db['container'],'-v',f'{work.as_posix()}:/config:ro','-e','TOOLGATE_GATEWAY_CONFIG=/config/gateway.json','-e','TOOLGATE_GATEWAY_CREDENTIALS=/config/credentials.json',args.gateway_image])
             until(lambda:urllib.request.urlopen('http://127.0.0.1:'+db['gatewayManagementPort']+'/v1/health/ready',timeout=2).status,200,'static Gateway')
             start(['docker','run','-d','--read-only','--network','container:'+db['container'],'--tmpfs','/var/cache/nginx:rw,size=8m','--tmpfs','/var/run:rw,size=1m','-v',f'{work.as_posix()}:/config:ro','nginx:1.28-alpine','nginx','-c','/config/nginx.conf','-g','daemon off;'])
+            if args.fleet:
+                (work/'artifacts').mkdir()
+                artifact_nginx='events {} http { access_log off; error_log /dev/stderr warn; default_type application/json; server { listen 8444 ssl; ssl_certificate /config/server.crt; ssl_certificate_key /config/server.pem; root /config/artifacts; location / { try_files $uri =404; } } }'
+                (work/'artifact-nginx.conf').write_text(artifact_nginx)
+                start(['docker','run','-d','--read-only','--network','container:'+db['container'],'--tmpfs','/var/cache/nginx:rw,size=8m','--tmpfs','/var/run:rw,size=1m','-v',f'{work.as_posix()}:/config:ro','nginx:1.28-alpine','nginx','-c','/config/artifact-nginx.conf','-g','daemon off;'])
+                def publish_package(version,mode='echo',corrupt=False,platform='LINUX',architecture='x86_64',runtime_version=None):
+                    runtime=dict(package_runtime);runtime['version']=runtime_version or runtime['version']
+                    doc={'formatVersion':1,'packageId':'fleet-echo','version':version,'platforms':[platform],'architectures':[architecture],'minimumClientVersion':'0.8.0','runtimes':[runtime],'tools':[package_tool],'selfTests':[{'toolId':'local.echo','arguments':{'text':'health','mode':mode},'expectedOutput':{'text':'health'}}]}
+                    raw=json.dumps(doc,separators=(',',':')).encode();digest=hashlib.sha256(raw).hexdigest()
+                    header=b64(json.dumps({'alg':'RS256','typ':'toolgate-package-release+jws','kid':'release'},separators=(',',':')).encode());message=header+'.'+b64(raw)
+                    signed={'jws':message+'.'+b64(release_key.sign(message.encode(),padding.PKCS1v15(),hashes.SHA256()))}
+                    release={'packageId':'fleet-echo','version':version,'manifestDigest':digest,'sizeBytes':len(raw),'release':signed}
+                    (work/'artifacts'/(digest+'.json')).write_bytes(b'corrupted' if corrupt else raw)
+                    response=request('/fleet/releases',admin,release,'POST','publish-'+version);assert response[0]==200,response
+                    return release
+                def assign_package(version,present=True):
+                    response=request('/fleet/rollouts',admin,{'id':'rollout-'+secrets.token_hex(8),'packageId':'fleet-echo','version':version,'deviceIds':[device],'desiredPresence':present,'percentage':100},'POST','assign-'+secrets.token_hex(8));assert response[0]==200,response
+                def reported(version,state):
+                    execute(client,['/client','check-in'],check=False)
+                    record=request('/endpoint/devices/'+device,admin)[1];report=record.get('report') or {}
+                    return any(p['version']==version and p['state']==state for p in report.get('packages',[]))
+                publish_package('1.0.0');assign_package('1.0.0')
+                until(lambda:reported('1.0.0','READY'),True,'signed package atomic activation',timeout=90)
             def tool(name,arguments,success=True):
                 result=execute(client,['/client','tools',name,json.dumps(arguments)],check=False);body=json.loads(result.stdout)
                 assert (result.returncode==0)==success,(name,result.returncode,body);return body
@@ -145,6 +186,36 @@ def main():
                 if success: assert json.loads(result.stdout)['result']['output']['text']=='safe; $(touch /escape)'
             if args.runtime_image:
                 managed();managed(False,'1000')
+            if args.fleet:
+                interrupted=publish_package('1.0.4');artifact_path=work/'artifacts'/(interrupted['manifestDigest']+'.json')
+                artifact_bytes=artifact_path.read_bytes();artifact_path.unlink();assign_package('1.0.4')
+                until(lambda:reported('1.0.4','FAILED'),True,'interrupted/unavailable descriptor transfer',timeout=90);managed(False)
+                active=execute(client,['cat','/state/private/fleet-active.json']).stdout;assert '1.0.0' in active and '1.0.4' not in active
+                run(['docker','restart',client],capture_output=True);artifact_path.write_bytes(artifact_bytes)
+                until(lambda:reported('1.0.4','READY'),True,'durable retry after interrupted transfer/service restart',timeout=90);managed()
+                publish_package('1.0.1',corrupt=True);assign_package('1.0.1')
+                until(lambda:reported('1.0.1','FAILED'),True,'hash mismatch blocks update',timeout=90);managed(False)
+                assign_package('1.0.0');until(lambda:reported('1.0.0','READY'),True,'higher-generation rollback',timeout=90);managed()
+                assign_package('1.0.0',False);until(lambda:reported('1.0.0','ABSENT'),True,'uninstall',timeout=90);managed(False)
+                publish_package('1.0.2',platform='MACOS');assign_package('1.0.2');until(lambda:reported('1.0.2','FAILED'),True,'incompatible platform',timeout=90);managed(False)
+                publish_package('1.0.5',architecture='aarch64');assign_package('1.0.5');until(lambda:reported('1.0.5','FAILED'),True,'incompatible architecture',timeout=90);managed(False)
+                publish_package('1.0.6',runtime_version='0.0.1');assign_package('1.0.6');until(lambda:reported('1.0.6','FAILED'),True,'incompatible runtime version',timeout=90);managed(False)
+                publish_package('1.0.3',mode='timeout');assign_package('1.0.3');until(lambda:reported('1.0.3','FAILED'),True,'health probe timeout blocks activation',timeout=90);managed(False)
+                assign_package('1.0.0');until(lambda:reported('1.0.0','READY'),True,'recovery after failed staging',timeout=90);managed()
+                run(['docker','restart',client],capture_output=True);until(lambda:healthy(client),True,'signed intent recovery after service restart',timeout=90);managed()
+                status=request('/fleet/rollouts',admin)[1];assert any(s['ready']==1 for s in status['items']);assert all(sum(s[k] for k in ['ready','failed','offline','waiting','pending','superseded'])==1 for s in status['items'])
+                credentials=work/'fleet-browser-credentials.json';credentials.write_text(json.dumps({'admin':admin}));credentials.chmod(0o600)
+                browser_env=dict(os.environ,UI_TEST_ORIGIN=api.removesuffix('/api/control/v1'),UI_TEST_CREDENTIALS=str(credentials.resolve()),UI_TEST_FLEET='1',UI_TEST_FLEET_DEVICE=device)
+                subprocess.run(['npx.cmd' if os.name=='nt' else 'npx','--no-install','playwright','test','tests/e2e/fleet.spec.ts'],cwd=ROOT/'apps/admin-ui',env=browser_env,check=True)
+                until(lambda:reported('1.0.0','READY'),True,'browser-created assignment reconciled',timeout=90)
+
+
+            if args.fleet:
+                run(['docker','pause',control],capture_output=True)
+                try:
+                    until(lambda:execute(client,['/client','check-in'],check=False).returncode,1,'Control unavailable',timeout=35);managed(False)
+                finally:run(['docker','unpause',control],capture_output=True)
+                until(lambda:healthy(client),True,'offline heartbeat recovery',timeout=45);managed()
             run(['docker','pause',gw],capture_output=True)
             try:
                 tool('hotfolder.write_text',{'path':'a.txt','text':'must not write'},False)
@@ -165,6 +236,8 @@ def main():
             (output/'module07-integration.json').write_text(json.dumps({'realControlTls':True,'realDeviceEnrollmentMtls':True,'persistentRestart':True,'realGatewayHttps':True,'freshAuthorization':True,'sourceDestinationBinding':True,'unauthorizedOsPeerRejected':True,'gatewayOutageBlocked':True,'revokedDeviceBlocked':True,'noInteractiveSession':True},indent=2)+'\n')
             if args.runtime_image:
                 (output/'module08-integration.json').write_text(json.dumps({'realControlEnrollmentMtls':True,'realGatewayHttps':True,'managedJsonInvocation':True,'osPeerDenied':True,'gatewayOutageBlocked':True,'revokedDeviceBlocked':True,'noInteractiveSession':True},indent=2)+'\n')
+            if args.fleet:
+                (output/'module09-integration.json').write_text(json.dumps({'realSignedReleaseAndDesired':True,'realMtlsArtifactGrant':True,'interruptedTransferAndServiceRecovery':True,'hashMismatchBlocked':True,'atomicActivation':True,'rollbackNewGeneration':True,'uninstall':True,'incompatiblePlatformBlocked':True,'incompatibleArchitectureBlocked':True,'incompatibleRuntimeBlocked':True,'controlOutageAndRecovery':True,'healthTimeoutBlocked':True,'restartRecovery':True,'rolloutAggregation':True,'realBrowserStatusAndAssignment':True,'gatewayOutageBlocked':True,'revocationBlocked':True},indent=2)+'\n')
             print('Real TLS enrollment, mTLS check-in, protected service IPC, HTTPS Gateway tools, outage and revocation passed')
         finally:
             for container in reversed(containers):

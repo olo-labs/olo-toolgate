@@ -6,6 +6,23 @@ use olo_toolgate_contracts::*;
 use std::{future::Future, pin::Pin, sync::Arc, time::Duration};
 pub type Call<'a, T> = Pin<Box<dyn Future<Output = Result<T>> + Send + 'a>>;
 pub trait ControlPort: Send + Sync {
+    fn desired(&self, _identity: DeviceIdentity) -> Call<'_, FleetSignedDocument> {
+        Box::pin(async { Err(Failure::Unsupported) })
+    }
+    fn artifact_grant(
+        &self,
+        _identity: DeviceIdentity,
+        _request: FleetArtifactGrantRequest,
+    ) -> Call<'_, FleetSignedDocument> {
+        Box::pin(async { Err(Failure::Unsupported) })
+    }
+    fn artifact(
+        &self,
+        _identity: DeviceIdentity,
+        _grant: FleetSignedDocument,
+    ) -> Call<'_, Vec<u8>> {
+        Box::pin(async { Err(Failure::Unsupported) })
+    }
     fn discovery(&self) -> Call<'_, SignedClientDiscovery>;
     fn start(&self, request: EndpointEnrollmentStart) -> Call<'_, EndpointEnrollmentChallenge>;
     fn poll(&self, request: EndpointEnrollmentPoll) -> Call<'_, EndpointEnrollmentResult>;
@@ -109,6 +126,86 @@ impl HttpsControl {
     }
 }
 impl ControlPort for HttpsControl {
+    fn desired(&self, identity: DeviceIdentity) -> Call<'_, FleetSignedDocument> {
+        Box::pin(async move {
+            let client = Self::builder(&self.config)?
+                .identity(self.key.tls_identity(&identity)?)
+                .build()
+                .map_err(|_| Failure::Unavailable)?;
+            self.request(
+                &client,
+                "/api/control/v1/fleet/desired",
+                None,
+                "FleetSignedDocument",
+            )
+            .await
+        })
+    }
+    fn artifact_grant(
+        &self,
+        identity: DeviceIdentity,
+        request: FleetArtifactGrantRequest,
+    ) -> Call<'_, FleetSignedDocument> {
+        Box::pin(async move {
+            let client = Self::builder(&self.config)?
+                .identity(self.key.tls_identity(&identity)?)
+                .build()
+                .map_err(|_| Failure::Unavailable)?;
+            self.request(
+                &client,
+                "/api/control/v1/fleet/artifact-grants",
+                Some(
+                    self.contracts
+                        .encode("FleetArtifactGrantRequest", &request)?,
+                ),
+                "FleetSignedDocument",
+            )
+            .await
+        })
+    }
+    fn artifact(&self, identity: DeviceIdentity, grant: FleetSignedDocument) -> Call<'_, Vec<u8>> {
+        Box::pin(async move {
+            let client = Self::builder(&self.config)?
+                .identity(self.key.tls_identity(&identity)?)
+                .build()
+                .map_err(|_| Failure::Unavailable)?;
+            let mut response = client
+                .post(format!(
+                    "{}/api/control/v1/fleet/artifacts/download",
+                    self.origin
+                ))
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json")
+                .header("X-Request-ID", crate::identity::nonce()?)
+                .body(self.contracts.encode("FleetSignedDocument", &grant)?)
+                .send()
+                .await
+                .map_err(|_| Failure::Unavailable)?;
+            match response.status().as_u16() {
+                200 => {}
+                401 | 403 => return Err(Failure::Revoked),
+                409 => return Err(Failure::Conflict),
+                _ => return Err(Failure::Unavailable),
+            }
+            if response.content_length().is_some_and(|n| n > 32768)
+                || response
+                    .headers()
+                    .get("content-type")
+                    .and_then(|h| h.to_str().ok())
+                    .is_none_or(|v| v.split(';').next() != Some("application/json"))
+            {
+                return Err(Failure::Validation);
+            }
+            let mut bytes = Vec::new();
+            while let Some(chunk) = response.chunk().await.map_err(|_| Failure::Unavailable)? {
+                if bytes.len() + chunk.len() > 32768 {
+                    return Err(Failure::Validation);
+                }
+                bytes.extend_from_slice(&chunk);
+            }
+            Ok(bytes)
+        })
+    }
     fn discovery(&self) -> Call<'_, SignedClientDiscovery> {
         Box::pin(self.request(
             &self.client,

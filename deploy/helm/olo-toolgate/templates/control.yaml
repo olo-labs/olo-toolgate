@@ -29,6 +29,18 @@ data:
   QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: {{ printf "https://%s:%v" $g.tracing.host $g.tracing.port | quote }}
   QUARKUS_OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: {{ $g.tracing.protocol | quote }}
   TOOLGATE_CONTROL_APPROVAL_ENABLED: {{ $g.approval.enabled | quote }}
+  TOOLGATE_CONTROL_FLEET_ENABLED: {{ $g.fleet.enabled | quote }}
+  {{- if $g.fleet.enabled }}
+  TOOLGATE_CONTROL_FLEET_KEY_ID: {{ required "control.fleet.keyId required" $g.fleet.keyId | quote }}
+  TOOLGATE_CONTROL_FLEET_PRIVATE_KEY_PATH: /etc/toolgate/fleet-signing/private.pem
+  TOOLGATE_CONTROL_FLEET_RELEASE_KEYS_PATH: /etc/toolgate/fleet-trust/release.json
+  TOOLGATE_CONTROL_FLEET_ORGANIZATION_KEYS_PATH: /etc/toolgate/fleet-trust/organization.json
+  TOOLGATE_CONTROL_FLEET_ARTIFACT_ORIGIN: {{ required "control.fleet.artifactOrigin required" $g.fleet.artifactOrigin | quote }}
+  {{- if $g.fleet.artifactSecret }}
+  TOOLGATE_CONTROL_FLEET_ARTIFACT_TOKEN_PATH: /etc/toolgate/artifact-store/token
+  TOOLGATE_CONTROL_FLEET_ARTIFACT_CA_PATH: /etc/toolgate/artifact-store/ca.pem
+  {{- end }}
+  {{- end }}
   TOOLGATE_CONTROL_ENDPOINT_ENABLED: {{ $g.endpoint.enabled | quote }}
   TOOLGATE_CLIENT_DOWNLOADS_DIRECTORY: {{ ternary "/opt/toolgate/client-downloads" "" $g.clientDownloads.enabled | quote }}
   {{- if $g.endpoint.enabled }}
@@ -157,6 +169,13 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 2
           volumeMounts:
+            {{- if $g.fleet.enabled }}
+            - {name: fleet-signing, mountPath: /etc/toolgate/fleet-signing, readOnly: true}
+            - {name: fleet-trust, mountPath: /etc/toolgate/fleet-trust, readOnly: true}
+            {{- if $g.fleet.artifactSecret }}
+            - {name: artifact-store, mountPath: /etc/toolgate/artifact-store, readOnly: true}
+            {{- end }}
+            {{- end }}
             - {name: identity, mountPath: /etc/toolgate/identity, readOnly: true}
             - {name: tmp, mountPath: /tmp}
             {{- if $g.endpoint.enabled }}
@@ -171,6 +190,25 @@ spec:
             - {name: database-ca, mountPath: /etc/toolgate/database, readOnly: true}
             {{- end }}
       volumes:
+        {{- if $g.fleet.enabled }}
+        - name: fleet-signing
+          secret:
+            secretName: {{ required "control.fleet.signingSecret required" $g.fleet.signingSecret | quote }}
+            defaultMode: 0440
+            items: [{key: private.pem, path: private.pem}]
+        - name: fleet-trust
+          secret:
+            secretName: {{ required "control.fleet.trustSecret required" $g.fleet.trustSecret | quote }}
+            defaultMode: 0440
+            items: [{key: release.json, path: release.json}, {key: organization.json, path: organization.json}]
+        {{- if $g.fleet.artifactSecret }}
+        - name: artifact-store
+          secret:
+            secretName: {{ $g.fleet.artifactSecret | quote }}
+            defaultMode: 0440
+            items: [{key: token, path: token}, {key: ca.pem, path: ca.pem}]
+        {{- end }}
+        {{- end }}
         {{- if $g.endpoint.enabled }}
         - name: device-ca
           secret:
@@ -247,8 +285,13 @@ spec:
     matchLabels:
       {{- include "olo-toolgate.controlSelector" . | nindent 6 }}
   policyTypes: [Ingress, Egress]
-  {{- if or $g.networkPolicy.databaseTo $g.networkPolicy.dnsTo (and $g.tracing.enabled $g.networkPolicy.collectorTo) }}
+  {{- if or $g.networkPolicy.databaseTo $g.networkPolicy.dnsTo (and $g.tracing.enabled $g.networkPolicy.collectorTo) (and $g.fleet.enabled $g.networkPolicy.artifactTo) }}
   egress:
+    {{- if and $g.fleet.enabled $g.networkPolicy.artifactTo }}
+    - ports: [{protocol: TCP, port: {{ $g.fleet.artifactPort }}}]
+      to:
+        {{- toYaml $g.networkPolicy.artifactTo | nindent 8 }}
+    {{- end }}
     {{- if $g.networkPolicy.databaseTo }}
     - ports: [{protocol: TCP, port: {{ $g.database.port }}}]
       to:

@@ -56,6 +56,14 @@ export const operations = {
   exportConfig: { method: 'GET', path: '/api/control/v1/config/export' },
   importConfig: { method: 'POST', path: '/api/control/v1/config/import' },
   listAudit: { method: 'GET', path: '/api/control/v1/audit' },
+  listFleetReleases: { method: 'GET', path: '/api/control/v1/fleet/releases' },
+  publishFleetRelease: { method: 'POST', path: '/api/control/v1/fleet/releases' },
+  listFleetRollouts: { method: 'GET', path: '/api/control/v1/fleet/rollouts' },
+  createFleetRollout: { method: 'POST', path: '/api/control/v1/fleet/rollouts' },
+  advanceFleetRollout: { method: 'POST', path: '/api/control/v1/fleet/rollouts/{id}/advance' },
+  getFleetDesired: { method: 'GET', path: '/api/control/v1/fleet/desired' },
+  createFleetArtifactGrant: { method: 'POST', path: '/api/control/v1/fleet/artifact-grants' },
+  downloadFleetArtifact: { method: 'POST', path: '/api/control/v1/fleet/artifacts/download' },
 } as const;
 export interface DirectoryRecords {
   agents: ControlAgent;

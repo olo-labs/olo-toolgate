@@ -9,6 +9,8 @@ use std::path::PathBuf;
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Config {
     #[serde(default)]
+    pub deployment: Option<crate::deployment::Settings>,
+    #[serde(default)]
     pub execution: Option<crate::execution::Settings>,
     #[serde(default)]
     pub tools: Option<crate::builtins::Settings>,
@@ -21,6 +23,12 @@ pub struct Config {
 }
 impl Config {
     pub fn validate(&self) -> Result<()> {
+        if let Some(deployment) = &self.deployment {
+            deployment.validate()?;
+            if self.execution.is_none() || self.tools.is_none() {
+                return Err(Failure::Validation);
+            }
+        }
         if let Some(execution) = &self.execution {
             execution.validate()?;
             if self.tools.is_none()

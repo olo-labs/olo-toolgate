@@ -112,7 +112,14 @@ impl ProtectedStore {
         Ok(Self { directory })
     }
     fn path(&self, name: &str) -> Result<PathBuf> {
-        if !matches!(name, "device-key" | "journal.json" | "service.lock") {
+        if !matches!(
+            name,
+            "device-key"
+                | "journal.json"
+                | "service.lock"
+                | "fleet-intent.json"
+                | "fleet-active.json"
+        ) {
             return Err(Failure::Validation);
         }
         Ok(self.directory.join(name))
@@ -130,8 +137,10 @@ impl ProtectedStore {
         }
         check_owned(&self.directory, true)?;
         let path = self.path(name)?;
-        if path.exists() {
-            check_owned(&path, true)?;
+        match fs::symlink_metadata(&path) {
+            Ok(_) => check_owned(&path, true)?,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(_) => return Err(Failure::Unavailable),
         }
         let temporary = self
             .directory

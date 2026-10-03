@@ -378,3 +378,5 @@ Module 05 adds [ASK approvals](docs/control-plane/approvals.md): a dedicated hum
 approval queue, one-time/temporary/deny decisions, durable expiry and race safety,
 Gateway-signed exact-operation permits and atomic single-use consumption. Control
 outages block ASK. Run `make approval-e2e`; no new mandatory infrastructure is added.
+
+Module 09 signed fleet lifecycle: [production usage, configuration and debugging](docs/client/package-deployment.md).

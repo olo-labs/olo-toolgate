@@ -98,3 +98,7 @@ packages and provenance; signing hooks require externally provisioned OS/KMS
 identities. Local development packages are unsigned and macOS notarization is
 not configured. Module 06's historical completion report remains unchanged;
 current verification and any open gates are recorded in the Module 07 report.
+
+Module 09 uses immutable signed descriptors and monotonic device generations.
+See the [fleet usage, upgrade and debug guide](../../docs/client/package-deployment.md) for external trust/store
+configuration, health-gated activation, rollback/uninstall and client compatibility.

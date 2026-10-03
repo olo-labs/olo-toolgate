@@ -6,12 +6,13 @@ import { ApiError, ControlClient } from './api';
 import type { DirectoryKind, DirectoryRecords, DirectoryPages } from './operations.generated';
 import { Failure } from './Failure';
 import { Approvals } from './Approvals';
+import { Fleet } from './Fleet';
 import { Enrollment } from './Enrollment';
 import { ClientDownloads } from './ClientDownloads';
 
 declare const __APP_VERSION__: string;
 const directorySections = [ ['users', 'Users'], ['teams', 'Teams'], ['tools', 'Tools'], ['policies', 'Policies'], ['devices', 'Clients'], ['agents', 'Agents'] ] as const;
-const sections = [ ['overview', 'Overview'], ...directorySections, ['approvals', 'Approvals'], ['enroll', 'Enroll device'] ] as const;
+const sections = [ ['overview', 'Overview'], ...directorySections, ['approvals', 'Approvals'], ['fleet', 'Packages'], ['enroll', 'Enroll device'] ] as const;
 type Route = typeof sections[number][0];
 type RecordValue = DirectoryRecords[DirectoryKind];
 const routeFromHash = (): Route => sections.find(([route]) => window.location.hash.split('?')[0] === `#${route}`)?.[0] ?? 'overview';
@@ -58,7 +59,7 @@ export function App() {
       <p className="sidebar-caption">Workspace</p><nav aria-label="Main navigation">{sections.map(([value,label]) => <a key={value} href={`#${value}`} aria-current={route === value ? 'page' : undefined}><span className="nav-dot" />{label}</a>)}</nav>
       <div className="sidebar-bottom"><span className="connection">Connected to Control</span><small>v{__APP_VERSION__}</small><button onClick={disconnect}>Disconnect</button></div></aside>
       <div className="workspace"><header className="topbar"><span>Administration</span><span className="tag">Organization workspace</span></header>
-        <main id="main" tabIndex={-1}>{route === 'overview' ? <Dashboard client={client} /> : route === 'approvals' ? <Approvals client={client} /> : route === 'enroll' ? <Enrollment client={client} /> : <Directory key={route} client={client} kind={route} />}</main>
+        <main id="main" tabIndex={-1}>{route === 'overview' ? <Dashboard client={client} /> : route === 'approvals' ? <Approvals client={client} /> : route === 'fleet' ? <Fleet client={client} /> : route === 'enroll' ? <Enrollment client={client} /> : <Directory key={route} client={client} kind={route} />}</main>
         <footer>Control verifies permissions. Gateway checks current policy for every runtime authorization.</footer></div></div>}
   </>;
 }

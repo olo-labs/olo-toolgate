@@ -151,6 +151,7 @@ pub fn install(server: &str) -> Result<()> {
         false,
     )?;
     let settings = Config {
+        deployment: None,
         execution: None,
         tools: None,
         server_url: origin,

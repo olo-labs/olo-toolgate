@@ -4,6 +4,16 @@ All notable project changes should be documented here.
 
 The project follows semantic versioning once stable versioning begins.
 
+## 0.9.0-dev
+
+- Add independent signed package releases, device-scoped desired generations and
+  mTLS artifact grants backed by immutable external HTTPS descriptors.
+- Add durable canary assignments, reported-state aggregation, update/rollback and
+  uninstall with atomic client activation after confined runtime health checks.
+- Add Packages console, external signing/store Helm references, production/debug
+  runbook and lifecycle/security gates. Native execution certification limits from
+  Module 08 remain explicit; no unsupported host runtime fallback is introduced.
+
 ## 0.8.0-dev
 
 - Add canonical JSON local invocation and IPC revision 3, managed image preparation,

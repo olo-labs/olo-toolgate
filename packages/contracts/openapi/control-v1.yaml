@@ -3,9 +3,9 @@
 openapi: 3.1.0
 info:
   title: OLO ToolGate Control Plane API
-  version: 0.8.0-dev
-  description: Tenant-scoped administration and explicit signed policy publication. Directory policies become runtime
-    configuration only after publication; bundle trust is separate from execution permits.
+  version: 0.9.0-dev
+  description: Tenant-scoped administration and explicit signed policy publication. Directory policies
+    become runtime configuration only after publication; bundle trust is separate from execution permits.
 security:
 - adminAccessToken: []
 paths:
@@ -49,8 +49,8 @@ paths:
   /.well-known/olo-toolgate-client:
     get:
       operationId: clientDiscovery
-      description: Direct HTTPS. Detached RS256 signature over domain-prefixed exact
-        payload bytes. TLS origin bootstraps dedicated device CA.
+      description: Direct HTTPS. Detached RS256 signature over domain-prefixed exact payload bytes. TLS
+        origin bootstraps dedicated device CA.
       responses:
         '200':
           description: Success; no-store
@@ -72,8 +72,8 @@ paths:
   /api/control/v1/endpoint/enrollments:
     post:
       operationId: startEndpointEnrollment
-      description: Anonymous direct HTTPS, verified P-256 CSR, bounded pending quota.
-        This challenge creation is not a grant and may be repeated after a lost response.
+      description: Anonymous direct HTTPS, verified P-256 CSR, bounded pending quota. This challenge creation
+        is not a grant and may be repeated after a lost response.
       responses:
         '200':
           description: Success; no-store
@@ -101,8 +101,8 @@ paths:
   /api/control/v1/endpoint/enrollments/poll:
     post:
       operationId: pollEndpointEnrollment
-      description: Device code proves possession; minimum five-second poll interval,
-        ten-minute expiry. Exact certificate response may be recovered until expiry.
+      description: Device code proves possession; minimum five-second poll interval, ten-minute expiry.
+        Exact certificate response may be recovered until expiry.
       responses:
         '200':
           description: Success; no-store
@@ -130,8 +130,8 @@ paths:
   /api/control/v1/endpoint/enrollments/review:
     get:
       operationId: reviewEndpointEnrollment
-      description: Dedicated toolgate-enroller and signed user_id mapping to enabled
-        same-tenant user. Compare code and key fingerprint on the device.
+      description: Dedicated toolgate-enroller and signed user_id mapping to enabled same-tenant user.
+        Compare code and key fingerprint on the device.
       responses:
         '200':
           description: Success; no-store
@@ -159,9 +159,8 @@ paths:
   /api/control/v1/endpoint/enrollments/decision:
     post:
       operationId: decideEndpointEnrollment
-      description: Dedicated toolgate-enroller confirms device for their signed enabled
-        user. Approval, identity registration, directory metadata, audit and idempotency
-        commit atomically.
+      description: Dedicated toolgate-enroller confirms device for their signed enabled user. Approval,
+        identity registration, directory metadata, audit and idempotency commit atomically.
       responses:
         '200':
           description: Success; no-store
@@ -196,9 +195,8 @@ paths:
   /api/control/v1/endpoint/check-in:
     post:
       operationId: endpointCheckIn
-      description: Actual verified TLS peer certificate plus active registry. No bearer/header
-        substitute. Sequence and exact report replay are transactional; certificates
-        renew before expiry.
+      description: Actual verified TLS peer certificate plus active registry. No bearer/header substitute.
+        Sequence and exact report replay are transactional; certificates renew before expiry.
       responses:
         '200':
           description: Success; no-store
@@ -226,8 +224,8 @@ paths:
   /api/control/v1/endpoint/devices/{id}:
     get:
       operationId: getEndpointDevice
-      description: Administrative enrolled identity view. Directory metadata alone never
-        authenticates a device.
+      description: Administrative enrolled identity view. Directory metadata alone never authenticates
+        a device.
       responses:
         '200':
           description: Success; no-store
@@ -246,7 +244,7 @@ paths:
         '503':
           description: Dependency unavailable
       parameters:
-      - &endpoint001
+      - &id001
         name: id
         in: path
         required: true
@@ -257,8 +255,8 @@ paths:
   /api/control/v1/endpoint/devices/{id}/revoke:
     post:
       operationId: revokeEndpointDevice
-      description: Administrator revocation; expected revision, durable idempotency
-        and audit. Next check-in rejects even before certificate expires.
+      description: Administrator revocation; expected revision, durable idempotency and audit. Next check-in
+        rejects even before certificate expires.
       responses:
         '200':
           description: Success; no-store
@@ -283,7 +281,7 @@ paths:
             schema:
               $ref: ../schemas/v1/endpoint.schema.json#/$defs/EndpointRevokeRequest
       parameters:
-      - *endpoint001
+      - *id001
       - name: Idempotency-Key
         in: header
         required: true
@@ -294,8 +292,8 @@ paths:
   /api/control/v1/approvals:
     get:
       operationId: listApprovals
-      description: Requires tenant-scoped toolgate-approver, signed user_id and enabled
-        directory user. Durable status; no raw arguments.
+      description: Requires tenant-scoped toolgate-approver, signed user_id and enabled directory user.
+        Durable status; no raw arguments.
       responses:
         '200':
           description: Success; no-store
@@ -363,9 +361,9 @@ paths:
   /api/control/v1/approvals/{id}/decision:
     post:
       operationId: decideApproval
-      description: Dedicated approver role; requester cannot self-approve. Expected
-        revision and durable idempotency. Duration required only for APPROVE_TEMPORARY,
-        capped at 30 minutes and fresh current policy. Deny does not authorize execution.
+      description: Dedicated approver role; requester cannot self-approve. Expected revision and durable
+        idempotency. Duration required only for APPROVE_TEMPORARY, capped at 30 minutes and fresh current
+        policy. Deny does not authorize execution.
       responses:
         '200':
           description: Success; no-store
@@ -407,9 +405,9 @@ paths:
   /api/control/v1/approvals/resolve:
     post:
       operationId: resolveApproval
-      description: Dedicated toolgate-approval-gateway role only. Resolves or creates
-        exact-bound current ASK. Once grant is spent atomically at lease issuance; no
-        ALLOW replay. Temporary grants still require online resolution each attempt.
+      description: Dedicated toolgate-approval-gateway role only. Resolves or creates exact-bound current
+        ASK. Once grant is spent atomically at lease issuance; no ALLOW replay. Temporary grants still
+        require online resolution each attempt.
       responses:
         '200':
           description: Success; no-store
@@ -440,8 +438,8 @@ paths:
   /api/control/v1/approvals/permits/consume:
     post:
       operationId: consumeApprovalPermit
-      description: Dedicated toolgate-approval-gateway role only. Atomically consumes
-        exact-bound unexpired jti once. Duplicate requests reject; no replayed success.
+      description: Dedicated toolgate-approval-gateway role only. Atomically consumes exact-bound unexpired
+        jti once. Duplicate requests reject; no replayed success.
       responses:
         '200':
           description: Success; no-store
@@ -472,12 +470,12 @@ paths:
   /api/control/v1/bundles/current:
     get:
       operationId: getCurrentPolicyBundle
-      description: Tenant-scoped immutable signed current bundle. Requires admin, reader or dedicated toolgate-bundle-reader.
-        No-store; ETag is sequence. Refresh authentication externally.
+      description: Tenant-scoped immutable signed current bundle. Requires admin, reader or dedicated
+        toolgate-bundle-reader. No-store; ETag is sequence. Refresh authentication externally.
       responses:
         '200':
-          description: Signed bundle; clients must verify signature, hash, tenant, trust claims and freshness before
-            adoption
+          description: Signed bundle; clients must verify signature, hash, tenant, trust claims and freshness
+            before adoption
           headers:
             ETag:
               schema:
@@ -518,7 +516,8 @@ paths:
   /api/control/v1/bundles/versions/{sequence}:
     get:
       operationId: getPolicyBundleVersion
-      description: Exact immutable historical bytes. Requires admin or reader. Historical expiry is not extended.
+      description: Exact immutable historical bytes. Requires admin or reader. Historical expiry is not
+        extended.
       parameters:
       - name: sequence
         in: path
@@ -529,8 +528,8 @@ paths:
           maximum: 9007199254740991
       responses:
         '200':
-          description: Signed bundle; clients must verify signature, hash, tenant, trust claims and freshness before
-            adoption
+          description: Signed bundle; clients must verify signature, hash, tenant, trust claims and freshness
+            before adoption
           headers:
             ETag:
               schema:
@@ -571,9 +570,10 @@ paths:
   /api/control/v1/bundles/publish:
     post:
       operationId: publishPolicyBundle
-      description: Admin only. Compile current directoryRevision and atomically publish expectedSequence+1 with audit
-        and durable replay. rollbackOf must be absent. Lifetime is 1 secondÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ24 hours; grace is 0ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ5 minutes. Publication
-        does not execute tools.
+      description: Admin only. Compile current directoryRevision and atomically publish expectedSequence+1
+        with audit and durable replay. rollbackOf must be absent. Lifetime is 1 secondÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ24
+        hours; grace is 0ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ5 minutes. Publication does not execute
+        tools.
       parameters:
       - name: Idempotency-Key
         in: header
@@ -588,8 +588,8 @@ paths:
               $ref: ../schemas/v1/bundle.schema.json#/$defs/BundlePublishRequest
       responses:
         '201':
-          description: Signed bundle; clients must verify signature, hash, tenant, trust claims and freshness before
-            adoption
+          description: Signed bundle; clients must verify signature, hash, tenant, trust claims and freshness
+            before adoption
           headers:
             ETag:
               schema:
@@ -642,9 +642,9 @@ paths:
   /api/control/v1/bundles/rollback:
     post:
       operationId: rollbackPolicyBundle
-      description: Admin only. rollbackOf is required and selects an existing tenant version. Copies its exact policy
-        bytes into expectedSequence+1 with fresh signed expiry, new signature, audit and replay. Does not rewind sequence
-        or mutate history.
+      description: Admin only. rollbackOf is required and selects an existing tenant version. Copies its
+        exact policy bytes into expectedSequence+1 with fresh signed expiry, new signature, audit and
+        replay. Does not rewind sequence or mutate history.
       parameters:
       - name: Idempotency-Key
         in: header
@@ -659,8 +659,8 @@ paths:
               $ref: ../schemas/v1/bundle.schema.json#/$defs/BundlePublishRequest
       responses:
         '201':
-          description: Signed bundle; clients must verify signature, hash, tenant, trust claims and freshness before
-            adoption
+          description: Signed bundle; clients must verify signature, hash, tenant, trust claims and freshness
+            before adoption
           headers:
             ETag:
               schema:
@@ -713,7 +713,8 @@ paths:
   /api/control/v1/openapi:
     get:
       operationId: getControlOpenApi
-      description: Requires toolgate-admin or toolgate-reader and valid tenant identity claims. Returns this API with all schemas embedded.
+      description: Requires toolgate-admin or toolgate-reader and valid tenant identity claims. Returns
+        this API with all schemas embedded.
       responses:
         '200':
           description: Self-contained OpenAPI 3.1 document
@@ -753,51 +754,52 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlUserPage
-        '400': &id001
+        '400': &id002
           description: Validation failed
           content:
             application/json:
               schema:
                 $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
-        '401': &id002
+        '401': &id003
           description: Verified access token required
           content:
             application/json:
               schema:
                 $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
-        '403': &id003
+        '403': &id004
           description: Role forbidden
           content:
             application/json:
               schema:
                 $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
-        '404': &id004
+        '404': &id005
           description: Not found
           content:
             application/json:
               schema:
                 $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
-        '409': &id005
+        '409': &id006
           description: Revision, reference, quota or idempotency conflict
           content:
             application/json:
               schema:
                 $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
-        '413': &id006
-          description: Transport request size limit; may be rejected before the API error envelope is available
-        '415': &id007
+        '413': &id007
+          description: Transport request size limit; may be rejected before the API error envelope is
+            available
+        '415': &id008
           description: Unsupported media type
           content:
             application/json:
               schema:
                 $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
-        '500': &id008
+        '500': &id009
           description: Internal failure
           content:
             application/json:
               schema:
                 $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
-        '503': &id009
+        '503': &id010
           description: Database unavailable
           content:
             application/json:
@@ -835,17 +837,17 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlUser
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
-      - &id010
+      - &id011
         name: Idempotency-Key
         in: header
         required: true
@@ -886,15 +888,15 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlUser
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
     put:
       operationId: updateControlUser
       description: Requires toolgate-admin.
@@ -914,18 +916,18 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlUser
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
-      - *id010
-      - &id011
+      - *id011
+      - &id012
         name: If-Match
         in: header
         required: true
@@ -954,18 +956,18 @@ paths:
               description: Server correlation ID
               schema:
                 type: string
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
-      - *id010
       - *id011
+      - *id012
   /api/control/v1/teams:
     get:
       operationId: listControlTeam
@@ -986,15 +988,15 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlTeamPage
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
       - name: cursor
         in: query
@@ -1027,17 +1029,17 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlTeam
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
-      - *id010
+      - *id011
       requestBody:
         required: true
         content:
@@ -1070,15 +1072,15 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlTeam
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
     put:
       operationId: updateControlTeam
       description: Requires toolgate-admin.
@@ -1098,18 +1100,18 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlTeam
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
-      - *id010
       - *id011
+      - *id012
       requestBody:
         required: true
         content:
@@ -1131,18 +1133,18 @@ paths:
               description: Server correlation ID
               schema:
                 type: string
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
-      - *id010
       - *id011
+      - *id012
   /api/control/v1/agents:
     get:
       operationId: listControlAgent
@@ -1163,15 +1165,15 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlAgentPage
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
       - name: cursor
         in: query
@@ -1204,17 +1206,17 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlAgent
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
-      - *id010
+      - *id011
       requestBody:
         required: true
         content:
@@ -1247,15 +1249,15 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlAgent
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
     put:
       operationId: updateControlAgent
       description: Requires toolgate-admin.
@@ -1275,18 +1277,18 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlAgent
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
-      - *id010
       - *id011
+      - *id012
       requestBody:
         required: true
         content:
@@ -1308,18 +1310,18 @@ paths:
               description: Server correlation ID
               schema:
                 type: string
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
-      - *id010
       - *id011
+      - *id012
   /api/control/v1/tools:
     get:
       operationId: listControlTool
@@ -1340,15 +1342,15 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlToolPage
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
       - name: cursor
         in: query
@@ -1381,17 +1383,17 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlTool
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
-      - *id010
+      - *id011
       requestBody:
         required: true
         content:
@@ -1424,15 +1426,15 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlTool
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
     put:
       operationId: updateControlTool
       description: Requires toolgate-admin.
@@ -1452,18 +1454,18 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlTool
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
-      - *id010
       - *id011
+      - *id012
       requestBody:
         required: true
         content:
@@ -1485,18 +1487,18 @@ paths:
               description: Server correlation ID
               schema:
                 type: string
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
-      - *id010
       - *id011
+      - *id012
   /api/control/v1/policies:
     get:
       operationId: listControlPolicy
@@ -1517,15 +1519,15 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlPolicyPage
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
       - name: cursor
         in: query
@@ -1558,17 +1560,17 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlPolicy
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
-      - *id010
+      - *id011
       requestBody:
         required: true
         content:
@@ -1601,15 +1603,15 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlPolicy
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
     put:
       operationId: updateControlPolicy
       description: Requires toolgate-admin.
@@ -1629,18 +1631,18 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlPolicy
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
-      - *id010
       - *id011
+      - *id012
       requestBody:
         required: true
         content:
@@ -1662,18 +1664,18 @@ paths:
               description: Server correlation ID
               schema:
                 type: string
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
-      - *id010
       - *id011
+      - *id012
   /api/control/v1/devices:
     get:
       operationId: listControlDevice
@@ -1694,15 +1696,15 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlDevicePage
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
       - name: cursor
         in: query
@@ -1735,17 +1737,17 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlDevice
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
-      - *id010
+      - *id011
       requestBody:
         required: true
         content:
@@ -1778,15 +1780,15 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlDevice
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
     put:
       operationId: updateControlDevice
       description: Requires toolgate-admin.
@@ -1806,18 +1808,18 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlDevice
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
-      - *id010
       - *id011
+      - *id012
       requestBody:
         required: true
         content:
@@ -1839,18 +1841,18 @@ paths:
               description: Server correlation ID
               schema:
                 type: string
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
-      - *id010
       - *id011
+      - *id012
   /api/control/v1/config/export:
     get:
       operationId: exportConfig
@@ -1874,15 +1876,15 @@ paths:
             application/yaml:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlSnapshot
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
   /api/control/v1/config/import:
     post:
       operationId: importConfig
@@ -1903,18 +1905,18 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlImportResult
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
-      - *id010
       - *id011
+      - *id012
       requestBody:
         required: true
         content:
@@ -1944,15 +1946,15 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/control.schema.json#/$defs/ControlAuditPage
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
-        '409': *id005
-        '413': *id006
-        '415': *id007
-        '500': *id008
-        '503': *id009
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
       parameters:
       - name: cursor
         in: query
@@ -1967,6 +1969,257 @@ paths:
           minimum: 1
           maximum: 100
           default: 50
+  /api/control/v1/fleet/releases:
+    get:
+      operationId: listFleetReleases
+      summary: listFleetReleases
+      security:
+      - adminAccessToken: []
+      responses:
+        '200':
+          description: Authoritative fleet result
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/fleet.schema.json#/$defs/FleetReleasePage
+        '400':
+          description: Invalid bounded input
+        '401':
+          description: Direct TLS/identity required
+        '403':
+          description: Wrong tenant/user, inactive or revoked device
+        '409':
+          description: State, replay or polling conflict
+        '503':
+          description: Dependency unavailable
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          maxLength: 128
+    post:
+      operationId: publishFleetRelease
+      summary: publishFleetRelease
+      security:
+      - adminAccessToken: []
+      responses:
+        '200':
+          description: Authoritative fleet result
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/fleet.schema.json#/$defs/FleetPackageRelease
+        '400':
+          description: Invalid bounded input
+        '401':
+          description: Direct TLS/identity required
+        '403':
+          description: Wrong tenant/user, inactive or revoked device
+        '409':
+          description: State, replay or polling conflict
+        '503':
+          description: Dependency unavailable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/fleet.schema.json#/$defs/FleetPackageRelease
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+  /api/control/v1/fleet/rollouts:
+    get:
+      operationId: listFleetRollouts
+      summary: listFleetRollouts
+      security:
+      - adminAccessToken: []
+      responses:
+        '200':
+          description: Authoritative fleet result
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/fleet.schema.json#/$defs/FleetRolloutPage
+        '400':
+          description: Invalid bounded input
+        '401':
+          description: Direct TLS/identity required
+        '403':
+          description: Wrong tenant/user, inactive or revoked device
+        '409':
+          description: State, replay or polling conflict
+        '503':
+          description: Dependency unavailable
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          maxLength: 128
+    post:
+      operationId: createFleetRollout
+      summary: createFleetRollout
+      security:
+      - adminAccessToken: []
+      responses:
+        '200':
+          description: Authoritative fleet result
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/fleet.schema.json#/$defs/FleetRolloutRecord
+        '400':
+          description: Invalid bounded input
+        '401':
+          description: Direct TLS/identity required
+        '403':
+          description: Wrong tenant/user, inactive or revoked device
+        '409':
+          description: State, replay or polling conflict
+        '503':
+          description: Dependency unavailable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/fleet.schema.json#/$defs/FleetRolloutRequest
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+  /api/control/v1/fleet/rollouts/{id}/advance:
+    post:
+      operationId: advanceFleetRollout
+      summary: advanceFleetRollout
+      security:
+      - adminAccessToken: []
+      responses:
+        '200':
+          description: Authoritative fleet result
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/fleet.schema.json#/$defs/FleetRolloutRecord
+        '400':
+          description: Invalid bounded input
+        '401':
+          description: Direct TLS/identity required
+        '403':
+          description: Wrong tenant/user, inactive or revoked device
+        '409':
+          description: State, replay or polling conflict
+        '503':
+          description: Dependency unavailable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/fleet.schema.json#/$defs/FleetRolloutAdvance
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+  /api/control/v1/fleet/desired:
+    get:
+      operationId: getFleetDesired
+      summary: getFleetDesired
+      security:
+      - deviceCertificate: []
+      responses:
+        '200':
+          description: Authoritative fleet result
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/fleet.schema.json#/$defs/FleetSignedDocument
+        '400':
+          description: Invalid bounded input
+        '401':
+          description: Direct TLS/identity required
+        '403':
+          description: Wrong tenant/user, inactive or revoked device
+        '409':
+          description: State, replay or polling conflict
+        '503':
+          description: Dependency unavailable
+  /api/control/v1/fleet/artifact-grants:
+    post:
+      operationId: createFleetArtifactGrant
+      summary: createFleetArtifactGrant
+      security:
+      - deviceCertificate: []
+      responses:
+        '200':
+          description: Authoritative fleet result
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/fleet.schema.json#/$defs/FleetSignedDocument
+        '400':
+          description: Invalid bounded input
+        '401':
+          description: Direct TLS/identity required
+        '403':
+          description: Wrong tenant/user, inactive or revoked device
+        '409':
+          description: State, replay or polling conflict
+        '503':
+          description: Dependency unavailable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/fleet.schema.json#/$defs/FleetArtifactGrantRequest
+  /api/control/v1/fleet/artifacts/download:
+    post:
+      operationId: downloadFleetArtifact
+      summary: downloadFleetArtifact
+      security:
+      - deviceCertificate: []
+      responses:
+        '200':
+          description: Authoritative fleet result
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/fleet.schema.json#/$defs/FleetPackageDocument
+        '400':
+          description: Invalid bounded input
+        '401':
+          description: Direct TLS/identity required
+        '403':
+          description: Wrong tenant/user, inactive or revoked device
+        '409':
+          description: State, replay or polling conflict
+        '503':
+          description: Dependency unavailable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/fleet.schema.json#/$defs/FleetSignedDocument
 components:
   securitySchemes:
     adminAccessToken:
@@ -1975,3 +2228,6 @@ components:
       bearerFormat: JWT
       description: RS256 token with verified issuer/audience/expiry and signed tenant_id/groups. Not a
         Gateway runtime credential.
+    deviceCertificate:
+      type: mutualTLS
+      description: Direct verified device TLS identity; forwarded identity headers never authenticate.

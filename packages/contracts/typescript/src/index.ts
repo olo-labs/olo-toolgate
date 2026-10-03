@@ -528,6 +528,145 @@ export interface ExecutionPermitUseRequest {
   readonly permit: SignedExecutionPermit;
   readonly request: AuthorizationRequest;
 }
+export type FleetArchitecture = "x86_64" | "aarch64";
+/** Signed fleet lifecycle contract; organization deployment trust never grants runtime permission. */
+export interface FleetArtifactGrantClaims {
+  readonly tenantId: string;
+  readonly serverId: string;
+  readonly deviceId: string;
+  readonly generation: number;
+  readonly manifestDigest: string;
+  readonly sizeBytes: number;
+  readonly grantId: string;
+  readonly issuedAtUnixMs: number;
+  readonly expiresAtUnixMs: number;
+}
+/** Signed fleet lifecycle contract; organization deployment trust never grants runtime permission. */
+export interface FleetArtifactGrantRequest {
+  readonly generation: number;
+  readonly manifestDigest: string;
+}
+/** Signed fleet lifecycle contract; organization deployment trust never grants runtime permission. */
+export interface FleetAssignment {
+  readonly release: FleetPackageRelease;
+  readonly desiredPresence: boolean;
+}
+/** Signed fleet lifecycle contract; organization deployment trust never grants runtime permission. */
+export interface FleetClientStatus {
+  readonly generation: number;
+  readonly ready: boolean;
+  readonly packages: ReadonlyArray<ReportedPackage>;
+  readonly error?: ErrorCode;
+}
+/** Signed fleet lifecycle contract; organization deployment trust never grants runtime permission. */
+export interface FleetDesiredDocument {
+  readonly formatVersion: number;
+  readonly tenantId: string;
+  readonly serverId: string;
+  readonly deviceId: string;
+  readonly generation: number;
+  readonly issuedAtUnixMs: number;
+  readonly expiresAtUnixMs: number;
+  readonly assignments: ReadonlyArray<FleetAssignment>;
+}
+/** Signed fleet lifecycle contract; organization deployment trust never grants runtime permission. */
+export interface FleetDesiredSnapshot {
+  readonly deviceId: string;
+  readonly generation: number;
+  readonly assignments: ReadonlyArray<FleetAssignment>;
+}
+/** Signed fleet lifecycle contract; organization deployment trust never grants runtime permission. */
+export interface FleetPackageDocument {
+  readonly formatVersion: number;
+  readonly packageId: string;
+  readonly version: string;
+  readonly platforms: ReadonlyArray<ClientPlatform>;
+  readonly architectures: ReadonlyArray<FleetArchitecture>;
+  readonly minimumClientVersion: string;
+  readonly runtimes: ReadonlyArray<ManagedRuntime>;
+  readonly tools: ReadonlyArray<LocalToolRegistration>;
+  readonly selfTests: ReadonlyArray<FleetSelfTest>;
+}
+/** Signed fleet lifecycle contract; organization deployment trust never grants runtime permission. */
+export interface FleetPackageRelease {
+  readonly packageId: string;
+  readonly version: string;
+  readonly manifestDigest: string;
+  readonly sizeBytes: number;
+  readonly release: FleetSignedDocument;
+}
+/** Signed fleet lifecycle contract; organization deployment trust never grants runtime permission. */
+export interface FleetReleasePage {
+  readonly items: ReadonlyArray<FleetPackageRelease>;
+  readonly nextCursor?: string;
+}
+/** Signed fleet lifecycle contract; organization deployment trust never grants runtime permission. */
+export interface FleetRolloutAdvance {
+  readonly expectedRevision: number;
+  readonly percentage: number;
+}
+/** Signed fleet lifecycle contract; organization deployment trust never grants runtime permission. */
+export interface FleetRolloutMember {
+  readonly deviceId: string;
+  readonly generation: number;
+}
+/** Signed fleet lifecycle contract; organization deployment trust never grants runtime permission. */
+export interface FleetRolloutPage {
+  readonly items: ReadonlyArray<FleetRolloutStatus>;
+  readonly nextCursor?: string;
+}
+/** Signed fleet lifecycle contract; organization deployment trust never grants runtime permission. */
+export interface FleetRolloutRecord {
+  readonly id: string;
+  readonly packageId: string;
+  readonly version: string;
+  readonly desiredPresence: boolean;
+  readonly percentage: number;
+  readonly revision: number;
+  readonly createdAtUnixMs: number;
+  readonly members: ReadonlyArray<FleetRolloutMember>;
+}
+/** Signed fleet lifecycle contract; organization deployment trust never grants runtime permission. */
+export interface FleetRolloutRequest {
+  readonly id: string;
+  readonly packageId: string;
+  readonly version: string;
+  readonly deviceIds: ReadonlyArray<string>;
+  readonly desiredPresence: boolean;
+  readonly percentage: number;
+}
+/** Signed fleet lifecycle contract; organization deployment trust never grants runtime permission. */
+export interface FleetRolloutStatus {
+  readonly rollout: FleetRolloutRecord;
+  readonly ready: number;
+  readonly failed: number;
+  readonly offline: number;
+  readonly waiting: number;
+  readonly pending: number;
+  readonly superseded: number;
+}
+/** Signed fleet lifecycle contract; organization deployment trust never grants runtime permission. */
+export interface FleetSelfTest {
+  readonly toolId: string;
+  readonly arguments: Record<string, unknown>;
+  readonly expectedOutput: Record<string, unknown>;
+}
+/** Signed fleet lifecycle contract; organization deployment trust never grants runtime permission. */
+export interface FleetSignatureHeader {
+  readonly alg: string;
+  readonly typ: string;
+  readonly kid: string;
+}
+/** Signed fleet lifecycle contract; organization deployment trust never grants runtime permission. */
+export interface FleetSignedDocument {
+  readonly jws: string;
+}
+/** Explicit RSA public trust key; no private material or implicit domain sharing. */
+export interface FleetTrustKey {
+  readonly kid: string;
+  readonly n: string;
+  readonly e: string;
+}
 export type Identifier = string;
 /** Bounded per-service execution counters and sandbox state. */
 export interface LocalRuntimeHealth {
@@ -697,5 +836,5 @@ export interface ToolDefinition {
   readonly inputSchema: Record<string, unknown>;
   readonly outputSchema: Record<string, unknown>;
 }
-export const CONTRACT_SET_VERSION = "0.8.0-dev" as const;
+export const CONTRACT_SET_VERSION = "0.9.0-dev" as const;
 export const CONTRACT_SET_NAME = "olo-toolgate-contracts" as const;

@@ -246,4 +246,11 @@ A `BLOCKED` requirement means the module is not DONE.
 - Module 08: [pre-implementation coverage](modules/08-coverage.md) and
   [verification report](modules/08-completion.md). Managed local OCI runtimes and
   first-use provisioning are implemented; Batch/CMD and native OS/ARM runtime
-  certification remain BLOCKED. Module is NOT DONE; no Module 09 is started.
+  certification remain BLOCKED. Its historical report records the Module 08 scope.
+
+- Module 09: [pre-implementation coverage](modules/09-coverage.md) and
+  [verification report and individual matrix](modules/09-completion.md).
+  Signed immutable releases, desired generations, canaries, reconciliation,
+  rollback/uninstall, artifact grants and Packages UI are implemented for the
+  checked Linux path. Native Windows/macOS/ARM certification and fleet-enabled
+  cluster routing remain BLOCKED. Module is NOT DONE; no Module 10 is started.

@@ -58,3 +58,5 @@ and are mounted into their owning service only. Read-only 0440 Secret mounts use
 fsGroup 65532. Approval timeout must leave time within ingress deadline. The existing
 intentional Control/DNS egress includes the approval `controlPort`. No additional
 infrastructure is deployed. See [approval operations](../../../docs/control-plane/approvals.md).
+
+Module 09 signed fleet lifecycle: [production usage, configuration and debugging](../../../docs/client/package-deployment.md).
