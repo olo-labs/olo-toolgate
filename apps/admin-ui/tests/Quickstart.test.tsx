@@ -8,6 +8,15 @@ import { ControlClient } from '../src/api';
 const response=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status});
 afterEach(()=>{cleanup();document.querySelector('meta[name=toolgate-mode]')?.remove();vi.unstubAllGlobals();window.location.hash='';});
 describe('Quickstart',()=>{
+  it('automatically enters only when the server explicitly disables password login',async()=>{
+    const meta=document.createElement('meta');meta.name='toolgate-mode';meta.content='quickstart';document.head.append(meta);
+    const transport=vi.fn(async(input:string)=>input.endsWith('/status')?response({passwordRequired:false}):input.endsWith('/login')?response({accessToken:'local-auto-session'}):input.includes('/api/public/')?response({},503):response({items:[]}));
+    vi.stubGlobal('fetch',transport);render(<App/>);
+    await screen.findByRole('heading',{name:'Your organization, at a glance'});
+    expect(screen.queryByLabelText('Password')).toBeNull();
+    expect(localStorage.length).toBe(0);expect(sessionStorage.length).toBe(0);
+    expect(document.body.textContent).not.toContain('local-auto-session');
+  });
   it('exchanges bootstrap and replacement passwords without persisting credentials',async()=>{
     const meta=document.createElement('meta');meta.name='toolgate-mode';meta.content='quickstart';document.head.append(meta);
     const transport=vi.fn(async(input:string)=>input.endsWith('/login')?response({accessToken:'session-secret'}):input.includes('/api/public/')?response({},503):response({items:[]}));vi.stubGlobal('fetch',transport);

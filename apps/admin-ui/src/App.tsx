@@ -24,19 +24,33 @@ const safeOrigin = () => window.location.protocol === 'https:' || ['localhost', 
 export function App() {
   const quickstart = document.querySelector('meta[name=toolgate-mode]')?.getAttribute('content') === 'quickstart';
   const [newPassword, setNewPassword] = useState('');
+  const [passwordDisabled, setPasswordDisabled] = useState(false);
   const [client, setClient] = useState<ControlClient>();
   const [credential, setCredential] = useState(''); const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<unknown>(); const [route, setRoute] = useState<Route>(routeFromHash);
   const active = useRef<ControlClient | undefined>(undefined);
   useEffect(() => { const update = () => setRoute(routeFromHash()); window.addEventListener('hashchange', update); return () => { window.removeEventListener('hashchange', update); active.current?.dispose(); }; }, []);
   function disconnect() { active.current?.dispose(); active.current = undefined; setClient(undefined); setCredential(''); setConnecting(false); }
-  async function connect(event: FormEvent) {
-    event.preventDefault(); if (connecting || !safeOrigin()) return;
+  useEffect(() => {
+    if (!quickstart || !safeOrigin()) return;
+    const abort = new AbortController(); let timer: ReturnType<typeof setInterval> | undefined;
+    fetch('/api/quickstart/v1/status', {credentials:'omit',redirect:'error',signal:abort.signal})
+      .then(response => response.ok ? response.json() : undefined)
+      .then(body => {
+        if (!abort.signal.aborted && body?.passwordRequired === false) {
+          setPasswordDisabled(true); void connect(null, true);
+          timer = setInterval(() => { void connect(null, true); }, 600000);
+        }
+      }).catch(() => { /* Normal authenticated login remains available. */ });
+    return () => { abort.abort(); if (timer) clearInterval(timer); };
+  }, [quickstart]);
+  async function connect(event: FormEvent | null, automatic = false) {
+    event?.preventDefault(); if (connecting || !safeOrigin()) return;
     setConnecting(true); setError(undefined);
     let accessToken = credential.trim();
     if (quickstart) {
       try {
-        const response = await fetch('/api/quickstart/v1/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({password:credential, ...(newPassword ? {newPassword} : {})}), credentials:'omit', redirect:'error' });
+        const response = await fetch('/api/quickstart/v1/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(automatic ? {} : {password:credential, ...(newPassword ? {newPassword} : {})}), credentials:'omit', redirect:'error' });
         if (!response.ok) throw new ApiError(response.status, 'LOGIN_FAILED');
         const body: unknown = await response.json();
         if (!body || typeof body !== 'object' || !('accessToken' in body) || typeof body.accessToken !== 'string' || body.accessToken.length > 16384) throw new ApiError(502, 'INVALID_RESPONSE');
@@ -63,13 +77,13 @@ export function App() {
         {quickstart ? <p role="status" className="notice">Quickstart · Single node · Non-HA. First login requires a new strong password.</p> : <p>Connect to Control with an access token issued by your organizationâ€™s identity provider.</p>}
         {!safeOrigin() && <div role="alert" className="notice error">Open this console over HTTPS before connecting.</div>}
         {Boolean(error) && <Failure error={error} />}
-        <form onSubmit={connect}><label htmlFor="access-token">{quickstart ? 'Password' : 'Access token'}</label>
+        {passwordDisabled ? <><p role="status">Local password-free Quickstart. Connecting automatically.</p><button onClick={() => { void connect(null, true); }} disabled={connecting}>Reconnect</button></> : <form onSubmit={connect}><label htmlFor="access-token">{quickstart ? 'Password' : 'Access token'}</label>
           <input id="access-token" type="password" autoComplete="off" spellCheck={false} maxLength={16384} required value={credential} onChange={e => setCredential(e.target.value)} disabled={connecting || !safeOrigin()} aria-describedby="token-help" />
           {quickstart && <><label htmlFor="new-password">New password (required on first login)</label><input id="new-password" type="password" autoComplete="new-password" minLength={16} maxLength={128} value={newPassword} onChange={e => setNewPassword(e.target.value)} disabled={connecting} /></>}
           <p id="token-help" className="hint">Kept in memory for this session. Refreshing or disconnecting clears it.</p>
           <button className="primary" disabled={connecting || !safeOrigin()}>{connecting ? 'Connectingâ€¦' : 'Connect to workspace'}</button>
           {connecting && <p role="status">Verifying your session with Controlâ€¦</p>}
-        </form></div><ClientDownloads /><footer>ToolGate {__APP_VERSION__} Â· Organization administration</footer></main>
+        </form>}</div><ClientDownloads /><footer>ToolGate {__APP_VERSION__} Â· Organization administration</footer></main>
     : <div className="shell"><aside className="sidebar"><div className="brand"><span className="brand-mark">T</span> ToolGate</div>
       <p className="sidebar-caption">Workspace</p><nav aria-label="Main navigation">{sections.filter(([value]) => quickstart || value !== 'local').map(([value,label]) => <a key={value} href={`#${value}`} aria-current={route === value ? 'page' : undefined}><span className="nav-dot" />{label}</a>)}</nav>
       <div className="sidebar-bottom"><span className="connection">Connected to Control</span><small>v{__APP_VERSION__}</small><button onClick={disconnect}>Disconnect</button></div></aside>

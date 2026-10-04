@@ -36,6 +36,48 @@ Expiration and approval outages stay fail closed. No new Helm workload is introd
 
 ## Configuration and local state
 
+Optional local composition settings (updated image required):
+
+- `TOOLGATE_DISABLE_ADMIN_PASSWORD=false` by default. Explicit `true` enables
+  automatic local console entry; browsers still use short-lived signed admin
+  sessions and tool calls still require Gateway authorization. Restrict published
+  ports to loopback. The dedicated [password-free scripts](../../deploy/compose/QuickStart-WO-Password/README.md)
+  provide separate state and ports. Existing password identity is retained.
+- `TOOLGATE_CACHE_MODE=embedded` provides a bounded 60-second immutable catalog
+  cache. `redis` uses `TOOLGATE_REDIS_URL` and optional `TOOLGATE_REDIS_PASSWORD`.
+  TLS uses `rediss://` with trusted certificates. No authorization/approval/permit
+  state is cached. Corrupt metadata and later cache outages fall back to the
+  canonical image catalog; configured cache failure at first boot rejects startup.
+- `TOOLGATE_QUICKSTART_DATABASE_MODE=sqlite` remains default. `postgresql` uses
+  standard `QUARKUS_DATASOURCE_*` and separate `QUARKUS_FLYWAY_*` credentials.
+  A `verify-full` JDBC URL and trusted DB CA are required outside explicit dev mode.
+  The Control, vault and identity audit adapters use the external PG schema.
+  Use an empty independent `/data` for backend changes; implicit switching is rejected.
+
+The [Compose guide](../../deploy/compose/QuickStart/README.md) includes raw DB/cache
+environment templates and port configuration. Defaults can be inspected through
+`/api/quickstart/v1/status`: `passwordRequired`, `database`, `cache`. This response
+contains no secrets. An older image reporting none of these is rejected by the new
+option-verification script. For locally built images, use `manage.bat deploy -SkipPull`
+or `sh manage.sh deploy --no-pull` after selecting the local tag in `.env`.
+
+External PostgreSQL backups need a consistent `pg_dump` and the matching private
+`/data` custody (identity, CA/signing/vault keys, layout and HotFolder) while Quickstart
+is stopped. The built-in SQLite backup intentionally rejects PG mode; it must not
+claim to capture an external database. Restore the DB and matching custody together
+into an isolated replacement; never restore a database with mismatched signing keys.
+
+Option checks with disposable Compose dependencies:
+
+```sh
+python tools/quickstart/compose_smoke.py --browser
+```
+
+This gate creates/removes only its randomly named Compose project. It verifies PG
+migrations, Redis authentication, automatic browser entry, protected API sessions,
+Gateway ALLOW/BLOCK and encrypted vault persistence over restart. It uses the source
+images already built by `tools/quickstart/check.py --build` and runs in CI.
+
 | Setting/location | Behavior |
 |---|---|
 | `TOOLGATE_BOOTSTRAP_PASSWORD` | Optional first-boot strong password. Prefer the private generated file over a Docker environment credential. Never resets existing identity. First login still requires change. |

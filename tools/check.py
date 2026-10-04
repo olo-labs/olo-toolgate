@@ -108,6 +108,7 @@ def scans():
     run(['docker','run','--rm','-v',f'{ROOT.as_posix()}:/work:ro','-w','/work','rhysd/actionlint:1.7.7',*workflows])
     run(['npm','audit','--audit-level=high'])
     python('-m','pip_audit','-r','tools/requirements.txt')
+    python('-m','pip_audit','-r','apps/quickstart/requirements.txt')
     from dependency_licenses import audit
     metadata = run(['cargo','metadata','--format-version','1','--locked'], capture=True)
     audit(json.loads(metadata.stdout))

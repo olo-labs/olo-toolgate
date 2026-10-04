@@ -7,6 +7,9 @@ import os
 from pathlib import Path
 import sqlite3
 import tempfile
+import threading
+import urllib.request
+import urllib.error
 import unittest
 from unittest.mock import patch
 
@@ -53,6 +56,37 @@ class SecurityTests(unittest.TestCase):
     def test_duplicate_json_and_nonfinite_values_are_rejected(self):
         for body in ('{"password":"one","password":"two"}','{"value":NaN}','{"value":Infinity}'):
             with self.assertRaises(ValueError):quickstart.strict(body)
+    def test_passwordless_is_explicit_and_does_not_bypass_api_sessions_or_origin(self):
+        quickstart.atomic(quickstart.DATA/'identity.json',json.dumps(quickstart.password_record('initial-Strong-Password-2026')))
+        ready=threading.Event();ready.set()
+        with patch.dict(os.environ,{'TOOLGATE_DISABLE_ADMIN_PASSWORD':'true'}):
+            server=quickstart.BoundedServer(('127.0.0.1',0),quickstart.Handler,ready)
+            thread=threading.Thread(target=server.serve_forever);thread.start()
+            try:
+                url='http://127.0.0.1:'+str(server.server_port)
+                request=urllib.request.Request(url+'/api/quickstart/v1/login',data=b'{}',headers={'Content-Type':'application/json'})
+                with urllib.request.urlopen(request) as response: token=json.load(response)['accessToken']
+                self.assertEqual(quickstart.session('Bearer '+token)['sub'],'admin')
+                with self.assertRaises(urllib.error.HTTPError) as denied:urllib.request.urlopen(url+'/api/quickstart/v1/tools')
+                self.assertEqual(denied.exception.code,401)
+                request.add_header('Origin','https://evil.example')
+                with self.assertRaises(urllib.error.HTTPError) as denied:urllib.request.urlopen(request)
+                self.assertEqual(denied.exception.code,401)
+            finally:server.shutdown();thread.join();server.server_close()
+        with patch.dict(os.environ,{'TOOLGATE_DISABLE_ADMIN_PASSWORD':'yes'}):
+            with self.assertRaises(ValueError):quickstart.password_disabled()
+    def test_catalog_cache_cannot_substitute_external_metadata(self):
+        cache=quickstart.CatalogCache()
+        expected=cache.document
+        class UntrustedCache:
+            def get(self,key):return b'{"tools":[{"toolId":"dangerous"}]}'
+            def set(self,*args,**kwargs):pass
+        cache.redis=UntrustedCache()
+        self.assertEqual(cache.get(),expected)
+    def test_external_backup_and_implicit_storage_switch_are_rejected(self):
+        with patch.dict(os.environ,{'TOOLGATE_QUICKSTART_DATABASE_MODE':'postgresql'}):
+            with self.assertRaises(ValueError):quickstart.backup(str(self.root/'external-backup'))
+            with self.assertRaises(ValueError):quickstart.initialize()
     def test_atomic_state_rejects_symlink(self):
         outside=self.root/'outside';outside.write_text('unchanged')
         (quickstart.DATA/'identity.json').symlink_to(outside)

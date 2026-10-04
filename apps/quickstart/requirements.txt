@@ -1,0 +1,8 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+cryptography==50.0.1
+cffi==2.1.1
+pycparser==3.0
+redis==8.1.0
+psycopg==3.3.6
+typing_extensions==4.15.0

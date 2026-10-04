@@ -6,6 +6,13 @@ The project follows semantic versioning once stable versioning begins.
 
 ## 0.10.0-dev
 
+- Add managed Compose stacks with default/external PostgreSQL, authenticated Redis,
+  and an isolated password-free local Quickstart. Quickstart supports bounded
+  embedded/external Redis catalog caching and a real external PostgreSQL adapter.
+- Keep password login enabled by default; explicit local mode auto-enters the UI
+  while signed API sessions, Gateway policy and ASK remain enforced. Add option
+  verification, PostgreSQL/vault restart and browser CI smoke with runtime notices.
+
 - Add unsigned Windows setup, macOS disk-image installer and Linux service launcher
   for x64/ARM64, checksummed anonymous downloads and native installer CI smoke.
 

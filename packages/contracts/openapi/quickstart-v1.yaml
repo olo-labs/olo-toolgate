@@ -26,6 +26,9 @@ paths:
                   nonHa: {const: true}
                   ready: {type: boolean}
                   version: {type: string}
+                  passwordRequired: {type: boolean}
+                  database: {enum: [sqlite, postgresql]}
+                  cache: {enum: [embedded, redis]}
   /api/quickstart/v1/login:
     post:
       operationId: quickstartLogin
@@ -37,7 +40,7 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [password]
+              description: Password is required unless local password-free mode is explicitly enabled.
               properties:
                 password: {type: string, maxLength: 128}
                 newPassword: {type: string, minLength: 16, maxLength: 128}

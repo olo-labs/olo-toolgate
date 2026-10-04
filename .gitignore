@@ -8,6 +8,8 @@
 .env
 .env.*
 !.env.example
+!.env.db.example
+!.env.cache.example
 *.secret
 *.secrets
 *.pem
@@ -116,6 +118,10 @@ __pycache__/
 .venv/
 venv/
 env/
+!deploy/compose/QuickStart/env/
+deploy/compose/QuickStart/env/*
+!deploy/compose/QuickStart/env/.env.db.example
+!deploy/compose/QuickStart/env/.env.cache.example
 pip-wheel-metadata/
 .pytest_cache/
 .mypy_cache/

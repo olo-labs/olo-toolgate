@@ -49,7 +49,8 @@ public class Bootstrap {
         } catch (java.io.IOException | java.security.GeneralSecurityException | IllegalArgumentException e) {
             throw new IllegalStateException("A local RSA public verification key is required");
         }
-        if (config.getOptionalValue("toolgate.quickstart.enabled", Boolean.class).orElse(false)) return;
+        if (config.getOptionalValue("toolgate.quickstart.enabled", Boolean.class).orElse(false)
+            && !config.getOptionalValue("toolgate.quickstart.storage", String.class).orElse("sqlite").equals("postgresql")) return;
         var runtimeUser = config.getValue("quarkus.datasource.username", String.class);
         var url = config.getValue("quarkus.datasource.jdbc.url", String.class);
         if (!url.startsWith("jdbc:postgresql://") || (!config.getValue("toolgate.control.development-mode", Boolean.class)

@@ -18,11 +18,14 @@ RUN --mount=type=cache,id=toolgate-gateway-registry,target=/usr/local/cargo/regi
 
 FROM ${CONTROL_IMAGE}
 USER root
-RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv && \
-    python3 -m venv /opt/quickstart-python && /opt/quickstart-python/bin/pip install --no-cache-dir cryptography==50.0.1 cffi==2.1.1 pycparser==3.0 && \
+COPY apps/quickstart/requirements.txt /opt/quickstart-requirements.txt
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv libpq5 && \
+    python3 -m venv /opt/quickstart-python && /opt/quickstart-python/bin/pip install --no-cache-dir -r /opt/quickstart-requirements.txt && \
     rm -rf /var/lib/apt/lists/* && mkdir -p /data /usr/local/lib/toolgate && chown 65532:65532 /data && chmod 0700 /data
 # JNI is loaded from immutable image storage, keeping /tmp compatible with noexec.
 RUN /opt/quickstart-python/bin/python -c "import glob,platform,zipfile; p=glob.glob('/app/lib/main/org.xerial.sqlite-jdbc-*.jar')[0]; z=zipfile.ZipFile(p); a={'x86_64':'x86_64','aarch64':'aarch64'}[platform.machine()]; open('/usr/local/lib/toolgate/libsqlitejdbc.so','wb').write(z.read('org/sqlite/native/Linux/'+a+'/libsqlitejdbc.so'))"
+COPY tools/quickstart/python_notices.py /opt/quickstart-python-notices.py
+RUN /opt/quickstart-python/bin/python /opt/quickstart-python-notices.py
 COPY --from=rust-build /usr/local/bin/olo-toolgate-gateway /usr/local/bin/quickstart-tools /usr/local/bin/
 COPY --from=rust-build /licenses /usr/share/licenses/olo-toolgate/quickstart-rust/
 COPY apps/quickstart/supervisor.py apps/quickstart/seed.json VERSION /opt/quickstart/
@@ -39,6 +42,7 @@ LABEL org.opencontainers.image.title="OLO ToolGate Quickstart" \
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=55 -Djava.io.tmpdir=/tmp -Dorg.sqlite.lib.path=/usr/local/lib/toolgate" \
     PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 COPY LICENSE NOTICE.md /usr/share/licenses/olo-toolgate/
+COPY apps/quickstart/NOTICE.md /usr/share/licenses/olo-toolgate/quickstart-python-NOTICE.md
 COPY RELEASE-NOTES.md /usr/share/doc/olo-toolgate/RELEASE-NOTES.md
 USER 65532:65532
 VOLUME ["/data"]

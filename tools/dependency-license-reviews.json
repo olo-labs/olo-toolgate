@@ -117,6 +117,24 @@
       "licenseUrls": [
         "https://github.com/sunfishcode/winx/blob/v0.36.4/LICENSE"
       ]
+    },
+    "psycopg:3.3.6": {
+      "expression": "LGPL-3.0-only",
+      "scope": "runtime",
+      "reason": "Unmodified, separately replaceable Python package dynamically linking system libpq; full license and checksummed corresponding source are included in the Quickstart image. No statically linked psycopg-binary wheel is used.",
+      "sourceArtifact": "https://files.pythonhosted.org/packages/76/26/3ea4ca5eaea1c0debcdf7ee7c1613fbe721dc27a03c461c0817ffd8a0601/psycopg-3.3.6.tar.gz",
+      "licenseUrls": [
+        "https://github.com/psycopg/psycopg/blob/3.3.6/LICENSE.txt"
+      ]
+    },
+    "typing-extensions:4.15.0": {
+      "expression": "PSF-2.0",
+      "scope": "runtime",
+      "reason": "Unmodified Python typing support required by psycopg on Python 3.12; PSF distribution notices are retained in the Quickstart image.",
+      "sourceArtifact": "https://pypi.org/project/typing-extensions/4.15.0/",
+      "licenseUrls": [
+        "https://github.com/python/typing_extensions/blob/4.15.0/LICENSE"
+      ]
     }
   }
 }

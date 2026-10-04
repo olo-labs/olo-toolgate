@@ -41,6 +41,82 @@ ISSUER = 'https://quickstart.local'
 GROUPS = ('toolgate-admin', 'toolgate-reader', 'toolgate-approver', 'toolgate-enroller')
 
 
+def password_disabled():
+    value = os.environ.get('TOOLGATE_DISABLE_ADMIN_PASSWORD', 'false')
+    if value not in ('true', 'false'): raise ValueError('Invalid password mode')
+    return value == 'true'
+
+
+def database_mode():
+    mode = os.environ.get('TOOLGATE_QUICKSTART_DATABASE_MODE', 'sqlite')
+    if mode not in ('sqlite', 'postgresql'): raise ValueError('Invalid database mode')
+    return mode
+
+
+class Database:
+    """Same parameterized vault/audit operations with explicit external PG custody."""
+    def __init__(self):
+        self.pg = database_mode() == 'postgresql'
+        if self.pg:
+            import psycopg
+            url = os.environ['QUARKUS_DATASOURCE_JDBC_URL']
+            if not url.startswith('jdbc:postgresql://'): raise ValueError('PostgreSQL JDBC URL required')
+            parsed = urllib.parse.urlsplit(url[5:])
+            if parsed.username or parsed.password or parsed.fragment: raise ValueError('Separate DB credentials required')
+            options = dict(urllib.parse.parse_qsl(parsed.query, strict_parsing=True))
+            if set(options)-{'sslmode','sslrootcert'}: raise ValueError('Unsupported database option')
+            if options.get('sslmode') not in ('verify-full','require','disable'): raise ValueError('Explicit database TLS mode required')
+            self.connection = psycopg.connect(host=parsed.hostname, port=parsed.port or 5432,
+                dbname=parsed.path.lstrip('/'), user=os.environ['QUARKUS_DATASOURCE_USERNAME'],
+                password=os.environ['QUARKUS_DATASOURCE_PASSWORD'], connect_timeout=3,
+                options='-c statement_timeout=3000', **options)
+        else: self.connection = sqlite3.connect(DATA/'state/control.sqlite', timeout=3)
+    def __enter__(self): return self
+    def __exit__(self, typ, value, trace):
+        try:
+            if typ: self.connection.rollback()
+            else: self.connection.commit()
+        finally: self.connection.close()
+    def execute(self, sql, values=()):
+        if self.pg:
+            sql = 'LOCK TABLE quickstart_vault IN SHARE ROW EXCLUSIVE MODE' if sql == 'BEGIN IMMEDIATE' else sql.replace('?', '%s')
+        return self.connection.execute(sql, values)
+    def commit(self): self.connection.commit()
+
+
+class CatalogCache:
+    """Cache only immutable non-secret tool metadata; never cache security decisions."""
+    def __init__(self):
+        self.lock = threading.Lock(); self.value = None; self.expiry = 0
+        mode = os.environ.get('TOOLGATE_CACHE_MODE', 'embedded')
+        if mode not in ('embedded', 'redis'): raise ValueError('Invalid cache mode')
+        self.redis = None
+        if mode == 'redis':
+            import redis
+            url = os.environ['TOOLGATE_REDIS_URL']
+            if urllib.parse.urlsplit(url).scheme not in ('redis','rediss'): raise ValueError('Redis URL required')
+            self.redis = redis.Redis.from_url(url, socket_timeout=2, socket_connect_timeout=2,
+                max_connections=8, password=os.environ.get('TOOLGATE_REDIS_PASSWORD') or None)
+            self.redis.ping()
+        catalog = Path('/opt/quickstart/builtins.json').read_bytes()
+        self.document = strict(catalog)
+        self.cache_key = 'toolgate:catalog:'+hashlib.sha256(catalog).hexdigest()
+    def get(self):
+        with self.lock:
+            now = time.monotonic()
+            if self.value is not None and now < self.expiry: return self.value
+            # External cache cannot substitute untrusted tool metadata.
+            value = self.document
+            if self.redis is not None:
+                try:
+                    cached = self.redis.get(self.cache_key)
+                    if cached and len(cached) <= 65536 and strict(cached) == self.document: value = strict(cached)
+                    else: self.redis.set(self.cache_key, json.dumps(value), ex=60)
+                except Exception: pass  # Immutable source fallback, never authorization fallback.
+            self.value = value; self.expiry = now+60
+            return value
+
+
 def strict(raw):
     def unique(pairs):
         value = {}
@@ -80,8 +156,8 @@ def password_record(value, changed=False, generation=1):
 def identity_audit(operation, generation, request_id):
     """Persist credential-change intent before changing custody; never audit verifier bytes."""
     path=DATA/'state/control.sqlite'
-    if not path.is_file() or path.is_symlink(): raise ValueError('Identity audit unavailable')
-    with closing(sqlite3.connect(path, timeout=3)) as db:
+    if database_mode() == 'sqlite' and (not path.is_file() or path.is_symlink()): raise ValueError('Identity audit unavailable')
+    with Database() as db:
         db.execute('INSERT INTO control_audit(tenant_id,actor_id,operation,target,revision,request_id,request_digest) VALUES(?,?,?,?,?,?,?)',
                    (TENANT,hashlib.sha256((ISSUER+'\nadmin').encode()).hexdigest(),operation,'local-identity',generation,request_id,
                     hashlib.sha256((operation+'\n'+str(generation)).encode()).hexdigest()))
@@ -155,6 +231,7 @@ def certificates():
 
 
 def initialize():
+    password_disabled(); mode = database_mode()
     os.umask(0o077)
     DATA.mkdir(exist_ok=True)
     if DATA.is_symlink() or DATA.stat().st_uid != os.getuid(): raise ValueError('Private service-owned /data required')
@@ -166,6 +243,10 @@ def initialize():
     layout = DATA/'layout.json'
     if layout.exists() and strict(layout.read_bytes()) != {'layoutVersion': 1}: raise ValueError('Unsupported local layout; restore or use a compatible image')
     if not layout.exists(): atomic(layout, '{"layoutVersion":1}')
+    storage = DATA/'storage.json'
+    previous = strict(storage.read_bytes())['mode'] if storage.exists() else ('sqlite' if (DATA/'state/control.sqlite').exists() else mode)
+    if previous != mode: raise ValueError('Use separate /data when changing database backend; migration is explicit')
+    if not storage.exists(): atomic(storage, json.dumps({'mode': mode}))
     if not (DATA/'identity.json').exists():
         supplied = os.environ.pop('TOOLGATE_BOOTSTRAP_PASSWORD', None)
         password = supplied if supplied is not None else secrets.token_urlsafe(32)
@@ -219,6 +300,11 @@ def configure():
                 'TOOLGATE_CONTROL_ENDPOINT_TENANT_ID': TENANT, 'TOOLGATE_CONTROL_ENDPOINT_SERVER_ID': 'quickstart-server',
                 'TOOLGATE_CONTROL_ENDPOINT_ORGANIZATION': 'Quickstart', 'TOOLGATE_CONTROL_ENDPOINT_CONTROL_URL': 'https://localhost:8443', 'TOOLGATE_CONTROL_ENDPOINT_GATEWAY_URL': 'https://localhost:8443',
                 'TOOLGATE_CLIENT_DOWNLOADS_DIRECTORY': '/opt/toolgate/client-downloads'}
+    if database_mode() == 'postgresql':
+        for name in ('QUARKUS_DATASOURCE_JDBC_URL','QUARKUS_DATASOURCE_USERNAME','QUARKUS_DATASOURCE_PASSWORD','QUARKUS_FLYWAY_USERNAME','QUARKUS_FLYWAY_PASSWORD'):
+            if not env.get(name): raise ValueError('External database settings required')
+        settings.update(TOOLGATE_QUICKSTART_STORAGE='postgresql', QUARKUS_FLYWAY_ACTIVE='true',
+            QUARKUS_DATASOURCE_ACTIVE='true', QUARKUS_DATASOURCE_HEALTH_ENABLED='true', QUARKUS_FLYWAY_MIGRATE_AT_START='true')
     env.update(settings)
     return env, catalog
 
@@ -272,6 +358,7 @@ class BoundedServer(http.server.ThreadingHTTPServer):
         self.ready=ready
         self.capacity=threading.BoundedSemaphore(16)
         self.identity=LocalIdentity()
+        self.cache=CatalogCache()
         self.login_lock=threading.Lock()
         self.login_times=[]
     def process_request(self, request, address):
@@ -316,7 +403,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if len(raw)!=length: raise ValueError()
             path = urllib.parse.urlsplit(self.path).path
             if path=='/api/quickstart/v1/status' and self.command=='GET':
-                return self.reply(200, {'mode': 'Quickstart', 'nonHa': True, 'ready': self.server.ready.is_set(), 'version': Path('/opt/quickstart/VERSION').read_text().strip()})
+                return self.reply(200, {'mode': 'Quickstart', 'nonHa': True, 'ready': self.server.ready.is_set(), 'version': Path('/opt/quickstart/VERSION').read_text().strip(), 'passwordRequired': not password_disabled(), 'database': database_mode(), 'cache': os.environ.get('TOOLGATE_CACHE_MODE','embedded')})
             if path=='/health/ready' and self.command=='GET': return self.reply(200 if self.server.ready.is_set() else 503, {'ready': self.server.ready.is_set()})
             if path=='/api/quickstart/v1/login' and self.command=='POST':
                 with self.server.login_lock:
@@ -325,11 +412,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     self.server.login_times.append(now)
                 data = strict(raw)
                 if not isinstance(data, dict) or set(data)-{'password','newPassword'}: raise ValueError()
+                if password_disabled():
+                    record = strict((DATA/'identity.json').read_bytes())
+                    return self.reply(200, {'accessToken': jwt(GROUPS, 'admin', generation=record['generation'])})
                 return self.reply(200, {'accessToken': self.server.identity.authenticate(data.get('password'), data.get('newPassword'))})
             protected = path.startswith(('/api/control/', '/api/quickstart/'))
             if protected: session(self.headers.get('Authorization',''))
             if path=='/api/quickstart/v1/tools' and self.command=='GET':
-                catalog = strict(Path('/opt/quickstart/builtins.json').read_bytes())
+                catalog = self.server.cache.get()
                 return self.reply(200, {**catalog, 'tools': [{**item, 'enabled': item['toolId']!='web.search'} for item in catalog['tools']]})
             if path=='/api/quickstart/v1/invoke' and self.command=='POST':
                 data = strict(raw)
@@ -338,7 +428,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 if status==403 and strict(response).get('decision')=='ASK': status=202
                 return self.reply(status, response, headers=upstream)
             if path=='/api/quickstart/v1/vault' and self.command in ('GET','POST'):
-                with sqlite3.connect(DATA/'state/control.sqlite', timeout=3) as db:
+                with Database() as db:
                     if self.command=='GET': return self.reply(200, {'names': [r[0] for r in db.execute('SELECT name FROM quickstart_vault ORDER BY name LIMIT 256')]})
                     data = strict(raw)
                     if set(data)!= {'name','value'} or not isinstance(data['name'],str) or not re.fullmatch('[a-z0-9][a-z0-9/-]{0,127}',data['name']) or not isinstance(data['value'],str) or not 1<=len(data['value'].encode())<=32768: raise ValueError()
@@ -350,7 +440,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     db.execute('INSERT INTO control_audit(tenant_id,actor_id,operation,target,revision,request_id,request_digest) VALUES(?,?,?,?,?,?,?)',(TENANT,hashlib.sha256((ISSUER+'\nadmin').encode()).hexdigest(),'VAULT_PUT','vault:'+data['name'],1,secrets.token_hex(16),hashlib.sha256(data['name'].encode()).hexdigest()))
                     db.commit()
                 return self.reply(201, {'stored': True})
-            if path.startswith(('/console/', '/api/control/v1/', '/api/public/v1/clients')) or path in ('/','/console'):
+            if path.startswith(('/console/', '/api/control/v1/', '/api/public/v1/clients', '/api/public/v1/installers')) or path in ('/','/console'):
                 # Direct TLS adapter is used for enrollment administration; device peers use :8443 itself.
                 secure = path.startswith('/api/control/v1/endpoint/')
                 client = http.client.HTTPSConnection('127.0.0.1',8443,context=ssl.create_default_context(cafile=str(DATA/'keys/device-ca.crt')),timeout=10) if secure else http.client.HTTPConnection('127.0.0.1',8082,timeout=10)
@@ -376,6 +466,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 def backup(destination):
     """Offline backup under the exclusive data lock; includes all trust/vault custody."""
     import shutil
+    if database_mode() != 'sqlite': raise ValueError('External PostgreSQL requires pg_dump plus matching custody backup')
     destination = Path(destination)
     if destination.exists() or not destination.is_absolute() or destination.is_relative_to(DATA): raise ValueError('Backup must be a new absolute path outside /data')
     destination.mkdir(mode=0o700)
@@ -427,9 +518,10 @@ def main():
                 if time.monotonic()>deadline: raise ValueError('Control readiness timeout')
                 stop.wait(.2)
             seed(catalog)
-            gateway_env = dict(os.environ, TOOLGATE_GATEWAY_CONFIG='/data/run/gateway.json',TOOLGATE_GATEWAY_CREDENTIALS='/data/run/credentials.json')
+            child_env = {name:value for name,value in os.environ.items() if not name.startswith(('QUARKUS_DATASOURCE_', 'QUARKUS_FLYWAY_', 'TOOLGATE_REDIS_'))}
+            gateway_env = dict(child_env, TOOLGATE_GATEWAY_CONFIG='/data/run/gateway.json',TOOLGATE_GATEWAY_CREDENTIALS='/data/run/credentials.json')
             children.append(subprocess.Popen(['/usr/local/bin/olo-toolgate-gateway'],env=gateway_env))
-            children.append(subprocess.Popen(['/usr/local/bin/quickstart-tools']))
+            children.append(subprocess.Popen(['/usr/local/bin/quickstart-tools'],env=child_env))
             server = BoundedServer(('0.0.0.0',8080),Handler,ready_state)
             threading.Thread(target=server.serve_forever,daemon=True).start()
             renewed = time.monotonic(); published = renewed; boot = renewed
@@ -447,7 +539,7 @@ def main():
                         child.terminate(); child.wait(timeout=20)
                     configure()
                     children[1] = subprocess.Popen(['/usr/local/bin/olo-toolgate-gateway'],env=gateway_env)
-                    children[2] = subprocess.Popen(['/usr/local/bin/quickstart-tools'])
+                    children[2] = subprocess.Popen(['/usr/local/bin/quickstart-tools'],env=child_env)
                     boot=now
         finally:
             ready_state.clear()

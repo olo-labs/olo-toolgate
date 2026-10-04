@@ -114,6 +114,17 @@ def audit(rust_metadata, output=None):
             if requirement.marker is None or requirement.marker.evaluate(): pending.append(requirement.name)
         if normalized == 'pip-audit': pending.extend(['filelock','platformdirs'])
     coordinates = set()
+    # Quickstart's pinned runtime Python packages are not installed in the host
+    # tooling venv. Audit primary package metadata without importing runtime code.
+    for line in (ROOT/'apps/quickstart/requirements.txt').read_text().splitlines():
+        if not line or line.startswith('#'): continue
+        name, version = line.split('==')
+        with urllib.request.urlopen(f'https://pypi.org/pypi/{name}/{version}/json',timeout=30) as response:
+            info = json.load(response)['info']
+        expression = info.get('license_expression')
+        if not expression: raise ValueError('Runtime Python license requires review: '+name)
+        inventory.append({'ecosystem':'python-runtime','name':info['name'],'version':version,
+                          'license':expression,'scope':'runtime'})
     runtime_coordinates = set()
     for lock in ROOT.rglob('gradle.lockfile'):
         if any(part in ('.dev','.gradle','node_modules','target') for part in lock.relative_to(ROOT).parts): continue
