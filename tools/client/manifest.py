@@ -41,6 +41,22 @@ def manifest(source,output):
             if origin.resolve()!=destination.resolve():shutil.copyfile(origin,destination)
     document=dict(version=version,artifacts=artifacts)
     (output/'manifest.json').write_text(json.dumps(document,indent=2)+'\n',encoding='utf-8',newline='\n')
+    installers=[]
+    for artifact in artifacts:
+        extension={'WINDOWS':'setup.exe','MACOS':'dmg','LINUX':'run'}[artifact['platform']]
+        name=f"olo-toolgate-client-{version}-{artifact['target']}.{extension}"
+        path=source/name
+        if not path.exists():continue
+        if path.is_symlink() or not path.is_file() or not 0<path.stat().st_size<=104857600:raise ValueError('Invalid installer')
+        checksum=hashlib.sha256(path.read_bytes()).hexdigest()
+        if path.with_name(name+'.sha256').read_text().strip()!=checksum+'  '+name:raise ValueError('Installer checksum mismatch')
+        for suffix in ('','.sha256'):
+            origin=source/(name+suffix);destination=output/origin.name
+            if origin.resolve()!=destination.resolve():shutil.copyfile(origin,destination)
+        installers.append({**artifact,'filename':name,'sha256':checksum,'bytes':path.stat().st_size})
+    if installers:
+        if len(installers)!=len(artifacts):raise ValueError('All native targets require an installer')
+        (output/'installers.json').write_text(json.dumps(dict(version=version,artifacts=installers),indent=2)+'\n',encoding='utf-8',newline='\n')
     print(f'Validated {len(artifacts)} native client packages for public distribution')
     return document
 

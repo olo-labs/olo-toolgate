@@ -25,6 +25,23 @@ final class ClientArtifactsTest {
         Files.writeString(directory.resolve("manifest.json"),codec.json(Map.of("version","0.7.0-dev","artifacts",artifacts)));
     }
     @Test void missingReleaseIsUnavailable(){var assets=new ClientArtifacts(Optional.empty(),codec);assertThrows(Failure.class,assets::manifest);}
+    @Test void installersAreAllowlistedAndHashVerified()throws Exception{
+        bundle();var original=new ClientArtifacts(Optional.of(directory.toString()),codec).manifest();
+        var installers=new ArrayList<Map<String,Object>>();
+        for(var artifact:original.artifacts()){
+            var extension=switch(artifact.platform()){case WINDOWS->"setup.exe";case MACOS->"dmg";case LINUX->"run";};
+            var filename="olo-toolgate-client-"+original.version()+"-"+artifact.target()+"."+extension;
+            Files.copy(directory.resolve(artifact.filename()),directory.resolve(filename));
+            installers.add(Map.of("platform",artifact.platform(),"target",artifact.target(),"filename",filename,"sha256",artifact.sha256(),"bytes",artifact.bytes()));
+        }
+        Files.writeString(directory.resolve("installers.json"),codec.json(Map.of("version",original.version(),"artifacts",installers)));
+        var assets=new ClientArtifacts(Optional.of(directory.toString()),codec);assertEquals(3,assets.installers().artifacts().size());
+        var installer=assets.installers().artifacts().getFirst();var response=assets.download(installer.filename());
+        ((jakarta.ws.rs.core.StreamingOutput)response.getEntity()).write(java.io.OutputStream.nullOutputStream());
+        Files.writeString(directory.resolve(installer.filename()),"corrupted");
+        assertThrows(Failure.class,()->assets.download(installer.filename()));
+        assertThrows(IllegalStateException.class,()->new ClientArtifacts(Optional.of(directory.toString()),codec));
+    }
     @Test void onlyPublishedArtifactNamesCanBeDownloaded()throws Exception{
         bundle();var assets=new ClientArtifacts(Optional.of(directory.toString()),codec);assertEquals(3,assets.manifest().artifacts().size());
         assertThrows(Failure.class,()->assets.download("../../secret"));

@@ -14,6 +14,8 @@ public class ClientDownloadResource {
     @GET public Response home(){return Response.seeOther(java.net.URI.create("/console/")).build();}
     @GET @Path("api/public/v1/clients") @Produces("application/json")
     public Response manifest(){return Response.ok(artifacts.manifest()).header("Cache-Control","no-store").build();}
+    @GET @Path("api/public/v1/installers") @Produces("application/json")
+    public Response installers(){return Response.ok(artifacts.installers()).header("Cache-Control","no-store").build();}
     @GET @Path("api/public/v1/clients/{filename}")
     public Response download(@PathParam("filename")String filename){return artifacts.download(filename);}
 }

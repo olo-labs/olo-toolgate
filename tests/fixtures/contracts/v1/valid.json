@@ -2005,5 +2005,38 @@
   },
   "BuilderRevisionRequest": {
     "expectedRevision": 1
+  },
+  "ClientInstallerArtifact": {
+    "platform": "LINUX",
+    "target": "x86_64-unknown-linux-gnu",
+    "filename": "olo-toolgate-client-0.7.0-dev-x86_64-unknown-linux-gnu.run",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "bytes": 12345
+  },
+  "ClientInstallerManifest": {
+    "version": "0.7.0-dev",
+    "artifacts": [
+      {
+        "platform": "LINUX",
+        "target": "x86_64-unknown-linux-gnu",
+        "filename": "olo-toolgate-client-0.7.0-dev-x86_64-unknown-linux-gnu.run",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 12345
+      },
+      {
+        "platform": "WINDOWS",
+        "target": "x86_64-pc-windows-msvc",
+        "filename": "olo-toolgate-client-0.7.0-dev-x86_64-pc-windows-msvc.setup.exe",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 12345
+      },
+      {
+        "platform": "MACOS",
+        "target": "x86_64-apple-darwin",
+        "filename": "olo-toolgate-client-0.7.0-dev-x86_64-apple-darwin.dmg",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 12345
+      }
+    ]
   }
 }

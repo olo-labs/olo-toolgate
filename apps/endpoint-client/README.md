@@ -109,3 +109,5 @@ The protected service polls organization-signed designated-client authoring jobs
 through its existing fleet mTLS identity. Source runs only in the confined OCI
 engine. A successful test grants no ordinary tool invocation permission. See
 [the builder guide](../../docs/client/tool-builder.md).
+
+For interactive system installation see [unsigned installers](../../docs/client/installers.md).

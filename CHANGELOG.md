@@ -6,6 +6,9 @@ The project follows semantic versioning once stable versioning begins.
 
 ## 0.10.0-dev
 
+- Add unsigned Windows setup, macOS disk-image installer and Linux service launcher
+  for x64/ARM64, checksummed anonymous downloads and native installer CI smoke.
+
 - Publish development binaries, tested Docker Hub images and uniquely versioned
   Maven contracts after all same-commit main CI gates pass.
 - Include generated release notes, Apache-2.0 license and project notices in native

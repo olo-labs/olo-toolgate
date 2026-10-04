@@ -167,6 +167,62 @@
         "version",
         "artifacts"
       ]
+    },
+    "ClientInstallerArtifact": {
+      "type": "object",
+      "description": "Unsigned interactive system-service installer; signing is a separate release gate.",
+      "additionalProperties": false,
+      "properties": {
+        "platform": {
+          "$ref": "endpoint.schema.json#/$defs/ClientPlatform"
+        },
+        "target": {
+          "type": "string",
+          "pattern": "^(x86_64|aarch64)-(unknown-linux-gnu|pc-windows-(msvc|gnu)|apple-darwin)$"
+        },
+        "filename": {
+          "type": "string",
+          "pattern": "^olo-toolgate-client-[0-9A-Za-z._-]+\\.(setup\\.exe|dmg|run)$",
+          "maxLength": 180
+        },
+        "sha256": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 104857600
+        }
+      },
+      "required": [
+        "platform",
+        "target",
+        "filename",
+        "sha256",
+        "bytes"
+      ]
+    },
+    "ClientInstallerManifest": {
+      "type": "object",
+      "description": "Fixed service tool boundary; validate schema before use.",
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "$ref": "identifiers.schema.json#/$defs/SemanticVersion"
+        },
+        "artifacts": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 6,
+          "items": {
+            "$ref": "builtins.schema.json#/$defs/ClientInstallerArtifact"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "artifacts"
+      ]
     }
   }
 }

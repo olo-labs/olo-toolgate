@@ -16,12 +16,13 @@ import java.util.*;
 public class ClientArtifacts {
     private final Path directory;
     private final ClientDownloadManifest manifest;
+    private final ClientInstallerManifest installers;
     private final Map<String,ClientDownloadArtifact> artifacts;
     private final java.util.concurrent.Semaphore transfers = new java.util.concurrent.Semaphore(2);
     void start(@jakarta.enterprise.event.Observes io.quarkus.runtime.StartupEvent ignored) { }
     @Inject public ClientArtifacts(org.eclipse.microprofile.config.Config config,Codec codec){this(config.getOptionalValue("toolgate.client-downloads.directory",String.class),codec);}
     public ClientArtifacts(Optional<String> configured, Codec codec) {
-        if(configured.isEmpty()){directory=null;manifest=null;artifacts=Map.of();return;}
+        if(configured.isEmpty()){directory=null;manifest=null;installers=null;artifacts=Map.of();return;}
         try {
             if(!Path.of(configured.get()).isAbsolute())throw new IllegalArgumentException();
             directory=Path.of(configured.get()).toAbsolutePath().normalize();
@@ -39,10 +40,26 @@ public class ClientArtifacts {
                 try(var file=open(artifact)){verify(file,artifact);}
             }
             if(platforms.size()!=3)throw new IllegalArgumentException();
+            var installerDocument=directory.resolve("installers.json");
+            if(Files.exists(installerDocument,LinkOption.NOFOLLOW_LINKS)) {
+                if(!Files.isRegularFile(installerDocument,LinkOption.NOFOLLOW_LINKS)||Files.size(installerDocument)>65536)throw new IllegalArgumentException();
+                installers=codec.model(Files.readString(installerDocument),ClientInstallerManifest.class);
+                if(!installers.version().equals(manifest.version())||installers.artifacts().size()!=targets.size())throw new IllegalArgumentException();
+                var installerTargets=new HashSet<String>();
+                for(var installer:installers.artifacts()) {
+                    var original=manifest.artifacts().stream().filter(a->a.target().equals(installer.target())).findFirst().orElseThrow();
+                    var extension=switch(original.platform()){case WINDOWS->"setup.exe";case MACOS->"dmg";case LINUX->"run";};
+                    if(!installerTargets.add(installer.target())||installer.platform()!=original.platform()||!installer.filename().equals("olo-toolgate-client-"+manifest.version()+"-"+installer.target()+"."+extension))throw new IllegalArgumentException();
+                    var artifact=new ClientDownloadArtifact(installer.platform(),installer.target(),installer.filename(),installer.sha256(),installer.bytes());
+                    if(index.put(artifact.filename(),artifact)!=null)throw new IllegalArgumentException();
+                    try(var file=open(artifact)){verify(file,artifact);}
+                }
+            } else installers=null;
             artifacts=Map.copyOf(index);
         }catch(Exception rejected){throw new IllegalStateException("Client release asset validation failed");}
     }
     public ClientDownloadManifest manifest(){if(manifest==null)throw unavailable();return manifest;}
+    public ClientInstallerManifest installers(){if(installers==null)throw unavailable();return installers;}
     private static Failure unavailable(){return new Failure(ErrorCode.DEPENDENCY_UNAVAILABLE,503,"Client downloads are unavailable");}
     private SeekableByteChannel open(ClientDownloadArtifact artifact)throws java.io.IOException {
         if(!Files.isRegularFile(directory.resolve(artifact.filename()),LinkOption.NOFOLLOW_LINKS))throw new java.io.IOException("Invalid artifact");

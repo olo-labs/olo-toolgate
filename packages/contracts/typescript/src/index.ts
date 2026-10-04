@@ -306,6 +306,19 @@ export interface ClientHealth {
   readonly reportSequence: number;
   readonly lastSuccessUnixMs?: number;
 }
+/** Unsigned interactive system-service installer; signing is a separate release gate. */
+export interface ClientInstallerArtifact {
+  readonly platform: ClientPlatform;
+  readonly target: string;
+  readonly filename: string;
+  readonly sha256: string;
+  readonly bytes: number;
+}
+/** Fixed service tool boundary; validate schema before use. */
+export interface ClientInstallerManifest {
+  readonly version: string;
+  readonly artifacts: ReadonlyArray<ClientInstallerArtifact>;
+}
 export type ClientIpcOperation = "HEALTH" | "ENROLL" | "CHECK_IN";
 /** Endpoint identity foundation wire model. */
 export interface ClientIpcRequest {

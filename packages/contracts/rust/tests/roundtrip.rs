@@ -142,6 +142,8 @@ fn shared_fixture_round_trips() {
         BuiltinIpcResponse,
         ClientDownloadArtifact,
         ClientDownloadManifest,
+        ClientInstallerArtifact,
+        ClientInstallerManifest,
         FleetArchitecture,
         FleetSignatureHeader,
         FleetSignedDocument,

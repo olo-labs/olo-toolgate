@@ -21,6 +21,12 @@ def main():
         path=directory/artifact['filename']
         if hashlib.sha256(path.read_bytes()).hexdigest()!=artifact['sha256']:raise ValueError('Release asset drift')
         files.extend([path,directory/(path.name+'.sha256')])
+    if (directory/'installers.json').exists():
+        installers=json.loads((directory/'installers.json').read_text())
+        files.append(directory/'installers.json')
+        for installer in installers['artifacts']:
+            path=directory/installer['filename']
+            files.extend([path,directory/(path.name+'.sha256')])
     present=subprocess.run(['gh','release','view',tag],capture_output=True).returncode==0
     if not present:
         subprocess.run(['gh','release','create',tag,'--verify-tag',*(['--prerelease'] if '-' in version else []),'--title','OLO ToolGate '+version,

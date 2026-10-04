@@ -26,3 +26,14 @@ it('rejects untrusted artifact URLs and script-bearing filenames', async () => {
   vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({...manifest,artifacts:manifest.artifacts.map(a=>({...a,filename:'../../secret'}))}))));
   render(<ClientDownloads />); expect(await screen.findByText(/Client downloads are unavailable/)).toBeTruthy(); expect(screen.queryByRole('link')).toBeNull();
 });
+it('offers unsigned installers without login and retains archive downloads', async () => {
+  const installers = { ...manifest, artifacts: manifest.artifacts.map(a => ({ ...a,
+    filename: a.filename.replace(/\.(zip|tar\.gz)$/, a.platform === 'WINDOWS' ? '.setup.exe' : a.platform === 'MACOS' ? '.dmg' : '.run') })) };
+  vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => Promise.resolve(new Response(JSON.stringify(url.endsWith('/installers') ? installers : manifest)))));
+  render(<ClientDownloads />);
+  expect(await screen.findByRole('link', { name: 'Install Windows x64' })).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'Install macOS x64' })).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'Install Linux x64' })).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'Download Windows x64' })).toBeTruthy();
+  expect(screen.getByText(/These development installers are unsigned/)).toBeTruthy();
+});

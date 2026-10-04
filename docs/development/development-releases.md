@@ -63,3 +63,9 @@ under META-INF. Container images expose notes at
 `/usr/share/doc/olo-toolgate/RELEASE-NOTES.md` and license notices under
 `/usr/share/licenses/olo-toolgate/`. Existing dependency notices and SBOMs are
 preserved. Release notes and notices are included in asset checksums.
+
+Native CI now also builds six unsigned interactive installers. The public bundle
+contains `installers.json`, `.setup.exe`/`.dmg`/`.run` files and their checksums.
+The anonymous Control home page links to these verified installers. See
+[installation and debugging](../client/installers.md) for permissions, initial
+installation limits and signing deferred by request.

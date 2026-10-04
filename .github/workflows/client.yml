@@ -57,6 +57,20 @@ jobs:
           NATIVE_TARGET: ${{ matrix.target }}
           NATIVE_BINARY: ${{ matrix.binary }}
         run: python tools/client/package.py --target "$NATIVE_TARGET" --binary "target/release/$NATIVE_BINARY"
+      - name: Install pinned Windows installer compiler
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: ./tools/client/installer-compiler.ps1
+      - name: Build unsigned interactive installer
+        shell: bash
+        env:
+          NATIVE_TARGET: ${{ matrix.target }}
+        run: python tools/client/installer.py --target "$NATIVE_TARGET"
+      - name: Prove packaged installer starts the system service
+        shell: bash
+        env:
+          NATIVE_TARGET: ${{ matrix.target }}
+        run: python tools/client/installer_smoke.py --target "$NATIVE_TARGET"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: endpoint-client-${{ matrix.target }}

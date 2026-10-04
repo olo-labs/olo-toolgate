@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import type { ClientDownloadManifest } from '@olo-labs/toolgate-contracts';
+import type { ClientDownloadManifest, ClientInstallerManifest } from '@olo-labs/toolgate-contracts';
 test.skip(process.env.UI_TEST_DOWNLOADS_EXPECTED !== 'true', 'Requires a real three-platform release image');
 test('anonymous home page downloads all native clients with matching checksums and accessible states', async ({ page, request }) => {
   await page.goto('/');
@@ -20,6 +20,17 @@ test('anonymous home page downloads all native clients with matching checksums a
     expect(createHash('sha256').update(data).digest('hex')).toBe(artifact.sha256);
     expect(data.length).toBe(artifact.bytes);
   }
+  const installerResponse = await request.get('/api/public/v1/installers'); expect(installerResponse.status()).toBe(200);
+  const installers = await installerResponse.json() as ClientInstallerManifest;
+  for (const [platform,label] of [['WINDOWS','Windows'],['MACOS','macOS'],['LINUX','Linux']] as const) {
+    const installer = installers.artifacts.find(a=>a.platform===platform && a.target.startsWith('x86_64'))!;
+    const pending = page.waitForEvent('download'); await page.getByRole('link',{name:`Install ${label} x64`,exact:true}).click();
+    const download = await pending; expect(download.suggestedFilename()).toBe(installer.filename);
+    const data = await readFile((await download.path())!);
+    expect(createHash('sha256').update(data).digest('hex')).toBe(installer.sha256);
+    expect(data.length).toBe(installer.bytes);
+  }
+  await expect(page.getByText(/These development installers are unsigned/)).toBeVisible();
   expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations).toEqual([]);
   await page.setViewportSize({width:390,height:844});
   await expect(page.getByRole('link',{name:'Download Linux x64'})).toBeVisible();

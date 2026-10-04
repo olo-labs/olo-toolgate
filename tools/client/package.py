@@ -59,7 +59,7 @@ def package(binary, target, output):
              'NOTICE.md':(ROOT/'NOTICE.md').read_bytes(),
              'README.md':(ROOT/'apps/endpoint-client/README.md').read_text().replace('../../docs/','docs/').encode(),
              'sbom.cdx.json':(json.dumps(sbom,sort_keys=True,indent=2)+'\n').encode()}
-    for document in ['client/tool-builder.md','adr/011-designated-client-tool-authoring.md','client/package-deployment.md','adr/010-signed-fleet-reconciliation.md','client/hotfolder.md','client/local-runtimes.md','client/runtime-support.md','client/runtime-isolation.md',
+    for document in ['client/installers.md','client/tool-builder.md','adr/011-designated-client-tool-authoring.md','client/package-deployment.md','adr/010-signed-fleet-reconciliation.md','client/hotfolder.md','client/local-runtimes.md','client/runtime-support.md','client/runtime-isolation.md',
                      'adr/009-managed-local-runtime-sandbox.md','adr/007-endpoint-enrollment.md','adr/008-hotfolder-builtins.md',
                      'operations/execution-guide.md','operations/debugging.md','codex/08-DEFINITION-OF-DONE.md',
                      'codex/modules/07-completion.md','codex/modules/07-coverage.md','codex/modules/08-completion.md','codex/modules/08-coverage.md',

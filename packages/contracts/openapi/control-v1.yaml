@@ -10,6 +10,19 @@ info:
 security:
 - adminAccessToken: []
 paths:
+  /api/public/v1/installers:
+    get:
+      operationId: publicClientInstallers
+      security: []
+      responses:
+        '200':
+          description: Unsigned interactive installer manifest
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/builtins.schema.json#/$defs/ClientInstallerManifest
+        '503':
+          description: Installers unavailable
   /api/public/v1/clients:
     get:
       operationId: publicClientDownloads

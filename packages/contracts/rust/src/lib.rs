@@ -466,6 +466,23 @@ pub struct ClientHealth {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_success_unix_ms: Option<u64>,
 }
+/// Unsigned interactive system-service installer; signing is a separate release gate.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ClientInstallerArtifact {
+    pub platform: ClientPlatform,
+    pub target: String,
+    pub filename: String,
+    pub sha256: String,
+    pub bytes: u64,
+}
+/// Fixed service tool boundary; validate schema before use.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ClientInstallerManifest {
+    pub version: String,
+    pub artifacts: Vec<ClientInstallerArtifact>,
+}
 /// Canonical ClientIpcOperation wire values.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ClientIpcOperation {

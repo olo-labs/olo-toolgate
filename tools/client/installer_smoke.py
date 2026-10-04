@@ -1,0 +1,68 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+"""Exercise packaged installers only on disposable native CI runners."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import platform
+import subprocess
+import tempfile
+import time
+from package import ROOT
+
+
+def run(arguments):return subprocess.run(arguments,check=True,capture_output=True,text=True)
+
+
+def check(target):
+    if os.environ.get('GITHUB_ACTIONS')!='true':raise RuntimeError('Disposable native CI only')
+    system=platform.system();suffix={'Windows':'setup.exe','Darwin':'dmg','Linux':'run'}[system]
+    version=(ROOT/'VERSION').read_text().strip()
+    installer=ROOT/f'build/client/release/olo-toolgate-client-{version}-{target}.{suffix}'
+    if installer.with_name(installer.name+'.sha256').read_text().strip()!=hashlib.sha256(installer.read_bytes()).hexdigest()+'  '+installer.name:raise ValueError('Installer checksum mismatch')
+    binary=ROOT/'target/release'/('olo-toolgate-client.exe' if system=='Windows' else 'olo-toolgate-client')
+    installed=False
+    try:
+        if system=='Windows':
+            run([str(installer),'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SERVER=https://control.example.invalid'])
+            installed=True
+        elif system=='Linux':
+            run(['/bin/sh',str(installer),'--verify'])
+            run(['sudo','-n','/bin/sh',str(installer),'--elevated','https://control.example.invalid',str(os.getuid())])
+            installed=True
+        else:
+            # The native GUI app is compiled into the disk image. Execute its exact payload
+            # headlessly; administrator dialogs require an interactive desktop test.
+            with tempfile.TemporaryDirectory(prefix='installer-mount-') as temporary:
+                run(['/usr/bin/hdiutil','attach',str(installer),'-readonly','-nobrowse','-mountpoint',temporary])
+                try:
+                    source=Path(temporary)/'Install ToolGate.app/Contents/Resources/payload/olo-toolgate-client'
+                    if hashlib.sha256(source.read_bytes()).digest()!=hashlib.sha256(binary.read_bytes()).digest():raise ValueError('Disk image native payload drift')
+                    run(['sudo','-n',str(source),'install','--server','https://control.example.invalid']);installed=True
+                finally:run(['/usr/bin/hdiutil','detach',temporary])
+        deadline=time.monotonic()+45
+        while True:
+            try:
+                health=json.loads(run([str(binary),'health']).stdout)
+                assert health['state']=='UNENROLLED' and not health['ready']
+                break
+            except subprocess.CalledProcessError:
+                if time.monotonic()>deadline:raise
+                time.sleep(.2)
+        if system=='Windows':assert 'RUNNING' in run(['sc.exe','query','OloToolGateClient']).stdout
+        elif system=='Linux':assert run(['systemctl','is-active','olo-toolgate-client']).stdout.strip()=='active'
+        else:assert 'state = running' in run(['sudo','-n','launchctl','print','system/io.ololabs.toolgate.client']).stdout
+        print('Packaged installer started the system service; protected mode remains unenrolled')
+    finally:
+        if installed:
+            if system=='Windows':
+                uninstaller=Path(os.environ['ProgramFiles'])/'OLO/ToolGateSetup/unins000.exe'
+                run([str(uninstaller),'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'])
+            else:run(['sudo','-n',str(binary),'uninstall','--purge'])
+
+
+if __name__=='__main__':
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--target',required=True)
+    check(parser.parse_args().target)
