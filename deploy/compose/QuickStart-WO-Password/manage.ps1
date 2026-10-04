@@ -74,6 +74,17 @@ try {
         elseif ($mode[1] -eq 'external-proxy') { $composeArgs += @('-f','external-proxy.yaml') }
         else { throw 'Invalid saved proxy mode.' }
     }
+    if (!$stack -and !$SkipPull -and $Operation -in @('deploy','update')) {
+        $images = @(& docker @composeArgs config --images)
+        if ($LASTEXITCODE -ne 0 -or $images.Count -ne 1) { throw 'Cannot resolve Compose image configuration.' }
+        $image = $images[0].Trim()
+        if (!$image.Contains('/')) {
+            & docker image inspect $image *> $null
+            if ($LASTEXITCODE -ne 0) { throw "Local-only image '$image' is missing. Build it first, or set QUICKSTART_IMAGE=ololab/olo-toolgate-quickstart:dev in .env." }
+            Write-Host "Using local image $image; skipping registry pull. Set QUICKSTART_IMAGE in .env to a published image for registry updates."
+            $SkipPull = $true
+        }
+    }
     if ($Operation -eq 'configure') { Write-Host 'Configuration saved. Run deploy to apply it.'; return }
     if ($Operation -eq 'undeploy') { Invoke-Docker @composeArgs down; return }
     if ($Operation -eq 'status') { Invoke-Docker @composeArgs ps; return }

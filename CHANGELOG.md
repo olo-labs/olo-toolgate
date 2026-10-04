@@ -6,6 +6,10 @@ The project follows semantic versioning once stable versioning begins.
 
 ## 0.10.0-dev
 
+- Verify automatic membership audit transactions in HTTP smoke and SQLite tests,
+  give the Compose test Gateway a readiness probe, and handle local Quickstart
+  images without attempting registry pulls.
+
 - Gate CI builds on release metadata and generated bindings, with regression tests
   for stale release notes, missing files, newline drift and version changes.
 

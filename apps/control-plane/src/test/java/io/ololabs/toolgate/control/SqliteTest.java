@@ -47,6 +47,15 @@ final class SqliteTest {
         assertFalse(codec.model(created.body(),io.ololabs.toolgate.contracts.ControlUser.class).enabled());
         assertEquals(created,service.mutate(actor,Ids.Kind.USER,"new-user","CREATE",user,0,"create-user","retry"));
         assertEquals(1,service.get(actor,Ids.Kind.TEAM,"team-default").revision());
+        // Creating a user audits both the user and its automatic membership, once per transaction.
+        var audits = new com.fasterxml.jackson.databind.ObjectMapper().readTree(service.audit(actor,0,20).body()).get("items");
+        assertEquals(2,audits.size());
+        assertEquals("users:new-user",audits.get(0).get("target").asText());
+        assertEquals("teams:team-default",audits.get(1).get("target").asText());
+        assertEquals("CREATE",audits.get(1).get("operation").asText());
+        assertEquals(audits.get(0).get("requestId"),audits.get(1).get("requestId"));
+        assertEquals(audits.get(0).get("revision"),audits.get(1).get("revision"));
+
         String other = codec.json(new io.ololabs.toolgate.contracts.ControlTeam("second-team","Second",true,1L,java.util.List.of("new-user"),null,null));
         service.mutate(actor,Ids.Kind.TEAM,"second-team","CREATE",other,0,"second-team","request");
         assertEquals(team.userIds(),codec.model(service.get(actor,Ids.Kind.TEAM,"second-team").body(),io.ololabs.toolgate.contracts.ControlTeam.class).userIds());
@@ -58,6 +67,13 @@ final class SqliteTest {
         assertThrows(Failure.class,()->bounded.mutate(actor,Ids.Kind.USER,"overflow","CREATE",DomainTest.user("overflow",1),0,"overflow","request"));
         assertThrows(Failure.class,()->service.get(actor,Ids.Kind.USER,"overflow"));
         assertEquals(2,service.get(actor,Ids.Kind.TEAM,"team-default").revision());
+        var finalAudits = new com.fasterxml.jackson.databind.ObjectMapper().readTree(service.audit(actor,0,20).body()).get("items");
+        assertEquals(5,finalAudits.size());
+        assertEquals("users:next-user",finalAudits.get(3).get("target").asText());
+        assertEquals("teams:team-default",finalAudits.get(4).get("target").asText());
+        assertEquals("UPDATE",finalAudits.get(4).get("operation").asText());
+        assertEquals(finalAudits.get(3).get("requestId"),finalAudits.get(4).get("requestId"));
+
     }
     @Test void realTransactionsAuditReplayRestartAndImmutableTriggers() throws Exception {
         Path path=directory.resolve("control.sqlite"); var source=SqliteState.open(path); var codec=new ContractCodec();

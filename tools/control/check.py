@@ -171,7 +171,19 @@ def http_tests(runtime, management, key):
     assert status == 200 and not json.loads(diff)['applied'], (status, diff)
     assert request(api+'/config/import', admin, b'!!java/object {}', 'POST', {'Content-Type':'application/yaml','If-Match':f'"{rev}"','Idempotency-Key':'unsafe-yaml'})[0] == 400
     status, audits, _ = request(api+'/audit', admin)
-    assert status == 200 and len(json.loads(audits)['items']) == 8, audits
+    assert status == 200, audits
+    audit_items = json.loads(audits)['items']
+    expected_audits = [('CREATE','users:user'), ('CREATE','teams:team-default')]
+    expected_audits += [('CREATE',kind+':'+record['id']) for kind,record in records.items()]
+    for user_id in ('page-user', complex_id):
+        expected_audits += [('CREATE','users:'+user_id), ('UPDATE','teams:team-default')]
+    assert [(entry['operation'],entry['target']) for entry in audit_items] == expected_audits, audits
+    for start in (0, 7, 9):
+        pair = audit_items[start:start+2]
+        assert pair[0]['requestId'] == pair[1]['requestId'] and pair[0]['revision'] == pair[1]['revision'], pair
+    team = json.loads(request(api+'/teams/team-default',reader)[1])
+    assert set(team['userIds']) == {'user','page-user',complex_id}, team
+    audit_count = len(audit_items)
     imp['snapshot']['users'][0]['name']='Imported user'
     status,diff,_=request(api+'/config/import',admin,imp,'POST',{'If-Match':f'"{rev}"','Idempotency-Key':'changed-dry-run'})
     assert status == 200 and len(json.loads(diff)['changes']) == 1
@@ -180,7 +192,7 @@ def http_tests(runtime, management, key):
     applied=request(api+'/config/import',admin,imp,'POST',import_headers)
     assert applied[0] == 200 and json.loads(applied[1])['revision'] == rev+1
     assert request(api+'/config/import',admin,imp,'POST',import_headers)[:2] == applied[:2]
-    assert len(json.loads(request(api+'/audit',admin)[1])['items']) == 9
+    assert len(json.loads(request(api+'/audit',admin)[1])['items']) == audit_count+1
     record_path=api+'/users/'+urllib.parse.quote(complex_id,safe='')
     prior=json.loads(request(record_path,reader)[1]);revision=prior['revision']
     updated={**prior,'name':'Updated'}
@@ -189,13 +201,24 @@ def http_tests(runtime, management, key):
     updated_reply=request(record_path,admin,updated,'PUT',update_headers)
     assert updated_reply[0] == 200 and json.loads(updated_reply[1])['revision'] == revision+1, updated_reply[:2]
     assert request(record_path,admin,updated,'PUT',update_headers)[:2] == updated_reply[:2]
+    # A registered user remains referenced by the default team until explicitly removed.
+    assert request(record_path,admin,method='DELETE',headers={'If-Match':f'"{revision+1}"','Idempotency-Key':'still-member'})[0] == 409
+    team['userIds'].remove(complex_id)
+    team_revision = team['revision']
+    membership_headers = {'If-Match':f'"{team_revision}"','Idempotency-Key':'detach-complex'}
+    detached = request(api+'/teams/team-default',admin,team,'PUT',membership_headers)
+    assert detached[0] == 200, detached[:2]
+    assert request(api+'/teams/team-default',admin,team,'PUT',membership_headers)[:2] == detached[:2]
     delete_headers={'If-Match':f'"{revision+1}"','Idempotency-Key':'delete-complex'}
     assert request(record_path,reader,method='DELETE',headers=delete_headers)[0] == 403
     assert request(record_path,admin,method='DELETE',headers=delete_headers)[0] == 204
     assert request(record_path,admin,method='DELETE',headers=delete_headers)[0] == 204
     assert request(record_path,reader)[0] == 404
     assert request(api+'/users',admin,{**user,'id':complex_id},'POST',{'Idempotency-Key':'retired-complex'})[0] == 409
-    assert len(json.loads(request(api+'/audit',admin)[1])['items']) == 11
+    final_audits = json.loads(request(api+'/audit',admin)[1])['items']
+    assert len(final_audits) == audit_count+4, final_audits
+    assert [(item['operation'],item['target']) for item in final_audits[audit_count:]] == [
+        ('IMPORT','config'),('UPDATE','users:'+complex_id),('UPDATE','teams:team-default'),('DELETE','users:'+complex_id)]
     assert request(api+'/audit', reader)[0] == 403
     assert request(management+'/q/health/live')[0] == 200
     status, metrics, _ = request(management+'/q/metrics')

@@ -143,3 +143,17 @@ and a protected tool call. Restore the pre-upgrade backup for rollback.
 
 See [GatewayControl](../GatewayControl/README.md) for separate services. Production
 needs external identity, trusted TLS, custody and HA planning.
+
+## Local image overrides
+
+Published images such as `ololab/olo-toolgate-quickstart:dev` are pulled on deploy
+and update. A local-only override such as `olo-toolgate-quickstart:cache-options`
+is used from Docker's local image store, without a registry pull. If it is missing,
+the script stops with instructions to build it or change `QUICKSTART_IMAGE` in
+`.env` to the published image. Local-only updates require rebuilding the image.
+
+The generated `.env` is retained across script runs; updating `.env.example` does
+not replace existing overrides. `-SkipPull` (Windows) or `--no-pull` (shell) also
+permits explicit use of an already downloaded image. Password-free mode requires
+a build supporting `TOOLGATE_DISABLE_ADMIN_PASSWORD`; older published builds are
+rejected by the startup option check.

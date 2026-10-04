@@ -25,8 +25,15 @@ def main():
         for name in ('compose.yaml','setup.py','nginx.conf'):
             shutil.copyfile(ROOT/'deploy/compose/GatewayControl'/name,folder/name)
         # The test reuses Quickstart's exact Gateway binary. Its composition
-        # healthcheck is inapplicable to this standalone binary; probe HTTP below.
-        (folder/'image-test.yaml').write_text('services:\n  gateway:\n    healthcheck:\n      disable: true\n',encoding='utf-8')
+        # healthcheck is inapplicable to this standalone binary; use its real readiness endpoint.
+        (folder/'image-test.yaml').write_text('''services:
+  gateway:
+    healthcheck:
+      test: [CMD, /opt/quickstart-python/bin/python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9091/v1/health/ready', timeout=2)"]
+      interval: 2s
+      timeout: 3s
+      retries: 60
+''',encoding='utf-8')
         environment=dict(os.environ,COMPOSE_PROJECT_NAME=project,CONTROL_IMAGE=args.control_image,
                          GATEWAY_IMAGE=args.image,HELPER_IMAGE=args.image,STACK_TLS_PORT='0')
         command=['docker','compose','-f',str(folder/'compose.yaml'),'-f',str(folder/'image-test.yaml'),'--profile','database','--profile','proxy']

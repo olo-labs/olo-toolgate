@@ -100,6 +100,21 @@ if [ -f external-db.yaml ]; then
     case "$bundled" in bundled) set -- "$@" --profile database;; external) set -- "$@" -f external-db.yaml;; *) exit 2;; esac
     case "$proxy" in proxy) set -- "$@" --profile proxy;; external-proxy) set -- "$@" -f external-proxy.yaml;; *) exit 2;; esac
 fi
+if [ "$stack" = false ] && [ "$skip_pull" = false ]; then
+    case "$operation" in deploy|update)
+        image=$(docker "$@" config --images)
+        case "$image" in */*) ;; *)
+            docker image inspect "$image" >/dev/null 2>&1 || {
+                echo "Local-only image '$image' is missing. Build it first, or set QUICKSTART_IMAGE=ololab/olo-toolgate-quickstart:dev in .env." >&2
+                exit 1
+            }
+            echo "Using local image $image; skipping registry pull. Set QUICKSTART_IMAGE in .env to a published image for registry updates."
+            skip_pull=true
+            ;;
+        esac
+        ;;
+    esac
+fi
 case "$operation" in
     configure) echo 'Configuration saved; run deploy to apply.'; exit;;
     undeploy) docker "$@" down; exit;;
