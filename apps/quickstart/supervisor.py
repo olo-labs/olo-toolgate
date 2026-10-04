@@ -236,7 +236,7 @@ def initialize():
     DATA.mkdir(exist_ok=True)
     if DATA.is_symlink() or DATA.stat().st_uid != os.getuid(): raise ValueError('Private service-owned /data required')
     DATA.chmod(0o700)
-    for name in ('keys', 'run', 'state', 'hotfolder'):
+    for name in ('keys', 'run', 'state', 'hotfolder', 'artifacts'):
         path = DATA/name
         if path.is_symlink(): raise ValueError('Unsafe local layout')
         path.mkdir(exist_ok=True); path.chmod(0o700)
@@ -253,9 +253,10 @@ def initialize():
         atomic(DATA/'identity.json', json.dumps(password_record(password)))
         if supplied is None: atomic(DATA/'bootstrap-password', password+'\n')
     else: os.environ.pop('TOOLGATE_BOOTSTRAP_PASSWORD', None)  # Existing identity is never reset by startup settings.
-    for name in ('identity', 'policy', 'permit', 'device-ca', 'server-tls'): key(name)
+    for name in ('identity', 'policy', 'permit', 'device-ca', 'server-tls', 'fleet', 'package-release'): key(name)
     if not (DATA/'keys/vault.key').exists(): atomic(DATA/'keys/vault.key', secrets.token_bytes(32))
     certificates()
+    fleet_keys()
 
 
 def call(path, token=None, body=None, port=8082, secure=False, method=None):
@@ -295,6 +296,13 @@ def configure():
                 'QUARKUS_HTTP_SSL_CERTIFICATE_TRUST_STORE_FILE': '/data/keys/device-trust.p12', 'QUARKUS_HTTP_SSL_CERTIFICATE_TRUST_STORE_PASSWORD': 'changeit',
                 'MP_JWT_VERIFY_ISSUER': ISSUER, 'MP_JWT_VERIFY_AUDIENCES': 'toolgate-control', 'MP_JWT_VERIFY_PUBLICKEY_LOCATION': '/data/keys/identity-public.pem',
                 'TOOLGATE_CONTROL_BUNDLE_ENABLED': 'true', 'TOOLGATE_CONTROL_BUNDLE_KEY_ID': 'policy-local', 'TOOLGATE_CONTROL_BUNDLE_PRIVATE_KEY_PATH': '/data/keys/policy.pem',
+                'TOOLGATE_QUICKSTART_ARTIFACT_DIRECTORY': '/data/artifacts',
+                'TOOLGATE_CONTROL_FLEET_ENABLED': 'true', 'TOOLGATE_CONTROL_FLEET_KEY_ID': 'fleet-local',
+                'TOOLGATE_CONTROL_FLEET_PRIVATE_KEY_PATH': '/data/keys/fleet.pem',
+                'TOOLGATE_CONTROL_FLEET_RELEASE_KEYS_PATH': '/data/keys/release-keys.json',
+                'TOOLGATE_CONTROL_FLEET_ORGANIZATION_KEYS_PATH': '/data/keys/organization-keys.json',
+                'TOOLGATE_CONTROL_FLEET_ARTIFACT_ORIGIN': env.get('TOOLGATE_CONTROL_FLEET_ARTIFACT_ORIGIN', 'https://localhost:8443/artifacts'),
+                'TOOLGATE_CONTROL_FLEET_ARTIFACT_CA_PATH': env.get('TOOLGATE_CONTROL_FLEET_ARTIFACT_CA_PATH', '/data/keys/device-ca.crt'),
                 'TOOLGATE_CONTROL_APPROVAL_ENABLED': 'true', 'TOOLGATE_CONTROL_ENDPOINT_ENABLED': 'true',
                 'TOOLGATE_CONTROL_ENDPOINT_PRIVATE_KEY_PATH': '/data/keys/device-ca.pem', 'TOOLGATE_CONTROL_ENDPOINT_CA_CERTIFICATE_PATH': '/data/keys/device-ca.crt',
                 'TOOLGATE_CONTROL_ENDPOINT_TENANT_ID': TENANT, 'TOOLGATE_CONTROL_ENDPOINT_SERVER_ID': 'quickstart-server',
@@ -307,6 +315,15 @@ def configure():
             QUARKUS_DATASOURCE_ACTIVE='true', QUARKUS_DATASOURCE_HEALTH_ENABLED='true', QUARKUS_FLYWAY_MIGRATE_AT_START='true')
     env.update(settings)
     return env, catalog
+
+
+def fleet_keys():
+    """Persistent disjoint package release and desired-state trust domains."""
+    for name, kid, filename in (('fleet', 'fleet-local', 'organization-keys.json'),
+                                ('package-release', 'package-local', 'release-keys.json')):
+        numbers = key(name).public_key().public_numbers()
+        encode = lambda value: base64.urlsafe_b64encode(value.to_bytes((value.bit_length()+7)//8, 'big')).rstrip(b'=').decode()
+        atomic(DATA/'keys'/filename, json.dumps([{'kid': kid, 'n': encode(numbers.n), 'e': encode(numbers.e)}]))
 
 
 def machine():
@@ -442,7 +459,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self.reply(201, {'stored': True})
             if path.startswith(('/console/', '/api/control/v1/', '/api/public/v1/clients', '/api/public/v1/installers')) or path in ('/','/console'):
                 # Direct TLS adapter is used for enrollment administration; device peers use :8443 itself.
-                secure = path.startswith('/api/control/v1/endpoint/')
+                secure = path.startswith(('/api/control/v1/endpoint/', '/api/control/v1/builder/', '/api/control/v1/fleet/'))
                 client = http.client.HTTPSConnection('127.0.0.1',8443,context=ssl.create_default_context(cafile=str(DATA/'keys/device-ca.crt')),timeout=10) if secure else http.client.HTTPConnection('127.0.0.1',8082,timeout=10)
                 headers = {k:v for k,v in self.headers.items() if k.lower() in ('authorization','content-type','idempotency-key','if-match','x-request-id','traceparent')}
                 try:

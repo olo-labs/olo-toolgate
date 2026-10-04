@@ -182,3 +182,26 @@ reviewers/tag restrictions on the `quickstart-release` GitHub environment and
 OCI/attestation permissions. Declaring an environment in YAML alone does not
 configure those repository protection rules. Local runs never require remote
 registry credentials.
+
+### Password-free administrator and packages
+
+`TOOLGATE_DISABLE_ADMIN_PASSWORD=true` uses the persistent `admin` directory user
+(Quickstart administrator), default team membership, signed admin/reader/approver/
+enroller session and normal audit identity. Startup seeds this account before
+readiness in both login modes; it does not replace existing user records.
+Tool Builder and Packages use verified internal TLS, including in password-free mode.
+
+Quickstart creates separate persistent RSA keys under `/data/keys` for organization
+fleet signing (`fleet.pem`) and package release signing (`package-release.pem`).
+Their public trust rings are `organization-keys.json` and `release-keys.json`.
+The package release JWS uses key ID `package-local`; organization signatures use
+`fleet-local`. These keys are distinct from identity, policy and device CA keys.
+Testing still requires an enrolled designated client, and publishing still requires
+a valid signed release; no administrator code executes in Control.
+
+For local package downloads, place the package descriptor at
+`/data/artifacts/<sha256>.json` using service-owned regular files. Downloads require
+an authorized device grant and verify the bounded descriptor size and digest.
+Set `TOOLGATE_CONTROL_FLEET_ARTIFACT_ORIGIN` to an external HTTPS mirror and
+`TOOLGATE_CONTROL_FLEET_ARTIFACT_CA_PATH` to its trusted CA file to use that mirror
+instead. Preserve `/data/keys` in backups along with state and artifact files.

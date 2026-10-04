@@ -56,7 +56,10 @@ public class FleetBootstrap {
                 var trust=javax.net.ssl.TrustManagerFactory.getInstance(javax.net.ssl.TrustManagerFactory.getDefaultAlgorithm());trust.init(trusted);tls=javax.net.ssl.SSLContext.getInstance("TLS");tls.init(null,trust.getTrustManagers(),null);
             }
             String token=null;var tokenPath=config.getOptionalValue("toolgate.control.fleet.artifact-token-path",String.class);if(tokenPath.isPresent())token=new String(read(Path.of(tokenPath.get()),4096),java.nio.charset.StandardCharsets.UTF_8).strip();
-            artifacts=new HttpsArtifactStore(setting("artifact-origin"),token,tls);
+            artifacts=config.getOptionalValue("toolgate.quickstart.enabled",Boolean.class).orElse(false)
+                && config.getOptionalValue("toolgate.control.fleet.artifact-origin",String.class).orElse("").equals("https://localhost:8443/artifacts")
+                ? new LocalArtifactStore(Path.of(config.getValue("toolgate.quickstart.artifact-directory",String.class)))
+                : new HttpsArtifactStore(setting("artifact-origin"),token,tls);
             tenant=config.getValue("toolgate.control.endpoint.tenant-id",String.class);server=config.getValue("toolgate.control.endpoint.server-id",String.class);
         }catch(Exception failure){throw new IllegalStateException("Fleet deployment requires dedicated external trust keys, endpoint identity and fixed HTTPS artifact store");}
         service=new FleetService(store,codec,crypto,endpoints,java.time.Clock.systemUTC(),enabled,tenant,server);

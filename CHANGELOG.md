@@ -6,6 +6,10 @@ The project follows semantic versioning once stable versioning begins.
 
 ## 0.10.0-dev
 
+- Fix Quickstart Tool Builder and Packages for the persistent default administrator
+  in both login modes: verified internal TLS, dedicated fleet/release signing
+  custody, and bounded local content-addressed package downloads.
+
 - Add managed Compose stacks with default/external PostgreSQL, authenticated Redis,
   and an isolated password-free local Quickstart. Quickstart supports bounded
   embedded/external Redis catalog caching and a real external PostgreSQL adapter.

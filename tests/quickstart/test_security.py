@@ -27,6 +27,18 @@ class SecurityTests(unittest.TestCase):
         with sqlite3.connect(quickstart.DATA/'state/control.sqlite') as db:
             for version in (1,2):db.executescript((ROOT/f'apps/control-plane/src/main/resources/db/quickstart/V{version}.sql').read_text())
     def tearDown(self):self.temp.cleanup()
+    def test_fleet_keys_are_persistent_and_disjoint(self):
+        quickstart.fleet_keys()
+        organization = json.loads((quickstart.DATA/'keys/organization-keys.json').read_text())[0]
+        release = json.loads((quickstart.DATA/'keys/release-keys.json').read_text())[0]
+        self.assertEqual(organization['kid'], 'fleet-local')
+        self.assertEqual(release['kid'], 'package-local')
+        self.assertEqual(organization['e'], 'AQAB')
+        self.assertNotEqual(organization['n'], release['n'])
+        original = (quickstart.DATA/'keys/fleet.pem').read_bytes()
+        quickstart.fleet_keys()
+        self.assertEqual(original, (quickstart.DATA/'keys/fleet.pem').read_bytes())
+
     def test_password_policy_rotation_signature_and_stale_generation(self):
         for password in ('','short','a'*32,'abc def ghi jkl mno','é'*32,123):
             self.assertFalse(quickstart.password_valid(password))
@@ -69,6 +81,9 @@ class SecurityTests(unittest.TestCase):
                 self.assertEqual(quickstart.session('Bearer '+token)['sub'],'admin')
                 with self.assertRaises(urllib.error.HTTPError) as denied:urllib.request.urlopen(url+'/api/quickstart/v1/tools')
                 self.assertEqual(denied.exception.code,401)
+                for path in ('/api/control/v1/builder/drafts','/api/control/v1/fleet/releases'):
+                    with self.assertRaises(urllib.error.HTTPError) as denied: urllib.request.urlopen(url+path)
+                    self.assertEqual(denied.exception.code,401)
                 request.add_header('Origin','https://evil.example')
                 with self.assertRaises(urllib.error.HTTPError) as denied:urllib.request.urlopen(request)
                 self.assertEqual(denied.exception.code,401)
