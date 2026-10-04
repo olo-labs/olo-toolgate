@@ -3,6 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // GENERATED FILE — DO NOT EDIT DIRECTLY; tools/contracts/generate.py
 use serde::{Deserialize, Serialize};
+/// Server-verified administrator portal session.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AdminSession {
+    pub role: UserRole,
+}
 /// Signed format 2 envelope; compilation adds ASK; old readers reject safely.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -637,6 +643,8 @@ pub enum ControlEntityKind {
     Policy,
     #[serde(rename = "DEVICE")]
     Device,
+    #[serde(rename = "ROLE")]
+    Role,
 }
 /// Canonical ControlImportMode wire values.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -687,6 +695,25 @@ pub struct ControlPolicyPage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_cursor: Option<String>,
 }
+/// Named tenant role with fixed templates and bounded permission rules.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlRole {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub revision: u64,
+    pub portal_role: UserRole,
+    pub rules: RoleRules,
+}
+/// Cursor page; nextCursor is absent after the last item.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlRolePage {
+    pub items: Vec<ControlRole>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
 /// Versioned configuration data. Contains no credentials or executable code.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -700,6 +727,8 @@ pub struct ControlSnapshot {
     pub tools: Vec<ControlTool>,
     pub policies: Vec<ControlPolicy>,
     pub devices: Vec<ControlDevice>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub roles: Option<Vec<ControlRole>>,
 }
 /// Tenant-scoped teams configuration record. Not a runtime credential or policy grant.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -710,6 +739,10 @@ pub struct ControlTeam {
     pub enabled: bool,
     pub revision: u64,
     pub user_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub device_ids: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub role_ids: Option<Vec<String>>,
 }
 /// Cursor page; nextCursor is absent after the last item.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -745,6 +778,8 @@ pub struct ControlUser {
     pub name: String,
     pub enabled: bool,
     pub revision: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub access: Option<UserAccess>,
 }
 /// Cursor page; nextCursor is absent after the last item.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1448,6 +1483,25 @@ pub enum ResourceKind {
     #[serde(rename = "CUSTOM")]
     Custom,
 }
+/// Canonical RoleDeviceScope wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RoleDeviceScope {
+    #[serde(rename = "NONE")]
+    None,
+    #[serde(rename = "ALL")]
+    All,
+    #[serde(rename = "GROUPS")]
+    Groups,
+}
+/// Fixed capability templates narrowed by device scope and optional tool allowlist. GROUPS requires nonempty group IDs; NONE and ALL require empty groups, validated by Control. Policies authorize each call.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RoleRules {
+    pub template_ids: Vec<UserPrivilegeTemplate>,
+    pub device_scope: RoleDeviceScope,
+    pub device_group_ids: Vec<String>,
+    pub tool_ids: Vec<String>,
+}
 /// Sanitized authorization evaluation event; hashes replace raw arguments and resource locators. A decision is not execution success.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -1497,6 +1551,36 @@ pub struct ToolDefinition {
     pub actions: Vec<ToolAction>,
     pub input_schema: std::collections::BTreeMap<String, serde_json::Value>,
     pub output_schema: std::collections::BTreeMap<String, serde_json::Value>,
+}
+/// Tenant-scoped role and privilege assignment. Device groups are directory teams containing device IDs.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct UserAccess {
+    pub role: UserRole,
+    pub template_ids: Vec<UserPrivilegeTemplate>,
+    pub device_group_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub role_ids: Option<Vec<String>>,
+}
+/// Canonical UserPrivilegeTemplate wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum UserPrivilegeTemplate {
+    #[serde(rename = "TOOL_USER")]
+    ToolUser,
+    #[serde(rename = "IT_CLOUD_ADMIN")]
+    ItCloudAdmin,
+    #[serde(rename = "APPROVER")]
+    Approver,
+}
+/// Canonical UserRole wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum UserRole {
+    #[serde(rename = "BASIC")]
+    Basic,
+    #[serde(rename = "ADMINISTRATOR")]
+    Administrator,
+    #[serde(rename = "SUPER_ADMIN")]
+    SuperAdmin,
 }
 impl ContractSet {
     /// Current canonical contract set.

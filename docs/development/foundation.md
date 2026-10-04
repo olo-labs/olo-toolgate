@@ -160,3 +160,21 @@ tracked working file and untracked non-ignored source. This avoids slow Windows
 bind-mount traversal and concurrent drift-test file locks while retaining all
 release sources and dependency lockfiles. Ignored caches/build outputs are
 covered by resolved dependency and production-image inventories.
+
+## Early release metadata gate
+
+Run `make preflight PYTHON=python` (or `python tools/ci/preflight.py`) before
+expensive builds. This dependency-free, read-only gate checks byte-exact release
+notes, version metadata and generated bindings. CI runs it before native client
+builds, containers and browser downloads. Regression tests reproduce stale notes,
+missing notes, newline drift and changed version identity in temporary checkouts.
+
+After changing the changelog, versions or schemas, regenerate and commit all outputs:
+
+```sh
+python tools/contracts/version.py
+python tools/contracts/generate.py
+python tools/ci/preflight.py
+```
+
+CI intentionally rejects drift rather than repairing it during a release.

@@ -218,7 +218,17 @@
     "id": "user-1",
     "name": "User",
     "enabled": true,
-    "revision": 1
+    "revision": 1,
+    "access": {
+      "role": "BASIC",
+      "templateIds": [
+        "TOOL_USER"
+      ],
+      "deviceGroupIds": [],
+      "roleIds": [
+        "role-1"
+      ]
+    }
   },
   "ControlTeam": {
     "id": "team-1",
@@ -227,6 +237,10 @@
     "revision": 1,
     "userIds": [
       "user-1"
+    ],
+    "deviceIds": [],
+    "roleIds": [
+      "role-1"
     ]
   },
   "ControlAgent": {
@@ -471,6 +485,25 @@
         "enabled": true,
         "revision": 1,
         "ownerUserId": "user-1"
+      }
+    ],
+    "roles": [
+      {
+        "id": "role-1",
+        "name": "Cloud operator",
+        "enabled": true,
+        "revision": 1,
+        "portalRole": "BASIC",
+        "rules": {
+          "templateIds": [
+            "IT_CLOUD_ADMIN"
+          ],
+          "deviceScope": "GROUPS",
+          "deviceGroupIds": [
+            "team-1"
+          ],
+          "toolIds": []
+        }
       }
     ]
   },
@@ -2036,6 +2069,69 @@
         "filename": "olo-toolgate-client-0.7.0-dev-x86_64-apple-darwin.dmg",
         "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "bytes": 12345
+      }
+    ]
+  },
+  "AdminSession": {
+    "role": "ADMINISTRATOR"
+  },
+  "UserRole": "BASIC",
+  "UserPrivilegeTemplate": "IT_CLOUD_ADMIN",
+  "UserAccess": {
+    "role": "BASIC",
+    "templateIds": [
+      "IT_CLOUD_ADMIN"
+    ],
+    "deviceGroupIds": [
+      "team-default"
+    ]
+  },
+  "RoleDeviceScope": "GROUPS",
+  "RoleRules": {
+    "templateIds": [
+      "IT_CLOUD_ADMIN"
+    ],
+    "deviceScope": "GROUPS",
+    "deviceGroupIds": [
+      "team-1"
+    ],
+    "toolIds": []
+  },
+  "ControlRole": {
+    "id": "role-1",
+    "name": "Cloud operator",
+    "enabled": true,
+    "revision": 1,
+    "portalRole": "BASIC",
+    "rules": {
+      "templateIds": [
+        "IT_CLOUD_ADMIN"
+      ],
+      "deviceScope": "GROUPS",
+      "deviceGroupIds": [
+        "team-1"
+      ],
+      "toolIds": []
+    }
+  },
+  "ControlRolePage": {
+    "items": [
+      {
+        "id": "role-1",
+        "name": "Cloud operator",
+        "enabled": true,
+        "revision": 1,
+        "portalRole": "BASIC",
+        "rules": {
+          "templateIds": [
+            "IT_CLOUD_ADMIN"
+          ],
+          "deviceScope": "GROUPS",
+          "deviceGroupIds": [
+            "team-1"
+          ],
+          "toolIds": []
+        }
       }
     ]
   }

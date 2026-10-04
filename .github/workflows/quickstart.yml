@@ -18,7 +18,10 @@ concurrency:
   group: quickstart-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  preflight:
+    uses: ./.github/workflows/preflight.yml
   clients:
+    needs: preflight
     uses: ./.github/workflows/client.yml
   image:
     needs: clients

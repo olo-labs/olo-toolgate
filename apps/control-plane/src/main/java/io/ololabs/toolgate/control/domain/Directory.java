@@ -21,7 +21,7 @@ public record Directory(long revision, Map<RecordId, Entry> entries) {
             references = Set.copyOf(references);
         }
     }
-    /** Reject dangling or disabled dependencies and keep export/import bounded. */
+    /** Team membership may include disabled users; compilation excludes them from grants. */
     public void validate(int maxRecords, int maxBytes) {
         if (entries.size() > maxRecords) throw new IllegalArgumentException("Directory record limit exceeded");
         long size = 0;
@@ -29,7 +29,11 @@ public record Directory(long revision, Map<RecordId, Entry> entries) {
             size += entry.document().getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
             for (var ref : entry.references()) {
                 var target = entries.get(ref);
-                if (target == null || (entry.enabled() && !target.enabled())) {
+                boolean membership = entry.id().kind() == Ids.Kind.TEAM && (ref.kind() == Ids.Kind.USER || ref.kind() == Ids.Kind.DEVICE)
+                    || entry.id().kind() == Ids.Kind.USER && ref.kind() == Ids.Kind.TEAM
+                    || (entry.id().kind() == Ids.Kind.USER || entry.id().kind() == Ids.Kind.TEAM) && ref.kind() == Ids.Kind.ROLE
+                    || entry.id().kind() == Ids.Kind.ROLE;
+                if (target == null || (entry.enabled() && !target.enabled() && !membership)) {
                     throw new IllegalArgumentException("Missing or disabled dependency");
                 }
             }

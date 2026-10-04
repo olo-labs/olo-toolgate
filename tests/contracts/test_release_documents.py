@@ -16,8 +16,11 @@ from tools.release import bundle
 
 class ReleaseDocumentsTests(unittest.TestCase):
     def test_notes_match_versions_and_changelog(self):
-        self.assertEqual(version.expected()[version.ROOT/'RELEASE-NOTES.md'],
-                         (version.ROOT/'RELEASE-NOTES.md').read_text(encoding='utf-8'))
+        self.assertEqual(version.expected()[version.ROOT/'RELEASE-NOTES.md'].encode('utf-8'),
+                         (version.ROOT/'RELEASE-NOTES.md').read_bytes())
+        for language in ('java', 'rust', 'typescript', 'php'):
+            self.assertEqual((version.ROOT/'RELEASE-NOTES.md').read_bytes(),
+                (version.ROOT/'packages/contracts'/language/'RELEASE-NOTES.md').read_bytes())
 
     def test_raw_bundle_embeds_exact_documents(self):
         raw=bundle.bundle_bytes()

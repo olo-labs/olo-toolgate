@@ -61,8 +61,7 @@ test('real ASK queue, once/temporary/deny decisions, stale revision and accessib
 
 test('directory reader does not gain approver permission from the console', async ({page}) => {
   await page.goto('/console/'); await page.getByLabel('Access token').fill(credentials.reader);
-  await page.getByRole('button',{name:'Connect to workspace'}).click(); await expect(page.getByRole('navigation')).toBeVisible();
-  await page.getByRole('navigation').getByRole('link',{name:'Approvals',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'Approvals',exact:true})).toBeVisible();
-  await expect(page.getByRole('alert')).toContainText('permission'); await expect(page.getByRole('button',{name:'Approve once',exact:true})).toHaveCount(0); await accessible(page);
+  await page.getByRole('button',{name:'Connect to workspace'}).click();
+  await expect(page.getByRole('alert')).toContainText('permission'); await expect(page.getByRole('navigation')).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Approve once',exact:true})).toHaveCount(0); await accessible(page);
 });

@@ -42,6 +42,10 @@ public final class ApprovalService {
     private void requireApprover(Actor actor, Store.Session tx) {
         available(); if (!actor.approver() || actor.gateway() || actor.userId() == null) throw new Failure(ErrorCode.FORBIDDEN,403,"Dedicated approver role required");
         requireEnabled(tx.load(), Ids.Kind.USER, actor.userId());
+        var user=codec.model(tx.load().entries().get(Ids.Kind.USER.id(actor.userId())).document(),ControlUser.class);
+        var resolved=new RoleResolver(codec).resolve(tx.load(),user);
+        if((resolved.managed() || user.access()!=null && user.access().role()==UserRole.BASIC) && !resolved.approver())
+            throw new Failure(ErrorCode.FORBIDDEN,403,"Approval template required");
     }
     private static final class Observation { long value=-1; }
     /** Failed authorization rolls back state, but authenticated observed time must not roll back. */

@@ -141,8 +141,8 @@ def main():
         return
     if args.gateway_only:
         run(['cargo','test','-p','olo-toolgate-gateway','--locked']); return
-    python('tools/contracts/version.py','--check')
-    python('tools/contracts/generate.py','--check')
+    python('tools/ci/preflight.py')
+    python('-m','unittest','discover','-s','tests/ci','-v')
     python('tools/ui/generate.py','--check')
     python('tools/quality.py')
     python('-m','unittest','discover','-s','tests/contracts','-v')

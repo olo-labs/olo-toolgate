@@ -99,7 +99,18 @@ public class ContractCodec implements Codec {
         catch (java.io.IOException | ClassNotFoundException | IllegalArgumentException e) { throw Failure.validation(); }
         var id = kind.id(node.get("id").asText());
         var refs = new HashSet<RecordId>();
-        if (kind == Kind.TEAM) add(refs, Kind.USER, node.get("userIds"));
+        if (kind == Kind.TEAM) {
+            add(refs, Kind.USER, node.get("userIds"));
+            if (node.has("deviceIds")) add(refs,Kind.DEVICE,node.get("deviceIds"));
+        }
+        if (kind == Kind.TEAM && node.has("roleIds")) add(refs,Kind.ROLE,node.get("roleIds"));
+        if (kind == Kind.USER && node.has("access") && node.get("access").has("roleIds")) add(refs,Kind.ROLE,node.get("access").get("roleIds"));
+        if (kind == Kind.ROLE) {
+            var rules=node.get("rules");
+            add(refs,Kind.TEAM,rules.get("deviceGroupIds")); add(refs,Kind.TOOL,rules.get("toolIds"));
+            if (rules.get("deviceScope").asText().equals("GROUPS") != !rules.get("deviceGroupIds").isEmpty()) throw Failure.validation();
+        }
+        if (kind == Kind.USER && node.has("access")) add(refs,Kind.TEAM,node.get("access").get("deviceGroupIds"));
         if (kind == Kind.AGENT || kind == Kind.DEVICE) refs.add(new Ids.UserId(node.get("ownerUserId").asText()));
         if (kind == Kind.TOOL) {
             var definition = node.get("definition");
@@ -133,7 +144,7 @@ public class ContractCodec implements Codec {
         var snapshot = input.get("snapshot");
         if (!snapshot.get("tenantId").asText().equals(tenant.value())) throw Failure.validation();
         var entries = new HashMap<RecordId, Directory.Entry>();
-        for (var kind : Kind.values()) for (var node : snapshot.get(kind.path())) {
+        for (var kind : Kind.values()) for (var node : snapshot.path(kind.path())) {
             var entry = entry(kind, json(node));
             if (entries.put(entry.id(), entry) != null) throw Failure.validation();
         }

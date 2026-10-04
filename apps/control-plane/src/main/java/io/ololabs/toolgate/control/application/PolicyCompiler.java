@@ -34,17 +34,36 @@ public final class PolicyCompiler {
                 var users = new TreeSet<>(policy.userIds());
                 for (var teamId : policy.teamIds()) {
                     var team = codec.model(required(directory, Kind.TEAM, teamId).document(), ControlTeam.class);
-                    users.addAll(team.userIds());
+                    for (var userId : team.userIds()) {
+                        var member = directory.entries().get(Kind.USER.id(userId));
+                        if (member != null && member.enabled()) users.add(userId);
+                    }
                 }
+                if (policy.userIds().isEmpty() && policy.teamIds().isEmpty()) directory.entries().values().stream()
+                    .filter(e -> e.id().kind()==Kind.USER && e.enabled()).forEach(e -> users.add(e.id().value()));
                 // A selected empty team must never broaden into an unrestricted dimension.
                 if ((!policy.userIds().isEmpty() || !policy.teamIds().isEmpty()) && users.isEmpty()) return;
                 users.forEach(id -> required(directory, Kind.USER, id));
                 policy.agentIds().forEach(id -> required(directory, Kind.AGENT, id));
                 policy.deviceIds().forEach(id -> required(directory, Kind.DEVICE, id));
                 required(directory, Kind.TOOL, policy.toolId());
-                rules.add(new ApprovalBundleRule(policy.id(), List.copyOf(users), sorted(policy.agentIds()), sorted(policy.deviceIds()),
+                var unrestricted = new TreeSet<String>();
+                for (var userId : users) {
+                    var user = codec.model(required(directory,Kind.USER,userId).document(),ControlUser.class);
+                    var resolved=new RoleResolver(codec).devices(directory,user,policy.toolId());
+                    // A capability ceiling cannot erase a policy's explicit denial.
+                    if(policy.decision()==Decision.BLOCK || resolved==null) { unrestricted.add(userId); continue; }
+                    var devices=new TreeSet<>(resolved);
+                    if(!policy.deviceIds().isEmpty()) devices.retainAll(policy.deviceIds());
+                    if(devices.isEmpty()) continue;
+                    String ruleId=policy.id().substring(0,Math.min(96,policy.id().length()))+"."+DirectoryService.digest(policy.id()+"\n"+userId).substring(0,24);
+                    rules.add(new ApprovalBundleRule(ruleId,List.of(userId),sorted(policy.agentIds()),List.copyOf(devices),
+                        policy.toolId(),policy.action(),policy.resource(),grace.contains(policy.id()),policy.decision()));
+                }
+                if(!unrestricted.isEmpty()) rules.add(new ApprovalBundleRule(policy.id(), List.copyOf(unrestricted), sorted(policy.agentIds()), sorted(policy.deviceIds()),
                     policy.toolId(), policy.action(), policy.resource(), grace.contains(policy.id()), policy.decision()));
             });
+        if(rules.stream().map(ApprovalBundleRule::policyId).distinct().count()!=rules.size()) throw Failure.validation();
         var document = approvals ? codec.json(new ApprovalCompiledPolicy(2L,rules)) : codec.json(new CompiledPolicy(1L,
             rules.stream().map(r->new BundleRule(r.policyId(),r.userIds(),r.agentIds(),r.deviceIds(),r.toolId(),r.action(),r.resource(),r.graceAllowed(),BundleEffect.valueOf(r.effect().name()))).toList()));
         if (document.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 786432) throw Failure.validation();

@@ -35,10 +35,28 @@ def seed(runtime, key):
         status,body,_=request(api+'/'+kind,credential,record,'POST',{'Idempotency-Key':'browser-seed-'+kind})
         assert status==201,(kind,status,body)
     paging=token(key,tenant_id='paging-tenant')
+    # Real HTTP role boundary: verified groups cannot bypass a bound directory role.
+    super_credential=token(key,groups=['toolgate-admin','toolgate-super-admin'])
+    for user_id,role in [('browser-root','SUPER_ADMIN'),('browser-administrator','ADMINISTRATOR'),('browser-basic','BASIC')]:
+        profile={'id':user_id,'name':user_id,'enabled':True,'revision':1,'access':{'role':role,'templateIds':[],'deviceGroupIds':[]}}
+        if role!='BASIC': assert request(api+'/users',credential,profile,'POST',{'Idempotency-Key':'denied-'+user_id})[0]==403
+        assert request(api+'/users',super_credential,profile,'POST',{'Idempotency-Key':'role-'+user_id})[0]==201
+    bound_basic=token(key,user_id='browser-basic')
+    assert request(api+'/admin-session',bound_basic)[0]==403
+    for route in ('/builder/drafts','/fleet/releases'):
+        status,body,_=request(api+route,bound_basic)
+        assert status==403,(route,status,body)
+    assert request(api+'/users',bound_basic,{'id':'blocked-basic','name':'Denied','enabled':False,'revision':1},'POST',{'Idempotency-Key':'blocked-basic'})[0]==403
+    bound_admin=token(key,user_id='browser-administrator')
+    assert json.loads(request(api+'/admin-session',bound_admin)[1])['role']=='ADMINISTRATOR'
+    assert json.loads(request(api+'/admin-session',token(key,user_id='browser-administrator',groups=['toolgate-admin','toolgate-super-admin']))[1])['role']=='ADMINISTRATOR'
+    bound_root=token(key,user_id='browser-root',groups=['toolgate-admin','toolgate-super-admin'])
+    assert json.loads(request(api+'/admin-session',bound_root)[1])['role']=='SUPER_ADMIN'
+    assert request(api+'/users/browser-root',bound_root,{'id':'browser-root','name':'Root','enabled':False,'revision':1,'access':{'role':'SUPER_ADMIN','templateIds':[],'deviceGroupIds':[]}},'PUT',{'If-Match':'"1"','Idempotency-Key':'last-root-disable'})[0]==409
     for index in range(51):
         record={'id':f'page-{index:03}','name':f'Page user {index:03}','enabled':True,'revision':1}
         assert request(api+'/users',paging,record,'POST',{'Idempotency-Key':f'page-seed-{index}'})[0]==201
-    return {'admin':credential,'reader':token(key,groups=['toolgate-reader']), 'paging':paging,
+    return {'admin':credential,'super':bound_root,'reader':token(key,groups=['toolgate-reader']), 'paging':paging,
             'empty':token(key,tenant_id='empty-tenant'), 'expired':token(key,exp=int(time.time())-1),
             'invalid':token(rsa.generate_private_key(public_exponent=65537,key_size=2048))}
 

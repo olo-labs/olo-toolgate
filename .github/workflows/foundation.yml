@@ -12,7 +12,10 @@ concurrency:
   group: foundation-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  preflight:
+    uses: ./.github/workflows/preflight.yml
   check:
+    needs: preflight
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

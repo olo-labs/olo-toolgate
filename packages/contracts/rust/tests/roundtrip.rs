@@ -19,6 +19,10 @@ fn shared_fixture_round_trips() {
         };
     }
     check!(
+        AdminSession,
+        UserAccess,
+        UserRole,
+        UserPrivilegeTemplate,
         ContractSet,
         LocalToolSource,
         BuilderPermission,
@@ -69,6 +73,10 @@ fn shared_fixture_round_trips() {
         ControlPolicyPage,
         ControlDevice,
         ControlDevicePage,
+        ControlRole,
+        ControlRolePage,
+        RoleRules,
+        RoleDeviceScope,
         ControlSnapshot,
         ControlImportMode,
         ControlImportRequest,

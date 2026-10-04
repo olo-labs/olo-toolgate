@@ -13,6 +13,25 @@ The project follows semantic versioning once stable versioning begins.
 
 ## 0.10.0-dev
 
+- Gate CI builds on release metadata and generated bindings, with regression tests
+  for stale release notes, missing files, newline drift and version changes.
+
+- Manage named roles with fixed capability templates and JSON device/tool scopes,
+  direct and team-inherited assignments, guarded role changes, retained-state
+  migrations, grouped console submenus and administrative audit browsing.
+
+- Add directory editors, disabled registration defaults, transactional default-team
+  and policy membership, multiple teams, administrative roles and combined privilege
+  templates with device-group policy scopes and last-Super-Admin protection.
+
+- Match shared OLO logo branding and favicon, default to dark with saved
+  Dark/Light/System themes, and expand login/client downloads to a responsive
+  full-width layout with accessible theme palettes.
+
+- Fix Quickstart Tool Builder and Packages for the persistent default administrator
+  in both login modes: verified internal TLS, dedicated fleet/release signing
+  custody, and bounded local content-addressed package downloads.
+
 - Add managed Compose stacks with default/external PostgreSQL, authenticated Redis,
   and an isolated password-free local Quickstart. Quickstart supports bounded
   embedded/external Redis catalog caching and a real external PostgreSQL adapter.
@@ -62,7 +81,7 @@ The project follows semantic versioning once stable versioning begins.
   is unnecessary. Document external engine, Batch/CMD/WASM and native CI limitations.
 - Add malicious real-runtime fixtures, health/counters, cleanup and runtime operations.
 
-## 0.7.0-dev — Module 07
+## 0.7.0-dev â€” Module 07
 
 - Add protected HotFolder tools with capability-relative paths, no-follow links,
   extension/size limits, atomic writes, bounded events and fixed safe utilities.
@@ -74,7 +93,7 @@ The project follows semantic versioning once stable versioning begins.
   timestamp, endpoint routing, TLS build configuration and Windows custody handling.
 - See Module 07 verification for executed checks and outstanding release gates.
 
-## 0.6.0-dev — Module 06 in progress
+## 0.6.0-dev â€” Module 06 in progress
 
 - Add canonical endpoint enrollment, discovery, identity, check-in and IPC models.
 - Add Rust protected-service/CLI foundations, local key custody, bounded OS IPC,
@@ -83,7 +102,7 @@ The project follows semantic versioning once stable versioning begins.
   revocation, audit and PostgreSQL migration V5; add native build/package skeleton.
 - Module 06 completion gates remain open; see its verification report.
 
-## 0.5.0-dev — Module 05
+## 0.5.0-dev â€” Module 05
 
 - Add exact-operation ASK review with dedicated approver identity, one-time and
   temporary grants, deny, durable expiry, transaction races and audited state.
@@ -94,7 +113,7 @@ The project follows semantic versioning once stable versioning begins.
 
 ## Unreleased
 
-### Module 04 — 0.4.0-dev
+### Module 04 â€” 0.4.0-dev
 
 - Canonical v1 RS256/JWS policy bundles and deterministic four-language bindings.
 - Bounded deterministic compilation, immutable PostgreSQL history, transactional
@@ -119,7 +138,7 @@ The project follows semantic versioning once stable versioning begins.
 
 ### Security
 
-## 0.3.0-dev — Module 02 Control Plane backend
+## 0.3.0-dev â€” Module 02 Control Plane backend
 
 Java 21/Quarkus tenant-scoped directory CRUD, typed identifiers and shared Control
 schemas/bindings; PostgreSQL/Flyway, atomic audit/replay, retired identities and
@@ -129,7 +148,7 @@ PostgreSQL Helm resources, protected GHCR pipeline, real database/HTTP tests and
 container/cluster smoke. No custom execution, policy publication or later module
 is implemented.
 
-## 0.2.0-dev — Module 01 gateway core
+## 0.2.0-dev â€” Module 01 gateway core
 
 Stateless Rust authorization with validated static identity/policy, exact extraction,
 deny precedence, acknowledged sanitized audit, bounded ingress, separate probes/
@@ -138,7 +157,7 @@ offline schema embedding and Gateway OpenAPI. Added non-root image, protected
 GHCR workflow, gateway Helm workload, Kubernetes render/cluster smoke and benchmark.
 No execution, permits, bundles, approvals or later module is implemented.
 
-## 0.1.0-dev — Module 00 foundation
+## 0.1.0-dev â€” Module 00 foundation
 
 Canonical v1 contracts and deterministic Java/Rust/TypeScript/PHP bindings;
 Gradle/Cargo workspace builds and local Java publication proof; fixture, drift,

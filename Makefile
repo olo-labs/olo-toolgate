@@ -3,7 +3,7 @@
 SHELL := /bin/sh
 PYTHON ?= python3
 
-.PHONY: help java-check java-projects publish-contracts-local dev stop check quickstart-check test integration e2e policy-e2e approval-e2e builder-e2e security benchmark containers client docs contracts contracts-check contracts-release-dry-run clean tree
+.PHONY: preflight help java-check java-projects publish-contracts-local dev stop check quickstart-check test integration e2e policy-e2e approval-e2e builder-e2e security benchmark containers client docs contracts contracts-check contracts-release-dry-run clean tree
 
 help:
 	@printf '%s\n' \
@@ -11,6 +11,7 @@ help:
 	  '' \
 	  '  make dev          Start the contributor development environment' \
 	  '  make stop         Stop the development environment' \
+	  '  make preflight    Check release metadata before expensive builds' \
 	  '  make check        Run formatting/lint/schema/docs checks' \
 	  '  make test         Run unit tests' \
 	  '  make integration  Run integration tests' \
@@ -32,6 +33,10 @@ dev:
 
 stop:
 	@./tools/dev/stop.sh
+
+preflight:
+	@$(PYTHON) tools/ci/preflight.py
+	@$(PYTHON) -m unittest discover -s tests/ci -v
 
 check:
 	@$(PYTHON) tools/check.py

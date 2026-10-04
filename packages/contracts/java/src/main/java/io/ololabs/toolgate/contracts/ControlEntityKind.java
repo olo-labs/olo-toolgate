@@ -16,5 +16,7 @@ public enum ControlEntityKind {
     /** Canonical POLICY value. */
     POLICY,
     /** Canonical DEVICE value. */
-    DEVICE
+    DEVICE,
+    /** Canonical ROLE value. */
+    ROLE
 }

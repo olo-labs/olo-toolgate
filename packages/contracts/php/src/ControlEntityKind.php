@@ -13,4 +13,5 @@ enum ControlEntityKind: string {
     case TOOL = 'TOOL';
     case POLICY = 'POLICY';
     case DEVICE = 'DEVICE';
+    case ROLE = 'ROLE';
 }

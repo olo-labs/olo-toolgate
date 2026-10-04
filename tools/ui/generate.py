@@ -29,13 +29,14 @@ def output():
     models = sorted([name for model in records.values() for name in (model,model+'Page')])
     return '\n'.join([
         '// Copyright 2026 OLO Labs', '// SPDX-License-Identifier: Apache-2.0',
-        '// GENERATED FILE — DO NOT EDIT; python tools/ui/generate.py',
+        '// GENERATED FILE â€” DO NOT EDIT; python tools/ui/generate.py',
         "import type { " + ', '.join(models) + " } from '@olo-labs/toolgate-contracts';",
         'export const operations = {', *operations, '} as const;',
         'export interface DirectoryRecords {', *[f'  {kind}: {model};' for kind,model in sorted(records.items())], '}',
         'export interface DirectoryPages {', *[f'  {kind}: {model}Page;' for kind,model in sorted(records.items())], '}',
         'export type DirectoryKind = keyof DirectoryRecords;',
-        'export const listOperations = {', *[f"  {kind}: operations.list{model}," for kind,model in sorted(records.items())], '} as const;', '',
+        'export const listOperations = {', *[f"  {kind}: operations.list{model}," for kind,model in sorted(records.items())], '} as const;',
+        *[line for verb in ('get','create','update','delete') for line in ([f'export const {verb}Operations = {{']+[f'  {kind}: operations.{verb}{model},' for kind,model in sorted(records.items())]+['} as const;'])], '',
     ])
 
 

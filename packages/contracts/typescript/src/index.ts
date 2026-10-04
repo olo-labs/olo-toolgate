@@ -1,6 +1,10 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
 // GENERATED FILE — DO NOT EDIT DIRECTLY; tools/contracts/generate.py
+/** Server-verified administrator portal session. */
+export interface AdminSession {
+  readonly role: UserRole;
+}
 /** Signed format 2 envelope; compilation adds ASK; old readers reject safely. */
 export interface ApprovalBundlePayload {
   readonly formatVersion: number;
@@ -401,7 +405,7 @@ export interface ControlDevicePage {
   readonly items: ReadonlyArray<ControlDevice>;
   readonly nextCursor?: string;
 }
-export type ControlEntityKind = "USER" | "TEAM" | "AGENT" | "TOOL" | "POLICY" | "DEVICE";
+export type ControlEntityKind = "USER" | "TEAM" | "AGENT" | "TOOL" | "POLICY" | "DEVICE" | "ROLE";
 export type ControlImportMode = "MERGE" | "REPLACE";
 /** Validate and diff before applying a bounded configuration transaction. */
 export interface ControlImportRequest {
@@ -435,6 +439,20 @@ export interface ControlPolicyPage {
   readonly items: ReadonlyArray<ControlPolicy>;
   readonly nextCursor?: string;
 }
+/** Named tenant role with fixed templates and bounded permission rules. */
+export interface ControlRole {
+  readonly id: string;
+  readonly name: string;
+  readonly enabled: boolean;
+  readonly revision: number;
+  readonly portalRole: UserRole;
+  readonly rules: RoleRules;
+}
+/** Cursor page; nextCursor is absent after the last item. */
+export interface ControlRolePage {
+  readonly items: ReadonlyArray<ControlRole>;
+  readonly nextCursor?: string;
+}
 /** Versioned configuration data. Contains no credentials or executable code. */
 export interface ControlSnapshot {
   readonly formatVersion: number;
@@ -446,6 +464,7 @@ export interface ControlSnapshot {
   readonly tools: ReadonlyArray<ControlTool>;
   readonly policies: ReadonlyArray<ControlPolicy>;
   readonly devices: ReadonlyArray<ControlDevice>;
+  readonly roles?: ReadonlyArray<ControlRole>;
 }
 /** Tenant-scoped teams configuration record. Not a runtime credential or policy grant. */
 export interface ControlTeam {
@@ -454,6 +473,8 @@ export interface ControlTeam {
   readonly enabled: boolean;
   readonly revision: number;
   readonly userIds: ReadonlyArray<string>;
+  readonly deviceIds?: ReadonlyArray<string>;
+  readonly roleIds?: ReadonlyArray<string>;
 }
 /** Cursor page; nextCursor is absent after the last item. */
 export interface ControlTeamPage {
@@ -479,6 +500,7 @@ export interface ControlUser {
   readonly name: string;
   readonly enabled: boolean;
   readonly revision: number;
+  readonly access?: UserAccess;
 }
 /** Cursor page; nextCursor is absent after the last item. */
 export interface ControlUserPage {
@@ -907,6 +929,14 @@ export interface ResourceDescriptor {
   readonly locator: string;
 }
 export type ResourceKind = "FILE" | "URL" | "DATABASE" | "DEVICE" | "CUSTOM";
+export type RoleDeviceScope = "NONE" | "ALL" | "GROUPS";
+/** Fixed capability templates narrowed by device scope and optional tool allowlist. GROUPS requires nonempty group IDs; NONE and ALL require empty groups, validated by Control. Policies authorize each call. */
+export interface RoleRules {
+  readonly templateIds: ReadonlyArray<UserPrivilegeTemplate>;
+  readonly deviceScope: RoleDeviceScope;
+  readonly deviceGroupIds: ReadonlyArray<string>;
+  readonly toolIds: ReadonlyArray<string>;
+}
 /** Sanitized authorization evaluation event; hashes replace raw arguments and resource locators. A decision is not execution success. */
 export interface RuntimeAuditEvent {
   readonly timestampUnixMs: number;
@@ -948,5 +978,14 @@ export interface ToolDefinition {
   readonly inputSchema: Record<string, unknown>;
   readonly outputSchema: Record<string, unknown>;
 }
+/** Tenant-scoped role and privilege assignment. Device groups are directory teams containing device IDs. */
+export interface UserAccess {
+  readonly role: UserRole;
+  readonly templateIds: ReadonlyArray<UserPrivilegeTemplate>;
+  readonly deviceGroupIds: ReadonlyArray<string>;
+  readonly roleIds?: ReadonlyArray<string>;
+}
+export type UserPrivilegeTemplate = "TOOL_USER" | "IT_CLOUD_ADMIN" | "APPROVER";
+export type UserRole = "BASIC" | "ADMINISTRATOR" | "SUPER_ADMIN";
 export const CONTRACT_SET_VERSION = "0.10.0-dev" as const;
 export const CONTRACT_SET_NAME = "olo-toolgate-contracts" as const;

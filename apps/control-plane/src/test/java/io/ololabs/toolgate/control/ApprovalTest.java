@@ -169,7 +169,7 @@ final class ApprovalTest {
         bounded.decide(s.approver,pending.approvalId(),decision(ApprovalChoice.APPROVE_TEMPORARY,1,20000L),"approve","request");
         assertNotNull(codec.model(bounded.resolve(s.gateway,submission,"request").body(),ApprovalResolution.class).permitId());
         assertEquals(503,assertThrows(Failure.class,()->bounded.resolve(s.gateway,submission,"request")).status());
-        var disabledUser=new ControlUser("approver","Approver",false,1L);
+        var disabledUser=new ControlUser("approver","Approver",false,1L,null);
         s.directory.mutate(s.admin,Ids.Kind.USER,"approver","UPDATE",codec.json(disabledUser),1,"disable-approver","request");
         assertEquals(403,assertThrows(Failure.class,()->bounded.get(s.approver,pending.approvalId(),"request")).status());
         var other=new ApprovalService.Actor(new DirectoryService.Actor(new Ids.TenantId("other"),"d".repeat(64),false),"approver",true,false);

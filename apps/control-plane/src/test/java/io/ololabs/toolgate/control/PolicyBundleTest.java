@@ -45,8 +45,8 @@ final class PolicyBundleTest {
         var entries = new HashMap<Ids.RecordId, Directory.Entry>();
         for (var id : List.of("bob","alice")) { var e = codec.entry(Ids.Kind.USER, DomainTest.user(id,1)); entries.put(e.id(),e); }
         var t = codec.entry(Ids.Kind.TOOL, codec.json(tool)); entries.put(t.id(),t);
-        var team = codec.entry(Ids.Kind.TEAM, codec.json(new ControlTeam("team","Team",true,1L,List.of("bob","alice")))); entries.put(team.id(),team);
-        var empty = codec.entry(Ids.Kind.TEAM, codec.json(new ControlTeam("empty","Empty",true,1L,List.of()))); entries.put(empty.id(),empty);
+        var team = codec.entry(Ids.Kind.TEAM, codec.json(new ControlTeam("team","Team",true,1L,List.of("bob","alice"),null,null))); entries.put(team.id(),team);
+        var empty = codec.entry(Ids.Kind.TEAM, codec.json(new ControlTeam("empty","Empty",true,1L,List.of(),null,null))); entries.put(empty.id(),empty);
         var action = tool.definition().actions().getFirst().name();
         var allow = new ControlPolicy("allow","Allow",true,1L,tool.id(),action,resource,Decision.ALLOW,List.of("bob"),List.of("team"),List.of(),List.of());
         var emptyPolicy = new ControlPolicy("empty-policy","Empty",true,1L,tool.id(),action,resource,Decision.ALLOW,List.of(),List.of("empty"),List.of(),List.of());
@@ -56,7 +56,12 @@ final class PolicyBundleTest {
         var policy = codec.model(compiled,CompiledPolicy.class);
         assertEquals(1,policy.rules().size()); assertEquals(List.of("alice","bob"),policy.rules().getFirst().userIds());
         var disabled = codec.entry(Ids.Kind.USER,DomainTest.user("alice",1).replace("true","false")); entries.put(disabled.id(),disabled);
-        assertThrows(IllegalArgumentException.class,()->compiler.compile(new Directory(0,entries)));
+        var filtered = codec.model(compiler.compile(new Directory(0,entries)),CompiledPolicy.class);
+        assertEquals(List.of("bob"), filtered.rules().getFirst().userIds());
+        var teamOnly = new ControlPolicy("allow","Allow",true,1L,tool.id(),action,resource,Decision.ALLOW,List.of(),List.of("team"),List.of(),List.of());
+        var replacement = codec.entry(Ids.Kind.POLICY,codec.json(teamOnly)); entries.put(replacement.id(),replacement);
+        var disabledBob = codec.entry(Ids.Kind.USER,DomainTest.user("bob",1).replace("true","false")); entries.put(disabledBob.id(),disabledBob);
+        assertTrue(codec.model(compiler.compile(new Directory(0,entries)),CompiledPolicy.class).rules().isEmpty());
     }
     @Test void signerUsesExactStandardJwsAndSeparateKeyIds() throws Exception {
         var payload = codec.model(codec.json(fixtures().get("BundlePayload")),BundlePayload.class); var keys=keys();

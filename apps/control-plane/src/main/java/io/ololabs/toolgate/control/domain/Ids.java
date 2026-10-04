@@ -12,7 +12,7 @@ public final class Ids {
         return value;
     }
     public record TenantId(String value) { public TenantId { valid(value); } }
-    public sealed interface RecordId permits UserId, TeamId, AgentId, ToolId, PolicyId, DeviceId {
+    public sealed interface RecordId permits UserId, TeamId, AgentId, ToolId, PolicyId, DeviceId, RoleId {
         String value();
         Kind kind();
     }
@@ -34,10 +34,13 @@ public final class Ids {
     public record DeviceId(String value) implements RecordId {
         public DeviceId { valid(value); } public Kind kind() { return Kind.DEVICE; }
     }
+    public record RoleId(String value) implements RecordId {
+        public RoleId { valid(value); } public Kind kind() { return Kind.ROLE; }
+    }
     public enum Kind {
         USER("users", "ControlUser"), TEAM("teams", "ControlTeam"),
         AGENT("agents", "ControlAgent"), TOOL("tools", "ControlTool"),
-        POLICY("policies", "ControlPolicy"), DEVICE("devices", "ControlDevice");
+        POLICY("policies", "ControlPolicy"), DEVICE("devices", "ControlDevice"), ROLE("roles", "ControlRole");
         private final String path;
         private final String model;
         Kind(String path, String model) { this.path = path; this.model = model; }
@@ -47,7 +50,7 @@ public final class Ids {
             return switch (this) {
                 case USER -> new UserId(value); case TEAM -> new TeamId(value);
                 case AGENT -> new AgentId(value); case TOOL -> new ToolId(value);
-                case POLICY -> new PolicyId(value); case DEVICE -> new DeviceId(value);
+                case POLICY -> new PolicyId(value); case DEVICE -> new DeviceId(value); case ROLE -> new RoleId(value);
             };
         }
         public static Kind path(String value) {

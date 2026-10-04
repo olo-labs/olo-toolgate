@@ -14,6 +14,7 @@ package io.ololabs.toolgate.contracts;
  * @param tools canonical tools value
  * @param policies canonical policies value
  * @param devices canonical devices value
+ * @param roles canonical roles value
  */
 @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
 public record ControlSnapshot(
@@ -25,7 +26,8 @@ public record ControlSnapshot(
     @com.fasterxml.jackson.annotation.JsonProperty(value = "agents", required = true) java.util.List<ControlAgent> agents,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "tools", required = true) java.util.List<ControlTool> tools,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "policies", required = true) java.util.List<ControlPolicy> policies,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "devices", required = true) java.util.List<ControlDevice> devices
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "devices", required = true) java.util.List<ControlDevice> devices,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "roles", required = false) java.util.List<ControlRole> roles
 ) {
     /** Reject absent required references and copy collections to retain value semantics.
      *
@@ -38,6 +40,7 @@ public record ControlSnapshot(
      * @param tools canonical tools value
      * @param policies canonical policies value
      * @param devices canonical devices value
+     * @param roles canonical roles value
      */
     public ControlSnapshot {
         java.util.Objects.requireNonNull(formatVersion, "formatVersion");
@@ -55,5 +58,6 @@ public record ControlSnapshot(
         policies = policies == null ? null : java.util.List.copyOf(policies);
         java.util.Objects.requireNonNull(devices, "devices");
         devices = devices == null ? null : java.util.List.copyOf(devices);
+        roles = roles == null ? null : java.util.List.copyOf(roles);
     }
 }

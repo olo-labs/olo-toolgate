@@ -26,6 +26,9 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 9007199254740991
+        },
+        "access": {
+          "$ref": "control.schema.json#/$defs/UserAccess"
         }
       },
       "required": [
@@ -87,6 +90,22 @@
           },
           "maxItems": 512,
           "uniqueItems": true
+        },
+        "deviceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "uniqueItems": true,
+          "maxItems": 512
+        },
+        "roleIds": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "uniqueItems": true,
+          "maxItems": 32
         }
       },
       "required": [
@@ -465,6 +484,13 @@
           },
           "maxItems": 512,
           "uniqueItems": true
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "$ref": "control.schema.json#/$defs/ControlRole"
+          },
+          "maxItems": 512
         }
       },
       "required": [
@@ -523,7 +549,8 @@
         "AGENT",
         "TOOL",
         "POLICY",
-        "DEVICE"
+        "DEVICE",
+        "ROLE"
       ]
     },
     "ControlChange": {
@@ -642,6 +669,185 @@
           "type": "string",
           "maxLength": 512,
           "minLength": 1
+        }
+      },
+      "required": [
+        "items"
+      ]
+    },
+    "UserRole": {
+      "type": "string",
+      "description": "Organization portal role. Assignment alone is not an identity credential.",
+      "enum": [
+        "BASIC",
+        "ADMINISTRATOR",
+        "SUPER_ADMIN"
+      ]
+    },
+    "UserPrivilegeTemplate": {
+      "type": "string",
+      "description": "Built-in additive privilege template; Gateway policy remains mandatory.",
+      "enum": [
+        "TOOL_USER",
+        "IT_CLOUD_ADMIN",
+        "APPROVER"
+      ]
+    },
+    "UserAccess": {
+      "type": "object",
+      "description": "Tenant-scoped role and privilege assignment. Device groups are directory teams containing device IDs.",
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "$ref": "control.schema.json#/$defs/UserRole"
+        },
+        "templateIds": {
+          "type": "array",
+          "items": {
+            "$ref": "control.schema.json#/$defs/UserPrivilegeTemplate"
+          },
+          "uniqueItems": true,
+          "maxItems": 3
+        },
+        "deviceGroupIds": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "uniqueItems": true,
+          "maxItems": 64
+        },
+        "roleIds": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "uniqueItems": true,
+          "maxItems": 32
+        }
+      },
+      "required": [
+        "role",
+        "templateIds",
+        "deviceGroupIds"
+      ]
+    },
+    "AdminSession": {
+      "type": "object",
+      "description": "Server-verified administrator portal session.",
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "$ref": "control.schema.json#/$defs/UserRole"
+        }
+      },
+      "required": [
+        "role"
+      ]
+    },
+    "RoleDeviceScope": {
+      "type": "string",
+      "enum": [
+        "NONE",
+        "ALL",
+        "GROUPS"
+      ]
+    },
+    "RoleRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Fixed capability templates narrowed by device scope and optional tool allowlist. GROUPS requires nonempty group IDs; NONE and ALL require empty groups, validated by Control. Policies authorize each call.",
+      "properties": {
+        "templateIds": {
+          "type": "array",
+          "items": {
+            "$ref": "control.schema.json#/$defs/UserPrivilegeTemplate"
+          },
+          "uniqueItems": true,
+          "maxItems": 3
+        },
+        "deviceScope": {
+          "$ref": "control.schema.json#/$defs/RoleDeviceScope"
+        },
+        "deviceGroupIds": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "uniqueItems": true,
+          "maxItems": 64
+        },
+        "toolIds": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "uniqueItems": true,
+          "maxItems": 128
+        }
+      },
+      "required": [
+        "templateIds",
+        "deviceScope",
+        "deviceGroupIds",
+        "toolIds"
+      ]
+    },
+    "ControlRole": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "portalRole": {
+          "$ref": "control.schema.json#/$defs/UserRole"
+        },
+        "rules": {
+          "$ref": "control.schema.json#/$defs/RoleRules"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "enabled",
+        "revision",
+        "portalRole",
+        "rules"
+      ],
+      "description": "Named tenant role with fixed templates and bounded permission rules."
+    },
+    "ControlRolePage": {
+      "type": "object",
+      "description": "Cursor page; nextCursor is absent after the last item.",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "control.schema.json#/$defs/ControlRole"
+          },
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "nextCursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
         }
       },
       "required": [

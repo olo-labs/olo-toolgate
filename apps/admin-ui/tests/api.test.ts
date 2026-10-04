@@ -5,6 +5,17 @@ import { ApiError, ControlClient } from '../src/api';
 const user = {id:'namespace:user/item',name:'User',enabled:true,revision:7};
 
 describe('Control transport contract', () => {
+  it('uses canonical team CRUD routes with membership, revisions and idempotency', async () => {
+    const team={id:'team:default',name:'Default',enabled:true,revision:3,userIds:['alice','bob']};
+    const transport=vi.fn<typeof fetch>().mockImplementation(async (_url,options)=>options?.method==='DELETE'?new Response(null,{status:204}):new Response(JSON.stringify(team)));
+    const client=new ControlClient('token',vi.fn(),transport);
+    await client.record('teams',team.id);await client.saveRecord('teams',team,true,'update-team');await client.saveRecord('teams',{...team,revision:1},false,'create-team');await client.deleteRecord('teams',team,'delete-team');
+    expect(transport.mock.calls.map(call=>call[0])).toEqual(['/api/control/v1/teams/team%3Adefault','/api/control/v1/teams/team%3Adefault','/api/control/v1/teams','/api/control/v1/teams/team%3Adefault']);
+    expect(new Headers(transport.mock.calls[1][1]?.headers).get('If-Match')).toBe('"3"');
+    expect(JSON.parse(transport.mock.calls[1][1]?.body as string).userIds).toEqual(['alice','bob']);
+    expect(new Headers(transport.mock.calls[2][1]?.headers).has('If-Match')).toBe(false);
+    expect(new Headers(transport.mock.calls[3][1]?.headers).get('Idempotency-Key')).toBe('delete-team');
+  });
   it('uses generated routes, same origin, bounded pages and safe token transport', async () => {
     const transport = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({items:[user],nextCursor:'next/+'})));
     const client = new ControlClient('private-token',vi.fn(),transport);

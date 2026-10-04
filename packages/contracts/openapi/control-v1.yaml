@@ -10,6 +10,18 @@ info:
 security:
 - adminAccessToken: []
 paths:
+  /api/control/v1/admin-session:
+    get:
+      operationId: getAdminSession
+      responses:
+        '200':
+          description: Verified administrative role
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/AdminSession
+        '403':
+          description: Administrator portal permission required
   /api/public/v1/installers:
     get:
       operationId: publicClientInstallers
@@ -966,6 +978,183 @@ paths:
               $ref: ../schemas/v1/control.schema.json#/$defs/ControlUser
     delete:
       operationId: deleteControlUser
+      description: Requires toolgate-admin.
+      responses:
+        '204':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
+      parameters:
+      - *id011
+      - *id012
+  /api/control/v1/roles:
+    get:
+      operationId: listControlRole
+      description: Requires toolgate-admin or toolgate-reader.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlRolePage
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          maxLength: 512
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+    post:
+      operationId: createControlRole
+      description: Requires toolgate-admin.
+      responses:
+        '201':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlRole
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
+      parameters:
+      - *id011
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/control.schema.json#/$defs/ControlRole
+  /api/control/v1/roles/{id}:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        $ref: ../schemas/v1/identifiers.schema.json#/$defs/Identifier
+    get:
+      operationId: getControlRole
+      description: Requires toolgate-admin or toolgate-reader.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlRole
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
+    put:
+      operationId: updateControlRole
+      description: Requires toolgate-admin.
+      responses:
+        '200':
+          description: Success
+          headers:
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlRole
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
+      parameters:
+      - *id011
+      - *id012
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/control.schema.json#/$defs/ControlRole
+    delete:
+      operationId: deleteControlRole
       description: Requires toolgate-admin.
       responses:
         '204':

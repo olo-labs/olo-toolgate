@@ -38,7 +38,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 DATA = Path('/data')
 TENANT = 'quickstart'
 ISSUER = 'https://quickstart.local'
-GROUPS = ('toolgate-admin', 'toolgate-reader', 'toolgate-approver', 'toolgate-enroller')
+GROUPS = ('toolgate-admin', 'toolgate-super-admin', 'toolgate-reader', 'toolgate-approver', 'toolgate-enroller')
 
 
 def password_disabled():
@@ -193,9 +193,10 @@ def key(name):
     return serialization.load_pem_private_key(path.read_bytes(), password=None)
 
 
-def jwt(groups, subject='admin', generation=None):
+def jwt(groups, subject='admin', generation=None, directory_bound=True):
     now = int(time.time())
     claims = {'iss': ISSUER, 'aud': 'toolgate-control', 'sub': subject, 'user_id': subject, 'tenant_id': TENANT, 'groups': groups, 'iat': now, 'exp': now+900}
+    if not directory_bound: claims.pop('user_id')
     if generation is not None: claims['password_generation'] = generation
     encode = lambda value: base64.urlsafe_b64encode(json.dumps(value, separators=(',', ':')).encode()).rstrip(b'=')
     message = encode({'alg': 'RS256', 'typ': 'JWT'})+b'.'+encode(claims)
@@ -259,11 +260,12 @@ def initialize():
     fleet_keys()
 
 
-def call(path, token=None, body=None, port=8082, secure=False, method=None):
+def call(path, token=None, body=None, port=8082, secure=False, method=None, extra_headers=None):
     client = http.client.HTTPSConnection('127.0.0.1', port, timeout=10, context=ssl.create_default_context(cafile=str(DATA/'keys/device-ca.crt'))) if secure else http.client.HTTPConnection('127.0.0.1', port, timeout=10)
     headers = {'Content-Type': 'application/json', 'X-Request-ID': secrets.token_hex(16)}
     if token: headers['Authorization'] = 'Bearer '+token
     if body is not None: headers['Idempotency-Key'] = secrets.token_hex(16)
+    if extra_headers: headers.update(extra_headers)
     try:
         client.request(method or ('POST' if body is not None else 'GET'), path, json.dumps(body).encode() if body is not None else None, headers)
         response = client.getresponse(); raw = response.read(2*1024*1024+1)
@@ -314,6 +316,7 @@ def configure():
         settings.update(TOOLGATE_QUICKSTART_STORAGE='postgresql', QUARKUS_FLYWAY_ACTIVE='true',
             QUARKUS_DATASOURCE_ACTIVE='true', QUARKUS_DATASOURCE_HEALTH_ENABLED='true', QUARKUS_FLYWAY_MIGRATE_AT_START='true')
     env.update(settings)
+    env.setdefault('TOOLGATE_DEFAULT_POLICY_IDS', ','.join('default-'+item['toolId'] for item in catalog if item['toolId']!='web.search'))
     return env, catalog
 
 
@@ -331,9 +334,9 @@ def machine():
 
 
 def seed(catalog):
-    admin = jwt(GROUPS)
+    admin = jwt(GROUPS, 'bootstrap', directory_bound=False)
     fixture = strict(Path('/opt/quickstart/seed.json').read_bytes())
-    records = [('users', {'id': 'admin', 'name': 'Quickstart administrator', 'enabled': True, 'revision': 1}),
+    records = [('users', {'id': 'admin', 'name': 'Quickstart administrator', 'enabled': True, 'revision': 1, 'access': {'role':'SUPER_ADMIN','templateIds':[],'deviceGroupIds':[]}}),
                ('users', {'id': 'local-tools', 'name': 'Local tool requester', 'enabled': True, 'revision': 1}),
                ('teams', {'id': 'team-default', 'name': 'Default workspace', 'enabled': True, 'revision': 1, 'userIds': ['admin', 'local-tools']}),
                ('agents', {'id': 'agent-default', 'name': 'Local agent', 'enabled': True, 'revision': 1, 'ownerUserId': 'local-tools'}),
@@ -345,13 +348,18 @@ def seed(catalog):
         records.append(('tools', {'id': item['toolId'], 'name': item['toolId'], 'enabled': True, 'revision': 1, 'definition': definition}))
         # File effects are demonstrated only on an exact local note; all other paths default BLOCK.
         if item['toolId'].startswith('hotfolder.') and item['toolId'] not in ('hotfolder.list','hotfolder.watch_events'): resource['locator'] = 'welcome.txt'
-        records.append(('policies', {**fixture, 'id': 'default-'+item['toolId'], 'name': 'Default '+item['toolId'], 'toolId': item['toolId'], 'action': item['action'], 'resource': resource, 'decision': 'ASK' if item['action'] in ('write','append','move','copy','mkdir') else 'ALLOW', 'userIds': ['local-tools'], 'teamIds': [], 'agentIds': ['agent-default'], 'deviceIds': []}))
+        records.append(('policies', {**fixture, 'id': 'default-'+item['toolId'], 'name': 'Default '+item['toolId'], 'toolId': item['toolId'], 'action': item['action'], 'resource': resource, 'decision': 'ASK' if item['action'] in ('write','append','move','copy','mkdir') else 'ALLOW', 'userIds': ['local-tools'], 'teamIds': ['team-default'], 'agentIds': ['agent-default'], 'deviceIds': []}))
     for kind, record in records:
-        status, _, _ = call('/api/control/v1/'+kind+'/'+record['id'], admin)
+        status, raw, _ = call('/api/control/v1/'+kind+'/'+record['id'], admin)
         if status==404:
             status, raw, _ = call('/api/control/v1/'+kind, admin, record)
             if status!=201: raise ValueError('Default record rejected: '+kind+' '+str(status))
         elif status!=200: raise ValueError('Default state unavailable')
+        elif kind=='users' and record['id']=='admin':
+            existing=strict(raw)
+            if 'access' not in existing:
+                status, _, _ = call('/api/control/v1/users/admin',admin,{**existing,'access':record['access']},method='PUT',extra_headers={'If-Match':'"'+str(existing['revision'])+'"','Idempotency-Key':'seed-admin-role'})
+                if status!=200: raise ValueError('Administrator role upgrade rejected')
     note = DATA/'hotfolder/welcome.txt'
     if not note.exists(): atomic(note, 'Welcome to ToolGate. Writes require human approval.\n')
     publish()

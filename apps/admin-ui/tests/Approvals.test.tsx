@@ -19,7 +19,7 @@ function confirm(choice = 'approve once') { fireEvent.click(screen.getByLabelTex
 
 describe('Exact-operation human review', () => {
   it('supports an approver-only session verified by the server rather than decoded claims', async () => {
-    const fetcher = vi.fn().mockImplementation(async (url:string) => url.includes('/users') ? json({code:'FORBIDDEN'},403) : json({items:[]}));
+    const fetcher = vi.fn().mockImplementation(async (url:string) => url.includes('/admin-session') ? json({code:'FORBIDDEN'},403) : json({items:[]}));
     vi.stubGlobal('fetch',fetcher); render(<App />);
     fireEvent.change(screen.getByLabelText('Access token'),{target:{value:'opaque-approver-token'}}); fireEvent.click(screen.getByRole('button',{name:'Connect to workspace'}));
     await screen.findByRole('heading',{name:'Approvals'}); await screen.findByRole('heading',{name:'No approvals on this page'});

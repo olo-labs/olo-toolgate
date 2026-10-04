@@ -9,6 +9,17 @@ function response(items: unknown[] = []) { return new Response(JSON.stringify({i
 async function connect() { fireEvent.change(screen.getByLabelText('Access token'),{target:{value:'test-only-secret'}}); fireEvent.click(screen.getByRole('button',{name:'Connect to workspace'})); await screen.findByRole('navigation'); }
 
 describe('Management shell states', () => {
+  it('shows endpoint downloads only on login and device enrollment',async()=>{
+    vi.stubGlobal('fetch',vi.fn().mockImplementation(async()=>response()));
+    render(<App/>);expect(screen.getByRole('heading',{name:'Install ToolGate on your computer'})).toBeTruthy();
+    await connect();await screen.findByRole('heading',{name:'Your organization, at a glance'});
+    expect(screen.queryByRole('heading',{name:'Install ToolGate on your computer'})).toBeNull();
+    window.location.hash='#enroll';fireEvent(window,new HashChangeEvent('hashchange'));
+    await screen.findByRole('heading',{name:'Install ToolGate on your computer'});
+    window.location.hash='#users';fireEvent(window,new HashChangeEvent('hashchange'));
+    await screen.findByRole('heading',{name:'Users'});
+    expect(screen.queryByRole('heading',{name:'Install ToolGate on your computer'})).toBeNull();
+  });
   it('has labeled masked authentication and loading state, without storing credentials', async () => {
     let resolve!: (value:Response) => void;
     vi.stubGlobal('fetch',vi.fn().mockImplementationOnce(() => new Promise<Response>(done => {resolve=done;})).mockImplementation(async () => response()));
@@ -26,7 +37,7 @@ describe('Management shell states', () => {
   });
   it('supports all navigation and bounded dashboard links', async () => {
     vi.stubGlobal('fetch',vi.fn().mockImplementation(async () => response())); render(<App />); await connect();
-    await waitFor(() => expect(screen.getAllByRole('link',{name:/View directory/}).length).toBe(6));
+    await waitFor(() => expect(screen.getAllByRole('link',{name:/View directory/}).length).toBe(7));
     window.location.hash = '#devices'; fireEvent(window,new HashChangeEvent('hashchange'));
     await screen.findByRole('heading',{name:'Clients'}); await screen.findByRole('heading',{name:'No clients on this page'});
     expect(screen.getByRole('link',{name:'Clients'}).getAttribute('aria-current')).toBe('page');
@@ -46,6 +57,23 @@ describe('Management shell states', () => {
     render(<App />); await connect(); await screen.findByRole('heading',{name:'No users on this page'});
     fireEvent.click(screen.getByRole('button',{name:'Add user'})); fireEvent.change(screen.getByLabelText('Identifier'),{target:{value:'new-user'}}); fireEvent.change(screen.getByLabelText('Display name'),{target:{value:'New user'}}); fireEvent.click(screen.getByRole('button',{name:'Save user'}));
     expect((await screen.findByRole('alert')).textContent).toContain('permission'); expect(screen.getByRole('heading',{name:'Add directory user'})).toBe(document.activeElement);
+  });
+  it('submits managed role assignments without user-level template overrides',async()=>{
+    let submitted:Record<string,unknown>|undefined;
+    window.location.hash='#users';
+    vi.stubGlobal('fetch',vi.fn().mockImplementation(async (_url,options)=>{
+      if(options.method==='POST'){submitted=JSON.parse(options.body);return new Response('{}',{status:403});}
+      return response();
+    }));
+    render(<App/>);await connect();await screen.findByRole('heading',{name:'No users on this page'});
+    fireEvent.click(screen.getByRole('button',{name:'Add user'}));
+    fireEvent.change(screen.getByLabelText('Identifier'),{target:{value:'cloud-user'}});fireEvent.change(screen.getByLabelText('Display name'),{target:{value:'Cloud user'}});
+    expect((screen.getByLabelText('Enabled in directory') as HTMLInputElement).checked).toBe(false);
+    expect(screen.queryByText('Privilege templates (combine as needed)')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Role IDs, separated by commas'),{target:{value:'cloud-role, reviewer-role'}});
+    fireEvent.click(screen.getByRole('button',{name:'Save user'}));await screen.findByRole('alert');
+    expect(submitted?.access).toEqual({role:'BASIC',templateIds:[],deviceGroupIds:[],roleIds:['cloud-role','reviewer-role']});
+    expect(screen.getByRole('heading',{name:'Add directory user'})).toBeTruthy();
   });
   it('retains an idempotency key for an exact retry and replaces it when values change', async () => {
     const keys:string[]=[]; window.location.hash='#users';

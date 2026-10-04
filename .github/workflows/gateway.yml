@@ -18,9 +18,13 @@ concurrency:
   group: gateway-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  preflight:
+    uses: ./.github/workflows/preflight.yml
   policy-compatibility:
+    needs: preflight
     uses: ./.github/workflows/policy.yml
   container-and-cluster:
+    needs: preflight
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:

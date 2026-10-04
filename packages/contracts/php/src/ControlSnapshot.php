@@ -16,12 +16,13 @@ final readonly class ControlSnapshot implements \JsonSerializable {
         public array $agents,
         public array $tools,
         public array $policies,
-        public array $devices
+        public array $devices,
+        public ?array $roles = null
     ) {}
 
     /** Decode a structural model; canonical schema validation is also required. */
     public static function fromArray(array $data): self {
-        if (array_diff(array_keys($data), ['formatVersion', 'tenantId', 'revision', 'users', 'teams', 'agents', 'tools', 'policies', 'devices']) || array_diff(['formatVersion', 'tenantId', 'revision', 'users', 'teams', 'agents', 'tools', 'policies', 'devices'], array_keys($data))) {
+        if (array_diff(array_keys($data), ['formatVersion', 'tenantId', 'revision', 'users', 'teams', 'agents', 'tools', 'policies', 'devices', 'roles']) || array_diff(['formatVersion', 'tenantId', 'revision', 'users', 'teams', 'agents', 'tools', 'policies', 'devices'], array_keys($data))) {
             throw new \InvalidArgumentException('Unknown or missing contract fields');
         }
         return new self(
@@ -33,7 +34,8 @@ final readonly class ControlSnapshot implements \JsonSerializable {
             array_map(static fn ($item) => ControlAgent::fromArray($item), $data['agents']),
             array_map(static fn ($item) => ControlTool::fromArray($item), $data['tools']),
             array_map(static fn ($item) => ControlPolicy::fromArray($item), $data['policies']),
-            array_map(static fn ($item) => ControlDevice::fromArray($item), $data['devices'])
+            array_map(static fn ($item) => ControlDevice::fromArray($item), $data['devices']),
+            array_key_exists('roles', $data) ? array_map(static fn ($item) => ControlRole::fromArray($item), $data['roles']) : null
         );
     }
 

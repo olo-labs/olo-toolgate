@@ -21,7 +21,10 @@ public class Bootstrap {
     @Produces @ApplicationScoped
     DirectoryService service(PostgresStore store, ContractCodec codec) {
         var limits = limits();
-        return new DirectoryService(store, codec, limits.records(), limits.bytes());
+        return new DirectoryService(store, codec, limits.records(), limits.bytes(),
+            config.getValue("toolgate.control.default-team-id", String.class),
+            java.util.Arrays.stream(config.getOptionalValue("toolgate.control.default-policy-ids", String.class).orElse("").split(","))
+                .map(String::trim).filter(value -> !value.isEmpty()).toList());
     }
     private record Limits(int records, int bytes) {}
     private Limits limits() {

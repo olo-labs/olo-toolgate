@@ -21,7 +21,7 @@ import org.eclipse.microprofile.jwt.JsonWebToken;
 @Blocking
 @RolesAllowed({"toolgate-admin", "toolgate-reader"})
 public class ControlResource {
-    private static final String COLLECTION = "{kind:users|teams|agents|tools|policies|devices}";
+    private static final String COLLECTION = "{kind:users|teams|agents|tools|policies|devices|roles}";
     @Inject DirectoryService service;
     @Inject io.ololabs.toolgate.control.application.BundleService bundles;
     @Inject JsonWebToken jwt;
@@ -37,7 +37,13 @@ public class ControlResource {
             throw new Failure(io.ololabs.toolgate.contracts.ErrorCode.UNAUTHORIZED, 401, "Invalid identity claims");
         }
         try {
-            return new DirectoryService.Actor(new TenantId(value), DirectoryService.digest(jwt.getIssuer() + "\n" + jwt.getSubject()), jwt.getGroups().contains("toolgate-admin"));
+            var actor = new DirectoryService.Actor(new TenantId(value), DirectoryService.digest(jwt.getIssuer() + "\n" + jwt.getSubject()),
+                jwt.getGroups().contains("toolgate-admin"), jwt.getGroups().contains("toolgate-super-admin"));
+            Object boundUser=jwt.getClaim("user_id");
+            if(boundUser!=null && !(boundUser instanceof String)) throw new Failure(io.ololabs.toolgate.contracts.ErrorCode.UNAUTHORIZED,401,"Invalid identity claims");
+            String userId = boundUser instanceof String id ? id : null;
+            if (actor.admin()) service.requirePortal(actor,userId);
+            return new DirectoryService.Actor(actor.tenant(),actor.id(),actor.admin(),service.portalSuper(actor,userId));
         } catch (IllegalArgumentException e) { throw new Failure(io.ololabs.toolgate.contracts.ErrorCode.UNAUTHORIZED, 401, "Invalid tenant identity"); }
     }
     private Response response(Store.Reply reply, String operation, String kind) {
@@ -49,6 +55,11 @@ public class ControlResource {
         if (value == null || !value.matches("\"(0|[1-9][0-9]{0,15})\"")) throw Failure.validation();
         try { var result = Long.parseLong(value.substring(1, value.length() - 1)); if (result > 9007199254740991L) throw Failure.validation(); return result; }
         catch (NumberFormatException e) { throw Failure.validation(); }
+    }
+    @GET @Path("admin-session") @RolesAllowed("toolgate-admin")
+    public String adminSession() {
+        var identity=actor();
+        return codec.json(java.util.Map.of("role",identity.superAdmin()?"SUPER_ADMIN":"ADMINISTRATOR"));
     }
     @GET @Path("bundles/current") @RolesAllowed({"toolgate-admin", "toolgate-reader", "toolgate-bundle-reader"})
     public Response currentBundle() {

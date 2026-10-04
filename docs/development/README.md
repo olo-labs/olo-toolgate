@@ -21,3 +21,6 @@ Read:
 - `local-development.md`
 - `coding-standards.md`
 - `schema-workflow.md`
+- [Directory membership and default policies](directory-membership.md)
+- [User roles and privilege templates](../security/user-roles.md)
+- [Managed roles and permission scopes](managed-roles.md)

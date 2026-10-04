@@ -1,8 +1,9 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
 import type { FleetReleasePage, FleetRolloutPage, FleetRolloutRequest, FleetRolloutRecord, FleetPackageRelease, ApprovalDecisionRequest, ApprovalPage, ApprovalRecord, ControlUser, ErrorEnvelope, EndpointEnrollmentReview, EndpointEnrollmentDecision } from '@olo-labs/toolgate-contracts';
-import { listOperations, operations, type DirectoryKind, type DirectoryPages } from './operations.generated';
+import { listOperations, getOperations, createOperations, updateOperations, deleteOperations, operations, type DirectoryKind, type DirectoryPages, type DirectoryRecords } from './operations.generated';
 import type { BuilderDraft, BuilderDraftPage, BuilderDraftRequest, BuilderTestPage, BuilderTestRequest, BuilderTestRecord, BuilderDefinition } from '@olo-labs/toolgate-contracts';
+import type { AdminSession, ControlAuditPage } from '@olo-labs/toolgate-contracts';
 
 /** Human-safe messages never render server text, exception bodies or credentials. */
 export class ApiError extends Error {
@@ -105,6 +106,13 @@ export class ControlClient {
     const query = new URLSearchParams({ limit: '50' }); if (cursor) query.set('cursor', cursor);
     return this.send(listOperations[kind], { query, signal });
   }
+  adminSession():Promise<AdminSession>{return this.send(operations.getAdminSession);}
+  audit(cursor:string,signal?:AbortSignal):Promise<ControlAuditPage>{return this.send(operations.listAudit,{query:new URLSearchParams({cursor,limit:'50'}),signal});}
+  record<K extends DirectoryKind>(kind:K,id:string):Promise<DirectoryRecords[K]> {return this.send(getOperations[kind],{id});}
+  saveRecord<K extends DirectoryKind>(kind:K,record:DirectoryRecords[K],existing:boolean,key:string):Promise<DirectoryRecords[K]> {
+    return this.send(existing?updateOperations[kind]:createOperations[kind],{id:record.id,body:record,key,revision:existing?record.revision:undefined});
+  }
+  deleteRecord<K extends DirectoryKind>(kind:K,record:DirectoryRecords[K],key:string):Promise<void> {return this.send(deleteOperations[kind],{id:record.id,revision:record.revision,key});}
   user(id: string, signal?: AbortSignal): Promise<ControlUser> { return this.send(operations.getControlUser, { id, signal }); }
   saveUser(user: ControlUser, existing: boolean, key: string): Promise<ControlUser> {
     return this.send(existing ? operations.updateControlUser : operations.createControlUser,

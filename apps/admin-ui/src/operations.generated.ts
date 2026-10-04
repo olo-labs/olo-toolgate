@@ -1,8 +1,9 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
-// GENERATED FILE — DO NOT EDIT; python tools/ui/generate.py
-import type { ControlAgent, ControlAgentPage, ControlDevice, ControlDevicePage, ControlPolicy, ControlPolicyPage, ControlTeam, ControlTeamPage, ControlTool, ControlToolPage, ControlUser, ControlUserPage } from '@olo-labs/toolgate-contracts';
+// GENERATED FILE â€” DO NOT EDIT; python tools/ui/generate.py
+import type { ControlAgent, ControlAgentPage, ControlDevice, ControlDevicePage, ControlPolicy, ControlPolicyPage, ControlRole, ControlRolePage, ControlTeam, ControlTeamPage, ControlTool, ControlToolPage, ControlUser, ControlUserPage } from '@olo-labs/toolgate-contracts';
 export const operations = {
+  getAdminSession: { method: 'GET', path: '/api/control/v1/admin-session' },
   publicClientInstallers: { method: 'GET', path: '/api/public/v1/installers' },
   publicClientDownloads: { method: 'GET', path: '/api/public/v1/clients' },
   publicClientBinary: { method: 'GET', path: '/api/public/v1/clients/{filename}' },
@@ -29,6 +30,11 @@ export const operations = {
   getControlUser: { method: 'GET', path: '/api/control/v1/users/{id}' },
   updateControlUser: { method: 'PUT', path: '/api/control/v1/users/{id}' },
   deleteControlUser: { method: 'DELETE', path: '/api/control/v1/users/{id}' },
+  listControlRole: { method: 'GET', path: '/api/control/v1/roles' },
+  createControlRole: { method: 'POST', path: '/api/control/v1/roles' },
+  getControlRole: { method: 'GET', path: '/api/control/v1/roles/{id}' },
+  updateControlRole: { method: 'PUT', path: '/api/control/v1/roles/{id}' },
+  deleteControlRole: { method: 'DELETE', path: '/api/control/v1/roles/{id}' },
   listControlTeam: { method: 'GET', path: '/api/control/v1/teams' },
   createControlTeam: { method: 'POST', path: '/api/control/v1/teams' },
   getControlTeam: { method: 'GET', path: '/api/control/v1/teams/{id}' },
@@ -80,6 +86,7 @@ export interface DirectoryRecords {
   agents: ControlAgent;
   devices: ControlDevice;
   policies: ControlPolicy;
+  roles: ControlRole;
   teams: ControlTeam;
   tools: ControlTool;
   users: ControlUser;
@@ -88,6 +95,7 @@ export interface DirectoryPages {
   agents: ControlAgentPage;
   devices: ControlDevicePage;
   policies: ControlPolicyPage;
+  roles: ControlRolePage;
   teams: ControlTeamPage;
   tools: ControlToolPage;
   users: ControlUserPage;
@@ -97,7 +105,44 @@ export const listOperations = {
   agents: operations.listControlAgent,
   devices: operations.listControlDevice,
   policies: operations.listControlPolicy,
+  roles: operations.listControlRole,
   teams: operations.listControlTeam,
   tools: operations.listControlTool,
   users: operations.listControlUser,
+} as const;
+export const getOperations = {
+  agents: operations.getControlAgent,
+  devices: operations.getControlDevice,
+  policies: operations.getControlPolicy,
+  roles: operations.getControlRole,
+  teams: operations.getControlTeam,
+  tools: operations.getControlTool,
+  users: operations.getControlUser,
+} as const;
+export const createOperations = {
+  agents: operations.createControlAgent,
+  devices: operations.createControlDevice,
+  policies: operations.createControlPolicy,
+  roles: operations.createControlRole,
+  teams: operations.createControlTeam,
+  tools: operations.createControlTool,
+  users: operations.createControlUser,
+} as const;
+export const updateOperations = {
+  agents: operations.updateControlAgent,
+  devices: operations.updateControlDevice,
+  policies: operations.updateControlPolicy,
+  roles: operations.updateControlRole,
+  teams: operations.updateControlTeam,
+  tools: operations.updateControlTool,
+  users: operations.updateControlUser,
+} as const;
+export const deleteOperations = {
+  agents: operations.deleteControlAgent,
+  devices: operations.deleteControlDevice,
+  policies: operations.deleteControlPolicy,
+  roles: operations.deleteControlRole,
+  teams: operations.deleteControlTeam,
+  tools: operations.deleteControlTool,
+  users: operations.deleteControlUser,
 } as const;
