@@ -65,6 +65,10 @@ def publication_proof():
     for classifier in ('','-sources','-javadoc'):
         file = artifact/f'toolgate-contracts-{version}{classifier}.jar'
         if not file.is_file(): raise SystemExit('Publication artifact missing: '+file.name)
+        with zipfile.ZipFile(file) as jar:
+            for document in ('LICENSE', 'NOTICE.md', 'RELEASE-NOTES.md'):
+                if jar.read('META-INF/'+document) != (ROOT/document).read_bytes():
+                    raise SystemExit('Published release document mismatch: '+file.name+'/'+document)
     pom = ET.parse(artifact/f'toolgate-contracts-{version}.pom').getroot()
     namespace = {'m':'http://maven.apache.org/POM/4.0.0'}
     if pom.findtext('m:artifactId', namespaces=namespace) != 'toolgate-contracts': raise SystemExit('Incorrect Maven identity')

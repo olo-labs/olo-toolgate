@@ -124,6 +124,6 @@ jobs:
           if ! gh release view "v${version}"; then
             prerelease=""
             case "$version" in *-*) prerelease="--prerelease" ;; esac
-            gh release create "v${version}" --verify-tag $prerelease --title "OLO ToolGate ${version}" --notes-file CHANGELOG.md
+            gh release create "v${version}" --verify-tag $prerelease --title "OLO ToolGate ${version}" --generate-notes --notes-file RELEASE-NOTES.md
           fi
           gh release upload "v${version}" "build/quickstart/${prefix}-sbom.cdx.json" "build/quickstart/${prefix}-operations.md" "build/quickstart/${prefix}-image.txt" "build/quickstart/${prefix}-SHA256SUMS"

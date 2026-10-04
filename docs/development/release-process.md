@@ -62,3 +62,6 @@ approved pinned image and local system-accessible engine. No engine installer or
 registry secret is embedded. Native Linux CI executes real adapter/sandbox tests.
 Batch/CMD has no secure backend yet; native cross-platform gates must run before
 claiming module completion.
+
+See [development releases](development-releases.md) for automated main publishing
+and the release note/license locations in archives, libraries and containers.

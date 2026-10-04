@@ -38,6 +38,8 @@ LABEL org.opencontainers.image.title="OLO ToolGate Quickstart" \
       org.opencontainers.image.revision=$REVISION
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=55 -Djava.io.tmpdir=/tmp -Dorg.sqlite.lib.path=/usr/local/lib/toolgate" \
     PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+COPY LICENSE NOTICE.md /usr/share/licenses/olo-toolgate/
+COPY RELEASE-NOTES.md /usr/share/doc/olo-toolgate/RELEASE-NOTES.md
 USER 65532:65532
 VOLUME ["/data"]
 EXPOSE 8080 8443

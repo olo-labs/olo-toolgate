@@ -24,6 +24,7 @@ tasks.test {
 tasks.jar { isPreserveFileTimestamps = false; isReproducibleFileOrder = true }
 tasks.withType<Jar>().configureEach {
     from(project.file("LICENSE")) { into("META-INF") }
+    from(rootProject.files("NOTICE.md", "RELEASE-NOTES.md")) { into("META-INF") }
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
 }

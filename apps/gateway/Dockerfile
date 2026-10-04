@@ -32,6 +32,8 @@ LABEL org.opencontainers.image.title="OLO ToolGate Gateway" \
 COPY --from=builder --chown=65532:65532 /gateway /usr/local/bin/olo-toolgate-gateway
 COPY --chown=65532:65532 LICENSE /usr/share/licenses/olo-toolgate/LICENSE
 COPY --from=builder --chown=65532:65532 /licenses /usr/share/licenses/olo-toolgate/third-party
+COPY LICENSE NOTICE.md /usr/share/licenses/olo-toolgate/
+COPY RELEASE-NOTES.md /usr/share/doc/olo-toolgate/RELEASE-NOTES.md
 USER 65532:65532
 EXPOSE 8081 9091
 STOPSIGNAL SIGTERM

@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def bundle_bytes():
     contracts = ROOT/'packages/contracts'
-    paths = [ROOT/'LICENSE', contracts/'VERSION', contracts/'contract-set.yaml', contracts/'generated-manifest.json']
+    paths = [ROOT/'LICENSE', ROOT/'NOTICE.md', ROOT/'RELEASE-NOTES.md', contracts/'VERSION', contracts/'contract-set.yaml', contracts/'generated-manifest.json']
     for folder in ('schemas','openapi','events'):
         paths.extend(p for p in (contracts/folder).rglob('*') if p.is_file())
     buffer = io.BytesIO()
@@ -22,7 +22,7 @@ def bundle_bytes():
         with tarfile.open(fileobj=compressed, mode='w') as archive:
             for path in sorted(paths):
                 data = path.read_bytes()
-                info = tarfile.TarInfo('LICENSE' if path == ROOT/'LICENSE' else path.relative_to(contracts).as_posix())
+                info = tarfile.TarInfo(path.name if path.parent == ROOT else path.relative_to(contracts).as_posix())
                 info.size = len(data)
                 info.mode = 0o644
                 info.mtime = 0
@@ -42,6 +42,8 @@ def main():
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     if not args.checksums_only:
+        for document in ('LICENSE', 'NOTICE.md', 'RELEASE-NOTES.md'):
+            (args.output/document).write_bytes((ROOT/document).read_bytes())
         version = (ROOT/'packages/contracts/VERSION').read_text().strip()
         product = (ROOT/'VERSION').read_text().strip()
         (args.output/f'olo-toolgate-contracts-{version}.tar.gz').write_bytes(bundle_bytes())

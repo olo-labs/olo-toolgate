@@ -20,9 +20,11 @@
     "packages/contracts/schemas/v1/runtime.schema.json": "20cde3bc4e368cece8c42938b115845494c7efb8fad5acfe90ea29b242342aff",
     "packages/contracts/schemas/v1/tool.schema.json": "8f9c78085cb2c1255a5b5f7cffed29e728fb8864a93647ce281c6d34e8d93392"
   },
-  "generatorSha256": "fc70c8ec93ee97082f7fc555af283a130e1210be78793f50c9747f940a2e460a",
+  "generatorSha256": "529a0eca81308283f1c89a7cb0f5bdee2fc897a1a083d86fa501c767dbcccba8",
   "outputs": [
     "packages/contracts/java/LICENSE",
+    "packages/contracts/java/NOTICE.md",
+    "packages/contracts/java/RELEASE-NOTES.md",
     "packages/contracts/java/src/main/java/io/ololabs/toolgate/contracts/ApprovalBundlePayload.java",
     "packages/contracts/java/src/main/java/io/ololabs/toolgate/contracts/ApprovalBundleRule.java",
     "packages/contracts/java/src/main/java/io/ololabs/toolgate/contracts/ApprovalChoice.java",
@@ -167,6 +169,8 @@
     "packages/contracts/java/src/main/java/io/ololabs/toolgate/contracts/ToolAction.java",
     "packages/contracts/java/src/main/java/io/ololabs/toolgate/contracts/ToolDefinition.java",
     "packages/contracts/php/LICENSE",
+    "packages/contracts/php/NOTICE.md",
+    "packages/contracts/php/RELEASE-NOTES.md",
     "packages/contracts/php/src/ApprovalBundlePayload.php",
     "packages/contracts/php/src/ApprovalBundleRule.php",
     "packages/contracts/php/src/ApprovalChoice.php",
@@ -311,6 +315,8 @@
     "packages/contracts/php/src/ToolAction.php",
     "packages/contracts/php/src/ToolDefinition.php",
     "packages/contracts/rust/LICENSE",
+    "packages/contracts/rust/NOTICE.md",
+    "packages/contracts/rust/RELEASE-NOTES.md",
     "packages/contracts/rust/schemas/v1/approval.schema.json",
     "packages/contracts/rust/schemas/v1/builder.schema.json",
     "packages/contracts/rust/schemas/v1/builtins.schema.json",
@@ -331,6 +337,8 @@
     "packages/contracts/rust/schemas/v1/tool.schema.json",
     "packages/contracts/rust/src/lib.rs",
     "packages/contracts/typescript/LICENSE",
+    "packages/contracts/typescript/NOTICE.md",
+    "packages/contracts/typescript/RELEASE-NOTES.md",
     "packages/contracts/typescript/src/index.ts"
   ]
 }

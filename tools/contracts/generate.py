@@ -180,7 +180,8 @@ def render():
     outputs['packages/contracts/rust/src/lib.rs'] = '\n'.join(rust) + '\n'
     outputs['packages/contracts/typescript/src/index.ts'] = '\n'.join(ts) + '\n'
     for language in ('java','rust','typescript','php'):
-        outputs[f'packages/contracts/{language}/LICENSE'] = (ROOT/'LICENSE').read_text(encoding='utf-8')
+        for document in ('LICENSE', 'NOTICE.md', 'RELEASE-NOTES.md'):
+            outputs[f'packages/contracts/{language}/{document}'] = (ROOT/document).read_text(encoding='utf-8')
     manifest = {'version':version, 'schemaSha256':{str(p.relative_to(ROOT)).replace('\\','/'): source_sha256(p) for p in sorted((CONTRACTS/'schemas/v1').glob('*.json'))}, 'generatorSha256':source_sha256(Path(__file__)), 'outputs': sorted(outputs)}
     outputs['packages/contracts/generated-manifest.json'] = json.dumps(manifest, indent=2) + '\n'
     return outputs

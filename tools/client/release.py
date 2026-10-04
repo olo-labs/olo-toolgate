@@ -24,7 +24,7 @@ def main():
     present=subprocess.run(['gh','release','view',tag],capture_output=True).returncode==0
     if not present:
         subprocess.run(['gh','release','create',tag,'--verify-tag',*(['--prerelease'] if '-' in version else []),'--title','OLO ToolGate '+version,
-            '--notes-file',str(ROOT/'CHANGELOG.md')],check=True)
+            '--generate-notes','--notes-file',str(ROOT/'RELEASE-NOTES.md')],check=True)
     # Existing immutable asset names are never overwritten.
     subprocess.run(['gh','release','upload',tag,*map(str,files)],check=True)
 

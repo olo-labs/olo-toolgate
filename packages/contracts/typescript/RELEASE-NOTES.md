@@ -1,3 +1,10 @@
+<!-- GENERATED FILE: tools/contracts/version.py; do not edit -->
+# OLO ToolGate 0.10.0-dev release notes
+
+Contracts version: `0.10.0-dev`.
+
+License: Apache-2.0. See LICENSE and bundled third-party notices/SBOMs.
+
 # Changelog
 
 All notable project changes should be documented here.

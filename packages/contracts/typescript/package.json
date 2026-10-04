@@ -13,7 +13,10 @@
   "types": "./dist/index.d.ts",
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "NOTICE.md",
+    "RELEASE-NOTES.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

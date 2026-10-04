@@ -41,6 +41,8 @@ COPY LICENSE apps/control-plane/NOTICE.md /usr/share/licenses/olo-toolgate/
 COPY apps/control-plane/gradle.lockfile /usr/share/licenses/olo-toolgate/third-party/gradle.lockfile
 COPY tools/dependency-license-reviews.json /usr/share/licenses/olo-toolgate/third-party/
 COPY package-lock.json /usr/share/licenses/olo-toolgate/third-party/package-lock.json
+COPY LICENSE NOTICE.md /usr/share/licenses/olo-toolgate/
+COPY RELEASE-NOTES.md /usr/share/doc/olo-toolgate/RELEASE-NOTES.md
 USER 65532:65532
 EXPOSE 8082 9092
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=70 -Djava.io.tmpdir=/tmp"

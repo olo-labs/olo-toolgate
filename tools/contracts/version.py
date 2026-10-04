@@ -46,6 +46,10 @@ def expected():
     quickstart_api = ROOT/'packages/contracts/openapi/quickstart-v1.yaml'
     if quickstart_api.exists():
         outputs[quickstart_api] = re.sub(r'^  version: .*', f'  version: {product}', quickstart_api.read_text(), flags=re.M)
+    outputs[ROOT/"RELEASE-NOTES.md"] = ("<!-- GENERATED FILE: tools/contracts/version.py; do not edit -->\n"
+        + f"# OLO ToolGate {product} release notes\n\nContracts version: `{contracts}`.\n\n"
+        + "License: Apache-2.0. See LICENSE and bundled third-party notices/SBOMs.\n\n"
+        + (ROOT/"CHANGELOG.md").read_text(encoding="utf-8"))
     return outputs
 
 
@@ -61,7 +65,7 @@ def main():
             (ROOT/path).write_text(args.version+'\n', encoding='utf-8', newline='\n')
     drift = []
     for path, content in expected().items():
-        if path.read_bytes() != content.encode('utf-8'):
+        if not path.exists() or path.read_bytes() != content.encode('utf-8'):
             drift.append(path.relative_to(ROOT).as_posix())
             if not args.check:
                 path.write_text(content, encoding='utf-8', newline='\n')

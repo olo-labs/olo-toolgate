@@ -55,6 +55,8 @@ def package(binary, target, output):
     raw=binary.read_bytes()
     verify_binary(raw,target)
     files = {executable:binary.read_bytes(), 'LICENSE':(ROOT/'LICENSE').read_bytes(),
+             'RELEASE-NOTES.md':(ROOT/'RELEASE-NOTES.md').read_bytes(),
+             'NOTICE.md':(ROOT/'NOTICE.md').read_bytes(),
              'README.md':(ROOT/'apps/endpoint-client/README.md').read_text().replace('../../docs/','docs/').encode(),
              'sbom.cdx.json':(json.dumps(sbom,sort_keys=True,indent=2)+'\n').encode()}
     for document in ['client/tool-builder.md','adr/011-designated-client-tool-authoring.md','client/package-deployment.md','adr/010-signed-fleet-reconciliation.md','client/hotfolder.md','client/local-runtimes.md','client/runtime-support.md','client/runtime-isolation.md',
