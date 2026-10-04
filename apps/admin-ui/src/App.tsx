@@ -19,7 +19,7 @@ import oloLogo from './assets/olo.png';
 declare const __APP_VERSION__: string;
 const directorySections = [ ['users', 'Users'], ['teams', 'Teams'], ['roles', 'Roles'], ['tools', 'Tools'], ['policies', 'Policies'], ['devices', 'Clients'], ['agents', 'Agents'] ] as const;
 const sections = [ ['overview', 'Overview'], ...directorySections, ['audit', 'Audit log'], ['approvals', 'Approvals'], ['fleet', 'Packages'], ['builder', 'Tool builder'], ['enroll', 'Enroll device'], ['local', 'Built-in tools and vault'] ] as const;
-const navigationGroups=[{label:'Users',routes:['users','teams','roles','agents']},{label:'Tools',routes:['tools','policies','builder','local']},{label:'Devices',routes:['devices','enroll','fleet']},{label:'Audit',routes:['audit','approvals']}] as const;
+const navigationGroups=[{label:'Audit',routes:['audit','approvals']},{label:'Tools',routes:['tools','policies','builder','local']},{label:'Devices',routes:['devices','enroll','fleet']},{label:'Users',routes:['users','teams','roles','agents']}] as const;
 type Route = typeof sections[number][0];
 type RecordValue = DirectoryRecords[DirectoryKind];
 const routeFromHash = (): Route => sections.find(([route]) => window.location.hash.split('?')[0] === `#${route}`)?.[0] ?? 'overview';
@@ -28,6 +28,21 @@ const safeOrigin = () => window.location.protocol === 'https:' || ['localhost', 
 /** Authenticated shell; identities/roles are verified only by Control. */
 export function App() {
   const quickstart = document.querySelector('meta[name=toolgate-mode]')?.getAttribute('content') === 'quickstart';
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(['Audit']);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('toolgate.sidebar.collapsed') === 'true'; } catch { return false; }
+  });
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    try { const width = Number(localStorage.getItem('toolgate.sidebar.width')); return Number.isFinite(width) && width >= 190 && width <= 420 ? width : 250; } catch { return 250; }
+  });
+  const resizeSidebar = (width: number) => {
+    const next = Math.max(190, Math.min(420, width)); setSidebarWidth(next);
+    try { localStorage.setItem('toolgate.sidebar.width', String(next)); } catch { /* Preferences are optional. */ }
+  };
+  const toggleSidebar = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
+    try { localStorage.setItem('toolgate.sidebar.collapsed', String(!sidebarCollapsed)); } catch { /* Preferences are optional. */ }
+  };
   const [newPassword, setNewPassword] = useState('');
   const [passwordDisabled, setPasswordDisabled] = useState(false);
   const [client, setClient] = useState<ControlClient>();
@@ -91,14 +106,48 @@ export function App() {
           <button className="primary" disabled={connecting || !safeOrigin()}>{connecting ? 'Connecting…' : 'Connect to workspace'}</button>
           {connecting && <p role="status">Verifying your session with Control…</p>}
         </form>}</div><ClientDownloads /><footer>ToolGate {__APP_VERSION__} · Organization administration</footer></main>
-    : <div className="shell"><aside className="sidebar"><div className="brand"><img className="brand-logo" src={oloLogo} alt="OLO" /> <span>ToolGate</span></div>
-      <p className="sidebar-caption">{administrator?'Workspace':'Approval workspace'}</p><nav aria-label="Main navigation">{administrator?<><a href="#overview" aria-current={route==='overview'?'page':undefined}>Overview</a>{navigationGroups.map(group=><details className="nav-group" key={group.label} open><summary>{group.label}</summary><div className="nav-submenu">{group.routes.filter(value=>quickstart||value!=='local').map(value=><a key={value} href={`#${value}`} aria-current={route===value?'page':undefined}><span className="nav-dot"/>{sections.find(([key])=>key===value)![1]}</a>)}</div></details>)}</>:<a href="#approvals" aria-current="page">Approvals</a>}</nav>
-      <div className="sidebar-bottom"><span className="connection">Connected to Control</span><small>v{__APP_VERSION__}</small><button onClick={disconnect}>Disconnect</button></div></aside>
-      <div className="workspace"><header className="topbar"><span>{administrator?'Admin Portal':'Approval workspace'}</span><div className="topbar-actions"><span className="tag">{quickstart ? 'Quickstart · Non-HA' : 'Organization workspace'}</span><ThemePicker /></div></header>
+    : <div className="app-frame"><header className="topbar app-topbar"><div className="brand"><img className="brand-logo" src={oloLogo} alt="OLO" /><span>ToolGate</span></div><span className="portal-label">{administrator?'Admin Portal':'Approval workspace'}</span><div className="topbar-actions"><span className="tag">{quickstart ? 'Quickstart · Non-HA' : 'Organization workspace'}</span><ThemePicker /></div></header>
+      <div className={`shell${sidebarCollapsed ? ' navigation-collapsed' : ''}`}><aside id="sidebar" className={`sidebar${sidebarCollapsed ? ' sidebar-collapsed' : ''}`} style={{width:sidebarCollapsed ? 64 : sidebarWidth}}>
+      {!sidebarCollapsed && <p className="sidebar-caption">{administrator?'Workspace':'Approval workspace'}</p>}
+      <nav aria-label="Main navigation">{administrator?<><a href="#overview" title="Overview" aria-label={sidebarCollapsed?'Overview':undefined} aria-current={route==='overview'?'page':undefined}><MenuIcon name="overview"/>{!sidebarCollapsed&&'Overview'}</a>{navigationGroups.map(group=>sidebarCollapsed?
+        <button className="rail-menu" key={group.label} title={group.label} aria-label={group.label} onClick={()=>{ setExpandedGroups([group.label]); toggleSidebar(); }}><MenuIcon name={group.label}/></button>:
+        <details className="nav-group" key={group.label} open={expandedGroups.includes(group.label)} onToggle={event=>{const opened=event.currentTarget.open;setExpandedGroups(previous=>opened===previous.includes(group.label)?previous:opened?[...previous,group.label]:previous.filter(label=>label!==group.label));}}><summary><MenuIcon name={group.label}/>{group.label}</summary><div className="nav-submenu">{group.routes.filter(value=>quickstart||value!=='local').map(value=><a key={value} href={`#${value}`} aria-current={route===value?'page':undefined}><MenuIcon name={value}/>{sections.find(([key])=>key===value)![1]}</a>)}</div></details>)}</>:<a href="#approvals" title="Approvals" aria-label={sidebarCollapsed?'Approvals':undefined} aria-current="page"><MenuIcon name="approvals"/>{!sidebarCollapsed&&'Approvals'}</a>}</nav>
+      <div className="sidebar-bottom">{!sidebarCollapsed&&<><span className="connection">Connected to Control</span><small>v{__APP_VERSION__}</small></>}<button title="Disconnect" aria-label="Disconnect" onClick={disconnect}>{sidebarCollapsed?<MenuIcon name="disconnect"/>:'Disconnect'}</button></div></aside>
+      <button className="sidebar-toggle" style={{left:sidebarCollapsed?18:sidebarWidth-38}} aria-label={sidebarCollapsed?'Expand navigation':'Collapse navigation'} aria-controls="sidebar" aria-expanded={!sidebarCollapsed} onClick={toggleSidebar}>{sidebarCollapsed?'>':'<'}</button>
+      {!sidebarCollapsed && <div className="sidebar-resizer" role="separator" aria-label="Resize navigation" aria-orientation="vertical" aria-valuemin={190} aria-valuemax={420} aria-valuenow={sidebarWidth} tabIndex={0}
+        onPointerDown={event => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); }}
+        onPointerMove={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) resizeSidebar(event.clientX); }}
+        onPointerUp={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); }}
+        onKeyDown={event => { if (['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) { event.preventDefault(); resizeSidebar(event.key==='Home'?190:event.key==='End'?420:sidebarWidth+(event.key==='ArrowLeft'?-20:20)); } }} />}
+
+      <div className="workspace">
         <main id="main" tabIndex={-1}>{!administrator?<Approvals client={client}/>:route === 'local' ? quickstart ? <QuickstartTools client={client} /> : <p>Local tools are available in Quickstart.</p> : route === 'overview' ? <Dashboard client={client} /> : route === 'audit' ? <Audit client={client}/> : route === 'approvals' ? <Approvals client={client} /> : route === 'fleet' ? <Fleet client={client} /> : route === 'builder' ? <Builder client={client} /> : route === 'enroll' ? <><Enrollment client={client} /><ClientDownloads /></> : <Directory key={route} client={client} kind={route} />}</main>
-        <footer>Control verifies permissions. Gateway checks current policy for every runtime authorization.</footer></div></div>}
+        <footer>Control verifies permissions. Gateway checks current policy for every runtime authorization.</footer></div></div></div>}
   </>;
 }
+
+const iconPaths: Record<string,string> = {
+  overview:'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',
+  Audit:'M6 3h12v18H6z M9 7h6 M9 11h6 M9 15h4',
+  Tools:'M14 4a5 5 0 0 0-6 6L3 17l4 4 7-7a5 5 0 0 0 6-6l-4 3-3-3z',
+  Devices:'M3 4h18v12H3z M8 21h8 M12 16v5',
+  Users:'M8 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M2 21v-3a6 6 0 0 1 12 0v3 M17 4a3 3 0 0 1 0 6 M18 14a4 4 0 0 1 4 4v3',
+  users:'M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10 M3 22v-2a9 9 0 0 1 18 0v2',
+  teams:'M4 3h6v6H4z M14 3h6v6h-6z M9 15h6v6H9z M7 9v3h10V9 M12 12v3',
+  roles:'M12 2l8 4v6c0 5-8 10-8 10S4 17 4 12V6z M8 12l3 3 5-6',
+  agents:'M5 7h14v13H5z M12 2v5 M8 11h1 M15 11h1 M9 16h6 M2 11h3 M19 11h3',
+  tools:'M5 4h14v16H5z M8 8l3 3-3 3 M13 15h3',
+  policies:'M12 3l9 5-9 5-9-5z M3 12l9 5 9-5 M3 16l9 5 9-5',
+  devices:'M7 2h10v20H7z M10 18h4',
+  enroll:'M4 5h10v14H4z M17 8v8 M13 12h8',
+  fleet:'M3 7l9-5 9 5v10l-9 5-9-5z M3 7l9 5 9-5 M12 12v10',
+  audit:'M3 3h14v18H3z M6 7h7 M6 11h7 M6 15h4 M17 13l5 5 M18 18a4 4 0 1 0 0-8 4 4 0 0 0 0 8',
+  approvals:'M4 4h16v16H4z M7 12l3 3 7-7',
+  builder:'M8 5l-6 7 6 7 M16 5l6 7-6 7 M14 3l-4 18',
+  local:'M4 3h16v6H4z M4 15h16v6H4z M7 6h1 M7 18h1 M12 9v6',
+  disconnect:'M10 3H3v18h7 M9 12h13 M17 7l5 5-5 5',
+};
+function MenuIcon({name}:{name:string}) { return <svg className="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={iconPaths[name]}/></svg>; }
 
 function Dashboard({ client }: { client: ControlClient }) {
   const [counts,setCounts] = useState<Partial<Record<DirectoryKind,{ count: number; more: boolean }>>>({});

@@ -10,7 +10,7 @@ async function login(page:Page, kind = 'admin') {
   await page.getByLabel('Access token').fill(credentials[kind]);
   await page.getByRole('button',{name:'Connect to workspace'}).click();
 }
-async function navigate(page:Page, label:string) { await page.getByRole('navigation').getByRole('link',{name:label,exact:true}).click(); await expect(page.getByRole('heading',{name:label === 'Overview' ? 'Your organization, at a glance' : label,exact:true})).toBeVisible(); }
+async function navigate(page:Page, label:string) { const group=page.locator('nav details').filter({has:page.getByRole('link',{name:label,exact:true,includeHidden:true})}); if(await group.count() && await group.getAttribute('open')===null) await group.locator('summary').click(); await page.getByRole('navigation').getByRole('link',{name:label,exact:true}).click(); await expect(page.getByRole('heading',{name:label === 'Overview' ? 'Your organization, at a glance' : label,exact:true})).toBeVisible(); }
 async function accessible(page:Page) { expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations).toEqual([]); }
 
 test('embedded signed-token console, real CRUD, revisions, accessibility and no token persistence', async ({page,request}) => {

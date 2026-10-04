@@ -9,7 +9,8 @@ test('author, scan, test on client, seal and prepare publication',async({page})=
  test.setTimeout(120000);
  const credentials=JSON.parse(readFileSync(process.env.UI_TEST_CREDENTIALS!,'utf8')) as {admin:string};
  await page.goto('/console/');await page.getByLabel('Access token').fill(credentials.admin);await page.getByRole('button',{name:'Connect to workspace'}).click();
- await page.getByRole('navigation').getByRole('link',{name:'Tool builder',exact:true}).click();
+ await page.locator('nav summary').filter({hasText:'Tools'}).click();
+  await page.getByRole('navigation').getByRole('link',{name:'Tool builder',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Custom tool builder'})).toBeVisible();
  expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations).toEqual([]);
  await page.getByLabel('Package ID',{exact:true}).fill('browser-tool');await page.getByLabel('Tool ID',{exact:true}).fill('custom.ui');

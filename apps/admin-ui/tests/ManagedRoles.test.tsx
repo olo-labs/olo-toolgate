@@ -31,7 +31,7 @@ it('groups all navigation into four expandable submenus and exposes Roles',async
   vi.stubGlobal('fetch',vi.fn().mockImplementation(async()=>new Response(JSON.stringify({items:[]}))));render(<App/>);
   fireEvent.change(screen.getByLabelText('Access token'),{target:{value:'token'}});fireEvent.click(screen.getByRole('button',{name:'Connect to workspace'}));
   await screen.findByRole('navigation');expect(document.querySelectorAll('nav details')).toHaveLength(4);
-  expect([...document.querySelectorAll('nav summary')].map(element=>element.textContent)).toEqual(['Users','Tools','Devices','Audit']);
+  expect([...document.querySelectorAll('nav summary')].map(element=>element.textContent)).toEqual(['Audit','Tools','Devices','Users']);
   expect(screen.getByRole('link',{name:'Roles'}).closest('details')?.querySelector('summary')?.textContent).toBe('Users');
   expect(screen.getByRole('link',{name:'Tool builder'}).closest('details')?.querySelector('summary')?.textContent).toBe('Tools');
   expect(screen.getByRole('link',{name:'Enroll device'}).closest('details')?.querySelector('summary')?.textContent).toBe('Devices');

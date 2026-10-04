@@ -11,6 +11,7 @@ test('real fleet status, accessible assignment and revision-bound canary advance
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.name));
   await page.goto('/console/');await page.getByLabel('Access token').fill(credentials.admin);
   await page.getByRole('button',{name:'Connect to workspace'}).click();
+  await page.locator('nav summary').filter({hasText:'Devices'}).click();
   await page.getByRole('navigation').getByRole('link',{name:'Packages',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Package deployments'})).toBeVisible();
   await expect(page.getByRole('table')).toBeVisible();

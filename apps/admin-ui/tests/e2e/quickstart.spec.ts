@@ -9,6 +9,7 @@ test('real Quickstart password, non-HA status, protected compute and vault names
   await page.getByLabel('Password',{exact:true}).fill(process.env.QUICKSTART_PASSWORD!);
   await page.getByRole('button',{name:'Connect to workspace'}).click();
   await expect(page.getByRole('heading',{name:'Your organization, at a glance'})).toBeVisible();
+  await page.locator('nav summary').filter({hasText:'Tools'}).click();
   await page.getByRole('link',{name:'Built-in tools and vault'}).click();
   await page.getByRole('button',{name:'Run protected tool'}).click();
   await expect(page.getByRole('region',{name:'Tool result'})).toContainText('14');

@@ -16,6 +16,7 @@ test('explicit local password-free mode enters the console and still uses protec
     expect(result.status, path).toBe(200);
     if (path.endsWith('/admin')) expect(result.body).toMatchObject({id:'admin',enabled:true});
   }
+  await page.locator('nav summary').filter({hasText:'Tools'}).click();
   await page.getByRole('link',{name:'Tool builder',exact:true}).click();
   await expect(page.getByRole('button',{name:'Save and scan draft'})).toBeEnabled();
   await page.getByLabel('Approved digest-pinned runtime image').fill('registry.example.invalid/test/python@sha256:'+'a'.repeat(64));
@@ -24,6 +25,7 @@ test('explicit local password-free mode enters the console and still uses protec
   await page.getByRole('button',{name:'Save and scan draft'}).click();
   await expect(page.getByRole('heading',{name:'Test, package and deploy'})).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);
+  await page.locator('nav summary').filter({hasText:'Devices'}).click();
   await page.getByRole('link',{name:'Packages',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Publish a signed release'})).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);

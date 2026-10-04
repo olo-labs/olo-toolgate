@@ -4,6 +4,7 @@
 import argparse
 import base64
 import contextlib
+import http.client
 import http.server
 import json
 import os
@@ -16,6 +17,7 @@ import time
 import threading
 import urllib.error
 import urllib.request
+import urllib.parse
 from pathlib import Path
 
 from cryptography.hazmat.primitives import hashes, serialization
@@ -69,6 +71,26 @@ def request(url, token=None, body=None, method='GET', headers=None):
     try:
         with urllib.request.urlopen(req, timeout=20) as response: return response.status, response.read(), dict(response.headers)
     except urllib.error.HTTPError as error: return error.code, error.read(), dict(error.headers)
+
+
+def oversized_request(url, token, size):
+    """Require rejection of oversized Content-Length before uploading its body."""
+    target = urllib.parse.urlsplit(url)
+    connection_type = http.client.HTTPSConnection if target.scheme == 'https' else http.client.HTTPConnection
+    connection = connection_type(target.hostname, target.port, timeout=20)
+    try:
+        connection.putrequest('POST', target.path + ('?' + target.query if target.query else ''))
+        for name, value in {'Authorization':'Bearer ' + token, 'Content-Type':'application/json',
+                            'Content-Length':str(size), 'Idempotency-Key':'oversize'}.items():
+            connection.putheader(name, value)
+        connection.endheaders()
+        # Vert.x rejects the declared length before reading a body. Read that
+        # response first: uploading concurrently can discard it in a TCP reset.
+        # Missing responses/timeouts still fail; only HTTP 413 passes the gate.
+        response = connection.getresponse()
+        return response.status, response.read(), dict(response.headers)
+    finally:
+        connection.close()
 
 
 def keypair(work):
@@ -231,7 +253,7 @@ def http_tests(runtime, management, key):
     # Run connection-closing transport rejection last: kubectl's port-forward
     # terminates its tunnel on the backend's early close while copying this body.
     # Direct container/host smoke separately proves subsequent requests still work.
-    assert request(api+'/users', admin, b'x'*(2*1024*1024+1), 'POST', {'Idempotency-Key':'oversize'})[0] == 413
+    assert oversized_request(api+'/users', admin, 2*1024*1024+1)[0] == 413
     print('Control HTTP: verified JWT negatives, roles, tenant isolation, contracts, limits, idempotency, safe JSON/YAML import, audit and telemetry passed')
     return admin
 

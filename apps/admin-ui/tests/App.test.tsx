@@ -9,6 +9,25 @@ function response(items: unknown[] = []) { return new Response(JSON.stringify({i
 async function connect() { fireEvent.change(screen.getByLabelText('Access token'),{target:{value:'test-only-secret'}}); fireEvent.click(screen.getByRole('button',{name:'Connect to workspace'})); await screen.findByRole('navigation'); }
 
 describe('Management shell states', () => {
+  it('defaults to Audit expanded and supports bounded keyboard resizing and collapse', async () => {
+    localStorage.clear();
+    vi.stubGlobal('fetch',vi.fn().mockImplementation(async()=>response()));
+    render(<App/>); await connect();
+    expect([...document.querySelectorAll<HTMLDetailsElement>('nav details')].map(group=>group.open)).toEqual([true,false,false,false]);
+    const resize = screen.getByRole('separator',{name:'Resize navigation'});
+    fireEvent.keyDown(resize,{key:'End'}); expect(resize.getAttribute('aria-valuenow')).toBe('420');
+    fireEvent.keyDown(resize,{key:'ArrowRight'}); expect(resize.getAttribute('aria-valuenow')).toBe('420');
+    fireEvent.keyDown(resize,{key:'Home'}); expect(resize.getAttribute('aria-valuenow')).toBe('190');
+    fireEvent.click(screen.getByRole('button',{name:'Collapse navigation'}));
+    expect(screen.getByRole('navigation')).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Audit'}).querySelector('svg')).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Expand navigation'}).getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(screen.getByRole('button',{name:'Expand navigation'}));
+    expect(screen.getByRole('navigation')).toBeTruthy();
+    expect(screen.getByRole('separator').getAttribute('aria-valuenow')).toBe('190');
+    localStorage.clear();
+  });
+
   it('shows endpoint downloads only on login and device enrollment',async()=>{
     vi.stubGlobal('fetch',vi.fn().mockImplementation(async()=>response()));
     render(<App/>);expect(screen.getByRole('heading',{name:'Install ToolGate on your computer'})).toBeTruthy();
