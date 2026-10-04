@@ -27,6 +27,7 @@ def main():
     def run(tool,*rest,capture=False,input=None):
         print('+ '+tool+' '+' '.join(rest[:3]),flush=True)
         return subprocess.run([paths[tool],*rest],cwd=ROOT,env=env,check=True,text=True,capture_output=capture,input=input)
+    postgres_image="olo-toolgate-postgres-smoke:"+cluster
     forward=None
     try:
         run('kind','create','cluster','--name',cluster,'--image','kindest/node:v1.32.2@sha256:142f543559cc55d64e1ab9341df08e5ced84bd2e893736da8f51320f26f5950b','--wait','120s','--kubeconfig',str(config))
@@ -35,8 +36,12 @@ def main():
         # platform downloaded. Export the selected platform so Kind imports no absent digest.
         architecture=subprocess.check_output(['docker','info','--format','{{.Architecture}}'],text=True).strip()
         platform='linux/'+{'x86_64':'amd64','aarch64':'arm64','amd64':'amd64','arm64':'arm64'}[architecture]
+        # Digest pulls do not create the tag on a clean Docker store. Give the
+        # verified pinned image a unique smoke-only tag for archive and pod lookup.
+        subprocess.run(['docker','pull','--platform='+platform,POSTGRES],cwd=ROOT,check=True)
+        subprocess.run(['docker','tag',POSTGRES,postgres_image],cwd=ROOT,check=True)
         archive=folder/'postgres.tar'
-        subprocess.run(['docker','image','save','--platform='+platform,'-o',str(archive),POSTGRES.split('@')[0]],cwd=ROOT,check=True)
+        subprocess.run(['docker','image','save','--platform='+platform,'-o',str(archive),postgres_image],cwd=ROOT,check=True)
         run('kind','load','image-archive',str(archive),'--name',cluster)
         archive.unlink()
         key,public=keypair(folder);password=secrets.token_urlsafe(32)
@@ -54,7 +59,7 @@ def main():
         run('kubectl','create','secret','generic','policy-signing','--from-file=private.pem='+str(signing_path))
         # This PostgreSQL dependency exists only in the owned smoke cluster, outside the production chart.
         db=[{'apiVersion':'v1','kind':'Pod','metadata':{'name':'control-postgres','labels':{'app':'control-postgres'}},'spec':{
-            'containers':[{'name':'postgres','image':POSTGRES.split('@')[0],'imagePullPolicy':'Never',
+            'containers':[{'name':'postgres','image':postgres_image,'imagePullPolicy':'Never',
                 'env':[{'name':'POSTGRES_PASSWORD','valueFrom':{'secretKeyRef':{'name':'control-db','key':'password'}}}],
                 'ports':[{'containerPort':5432}],'resources':{'requests':{'cpu':'100m','memory':'128Mi'},'limits':{'cpu':'1','memory':'512Mi'}},
                 'readinessProbe':{'exec':{'command':['pg_isready','-h','127.0.0.1','-U','postgres']},'periodSeconds':2},
@@ -145,6 +150,7 @@ def main():
             (folder/name).write_text(result.stdout+result.stderr,encoding='utf-8')
         raise
     finally:
+        subprocess.run(['docker','image','rm',postgres_image],cwd=ROOT,capture_output=True)
         if forward is not None: forward.terminate();forward.wait(timeout=10)
         # Exact uniquely owned name; never act on the user's current cluster/context.
         subprocess.run([paths['kind'],'delete','cluster','--name',cluster],cwd=ROOT,env=env,check=True)
