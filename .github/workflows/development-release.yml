@@ -54,7 +54,10 @@ jobs:
             export MAVEN_USERNAME="${MAVEN_USERNAME:-$GITHUB_ACTOR}"
             export MAVEN_PASSWORD="${MAVEN_PASSWORD:-$GH_TOKEN}"
           else
-            test -n "$MAVEN_USERNAME" && test -n "$MAVEN_PASSWORD" || { echo 'Custom Maven repository requires MAVEN_USERNAME and MAVEN_PASSWORD secrets'; exit 1; }
+            if [ -z "$MAVEN_USERNAME" ] || [ -z "$MAVEN_PASSWORD" ]; then
+              echo 'Custom Maven repository requires MAVEN_USERNAME and MAVEN_PASSWORD secrets'
+              exit 1
+            fi
           fi
           python tools/contracts/version.py --set "$(cat build/development/MAVEN_VERSION)"
           python tools/contracts/generate.py
