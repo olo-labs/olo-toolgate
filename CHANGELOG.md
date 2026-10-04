@@ -6,6 +6,10 @@ The project follows semantic versioning once stable versioning begins.
 
 ## 0.10.0-dev
 
+- Match shared OLO logo branding and favicon, default to dark with saved
+  Dark/Light/System themes, and expand login/client downloads to a responsive
+  full-width layout with accessible theme palettes.
+
 - Fix Quickstart Tool Builder and Packages for the persistent default administrator
   in both login modes: verified internal TLS, dedicated fleet/release signing
   custody, and bounded local content-addressed package downloads.

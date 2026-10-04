@@ -205,3 +205,17 @@ an authorized device grant and verify the bounded descriptor size and digest.
 Set `TOOLGATE_CONTROL_FLEET_ARTIFACT_ORIGIN` to an external HTTPS mirror and
 `TOOLGATE_CONTROL_FLEET_ARTIFACT_CA_PATH` to its trusted CA file to use that mirror
 instead. Preserve `/data/keys` in backups along with state and artifact files.
+
+### Console appearance
+
+The console starts in **Dark**. Select **Dark**, **Light**, or **System** from the
+Theme menu on the login page or authenticated header. An explicit choice is
+saved in this browser under `toolgate.theme`; System follows OS appearance
+changes. Only the appearance preference is saved, never access tokens.
+The shared OLO logo precedes **ToolGate** on both screens and is also the favicon.
+The original asset was copied unchanged from `olo/branding/olo.png` into
+`apps/admin-ui/src/assets/olo.png` so builds need no adjacent repository.
+
+The favicon uses white OLO strokes on a transparent background, including the
+original central vertical line. Its SVG embeds the original PNG and applies a
+color/alpha filter, preserving the mark rather than redrawing it.

@@ -39,7 +39,7 @@ describe('Management shell states', () => {
   it('renders untrusted record labels as text without executable HTML', async () => {
     window.location.hash='#users';const name='<img src=x onerror=alert(1)>';
     vi.stubGlobal('fetch',vi.fn().mockImplementation(async () => response([{id:'untrusted-label',name,enabled:true,revision:1}])));
-    render(<App />);await connect();await screen.findByRole('button',{name});expect(document.querySelector('img')).toBeNull();
+    render(<App />);await connect();await screen.findByRole('button',{name});expect(document.querySelector('main img')).toBeNull();
   });
   it('submits a user via server validation and shows a reader denial', async () => {
     window.location.hash = '#users'; vi.stubGlobal('fetch',vi.fn().mockImplementation(async (_url, options) => options.method === 'POST' ? new Response('{}',{status:403}) : response()));
