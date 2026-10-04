@@ -10,7 +10,14 @@ async function login(page:Page, kind = 'admin') {
   await page.getByLabel('Access token').fill(credentials[kind]);
   await page.getByRole('button',{name:'Connect to workspace'}).click();
 }
-async function navigate(page:Page, label:string) { const group=page.locator('nav details').filter({has:page.getByRole('link',{name:label,exact:true,includeHidden:true})}); if(await group.count() && await group.getAttribute('open')===null) await group.locator('summary').click(); await page.getByRole('navigation').getByRole('link',{name:label,exact:true}).click(); await expect(page.getByRole('heading',{name:label === 'Overview' ? 'Your organization, at a glance' : label,exact:true})).toBeVisible(); }
+async function navigate(page:Page, label:string) {
+  // The signed session is fetched after the Connect click completes.
+  await expect(page.getByRole('navigation',{name:'Main navigation'})).toBeVisible();
+  const group=page.locator('nav details').filter({has:page.getByRole('link',{name:label,exact:true,includeHidden:true})});
+  if(await group.count() && await group.getAttribute('open')===null) await group.locator('summary').click();
+  await page.getByRole('navigation').getByRole('link',{name:label,exact:true}).click();
+  await expect(page.getByRole('heading',{name:label === 'Overview' ? 'Your organization, at a glance' : label,exact:true})).toBeVisible();
+}
 async function accessible(page:Page) { expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations).toEqual([]); }
 
 test('embedded signed-token console, real CRUD, revisions, accessibility and no token persistence', async ({page,request}) => {
@@ -51,6 +58,12 @@ test('embedded signed-token console, real CRUD, revisions, accessibility and no 
   await page.setViewportSize({width:390,height:844}); await navigate(page,'Overview'); await expect(page.locator('.stat')).toHaveCount(7); await accessible(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({path:'../../build/ui/overview-mobile.png',fullPage:true});
+  await page.getByRole('button',{name:'Collapse navigation',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Users',exact:true})).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await accessible(page);
+  await page.getByRole('button',{name:'Expand navigation',exact:true}).click();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.reload(); await expect(page.getByLabel('Access token')).toBeVisible(); expect(errors).toEqual([]);
 });
 
@@ -77,7 +90,13 @@ test('Super Admin manages roles, team inheritance and audit through grouped navi
   await expect(page.getByRole('heading',{name:'Edit team',exact:true})).toHaveCount(0);
   const team=await request.get('/api/control/v1/teams/browser-team',{headers:{Authorization:`Bearer ${credentials.super}`}});expect((await team.json()).roleIds).toEqual(['browser-cloud-role']);
   await navigate(page,'Audit log');await expect(page.getByRole('table')).toBeVisible();await accessible(page);
-  await page.getByRole('button',{name:'Disconnect'}).click();await login(page,'admin');await navigate(page,'Roles');
+  await page.getByRole('button',{name:'Disconnect'}).click();
+  // Reproduce a session response arriving after the sign-in button resolves.
+  await page.route('**/api/control/v1/admin-session',async route=>{
+    await new Promise(resolve=>setTimeout(resolve,250));
+    await route.continue();
+  });
+  await login(page,'admin');await navigate(page,'Roles');
   await page.getByRole('button',{name:'Browser cloud role',exact:true}).click();await page.getByLabel('Display name').fill('Escalation denied');await page.getByRole('button',{name:'Save role'}).click();await expect(page.getByRole('alert')).toContainText('permission');
 });
 

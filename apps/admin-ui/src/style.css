@@ -597,8 +597,12 @@ fieldset:disabled { opacity:.65; }
 .sidebar-collapsed .sidebar-bottom { align-items:center; padding:0; }
 @media(max-width:600px) {
   .app-topbar .portal-label { display:none; }
-  .app-frame .sidebar:not(.sidebar-collapsed) { width:190px !important; }
+  .app-frame .shell { flex-direction:column; }
+  .app-frame .shell.navigation-collapsed { flex-direction:row; }
+  .app-frame .sidebar:not(.sidebar-collapsed) { width:100% !important; }
   .app-frame .sidebar nav { display:grid; overflow:visible; margin-top:0; }
-  .app-frame .sidebar-toggle { left:152px !important; right:auto; }
+  .app-frame .sidebar-toggle { left:auto !important; right:18px; }
   .app-frame .navigation-collapsed .sidebar-toggle { left:18px !important; }
+  .app-frame .workspace { overflow-wrap:anywhere; }
+  .app-frame .navigation-collapsed .stats { grid-template-columns:minmax(0,1fr); }
 }
