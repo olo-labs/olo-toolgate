@@ -18,7 +18,7 @@ async function navigate(page:Page, label:string) {
   await page.getByRole('navigation').getByRole('link',{name:label,exact:true}).click();
   await expect(page.getByRole('heading',{name:label === 'Overview' ? 'Your organization, at a glance' : label,exact:true})).toBeVisible();
 }
-async function accessible(page:Page) { expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations).toEqual([]); }
+async function accessible(page:Page) { expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]); }
 
 test('embedded signed-token console, real CRUD, revisions, accessibility and no token persistence', async ({page,request}) => {
   const errors:string[] = []; page.on('pageerror',error => errors.push(error.name));

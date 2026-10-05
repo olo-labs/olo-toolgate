@@ -15,6 +15,7 @@ describe('Management shell states', () => {
     render(<App/>); await connect();
     expect([...document.querySelectorAll<HTMLDetailsElement>('nav details')].map(group=>group.open)).toEqual([true,false,false,false]);
     const resize = screen.getByRole('separator',{name:'Resize navigation'});
+    expect(screen.getByRole('region',{name:'Navigation controls'}).contains(resize)).toBe(true);
     fireEvent.keyDown(resize,{key:'End'}); expect(resize.getAttribute('aria-valuenow')).toBe('420');
     fireEvent.keyDown(resize,{key:'ArrowRight'}); expect(resize.getAttribute('aria-valuenow')).toBe('420');
     fireEvent.keyDown(resize,{key:'Home'}); expect(resize.getAttribute('aria-valuenow')).toBe('190');
