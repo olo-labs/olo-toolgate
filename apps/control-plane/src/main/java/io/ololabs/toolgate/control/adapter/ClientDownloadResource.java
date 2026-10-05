@@ -16,6 +16,8 @@ public class ClientDownloadResource {
     public Response manifest(){return Response.ok(artifacts.manifest()).header("Cache-Control","no-store").build();}
     @GET @Path("api/public/v1/installers") @Produces("application/json")
     public Response installers(){return Response.ok(artifacts.installers()).header("Cache-Control","no-store").build();}
+    @GET @Path("api/public/v1/clients/extension") @Produces("application/json")
+    public Response extension(){return Response.ok(artifacts.extension()).header("Cache-Control","no-store").build();}
     @GET @Path("api/public/v1/clients/{filename}")
     public Response download(@PathParam("filename")String filename){return artifacts.download(filename);}
 }

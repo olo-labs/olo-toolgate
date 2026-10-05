@@ -9,6 +9,8 @@ warnings. Do not disable machine-wide security protections.
 Windows: open the `.setup.exe`, approve UAC, and enter your organization's HTTPS
 Control server address. Setup installs the Windows LocalSystem service with
 automatic startup and registers an entry in Installed Apps for uninstallation.
+It also registers the protected Chrome native messaging bridge. Use Enroll device →
+Connect in the Admin console and follow the [Chrome Connect guide](connect.md).
 
 macOS: open the `.dmg`, then `Install ToolGate.app`. Enter your HTTPS Control server
 and approve administrator authentication. A system LaunchDaemon runs independently

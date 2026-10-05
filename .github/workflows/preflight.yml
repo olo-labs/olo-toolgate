@@ -18,3 +18,10 @@ jobs:
         run: |
           python tools/ci/preflight.py
           python -m unittest discover -s tests/ci -v
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Catch Connect protocol and release package regressions early
+        run: |
+          node --test apps/browser-extension/tests/*.mjs
+          python -m unittest discover -s tools/client -p test_extension.py

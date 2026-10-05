@@ -17,12 +17,13 @@ public class ClientArtifacts {
     private final Path directory;
     private final ClientDownloadManifest manifest;
     private final ClientInstallerManifest installers;
+    private final Map<?,?> extension;
     private final Map<String,ClientDownloadArtifact> artifacts;
     private final java.util.concurrent.Semaphore transfers = new java.util.concurrent.Semaphore(2);
     void start(@jakarta.enterprise.event.Observes io.quarkus.runtime.StartupEvent ignored) { }
     @Inject public ClientArtifacts(org.eclipse.microprofile.config.Config config,Codec codec){this(config.getOptionalValue("toolgate.client-downloads.directory",String.class),codec);}
     public ClientArtifacts(Optional<String> configured, Codec codec) {
-        if(configured.isEmpty()){directory=null;manifest=null;installers=null;artifacts=Map.of();return;}
+        if(configured.isEmpty()){directory=null;manifest=null;installers=null;extension=null;artifacts=Map.of();return;}
         try {
             if(!Path.of(configured.get()).isAbsolute())throw new IllegalArgumentException();
             directory=Path.of(configured.get()).toAbsolutePath().normalize();
@@ -55,11 +56,32 @@ public class ClientArtifacts {
                     try(var file=open(artifact)){verify(file,artifact);}
                 }
             } else installers=null;
+            var extensionDocument=directory.resolve("extension.json");
+            if(Files.exists(extensionDocument,LinkOption.NOFOLLOW_LINKS)) {
+                if(!Files.isRegularFile(extensionDocument,LinkOption.NOFOLLOW_LINKS)||Files.size(extensionDocument)>65536)throw new IllegalArgumentException();
+                var metadata=new com.fasterxml.jackson.databind.ObjectMapper().convertValue(codec.value(Files.readString(extensionDocument)),new com.fasterxml.jackson.core.type.TypeReference<Map<String,Object>>(){});
+                if(!metadata.keySet().equals(Set.of("protocol","version","chromeVersion","extensionId","storeUrl","filename","sha256","bytes"))
+                    ||!(metadata.get("protocol") instanceof Number protocol)||protocol.intValue()!=1||protocol.doubleValue()!=1
+                    ||!manifest.version().equals(metadata.get("version"))
+                    ||!(metadata.get("chromeVersion") instanceof String chrome)||!chrome.matches("[0-9]{1,5}(\\.[0-9]{1,5}){3}")
+                    ||Arrays.stream(chrome.split("\\.")).anyMatch(component->Integer.parseInt(component)>65535)
+                    ||!chrome.startsWith(manifest.version().split("-")[0]+".")
+                    ||!"emmemldedebhbloibichmmdlbpjakfkf".equals(metadata.get("extensionId"))
+                    ||!(metadata.get("storeUrl") instanceof String store)||(!store.isEmpty()&&!store.equals("https://chromewebstore.google.com/detail/emmemldedebhbloibichmmdlbpjakfkf"))
+                    ||!(metadata.get("filename") instanceof String filename)||!filename.equals("olo-toolgate-chrome-"+manifest.version()+"-"+chrome.substring(chrome.lastIndexOf('.')+1)+".zip")
+                    ||!(metadata.get("sha256") instanceof String hash)||!hash.matches("[a-f0-9]{64}")
+                    ||!(metadata.get("bytes") instanceof Number bytes)||bytes.longValue()<1||bytes.longValue()>1048576||bytes.doubleValue()!=bytes.longValue())throw new IllegalArgumentException();
+                var artifact=new ClientDownloadArtifact(ClientPlatform.WINDOWS,"x86_64-pc-windows-msvc",filename,hash,bytes.longValue());
+                if(index.put(filename,artifact)!=null)throw new IllegalArgumentException();
+                try(var file=open(artifact)){verify(file,artifact);}
+                extension=Map.copyOf(metadata);
+            } else extension=null;
             artifacts=Map.copyOf(index);
         }catch(Exception rejected){throw new IllegalStateException("Client release asset validation failed");}
     }
     public ClientDownloadManifest manifest(){if(manifest==null)throw unavailable();return manifest;}
     public ClientInstallerManifest installers(){if(installers==null)throw unavailable();return installers;}
+    public Map<?,?> extension(){if(extension==null)throw unavailable();return extension;}
     private static Failure unavailable(){return new Failure(ErrorCode.DEPENDENCY_UNAVAILABLE,503,"Client downloads are unavailable");}
     private SeekableByteChannel open(ClientDownloadArtifact artifact)throws java.io.IOException {
         if(!Files.isRegularFile(directory.resolve(artifact.filename()),LinkOption.NOFOLLOW_LINKS))throw new java.io.IOException("Invalid artifact");

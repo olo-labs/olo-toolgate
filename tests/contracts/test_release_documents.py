@@ -43,6 +43,7 @@ class ReleaseDocumentsTests(unittest.TestCase):
                 else:
                     raw[:6]=b'\x7fELF\x02\x01';raw[18:20]=(62).to_bytes(2,'little')
                 binary=output/'binary';binary.write_bytes(raw)
+                if 'windows' in target:(output/'olo-toolgate-browser-host.exe').write_bytes(raw)
                 package.package(binary,target,output)
             for path in list(output.glob('*.zip'))+list(output.glob('*.tar.gz')):
                 archive=zipfile.ZipFile(path) if path.suffix=='.zip' else tarfile.open(path)

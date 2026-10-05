@@ -35,6 +35,16 @@ def manifest(source,output):
     if names!={'WINDOWS','MACOS','LINUX'}:raise ValueError('A real Windows, macOS and Linux package is required')
     if len(artifacts)>6:raise ValueError('Choose at most six targets; do not mix two Windows toolchains for one release')
     output.mkdir(parents=True,exist_ok=True)
+    extension_document=source/'extension.json'
+    if extension_document.exists():
+        extension=json.loads(extension_document.read_text(encoding='utf-8'))
+        name=extension['filename']
+        if extension['version']!=version or not name.startswith('olo-toolgate-chrome-'+version+'-') or Path(name).name!=name or not name.endswith('.zip'):raise ValueError('Invalid extension release')
+        asset=source/name
+        if asset.is_symlink() or not asset.is_file() or asset.stat().st_size!=extension['bytes'] or hashlib.sha256(asset.read_bytes()).hexdigest()!=extension['sha256']:raise ValueError('Extension checksum mismatch')
+        for origin in (extension_document,asset,source/(name+'.sha256')):
+            destination=output/origin.name
+            if origin.resolve()!=destination.resolve():shutil.copyfile(origin,destination)
     for artifact in artifacts:
         for suffix in ('','.sha256'):
             origin=source/(artifact['filename']+suffix);destination=output/origin.name

@@ -1,0 +1,42 @@
+// Copyright 2026 OLO Labs
+// SPDX-License-Identifier: Apache-2.0
+import {afterEach,expect,it,vi} from 'vitest';
+import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
+import {Connect,extensionStatus} from '../src/Connect';
+
+afterEach(()=>{cleanup();vi.restoreAllMocks();vi.unstubAllGlobals();});
+const release={protocol:1,version:'0.10.0-dev',chromeVersion:'0.10.0.23',extensionId:'emmemldedebhbloibichmmdlbpjakfkf',storeUrl:'',filename:'olo-toolgate-chrome-0.10.0-dev-23.zip',sha256:'a'.repeat(64),bytes:123};
+function chrome(){vi.spyOn(navigator,'userAgent','get').mockReturnValue('Windows Chrome/140.0');vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify(release))));}
+function bridge(status:Record<string,unknown>){vi.spyOn(window,'postMessage').mockImplementation((message)=>{queueMicrotask(()=>window.dispatchEvent(new MessageEvent('message',{source:window,origin:location.origin,data:{channel:'toolgate-connect-response',id:message.id,...status}})));});}
+it('rejects other browsers without starting a download',async()=>{
+  vi.spyOn(navigator,'userAgent','get').mockReturnValue('Windows Edg/140 Chrome/140');const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+  render(<Connect onCode={vi.fn()}/>);fireEvent.click(screen.getByRole('button',{name:'Connect'}));
+  await screen.findByText(/Currently supported/);expect(fetcher).not.toHaveBeenCalled();
+});
+it('guides an incompatible extension upgrade and cancels polling',async()=>{
+  chrome();bridge({protocol:1,chromeVersion:'0.10.0.22',version:'0.10.0-dev'});
+  render(<Connect onCode={vi.fn()}/>);fireEvent.click(screen.getByRole('button',{name:'Connect'}));
+  await screen.findByText(/Upgrade the Chrome extension/);expect(screen.getByRole('link',{name:'Download Chrome extension'}).getAttribute('href')).toContain(release.filename);
+  fireEvent.click(screen.getByRole('button',{name:'Cancel Connect'}));await screen.findByText(/Connect cancelled/);
+});
+it('detects a client but requires separately verified enrollment',async()=>{
+  chrome();bridge({protocol:1,chromeVersion:release.chromeVersion,version:release.version,phase:'approved',client:{health:{ready:true}},userCode:'ABCDEF0123456789'});
+  const code=vi.fn();render(<Connect onCode={code}/>);fireEvent.click(screen.getByRole('button',{name:'Connect'}));
+  await screen.findByText(/Client detected/);expect(code).toHaveBeenCalledWith('ABCDEF0123456789');expect(screen.queryByText(/^Connected:/)).toBeNull();
+});
+it('rejects a malicious release URL',async()=>{
+  chrome();vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({...release,storeUrl:'https://evil.example'}))));
+  render(<Connect onCode={vi.fn()}/>);fireEvent.click(screen.getByRole('button',{name:'Connect'}));await screen.findByText(/Invalid extension release/);
+  expect(screen.queryByRole('link')).toBeNull();
+});
+it('bridge ignores a different source, origin or correlation ID',async()=>{
+  const sent=vi.spyOn(window,'postMessage').mockImplementation(()=>{});const controller=new AbortController();let done=false;
+  const pending=extensionStatus(controller.signal).then(()=>{done=true;});
+  const id=sent.mock.calls[0][0].id;
+  for(const overrides of [{source:null},{origin:'https://evil.example'},{data:{channel:'toolgate-connect-response',id:'wrong'}}]){
+    window.dispatchEvent(new MessageEvent('message',{source:window,origin:location.origin,data:{channel:'toolgate-connect-response',id},...overrides}));
+  }
+  await Promise.resolve();expect(done).toBe(false);
+  window.dispatchEvent(new MessageEvent('message',{source:window,origin:location.origin,data:{channel:'toolgate-connect-response',id,protocol:1}}));
+  await pending;await waitFor(()=>expect(done).toBe(true));
+});

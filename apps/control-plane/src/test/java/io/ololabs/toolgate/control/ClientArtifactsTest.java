@@ -25,6 +25,21 @@ final class ClientArtifactsTest {
         Files.writeString(directory.resolve("manifest.json"),codec.json(Map.of("version","0.7.0-dev","artifacts",artifacts)));
     }
     @Test void missingReleaseIsUnavailable(){var assets=new ClientArtifacts(Optional.empty(),codec);assertThrows(Failure.class,assets::manifest);}
+    @Test void chromePackageIsVersionedAllowlistedAndVerified()throws Exception{
+        bundle();var filename="olo-toolgate-chrome-0.7.0-dev-23.zip";
+        var bytes="extension-test-only".getBytes(java.nio.charset.StandardCharsets.UTF_8);Files.write(directory.resolve(filename),bytes);
+        var hash=java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes));
+        var metadata=new HashMap<String,Object>(Map.of("protocol",1,"version","0.7.0-dev","chromeVersion","0.7.0.23","extensionId","emmemldedebhbloibichmmdlbpjakfkf","storeUrl","","filename",filename,"sha256",hash,"bytes",bytes.length));
+        Files.writeString(directory.resolve("extension.json"),codec.json(metadata));
+        var assets=new ClientArtifacts(Optional.of(directory.toString()),codec);
+        assertEquals(filename,assets.extension().get("filename"));
+        ((jakarta.ws.rs.core.StreamingOutput)assets.download(filename).getEntity()).write(java.io.OutputStream.nullOutputStream());
+        metadata.put("storeUrl","https://evil.example");Files.writeString(directory.resolve("extension.json"),codec.json(metadata));
+        assertThrows(IllegalStateException.class,()->new ClientArtifacts(Optional.of(directory.toString()),codec));
+        metadata.put("storeUrl","");metadata.put("filename","../evil.zip");Files.writeString(directory.resolve("extension.json"),codec.json(metadata));
+        assertThrows(IllegalStateException.class,()->new ClientArtifacts(Optional.of(directory.toString()),codec));
+        Files.writeString(directory.resolve(filename),"corrupted");assertThrows(Failure.class,()->assets.download(filename));
+    }
     @Test void installersAreAllowlistedAndHashVerified()throws Exception{
         bundle();var original=new ClientArtifacts(Optional.of(directory.toString()),codec).manifest();
         var installers=new ArrayList<Map<String,Object>>();

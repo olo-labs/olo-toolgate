@@ -54,6 +54,22 @@ def check(target):
         if system=='Windows':assert 'RUNNING' in run(['sc.exe','query','OloToolGateClient']).stdout
         elif system=='Linux':assert run(['systemctl','is-active','olo-toolgate-client']).stdout.strip()=='active'
         else:assert 'state = running' in run(['sudo','-n','launchctl','print','system/io.ololabs.toolgate.client']).stdout
+        if system=='Windows':
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,r'Software\Google\Chrome\NativeMessagingHosts\io.ololabs.toolgate.connect',0,winreg.KEY_READ|winreg.KEY_WOW64_64KEY) as key:
+                registered=Path(winreg.QueryValue(key,None))
+            host_manifest=json.loads(registered.read_text())
+            allowed='chrome-extension://emmemldedebhbloibichmmdlbpjakfkf/'
+            if host_manifest['allowed_origins']!=[allowed] or host_manifest['name']!='io.ololabs.toolgate.connect':raise ValueError('Native host registration drift')
+            host=Path(host_manifest['path'])
+            request=b'{"operation":"health"}'
+            frame=len(request).to_bytes(4,'little')+request
+            result=subprocess.run([str(host),allowed],input=frame,capture_output=True,timeout=25,check=True)
+            if len(result.stdout)<4 or int.from_bytes(result.stdout[:4],'little')!=len(result.stdout)-4:raise ValueError('Native frame corruption')
+            browser_health=json.loads(result.stdout[4:])
+            if browser_health.get('error') or browser_health['health']['state']!='UNENROLLED':raise ValueError('Native host cannot reach protected service')
+            denied=subprocess.run([str(host),'chrome-extension://'+'a'*32+'/'],input=frame,capture_output=True,timeout=25)
+            if denied.returncode==0 or denied.stdout:raise ValueError('Wrong Chrome extension accepted')
         print('Packaged installer started the system service; protected mode remains unenrolled')
     finally:
         if installed:

@@ -22,6 +22,9 @@ UninstallDisplayName=OLO ToolGate Client
 [Files]
 Source: "{#PayloadDirectory}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
+[Registry]
+Root: HKLM; Subkey: "Software\Google\Chrome\NativeMessagingHosts\io.ololabs.toolgate.connect"; ValueType: string; ValueData: "{app}\browser-host.json"; Flags: uninsdeletekey
+
 [Code]
 var ServerPage: TInputQueryWizardPage;
 procedure InitializeWizard;
@@ -50,13 +53,18 @@ begin
     Result := 'A client is already installed. Uninstall it first; enrollment data is retained.';
 end;
 procedure CurStepChanged(CurStep: TSetupStep);
-var ExitCode: Integer;
+var ExitCode: Integer; HostPath, HostDocument: String;
 begin
   if CurStep = ssPostInstall then begin
     if not Exec(ExpandConstant('{app}\olo-toolgate-client.exe'),
       'install --server "' + ServerPage.Values[0] + '"', '', SW_HIDE, ewWaitUntilTerminated, ExitCode) then
       RaiseException('Could not start service installation.');
     if ExitCode <> 0 then RaiseException('Service installation failed. Check the client configuration and Windows service logs.');
+    HostPath := ExpandConstant('{app}\olo-toolgate-browser-host.exe');
+    StringChangeEx(HostPath, '\', '\\', True);
+    HostDocument := '{"name":"io.ololabs.toolgate.connect","description":"ToolGate protected client bridge","path":"' + HostPath + '","type":"stdio","allowed_origins":["chrome-extension://emmemldedebhbloibichmmdlbpjakfkf/"]}';
+    if not SaveStringToFile(ExpandConstant('{app}\browser-host.json'), HostDocument, False) then
+      RaiseException('Could not register the Chrome client bridge.');
   end;
 end;
 function InitializeUninstall: Boolean;

@@ -1,5 +1,21 @@
 # Foundation developer workflow
 
+## Before committing
+
+Run `npm ci` to install workspace dependencies and the repository pre-commit hook.
+For existing checkouts, `npm run hooks:install` installs it explicitly. The hook
+runs Chrome Connect protocol tests, TypeScript validation and the UI unit suite, including fast axe checks for
+uncontained navigation controls and nested main landmarks, without Java, Docker
+or a running backend. Run the same checks manually with `npm run precommit`.
+
+Stage UI/check changes before committing; the hook rejects unstaged changes in
+those paths so the tested files match the proposed commit. A failing check blocks
+the commit. Existing custom hook paths are preserved: add
+`node tools/ci/precommit.mjs` to their pre-commit hook. Installs using
+`--ignore-scripts` need the explicit hook installation command. CI does not install
+local Git hooks and continues running the full browser/accessibility and integration
+gates; these fast checks supplement that coverage.
+
 Module 00 provides contracts, builds and verification. Modules 01/02 add the Gateway
 and Control Plane runtimes; Marketplace modules remain buildable markers. `make dev` and the quickstart remain
 future product work; `make check` is implemented and never silently skips a gate.

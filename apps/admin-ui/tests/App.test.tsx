@@ -3,12 +3,28 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { App } from '../src/App';
+import axe from 'axe-core';
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.location.hash = ''; });
 function response(items: unknown[] = []) { return new Response(JSON.stringify({items})); }
 async function connect() { fireEvent.change(screen.getByLabelText('Access token'),{target:{value:'test-only-secret'}}); fireEvent.click(screen.getByRole('button',{name:'Connect to workspace'})); await screen.findByRole('navigation'); }
 
 describe('Management shell states', () => {
+  it('keeps navigation controls in landmarks and main outside nested landmarks', async () => {
+    vi.stubGlobal('fetch',vi.fn().mockImplementation(async()=>response()));
+    render(<App/>); await connect();
+    const rules = {runOnly:{type:'rule' as const,values:['region','landmark-main-is-top-level']}};
+    expect((await axe.run(document,rules)).violations).toEqual([]);
+    // Prove the fast scan rejects the exact CI regression, rather than passing vacuously.
+    const controls=screen.getByRole('region',{name:'Navigation controls'});
+    controls.removeAttribute('role');
+    expect((await axe.run(document,rules)).violations.some(rule=>rule.id==='region')).toBe(true);
+    controls.setAttribute('role','region');
+    fireEvent.click(screen.getByRole('button',{name:'Collapse navigation'}));
+    expect((await axe.run(document,rules)).violations).toEqual([]);
+    localStorage.clear();
+  });
+
   it('defaults to Audit expanded and supports bounded keyboard resizing and collapse', async () => {
     localStorage.clear();
     vi.stubGlobal('fetch',vi.fn().mockImplementation(async()=>response()));

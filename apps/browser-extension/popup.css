@@ -1,0 +1,10 @@
+/* Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0 */
+:root { color-scheme:dark; font-family:system-ui,sans-serif; background:#101820; color:#f4f6f8; }
+body { width:360px; margin:0; padding:20px; box-sizing:border-box; }
+h1 { font-size:22px; margin-top:0; }
+p { line-height:1.5; overflow-wrap:anywhere; }
+label { display:block; margin:12px 0; }
+button,select { font:inherit; border-radius:6px; border:1px solid #698197; padding:10px; background:#213445; color:inherit; }
+button { display:block; width:100%; margin:10px 0; cursor:pointer; }
+button:disabled { opacity:.55; cursor:default; }
+button:focus-visible,select:focus-visible { outline:3px solid #72cfff; outline-offset:2px; }

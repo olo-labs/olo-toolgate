@@ -132,6 +132,7 @@ export class ControlClient {
   enrollment(code: string, signal?: AbortSignal): Promise<EndpointEnrollmentReview> {
     return this.send(operations.reviewEndpointEnrollment, { query: new URLSearchParams({ code }), signal });
   }
+  endpointDevice(id:string,signal?:AbortSignal):Promise<import('@olo-labs/toolgate-contracts').EndpointDeviceRecord>{return this.send(operations.getEndpointDevice,{id,signal});}
   decideEnrollment(decision: EndpointEnrollmentDecision, key: string): Promise<EndpointEnrollmentReview> {
     return this.send(operations.decideEndpointEnrollment, { body: decision, key });
   }
