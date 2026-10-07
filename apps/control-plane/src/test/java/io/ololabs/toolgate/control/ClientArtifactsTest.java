@@ -53,7 +53,17 @@ final class ClientArtifactsTest {
         var assets=new ClientArtifacts(Optional.of(directory.toString()),codec);assertEquals(3,assets.installers().artifacts().size());
         var installer=assets.installers().artifacts().getFirst();var response=assets.download(installer.filename());
         ((jakarta.ws.rs.core.StreamingOutput)response.getEntity()).write(java.io.OutputStream.nullOutputStream());
+        var suffix=switch(installer.platform()){case WINDOWS->"setup.exe";case MACOS->"dmg";case LINUX->"run";};
+        var alias="olo-toolgate-client-"+installer.target()+"."+suffix;
+        var stable=assets.download(alias);
+        assertEquals("no-store",stable.getHeaderString("Cache-Control"));
+        assertEquals("attachment; filename=\""+alias+"\"",stable.getHeaderString("Content-Disposition"));
+        var downloaded=new java.io.ByteArrayOutputStream();
+        ((jakarta.ws.rs.core.StreamingOutput)stable.getEntity()).write(downloaded);
+        assertArrayEquals(Files.readAllBytes(directory.resolve(installer.filename())),downloaded.toByteArray());
+        assertThrows(Failure.class,()->assets.download("olo-toolgate-client-unknown.setup.exe"));
         Files.writeString(directory.resolve(installer.filename()),"corrupted");
+        assertThrows(Failure.class,()->assets.download(alias));
         assertThrows(Failure.class,()->assets.download(installer.filename()));
         assertThrows(IllegalStateException.class,()->new ClientArtifacts(Optional.of(directory.toString()),codec));
     }

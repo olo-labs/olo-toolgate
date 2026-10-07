@@ -97,6 +97,15 @@ public class ClientArtifacts {
     }
     public jakarta.ws.rs.core.Response download(String filename) {
         manifest();var artifact=artifacts.get(filename);
+        boolean stable=false;
+        if(artifact==null&&installers!=null) {
+            for(var installer:installers.artifacts()) {
+                var suffix=switch(installer.platform()){case WINDOWS->"setup.exe";case MACOS->"dmg";case LINUX->"run";};
+                if(filename.equals("olo-toolgate-client-"+installer.target()+"."+suffix)) {
+                    artifact=artifacts.get(installer.filename());stable=true;break;
+                }
+            }
+        }
         if(artifact==null)throw new Failure(ErrorCode.NOT_FOUND,404,"Client artifact unavailable");
         if(!transfers.tryAcquire())throw new Failure(ErrorCode.DEPENDENCY_UNAVAILABLE,429,"Client download capacity reached");
         try {
@@ -109,7 +118,7 @@ public class ClientArtifacts {
             return jakarta.ws.rs.core.Response.ok(output,"application/octet-stream")
                 .header("Content-Disposition","attachment; filename=\""+filename+"\"").header("Content-Length",artifact.bytes())
                 .header("ETag","\""+artifact.sha256()+"\"").header("X-Content-Type-Options","nosniff")
-                .header("Cache-Control","public, max-age=31536000, immutable").build();
+                .header("Cache-Control",stable?"no-store":"public, max-age=31536000, immutable").build();
         }catch(Exception rejected){transfers.release();throw unavailable();}
     }
 }

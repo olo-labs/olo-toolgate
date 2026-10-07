@@ -1,6 +1,7 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
 import {useEffect, useRef, useState} from 'react';
+import type {ClientInstallerManifest} from '@olo-labs/toolgate-contracts';
 
 type ExtensionRelease = {protocol:number;version:string;chromeVersion:string;extensionId:string;storeUrl:string;filename:string;sha256:string;bytes:number};
 export type ConnectStatus = {protocol:number;version:string;chromeVersion:string;phase:string;userCode?:string;client?:{health?:{ready:boolean};error?:unknown}};
@@ -24,12 +25,13 @@ export function extensionStatus(signal:AbortSignal,operation:'hello'|'connect'|'
 export function Connect({onCode,onCancel}:{onCode:(code:string)=>void;onCancel?:()=>void}) {
   const [message,setMessage]=useState('Connect checks the local client through the Chrome extension, then guides installation if needed.');
   const [busy,setBusy]=useState(false),[release,setRelease]=useState<ExtensionRelease>();
+  const [installer,setInstaller]=useState<string>();
   const active=useRef<AbortController|undefined>(undefined);
   useEffect(()=>()=>active.current?.abort(),[]);
   const supported=/Chrome\//.test(navigator.userAgent)&&/Windows/.test(navigator.userAgent)&&!/Edg\/|OPR\//.test(navigator.userAgent);
   async function start() {
     active.current?.abort();const controller=new AbortController();active.current=controller;
-    setBusy(true);setRelease(undefined);setMessage('Checking Chrome Connect release…');
+    setBusy(true);setRelease(undefined);setInstaller(undefined);setMessage('Checking Chrome Connect release…');
     try {
       if(!supported)throw Error('Currently supported: Chrome on Windows. Use the client downloads below for other browsers and systems.');
       const response=await fetch('/api/public/v1/clients/extension',{credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.any([controller.signal,AbortSignal.timeout(10000)])});
@@ -40,6 +42,20 @@ export function Connect({onCode,onCancel}:{onCode:(code:string)=>void;onCancel?:
         ||!/^\d{1,5}(\.\d{1,5}){3}$/.test(value.chromeVersion)||!/^olo-toolgate-chrome-[0-9A-Za-z._-]+\.zip$/.test(value.filename)
         ||!/^[a-f0-9]{64}$/.test(value.sha256)||!['','https://chromewebstore.google.com/detail/'+value.extensionId].includes(value.storeUrl))throw Error('Invalid extension release.');
       setRelease(value);
+      try {
+        const setupResponse=await fetch('/api/public/v1/installers',{credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.any([controller.signal,AbortSignal.timeout(10000)])});
+        if(setupResponse.ok) {
+          const document=await setupResponse.text();
+          if(document.length<=65536) {
+            const setup=JSON.parse(document) as ClientInstallerManifest;
+            const target=/ARM|aarch64/i.test(navigator.userAgent)?'aarch64-pc-windows-msvc':'x86_64-pc-windows-msvc';
+            const asset=Array.isArray(setup.artifacts)?setup.artifacts.find(a=>a.platform==='WINDOWS'&&a.target===target):undefined;
+            if(setup.version===value.version&&asset&&asset.filename===`olo-toolgate-client-${value.version}-${target}.setup.exe`
+              &&/^[a-f0-9]{64}$/.test(asset.sha256)&&Number.isSafeInteger(asset.bytes)&&asset.bytes>0&&asset.bytes<=104857600)
+              setInstaller(`olo-toolgate-client-${target}.setup.exe`);
+          }
+        }
+      } catch { /* Missing setup must not turn an extension ZIP into an installer. */ }
       const deadline=Date.now()+600000;let first=true;let previousCode='';
       while(!controller.signal.aborted&&Date.now()<deadline) {
         let status:ConnectStatus|undefined;
@@ -75,7 +91,9 @@ export function Connect({onCode,onCancel}:{onCode:(code:string)=>void;onCancel?:
     <p role="status">{message}</p>
     {release&&<><p>Chrome extension {release.chromeVersion} · Client {release.version}</p>
       {release.storeUrl?<a href={release.storeUrl} target="_blank" rel="noopener noreferrer">Install or upgrade Chrome extension</a>
-        : <><a href={`/api/public/v1/clients/${release.filename}`} download>Download Chrome extension</a><p>A Chrome Web Store listing is not configured yet. For development, extract this ZIP, open chrome://extensions, enable Developer mode and choose Load unpacked. To upgrade, replace the extracted files and reload the extension.</p></>}
+        : <>{installer?<a href={`/api/public/v1/clients/${installer}`} download>Download Chrome extension</a>:<p>Windows setup is not published for this client release.</p>}
+          <p>The download is a single Windows setup EXE containing the client and Chrome native bridge. Open it, accept the license and approve Windows permission. Chrome extension approval is a separate step.</p>
+          <a href={`/api/public/v1/clients/${release.filename}`} download="olo-toolgate-chrome.zip">Download extension package for Chrome approval</a><p>A Chrome Web Store listing is not configured yet. For development, extract the extension package, open chrome://extensions, enable Developer mode and choose Load unpacked. To upgrade, replace the extracted files and reload the extension.</p></>}
       <details><summary>Extension SHA-256</summary><code>{release.sha256}</code></details></>}
   </section>;
 }

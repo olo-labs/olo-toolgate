@@ -12,6 +12,16 @@ automatic startup and registers an entry in Installed Apps for uninstallation.
 It also registers the protected Chrome native messaging bridge. Use Enroll device →
 Connect in the Admin console and follow the [Chrome Connect guide](connect.md).
 
+Installer downloads use stable names, such as
+`olo-toolgate-client-x86_64-pc-windows-msvc.setup.exe`, across releases. The public
+download API resolves that name to the current validated installer and sends
+`Cache-Control: no-store`; versioned files and manifests remain immutable for
+checksum verification. GitHub releases also include these stable installer names.
+In Connect, **Download Chrome extension** downloads the Windows setup EXE, which
+contains the client and native bridge. **Download extension package for Chrome
+approval** remains a separate ZIP with a stable saved filename
+`olo-toolgate-chrome.zip`; it still requires Chrome's extension approval.
+
 macOS: open the `.dmg`, then `Install ToolGate.app`. Enter your HTTPS Control server
 and approve administrator authentication. A system LaunchDaemon runs independently
 of user login. The app includes the client, licenses, dependency notices and guides.

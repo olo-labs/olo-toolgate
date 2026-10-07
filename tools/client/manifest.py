@@ -66,6 +66,11 @@ def manifest(source,output):
         installers.append({**artifact,'filename':name,'sha256':checksum,'bytes':path.stat().st_size})
     if installers:
         if len(installers)!=len(artifacts):raise ValueError('All native targets require an installer')
+        for installer in installers:
+            suffix={'WINDOWS':'setup.exe','MACOS':'dmg','LINUX':'run'}[installer['platform']]
+            alias=f"olo-toolgate-client-{installer['target']}.{suffix}"
+            shutil.copyfile(output/installer['filename'],output/alias)
+            (output/(alias+'.sha256')).write_text(installer['sha256']+'  '+alias+'\n',encoding='utf-8')
         (output/'installers.json').write_text(json.dumps(dict(version=version,artifacts=installers),indent=2)+'\n',encoding='utf-8',newline='\n')
     print(f'Validated {len(artifacts)} native client packages for public distribution')
     return document

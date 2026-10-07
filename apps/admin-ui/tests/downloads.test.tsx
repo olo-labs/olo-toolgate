@@ -31,7 +31,7 @@ it('offers unsigned installers without login and retains archive downloads', asy
     filename: a.filename.replace(/\.(zip|tar\.gz)$/, a.platform === 'WINDOWS' ? '.setup.exe' : a.platform === 'MACOS' ? '.dmg' : '.run') })) };
   vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => Promise.resolve(new Response(JSON.stringify(url.endsWith('/installers') ? installers : manifest)))));
   render(<ClientDownloads />);
-  expect(await screen.findByRole('link', { name: 'Install Windows x64' })).toBeTruthy();
+  expect((await screen.findByRole('link', { name: 'Install Windows x64' })).getAttribute('href')).toBe('/api/public/v1/clients/olo-toolgate-client-x86_64-pc-windows-msvc.setup.exe');
   expect(screen.getByRole('link', { name: 'Install macOS x64' })).toBeTruthy();
   expect(screen.getByRole('link', { name: 'Install Linux x64' })).toBeTruthy();
   expect(screen.getByRole('link', { name: 'Download Windows x64' })).toBeTruthy();
