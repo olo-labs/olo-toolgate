@@ -6,14 +6,19 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import type { ClientDownloadManifest, ClientInstallerManifest } from '@olo-labs/toolgate-contracts';
 test.skip(process.env.UI_TEST_DOWNLOADS_EXPECTED !== 'true', 'Requires a real three-platform release image');
-test('anonymous home page downloads all native clients with matching checksums and accessible states', async ({ page, request }) => {
+// A fresh context per platform prevents Chromium's burst-download limiter from
+// blocking later files on fast Linux runners. Each test still downloads both CPUs.
+for (const platform of ['WINDOWS','MACOS','LINUX'] as const) {
+test(`anonymous ${platform} downloads have matching checksums and accessible states`, async ({ page, request }) => {
   await page.goto('/');
   await expect(page.getByRole('heading',{name:'Install ToolGate on your computer'})).toBeVisible();
   await expect(page.getByLabel('Access token')).toBeVisible();
   const response = await request.get('/api/public/v1/clients'); expect(response.status()).toBe(200);
   const manifest = await response.json() as ClientDownloadManifest;
   const labels = {WINDOWS:'Windows',MACOS:'macOS',LINUX:'Linux'};
-  for (const artifact of manifest.artifacts) {
+  const native=manifest.artifacts.filter(artifact=>artifact.platform===platform);
+  expect(native.length).toBeGreaterThan(0);
+  for (const artifact of native) {
     const architecture=artifact.target.startsWith('aarch64')?'ARM64':'x64';
     const pending = page.waitForEvent('download'); await page.getByRole('link',{name:`Download ${labels[artifact.platform]} ${architecture}`,exact:true}).click();
     const download = await pending; expect(download.suggestedFilename()).toBe(artifact.filename);
@@ -23,7 +28,9 @@ test('anonymous home page downloads all native clients with matching checksums a
   }
   const installerResponse = await request.get('/api/public/v1/installers'); expect(installerResponse.status()).toBe(200);
   const installers = await installerResponse.json() as ClientInstallerManifest;
-  for (const installer of installers.artifacts) {
+  const setups=installers.artifacts.filter(installer=>installer.platform===platform);
+  expect(setups.length).toBe(native.length);
+  for (const installer of setups) {
     const suffix={WINDOWS:'setup.exe',MACOS:'dmg',LINUX:'run'}[installer.platform];
     const stable=`olo-toolgate-client-${installer.target}.${suffix}`;
     const architecture=installer.target.startsWith('aarch64')?'ARM64':'x64';
@@ -51,3 +58,4 @@ test('anonymous home page downloads all native clients with matching checksums a
   await expect(page.getByRole('link',{name:'Download Linux x64'})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
 });
+}

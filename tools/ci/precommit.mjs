@@ -21,3 +21,7 @@ for (const args of [['run','ui:check'], ['--workspace','@olo-labs/toolgate-admin
 }
 const browser=spawnSync(process.execPath,['tools/ci/browser-downloads.mjs'],{stdio:'inherit'});
 if(browser.status!==0)process.exit(browser.status??1);
+if(process.platform==='win32') {
+  const linux=spawnSync(process.execPath,['tools/ci/linux-browser-downloads.mjs'],{stdio:'inherit'});
+  if(linux.status!==0)process.exit(linux.status??1);
+}

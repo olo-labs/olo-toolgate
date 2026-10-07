@@ -15,6 +15,13 @@ SHA-256, immutable versioned copies, accessibility and mobile layout. This is th
 same browser test used against the real Control container in CI; the local
 fixture proof supplements the full container/integration gates. Install Chromium
 once with `npm --workspace @olo-labs/toolgate-admin-ui exec -- playwright install chromium`.
+
+For Windows commits, the hook additionally exports the staged source into the
+official Playwright Linux container and runs the production browser proof there.
+Docker is mandatory; the first run downloads the container image. This catches
+OS/browser differences that a Windows-only pass cannot establish. Each platform
+uses its own browser context to avoid Chromium blocking a burst of downloads;
+both CPU architectures are still checked.
 Missing browser binaries or a failed browser check block the commit; no gate is
 silently skipped. Secret-scan regression checks allow only the exact reviewed
 Chrome public key at its identity path, and reject that key at another path,
