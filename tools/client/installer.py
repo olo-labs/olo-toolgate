@@ -4,6 +4,7 @@
 import argparse
 import hashlib
 import io
+import json
 import os
 from pathlib import Path
 import shutil
@@ -95,6 +96,19 @@ def build(target,output):
                 subprocess.run([compiler,'/Qp','/DProductVersion='+version,'/DNativeArchitecture='+architecture,
                     '/DPayloadDirectory='+str(directory_payload.resolve()),'/DOutputDirectory='+str(output.resolve()),
                     '/DOutputName='+base+'.setup',str(ROOT/'apps/endpoint-client/packaging/windows-setup.iss')],check=True)
+                # A separate no-input browser bootstrap pins the exact client EXE.
+                bootstrap={'version':version,'target':target,'filename':result.name,
+                           'sha256':hashlib.sha256(result.read_bytes()).hexdigest(),'bytes':result.stat().st_size}
+                (directory_payload/'bootstrap.json').write_text(json.dumps(bootstrap),encoding='utf-8')
+                connect=output/f'olo-toolgate-connect-{version}-{target}.setup.exe'
+                store=os.environ.get('TOOLGATE_CHROME_STORE_URL','')
+                if store not in ('','https://chromewebstore.google.com/detail/emmemldedebhbloibichmmdlbpjakfkf'):
+                    raise ValueError('Unexpected Chrome store identity')
+                subprocess.run([compiler,'/Qp','/DProductVersion='+version,'/DNativeArchitecture='+architecture,
+                    '/DChromeStoreUrl='+store,'/DPayloadDirectory='+str(directory_payload.resolve()),
+                    '/DOutputDirectory='+str(output.resolve()),'/DOutputName='+connect.name.removesuffix('.exe'),
+                    str(ROOT/'apps/endpoint-client/packaging/windows-connect-setup.iss')],check=True)
+                connect.with_name(connect.name+'.sha256').write_text(hashlib.sha256(connect.read_bytes()).hexdigest()+'  '+connect.name+'\n',encoding='utf-8',newline='\n')
             else:
                 app=directory/'Install ToolGate.app'
                 subprocess.run(['/usr/bin/osacompile','-o',str(app),str(ROOT/'apps/endpoint-client/packaging/macos-setup.applescript')],check=True)

@@ -35,13 +35,18 @@ pub async fn run(config: Config, shutdown: tokio::sync::watch::Receiver<bool>) -
     let mut heartbeat_shutdown = shutdown.clone();
     let heartbeat_service = service.clone();
     let heartbeat = tokio::spawn(async move {
+        let mut next = tokio::time::Instant::now();
         loop {
+            tokio::select! {_=heartbeat_shutdown.changed()=>break,_=tokio::time::sleep_until(next)=>{}}
+            let started = tokio::time::Instant::now();
             let delay = {
                 let mut state = heartbeat_service.lock().await;
                 let _ = state.tick().await;
                 state.next_delay_seconds()
             };
-            tokio::select! {_=heartbeat_shutdown.changed()=>break,_=tokio::time::sleep(std::time::Duration::from_secs(delay))=>{}}
+            // Network time counts toward the cycle; never overlap or catch up missed requests.
+            next = (started + std::time::Duration::from_secs(delay))
+                .max(tokio::time::Instant::now());
         }
     });
     tracing::info!(

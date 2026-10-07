@@ -52,6 +52,7 @@ def manifest(source,output):
     document=dict(version=version,artifacts=artifacts)
     (output/'manifest.json').write_text(json.dumps(document,indent=2)+'\n',encoding='utf-8',newline='\n')
     installers=[]
+    bootstraps=[]
     for artifact in artifacts:
         extension={'WINDOWS':'setup.exe','MACOS':'dmg','LINUX':'run'}[artifact['platform']]
         name=f"olo-toolgate-client-{version}-{artifact['target']}.{extension}"
@@ -64,6 +65,17 @@ def manifest(source,output):
             origin=source/(name+suffix);destination=output/origin.name
             if origin.resolve()!=destination.resolve():shutil.copyfile(origin,destination)
         installers.append({**artifact,'filename':name,'sha256':checksum,'bytes':path.stat().st_size})
+        if artifact['platform']=='WINDOWS':
+            name=f"olo-toolgate-connect-{version}-{artifact['target']}.setup.exe"
+            path=source/name
+            if not path.exists():continue
+            if path.is_symlink() or not path.is_file() or not 0<path.stat().st_size<=104857600:raise ValueError('Invalid browser installer')
+            checksum=hashlib.sha256(path.read_bytes()).hexdigest()
+            if path.with_name(name+'.sha256').read_text().strip()!=checksum+'  '+name:raise ValueError('Browser installer checksum mismatch')
+            for suffix in ('','.sha256'):
+                origin=source/(name+suffix);destination=output/origin.name
+                if origin.resolve()!=destination.resolve():shutil.copyfile(origin,destination)
+            bootstraps.append({**artifact,'filename':name,'sha256':checksum,'bytes':path.stat().st_size})
     if installers:
         if len(installers)!=len(artifacts):raise ValueError('All native targets require an installer')
         for installer in installers:
@@ -72,6 +84,9 @@ def manifest(source,output):
             shutil.copyfile(output/installer['filename'],output/alias)
             (output/(alias+'.sha256')).write_text(installer['sha256']+'  '+alias+'\n',encoding='utf-8')
         (output/'installers.json').write_text(json.dumps(dict(version=version,artifacts=installers),indent=2)+'\n',encoding='utf-8',newline='\n')
+    if bootstraps:
+        if len(bootstraps)!=sum(a['platform']=='WINDOWS' for a in artifacts):raise ValueError('All Windows targets require a browser installer')
+        (output/'connect-installers.json').write_text(json.dumps(dict(version=version,artifacts=bootstraps),indent=2)+'\n',encoding='utf-8',newline='\n')
     print(f'Validated {len(artifacts)} native client packages for public distribution')
     return document
 

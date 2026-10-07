@@ -110,8 +110,40 @@ fn command(program: &str, args: &[&str]) -> Result<()> {
     }
 }
 pub fn install(server: &str) -> Result<()> {
+    install_for_peer(server, None)
+}
+pub fn install_for_peer(server: &str, peer: Option<&str>) -> Result<()> {
+    install_config(server, peer, None)
+}
+pub fn reinstall(server: &str, peer: Option<&str>) -> Result<()> {
+    admin()?;
+    validate_peer(peer)?;
+    let previous = Config::load(&config_path())?;
+    if crate::config::origin(server)? != previous.server_url {
+        return Err(Failure::Conflict);
+    }
+    uninstall(false)?;
+    install_config(server, peer, Some(previous))
+}
+fn install_config(server: &str, peer: Option<&str>, previous: Option<Config>) -> Result<()> {
     admin()?;
     let origin = crate::config::origin(server)?;
+    validate_peer(peer)?;
+    let binary = binary_path();
+    let config = config_path();
+    if config.exists() {
+        return Err(Failure::Conflict);
+    }
+    directory(binary.parent().ok_or(Failure::Validation)?, false)?;
+    directory(config.parent().ok_or(Failure::Validation)?, false)?;
+@@PEER_VALIDATION@@
+    #[cfg(windows)]
+    if peer.is_some_and(|sid| !sid.starts_with("S-1-") || sid.len() > 184
+        || !sid.bytes().all(|b| b.is_ascii_digit() || b == b'S' || b == b'-')) {
+        return Err(Failure::Validation);
+    }
+    #[cfg(unix)]
+    if peer.is_some() { return Err(Failure::Unsupported); }
     let binary = binary_path();
     let config = config_path();
     if config.exists() {
@@ -148,7 +180,7 @@ pub fn install(server: &str) -> Result<()> {
             .ok_or(Failure::Validation)?,
         false,
     )?;
-    let settings = Config {
+    let mut settings = previous.unwrap_or(Config {
         deployment: None,
         execution: None,
         tools: None,
@@ -158,7 +190,12 @@ pub fn install(server: &str) -> Result<()> {
         authorized_peers: peers,
         ca_certificate_path: None,
         request_timeout_seconds: 10,
-    };
+    });
+    if let Some(peer) = peer {
+        if !settings.authorized_peers.iter().any(|value| value == peer) {
+            settings.authorized_peers.push(peer.to_owned());
+        }
+    }
     settings.validate()?;
     let executable = std::env::current_exe().map_err(|_| Failure::Unavailable)?;
     let bytes = std::fs::read(executable).map_err(|_| Failure::Unavailable)?;

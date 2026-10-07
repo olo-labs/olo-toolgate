@@ -585,7 +585,7 @@ impl ClientService {
             && self
                 .journal
                 .last_success
-                .is_some_and(|last| now.saturating_sub(last) < 10000)
+                .is_some_and(|last| now.saturating_sub(last) < 2000)
         {
             return Ok(());
         }
@@ -668,7 +668,7 @@ impl ClientService {
             return 5;
         }
         if self.state == EndpointState::Active {
-            return 60;
+            return 2;
         }
         (5_u64.saturating_mul(1_u64 << self.failures.min(6))).min(300)
     }

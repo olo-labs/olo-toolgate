@@ -119,8 +119,15 @@ async fn command(arguments: Vec<String>) -> Result<()> {
             println!("{}", env!("CARGO_PKG_VERSION"));
             Ok(())
         }
-        "install" if arguments.len() == 3 && arguments[1] == "--server" => {
-            olo_toolgate_client::install::install(&arguments[2])
+        "install" | "reinstall" if (arguments.len() == 3 || arguments.len() == 5)
+            && arguments[1] == "--server"
+            && (arguments.len() == 3 || arguments[3] == "--peer") => {
+            let peer = arguments.get(4).map(String::as_str);
+            if operation == "reinstall" {
+                olo_toolgate_client::install::reinstall(&arguments[2], peer)
+            } else {
+                olo_toolgate_client::install::install_for_peer(&arguments[2], peer)
+            }
         }
         "uninstall" if arguments.len() == 1 || arguments == ["uninstall", "--purge"] => {
             olo_toolgate_client::install::uninstall(arguments.len() == 2)

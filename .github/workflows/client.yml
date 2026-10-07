@@ -83,6 +83,7 @@ jobs:
         shell: bash
         env:
           NATIVE_TARGET: ${{ matrix.target }}
+          TOOLGATE_CHROME_STORE_URL: ${{ vars.TOOLGATE_CHROME_STORE_URL }}
         run: python tools/client/installer.py --target "$NATIVE_TARGET"
       - name: Prove packaged installer starts the system service
         shell: bash
