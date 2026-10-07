@@ -8,8 +8,8 @@ Scripts work from any current directory and never commit or push.
 
 Requires Docker Desktop running Linux containers, Git, Node.js/npm, Python 3.11+
 and internet access for dependencies and base images. A Python environment is
-created under `.dev/debug/venv`. Install browser dependencies once with
-`npx playwright install chromium`. Supply real client release assets under
+created under `.dev/debug/venv`. The matching Playwright Chromium browser is
+installed automatically after npm dependencies. Supply real client release assets under
 `deploy/client-assets/release` as required by the existing Quickstart build.
 Errors stop deployment and remain visible in the console; failed checks leave
 the running debug stack untouched.

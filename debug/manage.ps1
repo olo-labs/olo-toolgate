@@ -31,6 +31,7 @@ try {
     $python = Join-Path $root '.dev/debug/venv/Scripts/python.exe'
     Invoke-Checked $python @('-m', 'pip', 'install', '-r', 'tools/requirements.txt')
     Invoke-Checked npm @('ci', '--ignore-scripts')
+    Invoke-Checked npx @('--no-install', 'playwright', 'install', 'chromium')
     Invoke-Checked $python @('tools/ci/preflight.py')
     Invoke-Checked $python @('-m', 'unittest', 'discover', '-s', 'tests/ci', '-v')
     Invoke-Checked $python @('tools/quality.py')
