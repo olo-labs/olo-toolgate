@@ -19,3 +19,5 @@ for (const args of [['run','ui:check'], ['--workspace','@olo-labs/toolgate-admin
   if (result.error) console.error(result.error.message);
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
+const browser=spawnSync(process.execPath,['tools/ci/browser-downloads.mjs'],{stdio:'inherit'});
+if(browser.status!==0)process.exit(browser.status??1);

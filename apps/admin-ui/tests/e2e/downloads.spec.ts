@@ -12,9 +12,10 @@ test('anonymous home page downloads all native clients with matching checksums a
   await expect(page.getByLabel('Access token')).toBeVisible();
   const response = await request.get('/api/public/v1/clients'); expect(response.status()).toBe(200);
   const manifest = await response.json() as ClientDownloadManifest;
-  for (const [platform,label] of [['WINDOWS','Windows'],['MACOS','macOS'],['LINUX','Linux']] as const) {
-    const artifact = manifest.artifacts.find(a=>a.platform===platform && a.target.startsWith('x86_64'))!;
-    const pending = page.waitForEvent('download'); await page.getByRole('link',{name:`Download ${label} x64`}).click();
+  const labels = {WINDOWS:'Windows',MACOS:'macOS',LINUX:'Linux'};
+  for (const artifact of manifest.artifacts) {
+    const architecture=artifact.target.startsWith('aarch64')?'ARM64':'x64';
+    const pending = page.waitForEvent('download'); await page.getByRole('link',{name:`Download ${labels[artifact.platform]} ${architecture}`,exact:true}).click();
     const download = await pending; expect(download.suggestedFilename()).toBe(artifact.filename);
     const path = await download.path(); const data = await readFile(path!);
     expect(createHash('sha256').update(data).digest('hex')).toBe(artifact.sha256);
@@ -22,14 +23,28 @@ test('anonymous home page downloads all native clients with matching checksums a
   }
   const installerResponse = await request.get('/api/public/v1/installers'); expect(installerResponse.status()).toBe(200);
   const installers = await installerResponse.json() as ClientInstallerManifest;
-  for (const [platform,label] of [['WINDOWS','Windows'],['MACOS','macOS'],['LINUX','Linux']] as const) {
-    const installer = installers.artifacts.find(a=>a.platform===platform && a.target.startsWith('x86_64'))!;
-    const pending = page.waitForEvent('download'); await page.getByRole('link',{name:`Install ${label} x64`,exact:true}).click();
-    const download = await pending; expect(download.suggestedFilename()).toBe(installer.filename);
+  for (const installer of installers.artifacts) {
+    const suffix={WINDOWS:'setup.exe',MACOS:'dmg',LINUX:'run'}[installer.platform];
+    const stable=`olo-toolgate-client-${installer.target}.${suffix}`;
+    const architecture=installer.target.startsWith('aarch64')?'ARM64':'x64';
+    const link=page.getByRole('link',{name:`Install ${labels[installer.platform]} ${architecture}`,exact:true});
+    await expect(link).toHaveAttribute('href',`/api/public/v1/clients/${stable}`);
+    const stableResponse=await request.get(`/api/public/v1/clients/${stable}`);
+    expect(stableResponse.status()).toBe(200);
+    expect(stableResponse.headers()['cache-control']).toBe('no-store');
+    expect(stableResponse.headers()['content-disposition']).toBe(`attachment; filename="${stable}"`);
+    expect(createHash('sha256').update(await stableResponse.body()).digest('hex')).toBe(installer.sha256);
+    const pending = page.waitForEvent('download'); await link.click();
+    const download = await pending; expect(download.suggestedFilename()).toBe(stable);
     const data = await readFile((await download.path())!);
     expect(createHash('sha256').update(data).digest('hex')).toBe(installer.sha256);
     expect(data.length).toBe(installer.bytes);
+    const versioned=await request.get(`/api/public/v1/clients/${installer.filename}`);
+    expect(versioned.status()).toBe(200);
+    expect(versioned.headers()['cache-control']).toContain('immutable');
+    expect(await versioned.body()).toEqual(data);
   }
+  expect((await request.get('/api/public/v1/clients/olo-toolgate-client-unknown.setup.exe')).status()).toBe(404);
   await expect(page.getByText(/These development installers are unsigned/)).toBeVisible();
   expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations).toEqual([]);
   await page.setViewportSize({width:390,height:844});

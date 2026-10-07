@@ -8,7 +8,15 @@ runs Chrome Connect protocol tests, a pinned Gitleaks scan of the Git index,
 TypeScript validation and the UI unit suite, including fast axe checks for
 uncontained navigation controls and nested main landmarks. Docker must be running;
 Java and a running backend are not required. Run the same checks manually with
-`npm run precommit`. Secret-scan regression checks allow only the exact reviewed
+`npm run precommit`. The hook also builds the production UI and runs Chromium's
+download E2E test against inert HTTP fixtures for all six OS/architecture targets.
+It checks stable saved filenames, response headers, cache policy, byte length,
+SHA-256, immutable versioned copies, accessibility and mobile layout. This is the
+same browser test used against the real Control container in CI; the local
+fixture proof supplements the full container/integration gates. Install Chromium
+once with `npm --workspace @olo-labs/toolgate-admin-ui exec -- playwright install chromium`.
+Missing browser binaries or a failed browser check block the commit; no gate is
+silently skipped. Secret-scan regression checks allow only the exact reviewed
 Chrome public key at its identity path, and reject that key at another path,
 credentials and private keys in the identity file. The reusable CI preflight runs
 these checks before expensive builds. Ignored local configuration is not exported
