@@ -28,11 +28,13 @@ do not replace every workflow job.
 
 This is a separate Compose project (`toolgate-debug`) using the local
 `olo-toolgate-quickstart:debug` image and its own persistent volume. It does not
-pull published ToolGate images or stop the stack on port 18089. Login is enabled
-by default. Read bootstrap credentials using
+pull published ToolGate images or stop the stack on port 18089. Admin password
+login is disabled by default for this local debug stack, using the default admin
+identity so user-specific flows continue to work. To test password login, set
+`TOOLGATE_DISABLE_ADMIN_PASSWORD=false` in your environment before launching a
+script, then read bootstrap credentials using
 `docker compose -p toolgate-debug -f debug/compose.yaml logs quickstart`.
-For local password-free testing set `TOOLGATE_DISABLE_ADMIN_PASSWORD=true` in
-your environment before launching a script. Ports bind only to localhost.
+Ports bind only to localhost.
 
 Validate Docker/Compose configuration without building:
 `powershell -NoProfile -File debug/manage.ps1 start -ValidateOnly`.
