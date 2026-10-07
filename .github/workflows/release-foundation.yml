@@ -6,6 +6,10 @@ on:
     tags: ["v*"]
   workflow_dispatch:
     inputs:
+      comment:
+        description: "Trigger comment must start with RC:"
+        type: string
+        required: true
       publish:
         description: Publish Maven, Helm OCI and GitHub release assets
         type: boolean
@@ -16,7 +20,13 @@ concurrency:
   group: release-foundation-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  admission:
+    uses: ./.github/workflows/admission.yml
+    with:
+      comment: ${{ inputs.comment || '' }}
   policy-compatibility:
+    needs: admission
+    if: needs.admission.outputs.allow == 'true'
     uses: ./.github/workflows/policy.yml
   release:
     needs: policy-compatibility

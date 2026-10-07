@@ -7,14 +7,24 @@ on:
     types: [completed]
     branches: [main]
   workflow_dispatch:
+    inputs:
+      comment:
+        description: "Trigger comment must start with RC:"
+        type: string
+        required: true
 permissions:
   contents: read
 concurrency:
   group: development-release
   cancel-in-progress: false
 jobs:
+  admission:
+    uses: ./.github/workflows/admission.yml
+    with:
+      comment: ${{ inputs.comment || '' }}
   publish:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' || github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository
+    needs: admission
+    if: needs.admission.outputs.allow == 'true' && (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' || github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     environment: development-release

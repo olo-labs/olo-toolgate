@@ -1,0 +1,31 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+name: RC admission
+on:
+  workflow_call:
+    inputs:
+      comment:
+        type: string
+        default: ''
+    outputs:
+      allow:
+        value: ${{ jobs.admit.outputs.allow }}
+permissions:
+  contents: read
+jobs:
+  admit:
+    if: vars.TOOLGATE_CI_ENABLED == 'true' && (startsWith(github.event.head_commit.message, 'RC:') || startsWith(github.event.pull_request.title, 'RC:') || startsWith(github.event.workflow_run.head_commit.message, 'RC:') || startsWith(inputs.comment, 'RC:'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    outputs:
+      allow: ${{ steps.admission.outputs.allow }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - id: admission
+        name: Check pause window and exact RC prefix
+        env:
+          CI_ENABLED: ${{ vars.TOOLGATE_CI_ENABLED }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python tools/ci/admission.py

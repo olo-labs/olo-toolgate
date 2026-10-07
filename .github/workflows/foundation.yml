@@ -6,13 +6,24 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      comment:
+        description: "Trigger comment must start with RC:"
+        type: string
+        required: true
 permissions:
   contents: read
 concurrency:
   group: foundation-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
+  admission:
+    uses: ./.github/workflows/admission.yml
+    with:
+      comment: ${{ inputs.comment || '' }}
   preflight:
+    needs: admission
+    if: needs.admission.outputs.allow == 'true'
     uses: ./.github/workflows/preflight.yml
   check:
     needs: preflight

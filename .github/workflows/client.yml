@@ -3,15 +3,30 @@
 name: endpoint-client
 on:
   workflow_call:
+    inputs:
+      comment:
+        type: string
+        default: ''
   pull_request:
   push:
     branches: [main]
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      comment:
+        description: "Trigger comment must start with RC:"
+        type: string
+        required: true
 permissions:
   contents: read
 jobs:
+  admission:
+    uses: ./.github/workflows/admission.yml
+    with:
+      comment: ${{ inputs.comment || '' }}
   preflight:
+    needs: admission
+    if: needs.admission.outputs.allow == 'true'
     uses: ./.github/workflows/preflight.yml
   native:
     needs: preflight

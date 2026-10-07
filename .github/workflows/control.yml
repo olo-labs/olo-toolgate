@@ -8,6 +8,10 @@ on:
     tags: ["v*"]
   workflow_dispatch:
     inputs:
+      comment:
+        description: "Trigger comment must start with RC:"
+        type: string
+        required: true
       publish:
         description: Publish the tested image from the matching version tag
         type: boolean
@@ -18,11 +22,19 @@ concurrency:
   group: control-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  admission:
+    uses: ./.github/workflows/admission.yml
+    with:
+      comment: ${{ inputs.comment || '' }}
   preflight:
+    needs: admission
+    if: needs.admission.outputs.allow == 'true'
     uses: ./.github/workflows/preflight.yml
   clients:
     needs: preflight
     uses: ./.github/workflows/client.yml
+    with:
+      comment: ${{ inputs.comment || '' }}
   policy-compatibility:
     needs: preflight
     uses: ./.github/workflows/policy.yml
