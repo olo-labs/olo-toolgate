@@ -41,6 +41,8 @@ impl Default for Limits {
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Config {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub local_mcp: Option<crate::relay::RelayConfig>,
     pub listen: SocketAddr,
     pub management_listen: SocketAddr,
     pub trusted_tls_proxy: bool,
@@ -59,6 +61,12 @@ pub struct Config {
 impl Config {
     /// Invalid or unbounded configuration prevents startup.
     pub fn validate(&self, contracts: &Contracts, now: u64) -> Result<(), &'static str> {
+        if let Some(relay) = &self.local_mcp {
+            relay.validate()?;
+            if self.limits.request_timeout_ms < 10000 {
+                return Err("local MCP relay requires a request timeout of at least ten seconds");
+            }
+        }
         if self.listen.port() == 0
             || self.management_listen.port() == 0
             || self.listen == self.management_listen

@@ -4,7 +4,6 @@
 import argparse
 import hashlib
 import io
-import json
 import os
 from pathlib import Path
 import shutil
@@ -73,6 +72,9 @@ def build(target,output):
     if target not in TARGETS | CROSS_TARGETS:raise ValueError('Supported native target required')
     executable='olo-toolgate-client.exe' if platform=='WINDOWS' else 'olo-toolgate-client'
     verify_binary(files[executable],target)
+    if platform=='WINDOWS':
+        if 'olo-toolgate-browser-host.exe' not in files:raise ValueError('Combined Windows installer requires the native Chrome host')
+        verify_binary(files['olo-toolgate-browser-host.exe'],target)
     result=output/(base+'.'+EXTENSIONS[platform])
     if platform=='LINUX':
         result.write_bytes(linux_bytes(files));result.chmod(0o755)
@@ -87,6 +89,8 @@ def build(target,output):
                 # Ship the unpacked extension inside the EXE, never a second ZIP download.
                 build_number=int(subprocess.check_output(['git','rev-list','--count','HEAD'],cwd=ROOT)) if os.environ.get('GITHUB_ACTIONS')=='true' else 0
                 embed_chrome(directory_payload,build_number)
+                (directory_payload/'packaging').mkdir(exist_ok=True)
+                shutil.copyfile(ROOT/'apps/endpoint-client/packaging/toolgate-tray.ps1',directory_payload/'packaging/toolgate-tray.ps1')
                 compiler=os.environ.get('CLIENT_ISCC_PATH',r'C:\Program Files (x86)\Inno Setup 6\ISCC.exe')
                 notice=Path(compiler).parent/'License.txt'
                 if not notice.is_file():raise ValueError('Installer compiler license missing')
@@ -94,21 +98,9 @@ def build(target,output):
                 destination.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(notice,destination)
                 architecture='arm64' if target.startswith('aarch64') else 'x64compatible'
                 subprocess.run([compiler,'/Qp','/DProductVersion='+version,'/DNativeArchitecture='+architecture,
+                    '/DChromeStoreUrl='+os.environ.get('TOOLGATE_CHROME_STORE_URL',''),
                     '/DPayloadDirectory='+str(directory_payload.resolve()),'/DOutputDirectory='+str(output.resolve()),
                     '/DOutputName='+base+'.setup',str(ROOT/'apps/endpoint-client/packaging/windows-setup.iss')],check=True)
-                # A separate no-input browser bootstrap pins the exact client EXE.
-                bootstrap={'version':version,'target':target,'filename':result.name,
-                           'sha256':hashlib.sha256(result.read_bytes()).hexdigest(),'bytes':result.stat().st_size}
-                (directory_payload/'bootstrap.json').write_text(json.dumps(bootstrap),encoding='utf-8')
-                connect=output/f'olo-toolgate-connect-{version}-{target}.setup.exe'
-                store=os.environ.get('TOOLGATE_CHROME_STORE_URL','')
-                if store not in ('','https://chromewebstore.google.com/detail/emmemldedebhbloibichmmdlbpjakfkf'):
-                    raise ValueError('Unexpected Chrome store identity')
-                subprocess.run([compiler,'/Qp','/DProductVersion='+version,'/DNativeArchitecture='+architecture,
-                    '/DChromeStoreUrl='+store,'/DPayloadDirectory='+str(directory_payload.resolve()),
-                    '/DOutputDirectory='+str(output.resolve()),'/DOutputName='+connect.name.removesuffix('.exe'),
-                    str(ROOT/'apps/endpoint-client/packaging/windows-connect-setup.iss')],check=True)
-                connect.with_name(connect.name+'.sha256').write_text(hashlib.sha256(connect.read_bytes()).hexdigest()+'  '+connect.name+'\n',encoding='utf-8',newline='\n')
             else:
                 app=directory/'Install ToolGate.app'
                 subprocess.run(['/usr/bin/osacompile','-o',str(app),str(ROOT/'apps/endpoint-client/packaging/macos-setup.applescript')],check=True)

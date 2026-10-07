@@ -121,6 +121,26 @@ pub struct Manager {
     recovered: bool,
 }
 impl Manager {
+    pub(crate) fn settings(&self) -> Settings {
+        self.settings.clone()
+    }
+    pub fn catalog(&self) -> Vec<BuiltinToolInfo> {
+        self.settings
+            .tools
+            .iter()
+            .filter(|tool| {
+                self.states.get(&tool.runtime_id) == Some(&LocalRuntimeState::Ready)
+                    && !self.engine.dirty()
+            })
+            .map(|tool| BuiltinToolInfo {
+                tool_id: tool.tool_id.clone(),
+                action: tool.action.clone(),
+                description: format!("Local tool {}", tool.tool_id),
+                enabled: true,
+                input_schema: tool.input_schema.clone(),
+            })
+            .collect()
+    }
     pub fn new(settings: Settings, authorization: Arc<dyn AuthorizationPort>) -> Result<Self> {
         settings.validate()?;
         let engine = engine::DockerEngine::new(

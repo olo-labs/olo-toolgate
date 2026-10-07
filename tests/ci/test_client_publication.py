@@ -19,6 +19,8 @@ class ClientPublicationTest(unittest.TestCase):
 
     def test_extension_zip_is_internal_and_installers_are_preserved(self):
         self.assertFalse(public_asset(Path('olo-toolgate-chrome-0.10.0-dev-0.zip')))
+        self.assertFalse(public_asset(Path('connect-installers.json')))
+        self.assertFalse(public_asset(Path('olo-toolgate-connect-0.10.0-dev-x86_64-pc-windows-msvc.setup.exe')))
         for name in ('installers.json',
                      'olo-toolgate-client-x86_64-apple-darwin.dmg',
                      'olo-toolgate-client-x86_64-unknown-linux-gnu.run'):

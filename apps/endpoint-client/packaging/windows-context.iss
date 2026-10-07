@@ -1,6 +1,6 @@
-; Copyright 2026 OLO Labs
-; SPDX-License-Identifier: Apache-2.0
-; Public downloads carry the server origin in the filename, never credentials.
+// Copyright 2026 OLO Labs
+// SPDX-License-Identifier: Apache-2.0
+// Public downloads carry the server origin in the filename, never credentials.
 function ValidServer(const URL: String): Boolean;
 var I: Integer;
 begin

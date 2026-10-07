@@ -22,15 +22,19 @@ TIMEOUT 504, UNSUPPORTED 501 and NOT_FOUND 404. Error bodies expose no exception
 Separate management serves /v1/health/live, /v1/health/ready and /v1/metrics. These
 routes are absent from runtime ingress. Keep management network-restricted.
 
-`POST /mcp` is a restricted [2026-07-28 skeleton](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http).
+`POST /mcp` is a restricted [2026-07-28 transport](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http).
 One JSON-RPC request with integer/string ID and per-request metadata is accepted.
-Ping, server/discover and empty tools/list work. Tools/call authorizes a single-action
-registry binding, then denies or returns explicit unsupported execution. No executable
-capabilities are advertised. Unknown methods, legacy initialization, notifications
+Ping and server/discover work. With the optional `localMcp` relay enabled, tools/list
+returns device-scoped installed definitions applicable to this agent. ALLOW tools/call
+requests are queued in Control for the next client poll and return a bounded result.
+Managed tools use their fixed CUSTOM `runtime/<tool-id>` resource, and builtins use
+registered extraction. ASK blocks. Without relay mode, discovery is empty and execution
+is unsupported. Unknown methods, legacy initialization, notifications
 and streaming subscriptions reject; GET/DELETE return 405 and no session is minted.
 Mirrored version/method/name headers are checked, including encoded names. Early
 transport/auth/limit failures use HTTP errors; parsed RPC failures use sanitized
-JSON-RPC errors. No request is forwarded or executed.
+JSON-RPC errors. See [client relay configuration and progress](../client/server-mcp.md)
+for the device-certificate authorization, permission replacement and retry protocol.
 Parse/invalid-frame errors include `id: null`; unsupported notifications receive
 an ordinary HTTP error without a JSON-RPC response, consistent with
 [JSON-RPC 2.0](https://www.jsonrpc.org/specification).

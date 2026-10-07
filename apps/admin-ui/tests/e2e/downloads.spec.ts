@@ -34,16 +34,19 @@ test(`anonymous ${platform} downloads have matching checksums and accessible sta
   for (const installer of setups) {
     const suffix={WINDOWS:'setup.exe',MACOS:'dmg',LINUX:'run'}[installer.platform];
     const stable=`olo-toolgate-client-${installer.target}.${suffix}`;
+    const setupPath=platform==='WINDOWS'?`/api/public/v1/clients/setup/${installer.target}`:`/api/public/v1/clients/${stable}`;
     const architecture=installer.target.startsWith('aarch64')?'ARM64':'x64';
     const link=page.getByRole('link',{name:`Install ${labels[installer.platform]} ${architecture}`,exact:true});
-    await expect(link).toHaveAttribute('href',`/api/public/v1/clients/${stable}`);
+    await expect(link).toHaveAttribute('href',setupPath);
     const stableResponse=await request.get(`/api/public/v1/clients/${stable}`);
     expect(stableResponse.status()).toBe(200);
     expect(stableResponse.headers()['cache-control']).toBe('no-store');
     expect(stableResponse.headers()['content-disposition']).toBe(`attachment; filename="${stable}"`);
     expect(createHash('sha256').update(await stableResponse.body()).digest('hex')).toBe(installer.sha256);
     const pending = page.waitForEvent('download'); await link.click();
-    const download = await pending; expect(download.suggestedFilename()).toBe(stable);
+    const download = await pending;
+    if(platform==='WINDOWS')expect(download.suggestedFilename()).toMatch(new RegExp(`^olo-toolgate-client-${installer.target}--[a-f0-9]+\\.setup\\.exe$`));
+    else expect(download.suggestedFilename()).toBe(stable);
     const data = await readFile((await download.path())!);
     expect(createHash('sha256').update(data).digest('hex')).toBe(installer.sha256);
     expect(data.length).toBe(installer.bytes);

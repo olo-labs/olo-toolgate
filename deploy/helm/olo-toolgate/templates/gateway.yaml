@@ -3,6 +3,11 @@
 {{- $g := .Values.gateway }}
 {{- $name := include "olo-toolgate.gatewayName" . }}
 {{- $config := deepCopy $g.config }}
+{{- if $g.localMcp.enabled }}
+{{- if not $g.bundle.enabled }}{{ fail "client MCP relay requires signed bundle mode" }}{{ end }}
+{{- if lt (int $g.config.limits.requestTimeoutMs) 10000 }}{{ fail "client MCP relay requires at least a ten second request timeout" }}{{ end }}
+{{- $_ := set $config "localMcp" (dict "url" $g.localMcp.url "tokenPath" "/etc/toolgate/relay-auth/access-token" "developmentLoopbackHttp" false) }}
+{{- end }}
 {{- if $g.bundle.enabled }}
 {{- $_ := unset $config "policy" }}
 {{- $_ := set $config "bundleSource" (dict "url" $g.bundle.url "tenantId" $g.bundle.tenantId "issuer" $g.bundle.issuer "audience" $g.bundle.audience "keyringPath" "/etc/toolgate/bundle-keys/keyring.json" "tokenPath" "/etc/toolgate/bundle-auth/access-token" "minimumSequence" $g.bundle.minimumSequence "maxGraceMs" $g.bundle.maxGraceMs "pollIntervalMs" $g.bundle.pollIntervalMs "fetchTimeoutMs" $g.bundle.fetchTimeoutMs "developmentLoopbackHttp" false) }}
@@ -126,6 +131,9 @@ spec:
           volumeMounts:
             - {name: config, mountPath: /etc/toolgate/config, readOnly: true}
             - {name: credentials, mountPath: /etc/toolgate/credentials, readOnly: true}
+            {{- if $g.localMcp.enabled }}
+            - {name: relay-auth, mountPath: /etc/toolgate/relay-auth, readOnly: true}
+            {{- end }}
             {{- if $g.bundle.enabled }}
             - {name: bundle-keys, mountPath: /etc/toolgate/bundle-keys, readOnly: true}
             - {name: bundle-auth, mountPath: /etc/toolgate/bundle-auth, readOnly: true}
@@ -156,6 +164,13 @@ spec:
             secretName: {{ required "gateway.bundle.tokenSecret required" $g.bundle.tokenSecret | quote }}
             defaultMode: 0444
             items: [{key: {{ $g.bundle.tokenKey | quote }}, path: access-token}]
+        {{- end }}
+        {{- if $g.localMcp.enabled }}
+        - name: relay-auth
+          secret:
+            secretName: {{ required "gateway.localMcp.tokenSecret required" $g.localMcp.tokenSecret | quote }}
+            defaultMode: 0440
+            items: [{key: {{ $g.localMcp.tokenKey | quote }}, path: access-token}]
         {{- end }}
         {{- if $g.approval.enabled }}
         - name: approval-auth
@@ -211,6 +226,9 @@ spec:
   egress:
     - ports:
         - {protocol: TCP, port: {{ $g.bundle.controlPort }}}
+        {{- if and $g.localMcp.enabled (ne (int $g.localMcp.controlPort) (int $g.bundle.controlPort)) }}
+        - {protocol: TCP, port: {{ $g.localMcp.controlPort }}}
+        {{- end }}
         {{- if and $g.approval.enabled (ne (int $g.approval.controlPort) (int $g.bundle.controlPort)) }}
         - {protocol: TCP, port: {{ $g.approval.controlPort }}}
         {{- end }}

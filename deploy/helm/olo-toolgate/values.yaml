@@ -13,6 +13,12 @@ gateway:
     pullPolicy: IfNotPresent
   credentialsSecret: ''
   credentialsKey: credentials.json
+  localMcp:
+    enabled: false
+    url: https://control.example.invalid
+    tokenSecret: ''
+    tokenKey: access-token
+    controlPort: 443
   bundle:
     enabled: false
     url: https://control.example.invalid/api/control/v1/bundles/current

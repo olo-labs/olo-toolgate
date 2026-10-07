@@ -365,6 +365,16 @@
         },
         "report": {
           "$ref": "client.schema.json#/$defs/ClientReport"
+        },
+        "configurationDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "localTools": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "builtins.schema.json#/$defs/BuiltinToolInfo"
+          }
         }
       },
       "required": [
@@ -392,11 +402,17 @@
         },
         "nextIntervalSeconds": {
           "type": "integer",
-          "minimum": 10,
+          "minimum": 2,
           "maximum": 3600
         },
         "identity": {
           "$ref": "endpoint.schema.json#/$defs/DeviceIdentity"
+        },
+        "configuration": {
+          "$ref": "endpoint.schema.json#/$defs/EndpointPermissionConfiguration"
+        },
+        "task": {
+          "$ref": "endpoint.schema.json#/$defs/RemoteToolTask"
         }
       },
       "required": [
@@ -610,6 +626,313 @@
         "expiresAtUnixMs",
         "pollIntervalSeconds",
         "keyFingerprint"
+      ]
+    },
+    "EndpointPermissionRule": {
+      "type": "object",
+      "description": "Device-owner permission scope used only for local discovery; protected calls still require online authorization.",
+      "additionalProperties": false,
+      "properties": {
+        "toolId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "action": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "agentIds": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "maxItems": 512,
+          "uniqueItems": true
+        },
+        "resource": {
+          "$ref": "resource.schema.json#/$defs/ResourceDescriptor"
+        },
+        "decision": {
+          "$ref": "policy.schema.json#/$defs/Decision"
+        }
+      },
+      "required": [
+        "toolId",
+        "action",
+        "agentIds",
+        "resource",
+        "decision"
+      ]
+    },
+    "EndpointPermissionConfiguration": {
+      "type": "object",
+      "description": "Server-cached complete replacement of device permissions, acknowledged by digest on the next authenticated poll.",
+      "additionalProperties": false,
+      "properties": {
+        "serverId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "userId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "digest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "permissions": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "endpoint.schema.json#/$defs/EndpointPermissionRule"
+          }
+        }
+      },
+      "required": [
+        "serverId",
+        "deviceId",
+        "userId",
+        "revision",
+        "digest",
+        "permissions"
+      ]
+    },
+    "RemoteToolState": {
+      "type": "string",
+      "enum": [
+        "RECEIVED",
+        "WAITING_FOR_POLL",
+        "SUBMITTED",
+        "RESPONSE_RECEIVED",
+        "DONE",
+        "FAILED",
+        "EXPIRED"
+      ]
+    },
+    "RemoteToolSubmission": {
+      "type": "object",
+      "description": "Dedicated Gateway-authenticated request for one device-local tool.",
+      "additionalProperties": false,
+      "properties": {
+        "input": {
+          "$ref": "policy.schema.json#/$defs/PolicyInput"
+        },
+        "request": {
+          "$ref": "runtime.schema.json#/$defs/AuthorizationRequest"
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "input",
+        "request",
+        "expiresAtUnixMs"
+      ]
+    },
+    "RemoteToolTask": {
+      "type": "object",
+      "description": "Bounded lease delivered only over device-authenticated polling; executable definitions are never accepted from an agent.",
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "leaseId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "input": {
+          "$ref": "policy.schema.json#/$defs/PolicyInput"
+        },
+        "request": {
+          "$ref": "runtime.schema.json#/$defs/AuthorizationRequest"
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "requestId",
+        "leaseId",
+        "input",
+        "request",
+        "expiresAtUnixMs"
+      ]
+    },
+    "RemoteToolResult": {
+      "type": "object",
+      "description": "Exact leased execution response. Failed execution carries a sanitized error code.",
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "leaseId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "output": {
+          "type": "object"
+        },
+        "error": {
+          "$ref": "error.schema.json#/$defs/ErrorCode"
+        }
+      },
+      "required": [
+        "requestId",
+        "leaseId"
+      ]
+    },
+    "RemoteToolRecord": {
+      "type": "object",
+      "description": "Request progress visible to an administrator without arguments or results.",
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "agentId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "toolId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "state": {
+          "$ref": "endpoint.schema.json#/$defs/RemoteToolState"
+        },
+        "receivedAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "submittedAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "responseAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "completedAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "error": {
+          "$ref": "error.schema.json#/$defs/ErrorCode"
+        }
+      },
+      "required": [
+        "requestId",
+        "deviceId",
+        "agentId",
+        "toolId",
+        "state",
+        "receivedAtUnixMs",
+        "expiresAtUnixMs"
+      ]
+    },
+    "RemoteToolPage": {
+      "type": "object",
+      "description": "Bounded recent local-tool request progress.",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "endpoint.schema.json#/$defs/RemoteToolRecord"
+          }
+        }
+      },
+      "required": [
+        "items"
+      ]
+    },
+    "RemoteToolResponse": {
+      "type": "object",
+      "description": "Gateway-private queued request/result response.",
+      "additionalProperties": false,
+      "properties": {
+        "record": {
+          "$ref": "endpoint.schema.json#/$defs/RemoteToolRecord"
+        },
+        "result": {
+          "$ref": "endpoint.schema.json#/$defs/RemoteToolResult"
+        }
+      },
+      "required": [
+        "record"
+      ]
+    },
+    "RemoteToolAuthorization": {
+      "type": "object",
+      "description": "A leased client rechecks the exact pending operation online before execution.",
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "leaseId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "request": {
+          "$ref": "runtime.schema.json#/$defs/AuthorizationRequest"
+        }
+      },
+      "required": [
+        "requestId",
+        "leaseId",
+        "request"
+      ]
+    },
+    "RemoteToolAuthorizationAck": {
+      "type": "object",
+      "description": "Fresh remote operation deadline, never a reusable grant.",
+      "additionalProperties": false,
+      "properties": {
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "expiresAtUnixMs"
+      ]
+    },
+    "LocalToolCatalog": {
+      "type": "object",
+      "description": "Only enabled local definitions applicable to this verified agent and device.",
+      "additionalProperties": false,
+      "properties": {
+        "tools": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "builtins.schema.json#/$defs/BuiltinToolInfo"
+          }
+        }
+      },
+      "required": [
+        "tools"
       ]
     }
   }

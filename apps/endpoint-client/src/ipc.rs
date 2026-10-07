@@ -139,7 +139,7 @@ async fn handle<S: AsyncWrite + Unpin>(
         };
         let result = match request.operation {
             BuiltinOperation::Catalog if request.invocation.is_none() => {
-                response.tools = Some(state.tool_catalog());
+                response.tools = Some(state.tool_catalog(request.agent_id.as_deref()));
                 Ok(())
             }
             BuiltinOperation::Call => match request.invocation {
@@ -320,6 +320,13 @@ pub async fn call_tool(
     endpoint: &str,
     invocation: Option<BuiltinInvocation>,
 ) -> Result<BuiltinIpcResponse> {
+    call_tool_for_agent(endpoint, invocation, None).await
+}
+pub async fn call_tool_for_agent(
+    endpoint: &str,
+    invocation: Option<BuiltinInvocation>,
+    agent_id: Option<String>,
+) -> Result<BuiltinIpcResponse> {
     let contracts = Contracts::new()?;
     let request = BuiltinIpcRequest {
         protocol_version: 2,
@@ -330,6 +337,7 @@ pub async fn call_tool(
             BuiltinOperation::Catalog
         },
         invocation,
+        agent_id,
     };
     let bytes = contracts.encode("BuiltinIpcRequest", &request)?;
     let response: BuiltinIpcResponse = contracts.decode(

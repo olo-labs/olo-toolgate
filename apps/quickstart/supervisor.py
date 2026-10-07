@@ -283,6 +283,8 @@ def configure():
     atomic(DATA/'run/keyring.json', json.dumps({'keys': [{'keyId': 'policy-local', 'modulus': encode_number(numbers.n), 'exponent': encode_number(numbers.e)}]}))
     catalog = strict(Path('/opt/quickstart/builtins.json').read_bytes())['tools']
     config = {'listen': '127.0.0.1:8081', 'managementListen': '127.0.0.1:9091', 'trustedTlsProxy': False, 'allowedOrigins': [],
+              'limits': {'maxBodyBytes':65536,'maxHeaderBytes':8192,'maxConcurrentRequests':128,'maxConnections':256,'requestsPerSecond':1000,'requestTimeoutMs':30000,'connectionTimeoutMs':35000,'shutdownTimeoutMs':35000,'auditQueueCapacity':256},
+              'localMcp': {'url':'http://127.0.0.1:8082','tokenPath':'/data/run/machine-token','developmentLoopbackHttp':True},
               'bundleSource': {'url': 'http://127.0.0.1:8082/api/control/v1/bundles/current', 'tenantId': TENANT, 'issuer': 'control', 'audience': 'gateway', 'keyringPath': '/data/run/keyring.json', 'tokenPath': '/data/run/machine-token', 'minimumSequence': 0, 'maxGraceMs': 0, 'pollIntervalMs': 1000, 'fetchTimeoutMs': 1000, 'developmentLoopbackHttp': True},
               'approval': {'url': 'http://127.0.0.1:8082', 'tokenPath': '/data/run/machine-token', 'privateKeyPath': '/data/keys/permit.pem', 'keyId': 'permit-local', 'issuer': 'gateway', 'audience': 'endpoint', 'requestTimeoutMs': 1000, 'permitLifetimeMs': 10000, 'developmentLoopbackHttp': True},
               'extractors': [{'toolId': item['toolId'], 'action': item['action'], 'pointer': '/path', 'kind': 'FILE' if item['toolId'].startswith('hotfolder.') else 'CUSTOM'} for item in catalog]}
@@ -330,7 +332,7 @@ def fleet_keys():
 
 
 def machine():
-    atomic(DATA/'run/machine-token', jwt(['toolgate-bundle-reader', 'toolgate-approval-gateway'], 'gateway'))
+    atomic(DATA/'run/machine-token', jwt(['toolgate-bundle-reader', 'toolgate-approval-gateway', 'toolgate-relay-gateway'], 'gateway'))
 
 
 def seed(catalog):

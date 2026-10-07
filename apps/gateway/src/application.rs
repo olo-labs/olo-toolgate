@@ -27,7 +27,7 @@ pub struct Gateway {
 }
 
 impl Gateway {
-    fn normalize(
+    pub(crate) fn normalize(
         &self,
         request: AuthorizationRequest,
         context: RequestContext,
@@ -125,6 +125,23 @@ impl Gateway {
         now: u64,
     ) -> Result<PolicyDecision, ErrorCode> {
         let input = self.normalize(request, context)?;
+        self.authorize_input(input, trace_id, now).await
+    }
+
+    /// MCP runtime inputs use a fixed CUSTOM locator after device-scoped discovery.
+    /// This entry point is internal; callers cannot supply a normalized policy input.
+    pub(crate) async fn authorize_input(
+        &self,
+        input: PolicyInput,
+        trace_id: String,
+        now: u64,
+    ) -> Result<PolicyDecision, ErrorCode> {
+        if !self.contracts.valid(
+            "PolicyInput",
+            &serde_json::to_value(&input).map_err(|_| ErrorCode::Validation)?,
+        ) {
+            return Err(ErrorCode::Validation);
+        }
         let mut decision = self.evaluate(&input, now).await?;
         if decision.decision == Decision::Ask {
             Self::block(&mut decision, DecisionReason::ApprovalRequired);

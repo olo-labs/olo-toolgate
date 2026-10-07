@@ -25,6 +25,7 @@ public final class EndpointService {
     private final Ids.TenantId tenant;
     private final String server,organization,control,gateway;
     private final boolean enabled;
+    public McpService relay(){available();return new McpService(store,codec,this,clock,tenant,server);}
     public EndpointService(Store store,Codec codec,DeviceIssuer issuer,Clock clock,boolean enabled,
                            String tenant,String server,String organization,String control,String gateway) {
         this.store=store;this.codec=codec;this.issuer=issuer;this.clock=clock;this.enabled=enabled;
@@ -137,9 +138,12 @@ public final class EndpointService {
             if(check.report().appliedRevision()!=0||!check.report().packages().isEmpty())FleetService.validateReport(tx,codec,check.report());
             if(check.sequence().equals(device.reportSequence())){if(!digest.equals(row.reportDigest()))throw Failure.conflict();return new Store.Reply(200,row.acknowledgment(),device.revision());}
             if(check.sequence()!=device.reportSequence()+1)throw Failure.conflict();
-            if(device.reportSequence()>0 && now-device.lastSeenUnixMs()<10000)throw Failure.conflict();
+            // Allow the two-second client cycle with transport jitter; reject request bursts.
+            if(device.reportSequence()>0 && now-device.lastSeenUnixMs()<1000)throw Failure.conflict();
             DeviceIdentity renewed=null;if(peer.getNotAfter().getTime()-now<43200000)renewed=issuer.issue(row.csr(),device.deviceId(),tenant.value(),device.userId(),server,now);
-            var ack=new EndpointCheckInAck(device.deviceId(),check.sequence(),now,60L,renewed);
+            var configuration=new EndpointPermissions(codec).poll(tx,device,server,check.configurationDigest(),check.localTools());
+            var task=relay().poll(tx,device,now,requestId);
+            var ack=new EndpointCheckInAck(device.deviceId(),check.sequence(),now,2L,renewed,configuration,task);
             var updated=new EndpointDeviceRecord(device.deviceId(),tenant.value(),device.userId(),fingerprint,EndpointState.ACTIVE,device.revision()+1,now,check.sequence(),check.report());
             var response=reply(ack,updated.revision());tx.saveEndpoint(new Store.EndpointRecord(row.id(),row.fingerprint(),codec.json(updated),row.csr(),digest,response.body()));
             tx.audit(fingerprint,renewed==null?"DEVICE_CHECK_IN":"DEVICE_RENEW","endpoint:"+row.id(),updated.revision(),requestId,digest);return response;

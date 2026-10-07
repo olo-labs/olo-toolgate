@@ -528,6 +528,191 @@ fn mcp_request(method: &str, name: Option<&str>) -> Request<Body> {
         .unwrap()
 }
 
+#[derive(Default)]
+struct ClientRelay {
+    submission: Mutex<Option<RemoteToolSubmission>>,
+    polls: std::sync::atomic::AtomicU64,
+    response_delay_ms: std::sync::atomic::AtomicU64,
+    finish_on_response: std::sync::atomic::AtomicBool,
+}
+impl ClientRelay {
+    fn progress(&self, state: RemoteToolState) -> RemoteToolResponse {
+        let submission = self.submission.lock().unwrap().clone().unwrap();
+        RemoteToolResponse {
+            record: RemoteToolRecord {
+                request_id: submission.input.context.request_id.clone(),
+                device_id: "device-demo".into(),
+                agent_id: "agent-demo".into(),
+                tool_id: "local.tool".into(),
+                state: state.clone(),
+                received_at_unix_ms: unix_ms().unwrap(),
+                expires_at_unix_ms: submission.expires_at_unix_ms,
+                submitted_at_unix_ms: None,
+                response_at_unix_ms: None,
+                completed_at_unix_ms: None,
+                error: None,
+            },
+            result: (state == RemoteToolState::Done).then_some(RemoteToolResult {
+                request_id: submission.input.context.request_id,
+                lease_id: "client-lease".into(),
+                output: serde_json::from_value(json!({"text":"client output"})).ok(),
+                error: None,
+            }),
+        }
+    }
+}
+impl olo_toolgate_gateway::relay::RelayPort for ClientRelay {
+    fn catalog<'a>(
+        &'a self,
+        context: &'a RequestContext,
+    ) -> PortFuture<'a, Result<LocalToolCatalog, ErrorCode>> {
+        Box::pin(async move {
+            assert_eq!(context.device_id.as_deref(), Some("device-demo"));
+            Ok(LocalToolCatalog {
+                tools: vec![BuiltinToolInfo {
+                    tool_id: "local.tool".into(),
+                    action: "invoke".into(),
+                    description: "Installed runtime".into(),
+                    enabled: true,
+                    input_schema: serde_json::from_value(json!({"type":"object"})).unwrap(),
+                }],
+            })
+        })
+    }
+    fn submit<'a>(
+        &'a self,
+        request: &'a RemoteToolSubmission,
+    ) -> PortFuture<'a, Result<RemoteToolResponse, ErrorCode>> {
+        Box::pin(async move {
+            *self.submission.lock().unwrap() = Some(request.clone());
+            Ok(self.progress(RemoteToolState::WaitingForPoll))
+        })
+    }
+    fn response<'a>(
+        &'a self,
+        context: &'a RequestContext,
+    ) -> PortFuture<'a, Result<RemoteToolResponse, ErrorCode>> {
+        Box::pin(async move {
+            tokio::time::sleep(Duration::from_millis(
+                self.response_delay_ms.load(Ordering::SeqCst),
+            ))
+            .await;
+            assert_eq!(
+                *context,
+                self.submission
+                    .lock()
+                    .unwrap()
+                    .as_ref()
+                    .unwrap()
+                    .input
+                    .context
+            );
+            let count = self.polls.fetch_add(1, Ordering::SeqCst);
+            if self.finish_on_response.load(Ordering::SeqCst) {
+                return Ok(self.progress(RemoteToolState::Done));
+            }
+            Ok(self.progress(match count {
+                0 => RemoteToolState::Submitted,
+                1 => RemoteToolState::ResponseReceived,
+                _ => RemoteToolState::Done,
+            }))
+        })
+    }
+}
+
+fn client_relay_router(relay: Arc<ClientRelay>, expires: u64) -> (Router, Arc<RecordingAudit>) {
+    let mut cfg = config();
+    cfg.limits.request_timeout_ms = 30000;
+    cfg.limits.connection_timeout_ms = 35000;
+    cfg.limits.shutdown_timeout_ms = 35000;
+    let mut policy = cfg.policy.clone().unwrap();
+    policy.rules[0].tool_id = "local.tool".into();
+    policy.rules[0].action = "invoke".into();
+    policy.rules[0].resource = ResourceDescriptor {
+        kind: ResourceKind::Custom,
+        locator: "runtime/local.tool".into(),
+    };
+    let contracts = Contracts::new().unwrap();
+    let mut cred = credential();
+    cred.device_id = Some("device-demo".into());
+    cred.expires_at_unix_ms = expires;
+    let auth = Authenticator::new(vec![cred], &contracts, unix_ms().unwrap()).unwrap();
+    let audit = Arc::new(RecordingAudit::default());
+    let mut state = AppState::new(
+        Gateway {
+            contracts,
+            extractors: Registry::new(cfg.extractors.clone()).unwrap(),
+            policy: Arc::new(policy),
+            audit: audit.clone(),
+            approval: None,
+            permit_signer: None,
+        },
+        auth,
+        cfg,
+    );
+    state.relay = Some(relay.clone());
+    (runtime_router(Arc::new(state)), audit)
+}
+
+#[tokio::test]
+async fn mcp_does_not_return_a_completed_response_after_credential_expiry() {
+    let relay = Arc::new(ClientRelay::default());
+    relay.response_delay_ms.store(7000, Ordering::SeqCst);
+    relay.finish_on_response.store(true, Ordering::SeqCst);
+    let (router, _) = client_relay_router(relay.clone(), unix_ms().unwrap() + 6000);
+    let response = router
+        .oneshot(mcp_request("tools/call", Some("local.tool")))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    let result: Value =
+        serde_json::from_slice(&to_bytes(response.into_body(), 65536).await.unwrap()).unwrap();
+    assert_eq!(result["code"], "UNAUTHORIZED");
+    assert!(result.get("result").is_none());
+    assert_eq!(relay.polls.load(Ordering::SeqCst), 1);
+}
+
+#[tokio::test]
+async fn mcp_device_runtime_is_discovered_authorized_and_relayed_until_done() {
+    let relay = Arc::new(ClientRelay::default());
+    let (router, audit) = client_relay_router(relay.clone(), 4102444800000);
+    let response = router
+        .clone()
+        .oneshot(mcp_request("tools/list", None))
+        .await
+        .unwrap();
+    let listed: Value =
+        serde_json::from_slice(&to_bytes(response.into_body(), 65536).await.unwrap()).unwrap();
+    assert_eq!(listed["result"]["tools"][0]["name"], "local.tool");
+    let response = router
+        .clone()
+        .oneshot(mcp_request("tools/call", Some("local.tool")))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let result: Value =
+        serde_json::from_slice(&to_bytes(response.into_body(), 65536).await.unwrap()).unwrap();
+    assert_eq!(
+        result["result"]["structuredContent"]["text"],
+        "client output"
+    );
+    assert_eq!(relay.polls.load(Ordering::SeqCst), 3);
+    let submitted = relay.submission.lock().unwrap().clone().unwrap();
+    assert_eq!(submitted.request.arguments, request().arguments);
+    assert_eq!(submitted.input.resource.locator, "runtime/local.tool");
+    assert_eq!(
+        submitted.input.context.device_id.as_deref(),
+        Some("device-demo")
+    );
+    assert_eq!(audit.events.lock().unwrap().len(), 1);
+    let response = router
+        .oneshot(mcp_request("tools/call", Some("other.tool")))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    assert_eq!(audit.events.lock().unwrap().len(), 1);
+}
+
 #[tokio::test]
 async fn mcp_stateless_ping_discovery_calls_and_header_mismatch() {
     let s = state(

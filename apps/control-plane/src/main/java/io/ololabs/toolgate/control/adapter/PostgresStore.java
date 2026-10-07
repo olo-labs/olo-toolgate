@@ -5,6 +5,7 @@ package io.ololabs.toolgate.control.adapter;
 import io.agroal.api.AgroalDataSource;
 import io.ololabs.toolgate.control.application.Store;
 import io.ololabs.toolgate.control.application.Failure;
+import io.ololabs.toolgate.control.application.McpStore;
 import io.ololabs.toolgate.control.domain.Directory;
 import io.ololabs.toolgate.control.domain.Ids.Kind;
 import io.ololabs.toolgate.control.domain.Ids.RecordId;
@@ -100,6 +101,34 @@ public class PostgresStore implements Store {
             try (var s=statement("INSERT INTO control_endpoints (tenant_id,device_id,key_fingerprint,document,csr,report_digest,acknowledgment) VALUES (?,?,?,?,?,?,?) ON CONFLICT (tenant_id,device_id) DO UPDATE SET document=excluded.document,report_digest=excluded.report_digest,acknowledgment=excluded.acknowledgment",
                 e.id(),e.fingerprint(),e.document(),e.csr(),e.reportDigest(),e.acknowledgment())) {s.executeUpdate();}
             catch (SQLException failure) {throw Failure.unavailable();}
+        }
+        public EndpointConfiguration endpointConfiguration(String deviceId) {
+            try (var s=statement("SELECT source_revision,document,acknowledged_digest,local_tools FROM control_endpoint_configurations WHERE tenant_id=? AND device_id=?",deviceId);var rows=s.executeQuery()) {
+                return rows.next()?new EndpointConfiguration(deviceId,rows.getLong(1),rows.getString(2),rows.getString(3),rows.getString(4)):null;
+            } catch(SQLException failure){throw Failure.unavailable();}
+        }
+        public void saveEndpointConfiguration(EndpointConfiguration configuration) {
+            try(var s=statement("INSERT INTO control_endpoint_configurations (tenant_id,device_id,source_revision,document,acknowledged_digest,local_tools) VALUES (?,?,?,?,?,?) ON CONFLICT (tenant_id,device_id) DO UPDATE SET source_revision=excluded.source_revision,document=excluded.document,acknowledged_digest=excluded.acknowledged_digest,local_tools=excluded.local_tools",
+                configuration.deviceId(),configuration.sourceRevision(),configuration.document(),configuration.acknowledgedDigest(),configuration.localTools())) {
+                if(s.executeUpdate()!=1)throw Failure.conflict();
+            } catch(SQLException failure){throw Failure.unavailable();}
+        }
+        public McpStore mcp() {
+            return new McpStore() {
+                private Row row(java.sql.ResultSet rows)throws SQLException{return new Row(rows.getString(1),rows.getString(2),rows.getString(3),rows.getLong(4),rows.getString(5),rows.getString(6),rows.getString(7));}
+                private java.util.List<Row> query(String suffix,Object... parameters){
+                    try(var s=statement("SELECT request_id,device_id,state,expires_at,record,task,result FROM control_mcp_requests WHERE tenant_id=? "+suffix,parameters);var rows=s.executeQuery()){
+                        var values=new java.util.ArrayList<Row>();while(rows.next())values.add(row(rows));return java.util.List.copyOf(values);
+                    }catch(SQLException failure){throw Failure.unavailable();}
+                }
+                public Row get(String id){var rows=query("AND request_id=?",id);return rows.isEmpty()?null:rows.getFirst();}
+                public java.util.List<Row> page(int limit){return query("ORDER BY received_at DESC,request_id LIMIT ?",limit);}
+                public java.util.List<Row> pending(String deviceId,int limit){return query("AND device_id=? AND state IN ('WAITING_FOR_POLL','SUBMITTED') ORDER BY received_at,request_id LIMIT ?",deviceId,limit);}
+                public void save(Row row){try(var s=statement("INSERT INTO control_mcp_requests (tenant_id,request_id,device_id,state,expires_at,received_at,record,task,result) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT (tenant_id,request_id) DO UPDATE SET state=excluded.state,record=excluded.record,result=excluded.result",
+                    row.id(),row.deviceId(),row.state(),row.expiresAt(),codec.model(row.record(),io.ololabs.toolgate.contracts.RemoteToolRecord.class).receivedAtUnixMs(),row.record(),row.task(),row.result())){if(s.executeUpdate()!=1)throw Failure.conflict();}catch(SQLException failure){throw Failure.unavailable();}}
+                public void prune(long before){try(var s=statement("DELETE FROM control_mcp_requests WHERE tenant_id=? AND expires_at<?",before)){s.executeUpdate();}catch(SQLException failure){throw Failure.unavailable();}}
+                public long count(){try(var s=statement("SELECT count(*) FROM control_mcp_requests WHERE tenant_id=?");var rows=s.executeQuery()){rows.next();return rows.getLong(1);}catch(SQLException failure){throw Failure.unavailable();}}
+            };
         }
         public long bundleSequence() {
             try (var statement = statement("SELECT COALESCE(max(sequence),0) FROM control_policy_bundles WHERE tenant_id=?"); var rows = statement.executeQuery()) {

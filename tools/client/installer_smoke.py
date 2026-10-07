@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import shutil
 import subprocess
 import tempfile
 import time
@@ -26,7 +27,12 @@ def check(target):
     installed=False
     try:
         if system=='Windows':
-            run([str(installer),'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SERVER=https://control.example.invalid'])
+            # Exercise the exact anonymous web download: one EXE, no URL argument or prompt.
+            hint='https://control.example.invalid'.encode().hex()
+            with tempfile.TemporaryDirectory(prefix='toolgate-configured-') as temporary:
+                configured=Path(temporary)/f'olo-toolgate-client-{target}--{hint}.setup.exe'
+                shutil.copyfile(installer,configured)
+                run([str(configured),'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'])
             installed=True
         elif system=='Linux':
             run(['/bin/sh',str(installer),'--verify'])
@@ -56,6 +62,16 @@ def check(target):
         else:assert 'state = running' in run(['sudo','-n','launchctl','print','system/io.ololabs.toolgate.client']).stdout
         if system=='Windows':
             import winreg
+            config=Path(r'C:\ProgramData\OLO\ToolGate\client.json')
+            state=config.parent/'state'
+            key=hashlib.sha256((state/'device-key').read_bytes()).hexdigest()
+            run([str(installer),'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'])
+            if hashlib.sha256((state/'device-key').read_bytes()).hexdigest()!=key:raise ValueError('Repair changed the device key')
+            run([str(binary),'configure','--server','https://second.example.invalid'])
+            if json.loads(config.read_text())['serverUrl']!='https://second.example.invalid':raise ValueError('Gateway switch was not stored')
+            if hashlib.sha256((state/'device-key').read_bytes()).hexdigest()!=key:raise ValueError('Gateway switch changed the device key')
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,r'Software\Microsoft\Windows\CurrentVersion\Run',0,winreg.KEY_READ|winreg.KEY_WOW64_64KEY) as tray_key:
+                if 'toolgate-tray.ps1' not in winreg.QueryValueEx(tray_key,'OloToolGateTray')[0]:raise ValueError('Tray startup is missing')
             with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,r'Software\Google\Chrome\NativeMessagingHosts\io.ololabs.toolgate.connect',0,winreg.KEY_READ|winreg.KEY_WOW64_64KEY) as key:
                 registered=Path(winreg.QueryValue(key,None))
             host_manifest=json.loads(registered.read_text())

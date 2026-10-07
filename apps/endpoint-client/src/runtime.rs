@@ -45,8 +45,8 @@ pub async fn run(config: Config, shutdown: tokio::sync::watch::Receiver<bool>) -
                 state.next_delay_seconds()
             };
             // Network time counts toward the cycle; never overlap or catch up missed requests.
-            next = (started + std::time::Duration::from_secs(delay))
-                .max(tokio::time::Instant::now());
+            next =
+                (started + std::time::Duration::from_secs(delay)).max(tokio::time::Instant::now());
         }
     });
     tracing::info!(

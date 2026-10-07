@@ -325,6 +325,8 @@ pub struct BuiltinIpcRequest {
     pub operation: BuiltinOperation,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub invocation: Option<BuiltinInvocation>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_id: Option<String>,
 }
 /// Fixed service tool boundary; validate schema before use.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -850,6 +852,10 @@ pub struct DeviceIdentity {
 pub struct EndpointCheckIn {
     pub sequence: u64,
     pub report: ClientReport,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub configuration_digest: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub local_tools: Option<Vec<BuiltinToolInfo>>,
 }
 /// Endpoint identity foundation wire model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -861,6 +867,10 @@ pub struct EndpointCheckInAck {
     pub next_interval_seconds: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub identity: Option<DeviceIdentity>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub configuration: Option<EndpointPermissionConfiguration>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub task: Option<RemoteToolTask>,
 }
 /// Endpoint identity foundation wire model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -943,6 +953,27 @@ pub struct EndpointEnrollmentStart {
     pub platform: ClientPlatform,
     pub csr_pem: String,
     pub capabilities: Vec<String>,
+}
+/// Server-cached complete replacement of device permissions, acknowledged by digest on the next authenticated poll.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EndpointPermissionConfiguration {
+    pub server_id: String,
+    pub device_id: String,
+    pub user_id: String,
+    pub revision: u64,
+    pub digest: String,
+    pub permissions: Vec<EndpointPermissionRule>,
+}
+/// Device-owner permission scope used only for local discovery; protected calls still require online authorization.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EndpointPermissionRule {
+    pub tool_id: String,
+    pub action: String,
+    pub agent_ids: Vec<String>,
+    pub resource: ResourceDescriptor,
+    pub decision: Decision,
 }
 /// Endpoint identity foundation wire model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1334,6 +1365,12 @@ pub struct LocalRuntimeStatus {
     pub state: LocalRuntimeState,
     pub version: String,
 }
+/// Only enabled local definitions applicable to this verified agent and device.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct LocalToolCatalog {
+    pub tools: Vec<BuiltinToolInfo>,
+}
 /// One JSON stdin document; arguments never become process command strings.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -1442,6 +1479,101 @@ pub struct PolicyInput {
     pub action: String,
     pub resource: ResourceDescriptor,
     pub arguments_digest: String,
+}
+/// A leased client rechecks the exact pending operation online before execution.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteToolAuthorization {
+    pub request_id: String,
+    pub lease_id: String,
+    pub request: AuthorizationRequest,
+}
+/// Fresh remote operation deadline, never a reusable grant.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteToolAuthorizationAck {
+    pub expires_at_unix_ms: u64,
+}
+/// Bounded recent local-tool request progress.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteToolPage {
+    pub items: Vec<RemoteToolRecord>,
+}
+/// Request progress visible to an administrator without arguments or results.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteToolRecord {
+    pub request_id: String,
+    pub device_id: String,
+    pub agent_id: String,
+    pub tool_id: String,
+    pub state: RemoteToolState,
+    pub received_at_unix_ms: u64,
+    pub expires_at_unix_ms: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub submitted_at_unix_ms: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub response_at_unix_ms: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completed_at_unix_ms: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<ErrorCode>,
+}
+/// Gateway-private queued request/result response.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteToolResponse {
+    pub record: RemoteToolRecord,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result: Option<RemoteToolResult>,
+}
+/// Exact leased execution response. Failed execution carries a sanitized error code.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteToolResult {
+    pub request_id: String,
+    pub lease_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output: Option<std::collections::BTreeMap<String, serde_json::Value>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<ErrorCode>,
+}
+/// Canonical RemoteToolState wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RemoteToolState {
+    #[serde(rename = "RECEIVED")]
+    Received,
+    #[serde(rename = "WAITING_FOR_POLL")]
+    WaitingForPoll,
+    #[serde(rename = "SUBMITTED")]
+    Submitted,
+    #[serde(rename = "RESPONSE_RECEIVED")]
+    ResponseReceived,
+    #[serde(rename = "DONE")]
+    Done,
+    #[serde(rename = "FAILED")]
+    Failed,
+    #[serde(rename = "EXPIRED")]
+    Expired,
+}
+/// Dedicated Gateway-authenticated request for one device-local tool.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteToolSubmission {
+    pub input: PolicyInput,
+    pub request: AuthorizationRequest,
+    pub expires_at_unix_ms: u64,
+}
+/// Bounded lease delivered only over device-authenticated polling; executable definitions are never accepted from an agent.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteToolTask {
+    pub request_id: String,
+    pub lease_id: String,
+    pub input: PolicyInput,
+    pub request: AuthorizationRequest,
+    pub expires_at_unix_ms: u64,
 }
 /// Observed package state, distinct from assigned desired state.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -4,7 +4,7 @@ import {afterEach,expect,it,vi} from 'vitest';
 import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {Connect,extensionStatus} from '../src/Connect';
 
-afterEach(()=>{cleanup();vi.restoreAllMocks();vi.unstubAllGlobals();});
+afterEach(()=>{cleanup();vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllGlobals();});
 const release={protocol:1,version:'0.10.0-dev',chromeVersion:'0.10.0.23',extensionId:'emmemldedebhbloibichmmdlbpjakfkf',storeUrl:'',filename:'olo-toolgate-chrome-0.10.0-dev-23.zip',sha256:'a'.repeat(64),bytes:123};
 const setup={version:release.version,artifacts:[{platform:'WINDOWS',target:'x86_64-pc-windows-msvc',filename:'olo-toolgate-client-0.10.0-dev-x86_64-pc-windows-msvc.setup.exe',sha256:'b'.repeat(64),bytes:123}]};
 function chrome(){vi.spyOn(navigator,'userAgent','get').mockReturnValue('Windows Chrome/140.0');vi.stubGlobal('fetch',vi.fn().mockImplementation((url:string)=>Promise.resolve(new Response(JSON.stringify(url.endsWith('/installers')?setup:release)))));}
@@ -17,7 +17,7 @@ it('rejects other browsers without starting a download',async()=>{
 it('guides an incompatible extension upgrade and cancels polling',async()=>{
   chrome();bridge({protocol:1,chromeVersion:'0.10.0.22',version:'0.10.0-dev'});
   render(<Connect onCode={vi.fn()}/>);fireEvent.click(screen.getByRole('button',{name:'Connect'}));
-  await screen.findByText(/Upgrade the Chrome extension/);expect(screen.getByRole('link',{name:'Download Chrome extension'}).getAttribute('href')).toBe('/api/public/v1/clients/olo-toolgate-client-x86_64-pc-windows-msvc.setup.exe');
+  await screen.findByText(/Upgrade the Chrome extension/);expect(screen.getByRole('link',{name:'Install Chrome extension and client'}).getAttribute('href')).toBe('/api/public/v1/clients/setup/x86_64-pc-windows-msvc');
   expect(screen.queryByRole('link',{name:'Download extension package for Chrome approval'})).toBeNull();
   fireEvent.click(screen.getByRole('button',{name:'Cancel Connect'}));await screen.findByText(/Connect cancelled/);
 });
@@ -31,7 +31,7 @@ it('does not offer setup from a different client release',async()=>{
   vi.stubGlobal('fetch',vi.fn().mockImplementation((url:string)=>Promise.resolve(new Response(JSON.stringify(url.endsWith('/installers')?{...setup,version:'0.9.0'}:release)))));
   render(<Connect onCode={vi.fn()}/>);fireEvent.click(screen.getByRole('button',{name:'Connect'}));
   await screen.findByText(/Windows setup is not published/);
-  expect(screen.queryByRole('link',{name:'Download Chrome extension'})).toBeNull();
+  expect(screen.queryByRole('link',{name:'Install Chrome extension and client'})).toBeNull();
   expect(screen.queryByRole('link',{name:'Download extension package for Chrome approval'})).toBeNull();
   fireEvent.click(screen.getByRole('button',{name:'Cancel Connect'}));
 });
@@ -50,4 +50,19 @@ it('bridge ignores a different source, origin or correlation ID',async()=>{
   await Promise.resolve();expect(done).toBe(false);
   window.dispatchEvent(new MessageEvent('message',{source:window,origin:location.origin,data:{channel:'toolgate-connect-response',id,protocol:1}}));
   await pending;await waitFor(()=>expect(done).toBe(true));
+});
+it('detects a newly installed extension and continues once without a page reload',async()=>{
+  vi.useFakeTimers();chrome();let installed=false;
+  const sent=vi.spyOn(window,'postMessage').mockImplementation(message=>{
+    if(!installed)return;
+    queueMicrotask(()=>window.dispatchEvent(new MessageEvent('message',{source:window,origin:location.origin,
+      data:{channel:'toolgate-connect-response',id:message.id,protocol:1,version:release.version,chromeVersion:release.chromeVersion,phase:'available'}})));
+  });
+  render(<Connect onCode={vi.fn()}/>);fireEvent.click(screen.getByRole('button',{name:'Connect'}));
+  await vi.advanceTimersByTimeAsync(2001);
+  expect(screen.getByText(/This page will detect it automatically/)).toBeTruthy();
+  installed=true;
+  await vi.advanceTimersByTimeAsync(4000);
+  expect(sent.mock.calls.filter(([message])=>message.operation==='connect')).toHaveLength(1);
+  fireEvent.click(screen.getByRole('button',{name:'Cancel Connect'}));
 });

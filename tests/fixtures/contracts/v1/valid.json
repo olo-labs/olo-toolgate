@@ -2134,5 +2134,156 @@
         }
       }
     ]
+  },
+  "EndpointPermissionRule": {
+    "toolId": "calculator.evaluate",
+    "action": "invoke",
+    "agentIds": [],
+    "resource": {
+      "kind": "CUSTOM",
+      "locator": "calculator"
+    },
+    "decision": "ALLOW"
+  },
+  "EndpointPermissionConfiguration": {
+    "serverId": "server",
+    "deviceId": "device",
+    "userId": "owner",
+    "revision": 1,
+    "digest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "permissions": [
+      {
+        "toolId": "calculator.evaluate",
+        "action": "invoke",
+        "agentIds": [],
+        "resource": {
+          "kind": "CUSTOM",
+          "locator": "calculator"
+        },
+        "decision": "ALLOW"
+      }
+    ]
+  },
+  "RemoteToolState": "WAITING_FOR_POLL",
+  "RemoteToolSubmission": {
+    "input": {
+      "context": {
+        "requestId": "request-1",
+        "tenantId": "tenant-1",
+        "userId": "user-1",
+        "agentId": "agent-1",
+        "deviceId": "device-1"
+      },
+      "toolId": "files.read",
+      "action": "read",
+      "resource": {
+        "kind": "FILE",
+        "locator": "workspace/readme.txt"
+      },
+      "argumentsDigest": "3e41e6e0c99913a5a87df395ecf96688309a00925ae47ca45bb9b1b7671fa975"
+    },
+    "request": {
+      "toolId": "files.read",
+      "action": "read",
+      "arguments": {
+        "path": "workspace/readme.txt"
+      }
+    },
+    "expiresAtUnixMs": 1700000030000
+  },
+  "RemoteToolTask": {
+    "requestId": "request",
+    "leaseId": "lease",
+    "input": {
+      "context": {
+        "requestId": "request",
+        "tenantId": "tenant-1",
+        "userId": "user-1",
+        "agentId": "agent-1",
+        "deviceId": "device-1"
+      },
+      "toolId": "files.read",
+      "action": "read",
+      "resource": {
+        "kind": "FILE",
+        "locator": "workspace/readme.txt"
+      },
+      "argumentsDigest": "3e41e6e0c99913a5a87df395ecf96688309a00925ae47ca45bb9b1b7671fa975"
+    },
+    "request": {
+      "toolId": "files.read",
+      "action": "read",
+      "arguments": {
+        "path": "workspace/readme.txt"
+      }
+    },
+    "expiresAtUnixMs": 1700000030000
+  },
+  "RemoteToolResult": {
+    "requestId": "request",
+    "leaseId": "lease",
+    "output": {
+      "value": "ok"
+    }
+  },
+  "RemoteToolRecord": {
+    "requestId": "request",
+    "deviceId": "device",
+    "agentId": "agent",
+    "toolId": "tool",
+    "state": "WAITING_FOR_POLL",
+    "receivedAtUnixMs": 1700000000000,
+    "expiresAtUnixMs": 1700000030000
+  },
+  "RemoteToolPage": {
+    "items": [
+      {
+        "requestId": "request",
+        "deviceId": "device",
+        "agentId": "agent",
+        "toolId": "tool",
+        "state": "WAITING_FOR_POLL",
+        "receivedAtUnixMs": 1700000000000,
+        "expiresAtUnixMs": 1700000030000
+      }
+    ]
+  },
+  "RemoteToolResponse": {
+    "record": {
+      "requestId": "request",
+      "deviceId": "device",
+      "agentId": "agent",
+      "toolId": "tool",
+      "state": "WAITING_FOR_POLL",
+      "receivedAtUnixMs": 1700000000000,
+      "expiresAtUnixMs": 1700000030000
+    }
+  },
+  "RemoteToolAuthorization": {
+    "requestId": "request",
+    "leaseId": "lease",
+    "request": {
+      "toolId": "files.read",
+      "action": "read",
+      "arguments": {
+        "path": "workspace/readme.txt"
+      }
+    }
+  },
+  "RemoteToolAuthorizationAck": {
+    "expiresAtUnixMs": 1700000030000
+  },
+  "LocalToolCatalog": {
+    "tools": [
+      {
+        "toolId": "hotfolder.read_text",
+        "action": "read",
+        "description": "Read bounded UTF-8 content.",
+        "enabled": true,
+        "inputSchema": {
+          "type": "object"
+        }
+      }
+    ]
   }
 }

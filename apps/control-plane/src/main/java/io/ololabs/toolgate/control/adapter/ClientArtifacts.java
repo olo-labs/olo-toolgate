@@ -82,6 +82,14 @@ public class ClientArtifacts {
     public ClientDownloadManifest manifest(){if(manifest==null)throw unavailable();return manifest;}
     public ClientInstallerManifest installers(){if(installers==null)throw unavailable();return installers;}
     public Map<?,?> extension(){if(extension==null)throw unavailable();return extension;}
+    public jakarta.ws.rs.core.Response configuredWindowsInstaller(String target,String server) {
+        var installer=installers().artifacts().stream().filter(a->a.platform()==ClientPlatform.WINDOWS&&a.target().equals(target)).findFirst().orElseThrow(()->new Failure(ErrorCode.NOT_FOUND,404,"Windows installer unavailable"));
+        if(server.length()>90||!server.matches("https://[a-zA-Z0-9:/.\\[\\]-]+"))throw new Failure(ErrorCode.VALIDATION,400,"Gateway URL cannot be carried in the installer filename");
+        var name="olo-toolgate-client-"+target+"--"+java.util.HexFormat.of().formatHex(server.getBytes(java.nio.charset.StandardCharsets.US_ASCII))+".setup.exe";
+        return jakarta.ws.rs.core.Response.fromResponse(download(installer.filename()))
+            .header("Content-Disposition",null).header("Content-Disposition","attachment; filename=\""+name+"\"")
+            .header("Cache-Control",null).header("Cache-Control","no-store").build();
+    }
     private static Failure unavailable(){return new Failure(ErrorCode.DEPENDENCY_UNAVAILABLE,503,"Client downloads are unavailable");}
     private SeekableByteChannel open(ClientDownloadArtifact artifact)throws java.io.IOException {
         if(!Files.isRegularFile(directory.resolve(artifact.filename()),LinkOption.NOFOLLOW_LINKS))throw new java.io.IOException("Invalid artifact");

@@ -38,6 +38,15 @@ const server=createServer(async(req,res)=>{
   res.setHeader('X-Content-Type-Options','nosniff');
   const manifest=path==='/api/public/v1/clients'?archives:path==='/api/public/v1/installers'?installers:undefined;
   if(manifest){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({version,artifacts:manifest}));return;}
+  if(path.startsWith('/api/public/v1/clients/setup/')) {
+    const target=path.substring('/api/public/v1/clients/setup/'.length);
+    const asset=assets.get(`olo-toolgate-client-${target}.setup.exe`);
+    if(!asset){res.writeHead(404);res.end();return;}
+    const hint=Buffer.from('https://control.example.test').toString('hex');
+    res.setHeader('Content-Type','application/octet-stream');
+    res.setHeader('Content-Disposition',`attachment; filename="olo-toolgate-client-${target}--${hint}.setup.exe"`);
+    res.setHeader('Cache-Control','no-store');res.end(asset.bytes);return;
+  }
   if(path.startsWith('/api/public/v1/clients/')) {
     const name=decodeURIComponent(path.substring('/api/public/v1/clients/'.length));const asset=assets.get(name);
     if(!asset){res.writeHead(404);res.end();return;}

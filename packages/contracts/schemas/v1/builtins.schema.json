@@ -78,6 +78,9 @@
         },
         "invocation": {
           "$ref": "builtins.schema.json#/$defs/BuiltinInvocation"
+        },
+        "agentId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
         }
       },
       "required": [
@@ -96,7 +99,7 @@
         },
         "tools": {
           "type": "array",
-          "maxItems": 18,
+          "maxItems": 50,
           "items": {
             "$ref": "builtins.schema.json#/$defs/BuiltinToolInfo"
           }

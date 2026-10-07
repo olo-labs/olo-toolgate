@@ -10,7 +10,7 @@ test('Connect guides installation, remains accessible and cancels without claimi
   await page.addInitScript(()=>{
     window.addEventListener('message',event=>{
       if(event.source!==window||event.data?.channel!=='toolgate-connect-request')return;
-      window.postMessage({channel:'toolgate-connect-response',id:event.data.id,protocol:1,version:'0.10.0-dev',chromeVersion:'0.10.0.23',phase:'open-installer',client:null},location.origin);
+      window.postMessage({channel:'toolgate-connect-response',id:event.data.id,protocol:1,version:'0.10.0-dev',chromeVersion:'0.10.0.23',phase:'connecting',client:null},location.origin);
     });
   });
   await page.goto('/console/');
@@ -20,7 +20,7 @@ test('Connect guides installation, remains accessible and cancels without claimi
   }
   await expect(page.getByRole('heading',{name:'Your organization, at a glance'})).toBeVisible();
   await page.goto('/console/#enroll');await page.getByRole('button',{name:'Connect',exact:true}).click();
-  await expect(page.getByText(/Download complete/)).toBeVisible();
+  await expect(page.getByText(/Installing the verified client or updating its gateway URL/)).toBeVisible();
   expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
   await expect(page.getByText(/^Connected:/)).toHaveCount(0);
   await page.getByRole('button',{name:'Cancel Connect'}).click();await expect(page.getByText(/Connect cancelled/)).toBeVisible();

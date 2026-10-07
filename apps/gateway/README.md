@@ -1,6 +1,6 @@
 # Gateway
 
-**Status:** Module 01 implemented; authorization decisions and MCP skeleton
+**Status:** Authorization decisions, signed bundles, approvals and optional client MCP relay
 **Primary stack:** Rust
 
 ## Responsibility
@@ -45,3 +45,7 @@ invalid/outdated bundles retain only a still-valid verified snapshot. See
 Module 05 adds opt-in ASK coordination, `/v2/authorize`, separately signed ten-second
 maximum exact-bound permits and `/v1/permits/consume`. Approval outage or changed
 policy blocks. Legacy v1/MCP block ASK. [Approval protocol/configuration](../../docs/control-plane/approvals.md).
+
+The optional [client MCP relay](../../docs/client/server-mcp.md) exposes applicable
+installed tools and queues ALLOW calls for the next enrolled client poll. Control
+stores the permission cache and request progress; clients perform the protected effect.

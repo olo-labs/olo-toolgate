@@ -11,19 +11,21 @@ final readonly class BuiltinIpcRequest implements \JsonSerializable {
         public int $protocolVersion,
         public string $requestId,
         public BuiltinOperation $operation,
-        public ?BuiltinInvocation $invocation = null
+        public ?BuiltinInvocation $invocation = null,
+        public ?string $agentId = null
     ) {}
 
     /** Decode a structural model; canonical schema validation is also required. */
     public static function fromArray(array $data): self {
-        if (array_diff(array_keys($data), ['protocolVersion', 'requestId', 'operation', 'invocation']) || array_diff(['protocolVersion', 'requestId', 'operation'], array_keys($data))) {
+        if (array_diff(array_keys($data), ['protocolVersion', 'requestId', 'operation', 'invocation', 'agentId']) || array_diff(['protocolVersion', 'requestId', 'operation'], array_keys($data))) {
             throw new \InvalidArgumentException('Unknown or missing contract fields');
         }
         return new self(
             $data['protocolVersion'],
             $data['requestId'],
             BuiltinOperation::from($data['operation']),
-            array_key_exists('invocation', $data) ? BuiltinInvocation::fromArray($data['invocation']) : null
+            array_key_exists('invocation', $data) ? BuiltinInvocation::fromArray($data['invocation']) : null,
+            array_key_exists('agentId', $data) ? $data['agentId'] : null
         );
     }
 

@@ -88,7 +88,9 @@ async fn command(arguments: Vec<String>) -> Result<()> {
             Ok(())
         }
         "tools" if arguments.len() == 1 || arguments.len() == 3 => {
-            let invocation = if arguments.len() == 3 {
+            let agent =
+                (arguments.len() == 3 && arguments[1] == "--agent").then(|| arguments[2].clone());
+            let invocation = if arguments.len() == 3 && agent.is_none() {
                 Some(olo_toolgate_contracts::BuiltinInvocation {
                     tool_id: arguments[1].clone(),
                     arguments: serde_json::from_str(&arguments[2])
@@ -99,9 +101,10 @@ async fn command(arguments: Vec<String>) -> Result<()> {
             };
             let response = tokio::time::timeout(
                 std::time::Duration::from_secs(20),
-                olo_toolgate_client::ipc::call_tool(
+                olo_toolgate_client::ipc::call_tool_for_agent(
                     &olo_toolgate_client::install::ipc_endpoint(),
                     invocation,
+                    agent,
                 ),
             )
             .await
@@ -119,11 +122,15 @@ async fn command(arguments: Vec<String>) -> Result<()> {
             println!("{}", env!("CARGO_PKG_VERSION"));
             Ok(())
         }
-        "install" | "reinstall" if (arguments.len() == 3 || arguments.len() == 5)
-            && arguments[1] == "--server"
-            && (arguments.len() == 3 || arguments[3] == "--peer") => {
+        "install" | "reinstall" | "configure"
+            if (arguments.len() == 3 || arguments.len() == 5)
+                && arguments[1] == "--server"
+                && (arguments.len() == 3 || arguments[3] == "--peer") =>
+        {
             let peer = arguments.get(4).map(String::as_str);
-            if operation == "reinstall" {
+            if operation == "configure" {
+                olo_toolgate_client::install::configure(&arguments[2], peer)
+            } else if operation == "reinstall" {
                 olo_toolgate_client::install::reinstall(&arguments[2], peer)
             } else {
                 olo_toolgate_client::install::install_for_peer(&arguments[2], peer)

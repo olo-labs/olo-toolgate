@@ -104,14 +104,16 @@ final class SqliteTest {
             }
             s.execute("INSERT INTO control_records VALUES('tenant','USER','kept',1,'{\"id\":\"kept\",\"name\":\"Kept\",\"enabled\":true,\"revision\":1}')");
             s.execute("DROP TABLE quickstart_vault");
+            s.execute("DROP TABLE control_mcp_requests");
+            s.execute("DROP TABLE control_endpoint_configurations");
             for(var name:java.util.List.of("control_audit","control_approvals","control_permit_leases","control_enrollments","control_idempotency"))s.execute("DROP INDEX "+name+"_local_cursor");
             s.execute("DELETE FROM quickstart_migrations WHERE version>=2");
         }
         source=SqliteState.open(path);
         try(var c=source.getConnection();var s=c.createStatement()){
-            try(var r=s.executeQuery("SELECT count(*) FROM quickstart_migrations")){assertTrue(r.next());assertEquals(3,r.getInt(1));}
+            try(var r=s.executeQuery("SELECT count(*) FROM quickstart_migrations")){assertTrue(r.next());assertEquals(4,r.getInt(1));}
             try(var r=s.executeQuery("SELECT document FROM control_records WHERE record_id='kept'")){assertTrue(r.next());assertTrue(r.getString(1).contains("Kept"));}
-            s.execute("INSERT INTO quickstart_migrations VALUES(4,'future')");
+            s.execute("INSERT INTO quickstart_migrations VALUES(5,'future')");
         }
         assertThrows(IllegalStateException.class,()->SqliteState.open(path));
     }

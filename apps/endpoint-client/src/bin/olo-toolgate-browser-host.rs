@@ -1,6 +1,6 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
-//! One-shot, unprivileged Chrome host. No secrets, arbitrary commands, URLs or shell execution.
+//! One-shot Chrome host. Setup accepts a console URL, never credentials or arbitrary commands.
 use std::io::{Read, Write};
 
 #[derive(serde::Deserialize, Debug, PartialEq, Eq)]
@@ -8,11 +8,13 @@ use std::io::{Read, Write};
 enum Operation {
     Health,
     Enroll,
+    Connect,
 }
 #[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Request {
     operation: Operation,
+    console_url: Option<String>,
 }
 fn read_frame(input: &mut impl Read) -> std::io::Result<Request> {
     let mut size = [0; 4];
@@ -23,7 +25,12 @@ fn read_frame(input: &mut impl Read) -> std::io::Result<Request> {
     }
     let mut bytes = vec![0; size];
     input.read_exact(&mut bytes)?;
-    serde_json::from_slice(&bytes).map_err(|_| std::io::ErrorKind::InvalidData.into())
+    let request: Request =
+        serde_json::from_slice(&bytes).map_err(|_| std::io::ErrorKind::InvalidData)?;
+    if (request.operation == Operation::Connect) != request.console_url.is_some() {
+        return Err(std::io::ErrorKind::InvalidData.into());
+    }
+    Ok(request)
 }
 fn main() {
     let origin = std::env::args().nth(1).unwrap_or_default();
@@ -33,29 +40,50 @@ fn main() {
     let Ok(request) = read_frame(&mut std::io::stdin().lock()) else {
         std::process::exit(1);
     };
+    let connecting = request.operation == Operation::Connect;
     let operation = match request.operation {
         Operation::Health => olo_toolgate_contracts::ClientIpcOperation::Health,
         Operation::Enroll => olo_toolgate_contracts::ClientIpcOperation::Enroll,
+        Operation::Connect => olo_toolgate_contracts::ClientIpcOperation::Health,
     };
+    let mut server_url = None;
     let response = olo_toolgate_client::runtime::executor().and_then(|runtime| {
         runtime.block_on(async {
-            tokio::time::timeout(
-                std::time::Duration::from_secs(20),
-                olo_toolgate_client::ipc::call(
-                    &olo_toolgate_client::install::ipc_endpoint(),
-                    operation,
-                ),
-            )
+            if let Some(url) = request.console_url {
+                server_url = Some(olo_toolgate_client::browser::connect(&url).await?);
+            }
+            tokio::time::timeout(std::time::Duration::from_secs(20), async {
+                loop {
+                    let response = olo_toolgate_client::ipc::call(
+                        &olo_toolgate_client::install::ipc_endpoint(),
+                        operation.clone(),
+                    )
+                    .await;
+                    if !connecting || response.as_ref().is_ok_and(|value| value.error.is_none()) {
+                        return response;
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+                }
+            })
             .await
             .map_err(|_| olo_toolgate_client::Failure::Expired)?
         })
     });
-    let value = match response {
+    let mut value = match response {
         Ok(value) => {
             serde_json::to_value(value).unwrap_or(serde_json::json!({"error":"UNAVAILABLE"}))
         }
         Err(_) => serde_json::json!({"error":"UNAVAILABLE"}),
     };
+    if server_url.is_none() {
+        server_url =
+            olo_toolgate_client::config::Config::load(&olo_toolgate_client::install::config_path())
+                .ok()
+                .map(|settings| settings.server_url);
+    }
+    if let Some(server) = server_url {
+        value["serverUrl"] = serde_json::json!(server);
+    }
     let bytes = serde_json::to_vec(&value).unwrap_or_default();
     if bytes.is_empty() || bytes.len() > 16384 {
         std::process::exit(1);
@@ -91,10 +119,20 @@ mod tests {
             r#"{"operation":"health","operation":"enroll"}"#,
             r#"{"operation":"execute"}"#,
             r#"{"operation":"health","server":"https://evil.example"}"#,
+            r#"{"operation":"connect"}"#,
+            r#"{"operation":"health","consoleUrl":"https://gate.example/console/"}"#,
+            r#"{"operation":"connect","consoleUrl":"https://gate.example/console/","credentials":"secret"}"#,
         ] {
             let mut bytes = (invalid.len() as u32).to_le_bytes().to_vec();
             bytes.extend(invalid.as_bytes());
             assert!(read_frame(&mut bytes.as_slice()).is_err());
         }
+        let body = br#"{"operation":"connect","consoleUrl":"https://gate.example/console/"}"#;
+        let mut bytes = (body.len() as u32).to_le_bytes().to_vec();
+        bytes.extend(body);
+        assert_eq!(
+            read_frame(&mut bytes.as_slice()).unwrap().operation,
+            Operation::Connect
+        );
     }
 }

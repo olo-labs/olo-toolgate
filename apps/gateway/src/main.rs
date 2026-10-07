@@ -117,7 +117,15 @@ async fn run() -> Result<(), &'static str> {
         approval,
         permit_signer,
     };
-    let state = Arc::new(AppState::new(gateway, auth, config.clone()));
+    let relay = config
+        .local_mcp
+        .clone()
+        .map(olo_toolgate_gateway::relay::HttpRelay::new)
+        .transpose()?;
+    let mut state = AppState::new(gateway, auth, config.clone());
+    state.relay =
+        relay.map(|relay| Arc::new(relay) as Arc<dyn olo_toolgate_gateway::relay::RelayPort>);
+    let state = Arc::new(state);
     let runtime_task = tokio::spawn(server::serve(
         runtime,
         runtime_router(state.clone()),

@@ -58,7 +58,21 @@ pub fn verify(
 }
 /// Run a fixed invocation in the existing confined engine. Test success grants no ordinary invocation capability.
 pub async fn run(config: &Config, task: &BuilderTestTask) -> Result<()> {
+    let (_cancel, receiver) = tokio::sync::watch::channel(false);
+    run_cancellable(config, task, receiver).await
+}
+
+async fn run_cancellable(
+    config: &Config,
+    task: &BuilderTestTask,
+    mut cancelled: tokio::sync::watch::Receiver<bool>,
+) -> Result<()> {
+    if *cancelled.borrow() {
+        return Err(Failure::Revoked);
+    }
     let mut settings = config.execution.clone().ok_or(Failure::Unsupported)?;
+    // Separate ownership prevents deployment recovery from reaping a live test sandbox.
+    settings.state_directory = settings.state_directory.join("builder");
     settings.runtimes = vec![task.definition.runtime.clone()];
     settings.tools = vec![task.definition.tool.clone()];
     settings.validate()?;
@@ -68,12 +82,91 @@ pub async fn run(config: &Config, task: &BuilderTestTask) -> Result<()> {
         Arc::new(crate::contracts::Contracts::new()?),
     )?);
     let mut sandbox = execution::Manager::new(settings, auth)?;
-    let result = tokio::time::timeout(
+    let execution = tokio::time::timeout(
         std::time::Duration::from_millis(task.expires_at_unix_ms.saturating_sub(crate::now())),
         sandbox.probe(&task.definition.examples[task.job.example_index as usize]),
-    )
-    .await
-    .unwrap_or(Err(Failure::Expired));
+    );
+    let result = tokio::select! {
+        _ = cancelled.changed() => Err(Failure::Revoked),
+        result = execution => result.unwrap_or(Err(Failure::Expired)),
+    };
     sandbox.shutdown().await?;
     result
+}
+
+/// One leased job runs independently of check-ins and is cancelled on loss of authority.
+pub(crate) struct Job {
+    task: BuilderTestTask,
+    handle: Option<tokio::task::JoinHandle<Result<()>>>,
+    cancel: tokio::sync::watch::Sender<bool>,
+}
+impl Job {
+    #[cfg(test)]
+    pub(crate) fn waiting(task: BuilderTestTask) -> Self {
+        let (cancel, mut receiver) = tokio::sync::watch::channel(false);
+        let handle = tokio::spawn(async move {
+            let _ = receiver.changed().await;
+            Err(Failure::Revoked)
+        });
+        Self {
+            task,
+            handle: Some(handle),
+            cancel,
+        }
+    }
+    pub fn start(config: Config, task: BuilderTestTask) -> Self {
+        let (cancel, receiver) = tokio::sync::watch::channel(false);
+        let running = task.clone();
+        let handle =
+            tokio::spawn(async move { run_cancellable(&config, &running, receiver).await });
+        Self {
+            task,
+            handle: Some(handle),
+            cancel,
+        }
+    }
+    pub fn cancel(&self) {
+        let _ = self.cancel.send(true);
+    }
+    pub async fn completed(&mut self) -> Option<BuilderTestResult> {
+        if !self.handle.as_ref()?.is_finished() {
+            return None;
+        }
+        let outcome = self
+            .handle
+            .take()?
+            .await
+            .unwrap_or(Err(Failure::Unavailable));
+        Some(BuilderTestResult {
+            job_id: self.task.job.id.clone(),
+            lease_id: self.task.job.lease_id.clone(),
+            definition_digest: self.task.job.definition_digest.clone(),
+            success: outcome.is_ok(),
+            error: outcome.err().map(|failure| match failure {
+                Failure::Unsupported => ErrorCode::Unsupported,
+                Failure::Expired => ErrorCode::Timeout,
+                Failure::Unauthorized | Failure::Revoked => ErrorCode::Forbidden,
+                _ => ErrorCode::Validation,
+            }),
+        })
+    }
+    pub async fn shutdown(&mut self) -> Result<()> {
+        self.cancel();
+        if let Some(mut handle) = self.handle.take() {
+            if tokio::time::timeout(std::time::Duration::from_secs(10), &mut handle)
+                .await
+                .is_err()
+            {
+                handle.abort();
+                let _ = handle.await;
+                return Err(Failure::Unavailable);
+            }
+        }
+        Ok(())
+    }
+}
+impl Drop for Job {
+    fn drop(&mut self) {
+        self.cancel();
+    }
 }

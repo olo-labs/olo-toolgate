@@ -12,6 +12,7 @@ pub mod http;
 pub mod limits;
 mod mcp;
 pub mod policy;
+pub mod relay;
 pub mod server;
 pub mod validation;
 

@@ -125,25 +125,158 @@ pub fn reinstall(server: &str, peer: Option<&str>) -> Result<()> {
     uninstall(false)?;
     install_config(server, peer, Some(previous))
 }
+#[cfg(not(windows))]
+pub fn configure(_: &str, _: Option<&str>) -> Result<()> {
+    Err(Failure::Unsupported)
+}
+#[cfg(windows)]
+pub fn configure(server: &str, peer: Option<&str>) -> Result<()> {
+    admin()?;
+    validate_peer(peer)?;
+    let server = crate::config::origin(server)?;
+    let mut settings = Config::load(&config_path())?;
+    let changed = settings.server_url != server;
+    if changed {
+        settings.server_url = server.clone();
+        // These settings contain gateway destinations, pins and credentials from the old site.
+        settings.tools = None;
+        settings.execution = None;
+        settings.deployment = None;
+        settings.ca_certificate_path = None;
+    }
+    if let Some(peer) = peer {
+        if !settings.authorized_peers.iter().any(|p| p == peer) {
+            settings.authorized_peers.push(peer.to_owned());
+        }
+    }
+    settings.validate()?;
+    let path = config_path();
+    let temporary = path.with_extension(format!("{}.json", crate::identity::nonce()?));
+    use std::io::Write;
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&temporary)
+        .map_err(|_| Failure::Conflict)?;
+    file.write_all(&serde_json::to_vec_pretty(&settings).map_err(|_| Failure::Validation)?)
+        .and_then(|_| file.sync_all())
+        .map_err(|_| Failure::Unavailable)?;
+    drop(file);
+    crate::platform::windows::protect_install_acl(&temporary, true)?;
+    let mut backups = Vec::new();
+    let update = (|| {
+        stop_windows_service()?;
+        if changed {
+            for name in [
+                "journal.json",
+                "permissions.json",
+                "remote-journal.json",
+                "fleet-intent.json",
+                "fleet-active.json",
+            ] {
+                let source = settings.state_directory.join(name);
+                if source.exists() {
+                    crate::storage::check_owned(&source, true)?;
+                    let backup =
+                        source.with_extension(format!("{}.json", crate::identity::nonce()?));
+                    std::fs::rename(&source, &backup).map_err(|_| Failure::Unavailable)?;
+                    backups.push((source, backup));
+                }
+            }
+        }
+        std::fs::rename(&temporary, &path).map_err(|_| Failure::Unavailable)
+    })();
+    if let Err(failure) = update {
+        for (source, backup) in backups.iter().rev() {
+            let _ = std::fs::rename(backup, source);
+        }
+        let _ = std::fs::remove_file(&temporary);
+        let _ = command(
+            r"C:\Windows\System32\sc.exe",
+            &["start", "OloToolGateClient"],
+        );
+        return Err(failure);
+    }
+    for (_, backup) in backups {
+        std::fs::remove_file(backup).map_err(|_| Failure::Unavailable)?;
+    }
+    let registry = command(
+        r"C:\Windows\System32\reg.exe",
+        &[
+            "add",
+            r"HKLM\Software\OLO\ToolGate",
+            "/v",
+            "ServerUrl",
+            "/t",
+            "REG_SZ",
+            "/d",
+            &server,
+            "/f",
+        ],
+    );
+    let start = command(
+        r"C:\Windows\System32\sc.exe",
+        &["start", "OloToolGateClient"],
+    );
+    start.and(registry)
+}
+#[cfg(windows)]
+fn stop_windows_service() -> Result<()> {
+    use windows_service::{
+        service::{ServiceAccess, ServiceState},
+        service_manager::{ServiceManager, ServiceManagerAccess},
+    };
+    let manager = ServiceManager::local_computer(None::<&str>, ServiceManagerAccess::CONNECT)
+        .map_err(|_| Failure::Unavailable)?;
+    let service = manager
+        .open_service(
+            "OloToolGateClient",
+            ServiceAccess::QUERY_STATUS | ServiceAccess::STOP,
+        )
+        .map_err(|_| Failure::Unavailable)?;
+    if service
+        .query_status()
+        .map_err(|_| Failure::Unavailable)?
+        .current_state
+        == ServiceState::Running
+    {
+        service.stop().map_err(|_| Failure::Unavailable)?;
+    }
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+    while service
+        .query_status()
+        .map_err(|_| Failure::Unavailable)?
+        .current_state
+        != ServiceState::Stopped
+    {
+        if std::time::Instant::now() >= deadline {
+            return Err(Failure::Unavailable);
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    Ok(())
+}
+fn validate_peer(peer: Option<&str>) -> Result<()> {
+    #[cfg(windows)]
+    if peer.is_some_and(|sid| {
+        !sid.starts_with("S-1-")
+            || sid.len() > 184
+            || !sid
+                .bytes()
+                .all(|b| b.is_ascii_digit() || b == b'S' || b == b'-')
+    }) {
+        return Err(Failure::Validation);
+    }
+    #[cfg(unix)]
+    if peer.is_some() {
+        return Err(Failure::Unsupported);
+    }
+    Ok(())
+}
 fn install_config(server: &str, peer: Option<&str>, previous: Option<Config>) -> Result<()> {
     admin()?;
     let origin = crate::config::origin(server)?;
     validate_peer(peer)?;
-    let binary = binary_path();
-    let config = config_path();
-    if config.exists() {
-        return Err(Failure::Conflict);
-    }
-    directory(binary.parent().ok_or(Failure::Validation)?, false)?;
-    directory(config.parent().ok_or(Failure::Validation)?, false)?;
-@@PEER_VALIDATION@@
-    #[cfg(windows)]
-    if peer.is_some_and(|sid| !sid.starts_with("S-1-") || sid.len() > 184
-        || !sid.bytes().all(|b| b.is_ascii_digit() || b == b'S' || b == b'-')) {
-        return Err(Failure::Validation);
-    }
-    #[cfg(unix)]
-    if peer.is_some() { return Err(Failure::Unsupported); }
     let binary = binary_path();
     let config = config_path();
     if config.exists() {
@@ -322,33 +455,7 @@ pub fn uninstall(purge: bool) -> Result<()> {
     }
     #[cfg(windows)]
     {
-        command(
-            r"C:\Windows\System32\sc.exe",
-            &["stop", "OloToolGateClient"],
-        )?;
-        let manager = windows_service::service_manager::ServiceManager::local_computer(
-            None::<&str>,
-            windows_service::service_manager::ServiceManagerAccess::CONNECT,
-        )
-        .map_err(|_| Failure::Unavailable)?;
-        let service = manager
-            .open_service(
-                "OloToolGateClient",
-                windows_service::service::ServiceAccess::QUERY_STATUS,
-            )
-            .map_err(|_| Failure::Unavailable)?;
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
-        while service
-            .query_status()
-            .map_err(|_| Failure::Unavailable)?
-            .current_state
-            != windows_service::service::ServiceState::Stopped
-        {
-            if std::time::Instant::now() >= deadline {
-                return Err(Failure::Unavailable);
-            }
-            std::thread::sleep(std::time::Duration::from_millis(100));
-        }
+        stop_windows_service()?;
         command(
             r"C:\Windows\System32\sc.exe",
             &["delete", "OloToolGateClient"],
@@ -366,7 +473,15 @@ pub fn uninstall(purge: bool) -> Result<()> {
         }
         crate::storage::check_owned(&expected, true)?;
         // A nonrecursive known-file purge cannot follow directory links or erase unrelated files.
-        for name in ["journal.json", "device-key", "service.lock"] {
+        for name in [
+            "journal.json",
+            "permissions.json",
+            "remote-journal.json",
+            "fleet-intent.json",
+            "fleet-active.json",
+            "device-key",
+            "service.lock",
+        ] {
             let path = expected.join(name);
             if path.exists() {
                 crate::storage::check_owned(&path, true)?;

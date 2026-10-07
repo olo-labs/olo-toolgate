@@ -11,6 +11,7 @@ import { Builder } from './Builder';
 import { Enrollment } from './Enrollment';
 import { QuickstartTools } from './QuickstartTools';
 import { ClientDownloads } from './ClientDownloads';
+import {RemoteRequests} from './RemoteRequests';
 import { ThemePicker } from './Theme';
 import { Audit } from './Audit';
 import { DirectoryEditor } from './DirectoryEditor';
@@ -18,8 +19,8 @@ import oloLogo from './assets/olo.png';
 
 declare const __APP_VERSION__: string;
 const directorySections = [ ['users', 'Users'], ['teams', 'Teams'], ['roles', 'Roles'], ['tools', 'Tools'], ['policies', 'Policies'], ['devices', 'Clients'], ['agents', 'Agents'] ] as const;
-const sections = [ ['overview', 'Overview'], ...directorySections, ['audit', 'Audit log'], ['approvals', 'Approvals'], ['fleet', 'Packages'], ['builder', 'Tool builder'], ['enroll', 'Enroll device'], ['local', 'Built-in tools and vault'] ] as const;
-const navigationGroups=[{label:'Audit',routes:['audit','approvals']},{label:'Tools',routes:['tools','policies','builder','local']},{label:'Devices',routes:['devices','enroll','fleet']},{label:'Users',routes:['users','teams','roles','agents']}] as const;
+const sections = [ ['overview', 'Overview'], ...directorySections, ['audit', 'Audit log'], ['approvals', 'Approvals'], ['fleet', 'Packages'], ['builder', 'Tool builder'], ['enroll', 'Enroll device'], ['local', 'Built-in tools and vault'],['requests','Client tool requests'] ] as const;
+const navigationGroups=[{label:'Audit',routes:['audit','approvals']},{label:'Tools',routes:['tools','policies','builder','local','requests']},{label:'Devices',routes:['devices','enroll','fleet']},{label:'Users',routes:['users','teams','roles','agents']}] as const;
 type Route = typeof sections[number][0];
 type RecordValue = DirectoryRecords[DirectoryKind];
 const routeFromHash = (): Route => sections.find(([route]) => window.location.hash.split('?')[0] === `#${route}`)?.[0] ?? 'overview';
@@ -121,7 +122,7 @@ export function App() {
         onKeyDown={event => { if (['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) { event.preventDefault(); resizeSidebar(event.key==='Home'?190:event.key==='End'?420:sidebarWidth+(event.key==='ArrowLeft'?-20:20)); } }} />}</div>
 
       <div className="workspace">
-        <main id="main" tabIndex={-1}>{!administrator?<Approvals client={client}/>:route === 'local' ? quickstart ? <QuickstartTools client={client} /> : <p>Local tools are available in Quickstart.</p> : route === 'overview' ? <Dashboard client={client} /> : route === 'audit' ? <Audit client={client}/> : route === 'approvals' ? <Approvals client={client} /> : route === 'fleet' ? <Fleet client={client} /> : route === 'builder' ? <Builder client={client} /> : route === 'enroll' ? <><Enrollment client={client} /><ClientDownloads /></> : <Directory key={route} client={client} kind={route} />}</main>
+        <main id="main" tabIndex={-1}>{!administrator?<Approvals client={client}/>:route==='requests'?<RemoteRequests client={client}/>:route === 'local' ? quickstart ? <QuickstartTools client={client} /> : <p>Local tools are available in Quickstart.</p> : route === 'overview' ? <Dashboard client={client} /> : route === 'audit' ? <Audit client={client}/> : route === 'approvals' ? <Approvals client={client} /> : route === 'fleet' ? <Fleet client={client} /> : route === 'builder' ? <Builder client={client} /> : route === 'enroll' ? <><Enrollment client={client} /><ClientDownloads /></> : <Directory key={route} client={client} kind={route} />}</main>
         <footer>Control verifies permissions. Gateway checks current policy for every runtime authorization.</footer></div></div></div>}
   </>;
 }
@@ -145,6 +146,7 @@ const iconPaths: Record<string,string> = {
   approvals:'M4 4h16v16H4z M7 12l3 3 7-7',
   builder:'M8 5l-6 7 6 7 M16 5l6 7-6 7 M14 3l-4 18',
   local:'M4 3h16v6H4z M4 15h16v6H4z M7 6h1 M7 18h1 M12 9v6',
+  requests:'M3 6h14 M13 2l4 4-4 4 M21 18H7 M11 14l-4 4 4 4',
   disconnect:'M10 3H3v18h7 M9 12h13 M17 7l5 5-5 5',
 };
 function MenuIcon({name}:{name:string}) { return <svg className="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={iconPaths[name]}/></svg>; }
@@ -163,7 +165,7 @@ function Dashboard({ client }: { client: ControlClient }) {
     {error ? <Failure error={error} retry={() => setAttempt(attempt+1)} /> : Object.keys(counts).length === 0 ? <p role="status">Loading your directory…</p> :
       <div className="stats">{directorySections.map(([kind,label]) => <a className="stat" key={kind} href={`#${kind}`}><span>{label}</span><strong>{counts[kind]?.count}{counts[kind]?.more ? '+' : ''}</strong><small>View directory →</small></a>)}</div>}
     <section className="guidance"><span className="tag">Getting organized</span><h2>Start with the people who use your tools.</h2><p>Add users, then browse teams and registered capabilities. Policies describe stored configuration; runtime distribution is a separate step.</p><a href="#users" className="text-link">Open users →</a></section>
-    <p className="hint">Counts show the first page (up to 50 records). A + means more pages are available. Clients show device records, without enrollment or online status.</p></>;
+    <p className="hint">Counts show the first page (up to 50 records). A + means more pages are available. Clients show device records, without enrollment or online status.</p><RemoteRequests client={client} compact/></>;
 }
 
 function Directory({ client, kind }: { client: ControlClient; kind: DirectoryKind }) {

@@ -58,9 +58,16 @@ $trayTimer.add_Tick({
             $trayIcon.Text = 'ToolGate: ' + $trayState.ToLowerInvariant()
             $trayIcon.Icon = if ($trayHealth.ready) { [System.Drawing.SystemIcons]::Information } else { [System.Drawing.SystemIcons]::Warning }
         } catch {
-            $script:trayDetail = 'ToolGate service is unavailable or this Windows account cannot access its status.'
-            $trayIcon.Text = 'ToolGate: service unavailable'
-            $trayIcon.Icon = [System.Drawing.SystemIcons]::Error
+            $trayService = Get-Service -Name OloToolGateClient -ErrorAction SilentlyContinue
+            if ($trayService.Status -eq 'Running') {
+                $script:trayDetail = 'ToolGate service is running. Its status is busy or unavailable to this Windows account.'
+                $trayIcon.Text = 'ToolGate: service running, status pending'
+                $trayIcon.Icon = [System.Drawing.SystemIcons]::Warning
+            } else {
+                $script:trayDetail = 'ToolGate service is unavailable.'
+                $trayIcon.Text = 'ToolGate: service unavailable'
+                $trayIcon.Icon = [System.Drawing.SystemIcons]::Error
+            }
         } finally {
             $script:trayProcess.Dispose()
             $script:trayProcess = $null

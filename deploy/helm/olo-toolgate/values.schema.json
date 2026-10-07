@@ -896,6 +896,60 @@
               }
             }
           ]
+        },
+        "localMcp": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "url",
+            "tokenSecret",
+            "tokenKey",
+            "controlPort"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "url": {
+              "type": "string",
+              "pattern": "^https://[A-Za-z0-9.-]+(?::[0-9]+)?$"
+            },
+            "tokenSecret": {
+              "type": "string",
+              "maxLength": 253,
+              "pattern": "^$|^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$"
+            },
+            "tokenKey": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 253,
+              "pattern": "^[A-Za-z0-9._-]+$"
+            },
+            "controlPort": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "tokenSecret": {
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
         }
       },
       "allOf": [
@@ -939,6 +993,47 @@
                 "properties": {
                   "enabled": {
                     "const": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "localMcp": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "enabled"
+                ]
+              }
+            },
+            "required": [
+              "localMcp"
+            ]
+          },
+          "then": {
+            "properties": {
+              "bundle": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                }
+              },
+              "config": {
+                "properties": {
+                  "limits": {
+                    "properties": {
+                      "requestTimeoutMs": {
+                        "minimum": 10000
+                      }
+                    }
                   }
                 }
               }

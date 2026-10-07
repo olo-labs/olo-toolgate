@@ -1,6 +1,6 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
-//! Stateless MCP ingress skeleton; no executable capabilities are advertised.
+//! Stateless MCP ingress with an optional device-scoped client relay.
 use crate::http::{error, parse, single_header, status, AppState};
 use crate::unix_ms;
 use axum::{
@@ -10,7 +10,10 @@ use axum::{
     Json,
 };
 use base64::Engine;
-use olo_toolgate_contracts::{AuthorizationRequest, Decision, ErrorCode};
+use olo_toolgate_contracts::{
+    AuthorizationRequest, Decision, ErrorCode, PolicyInput, RemoteToolState, RemoteToolSubmission,
+    ResourceKind,
+};
 use serde_json::{json, Value};
 use std::sync::{atomic::Ordering, Arc};
 pub(crate) fn rpc_error(
@@ -43,6 +46,11 @@ fn decoded_name(headers: &HeaderMap) -> Option<String> {
 }
 
 pub(crate) async fn ingress(State(s): State<Arc<AppState>>, request: Request) -> Response {
+    let credential_deadline = request
+        .extensions()
+        .get::<crate::http::CredentialDeadline>()
+        .map(|d| d.0)
+        .unwrap_or(0);
     let (value, context, correlation, headers) = match parse(&s, request).await {
         Ok(v) => v,
         Err(r) => return r,
@@ -129,19 +137,59 @@ pub(crate) async fn ingress(State(s): State<Arc<AppState>>, request: Request) ->
         "ping" => success(id, json!({})),
         "server/discover" => success(
             id,
-            json!({"supportedVersions":["2026-07-28"],"capabilities":{},"ttlMs":0,"cacheScope":"private"}),
+            json!({"supportedVersions":["2026-07-28"],"capabilities":if s.relay.is_some(){json!({"tools":{}})}else{json!({})},"ttlMs":0,"cacheScope":"private"}),
         ),
-        "tools/list" => success(id, json!({"tools":[],"ttlMs":0,"cacheScope":"private"})),
+        "tools/list" => {
+            let Some(relay) = &s.relay else {
+                return success(id, json!({"tools":[],"ttlMs":0,"cacheScope":"private"}));
+            };
+            match relay.catalog(&context).await {
+                Ok(catalog) => success(
+                    id,
+                    json!({"tools":catalog.tools.iter().filter(|tool|tool.enabled).map(|tool|json!({"name":tool.tool_id,"description":tool.description,"inputSchema":tool.input_schema})).collect::<Vec<_>>(),"ttlMs":0,"cacheScope":"private"}),
+                ),
+                Err(code) => rpc_error(
+                    status(&code),
+                    id,
+                    -32000,
+                    "Local tool discovery failed",
+                    json!({"code":code}),
+                ),
+            }
+        }
         "tools/call" => {
             let name = params["name"].as_str().unwrap_or("");
-            let Some(action) = s.gateway.extractors.mcp_action(name) else {
-                return rpc_error(
-                    StatusCode::BAD_REQUEST,
-                    id,
-                    -32602,
-                    "Unknown or ambiguous tool",
-                    Value::Null,
-                );
+            let action = if let Some(relay) = &s.relay {
+                let catalog = match relay.catalog(&context).await {
+                    Ok(catalog) => catalog,
+                    Err(code) => return error(code, &correlation.request_id),
+                };
+                let matches: Vec<_> = catalog
+                    .tools
+                    .into_iter()
+                    .filter(|tool| tool.enabled && tool.tool_id == name)
+                    .collect();
+                if matches.len() != 1 {
+                    return rpc_error(
+                        StatusCode::FORBIDDEN,
+                        id,
+                        -32602,
+                        "Tool unavailable for this agent and client",
+                        Value::Null,
+                    );
+                }
+                matches[0].action.clone()
+            } else {
+                let Some(action) = s.gateway.extractors.mcp_action(name) else {
+                    return rpc_error(
+                        StatusCode::BAD_REQUEST,
+                        id,
+                        -32602,
+                        "Unknown or ambiguous tool",
+                        Value::Null,
+                    );
+                };
+                action.to_owned()
             };
             if params.as_object().is_none_or(|p| {
                 p.keys()
@@ -169,16 +217,176 @@ pub(crate) async fn ingress(State(s): State<Arc<AppState>>, request: Request) ->
                     )
                 }
             };
+            if !s.gateway.contracts.valid(
+                "AuthorizationRequest",
+                &serde_json::to_value(&request).unwrap_or_default(),
+            ) {
+                return error(ErrorCode::Validation, &correlation.request_id);
+            }
             let Some(now) = unix_ms() else {
                 return error(ErrorCode::DependencyUnavailable, &correlation.request_id);
             };
+            let mut context = context;
+            let mut authorized = request.clone();
+            let mut managed_runtime = false;
+            if s.relay.is_some() {
+                let builtins: Value = serde_json::from_str(include_str!(
+                    "../../../packages/contracts/tools/builtins.json"
+                ))
+                .unwrap_or(Value::Null);
+                let builtin = builtins["tools"].as_array().is_some_and(|tools| {
+                    tools.iter().any(|tool| tool["toolId"] == request.tool_id)
+                });
+                if builtin {
+                    authorized
+                        .arguments
+                        .entry("path".into())
+                        .or_insert(json!("hotfolder"));
+                } else {
+                    managed_runtime = true;
+                    authorized.arguments=serde_json::from_value(json!({"path":format!("runtime/{}",request.tool_id),"input":request.arguments})).unwrap_or_default();
+                }
+                context.request_id = format!(
+                    "mcp-{}",
+                    &crate::digest(
+                        &serde_json::to_vec(&(
+                            &context.tenant_id,
+                            &context.user_id,
+                            &context.agent_id,
+                            &context.device_id,
+                            &id,
+                            &request
+                        ))
+                        .unwrap_or_default()
+                    )[..48]
+                );
+            }
+            let input = if managed_runtime {
+                let binding = crate::extraction::ExtractorBinding {
+                    tool_id: authorized.tool_id.clone(),
+                    action: authorized.action.clone(),
+                    pointer: "/path".into(),
+                    kind: ResourceKind::Custom,
+                };
+                let resource = match crate::extraction::ResourceExtractor::extract(
+                    &binding,
+                    &serde_json::to_value(&authorized.arguments).unwrap_or_default(),
+                ) {
+                    Ok(resource) => resource,
+                    Err(_) => return error(ErrorCode::Validation, &correlation.request_id),
+                };
+                Ok(PolicyInput {
+                    context: context.clone(),
+                    tool_id: authorized.tool_id.clone(),
+                    action: authorized.action.clone(),
+                    resource,
+                    arguments_digest: crate::digest(
+                        &serde_json::to_vec(&authorized.arguments).unwrap_or_default(),
+                    ),
+                })
+            } else {
+                s.gateway.normalize(authorized, context.clone())
+            };
+            let input = match input {
+                Ok(input) => input,
+                Err(code) => return error(code, &correlation.request_id),
+            };
             match s
                 .gateway
-                .authorize(request, context, correlation.trace_id, now)
+                .authorize_input(input.clone(), correlation.trace_id, now)
                 .await
             {
                 Ok(decision) if decision.decision == Decision::Allow => {
                     s.metrics.allow.fetch_add(1, Ordering::Relaxed);
+                    if let Some(relay) = &s.relay {
+                        let expires = credential_deadline.min(now.saturating_add(
+                            s.config.limits.request_timeout_ms.saturating_sub(1000),
+                        ));
+                        if expires <= now.saturating_add(2000) {
+                            return error(ErrorCode::Timeout, &correlation.request_id);
+                        }
+                        let submission = RemoteToolSubmission {
+                            input,
+                            request,
+                            expires_at_unix_ms: expires,
+                        };
+                        let mut response = match relay.submit(&submission).await {
+                            Ok(response) => response,
+                            Err(code) => {
+                                return rpc_error(
+                                    status(&code),
+                                    id,
+                                    -32000,
+                                    "Local tool request rejected",
+                                    json!({"code":code}),
+                                )
+                            }
+                        };
+                        loop {
+                            if response.record.request_id != context.request_id
+                                || response.record.device_id
+                                    != context.device_id.clone().unwrap_or_default()
+                                || response.record.agent_id != context.agent_id
+                                || response.record.tool_id != submission.request.tool_id
+                            {
+                                return error(ErrorCode::Validation, &correlation.request_id);
+                            }
+                            if unix_ms().is_none_or(|time| time >= expires) {
+                                return error(ErrorCode::Timeout, &correlation.request_id);
+                            }
+                            match response.record.state {
+                                RemoteToolState::Done => {
+                                    let Some(result) = response.result else {
+                                        return error(
+                                            ErrorCode::Validation,
+                                            &correlation.request_id,
+                                        );
+                                    };
+                                    if result.request_id != context.request_id
+                                        || result.error.is_some()
+                                    {
+                                        return error(
+                                            ErrorCode::Validation,
+                                            &correlation.request_id,
+                                        );
+                                    }
+                                    let Some(output) = result.output else {
+                                        return error(
+                                            ErrorCode::Validation,
+                                            &correlation.request_id,
+                                        );
+                                    };
+                                    return success(
+                                        id,
+                                        json!({"content":[{"type":"text","text":serde_json::to_string(&output).unwrap_or_default()}],"structuredContent":output,"isError":false}),
+                                    );
+                                }
+                                RemoteToolState::Failed | RemoteToolState::Expired => {
+                                    return rpc_error(
+                                        StatusCode::OK,
+                                        id,
+                                        -32000,
+                                        "Local tool execution failed",
+                                        json!({"code":response.record.error.unwrap_or(ErrorCode::Timeout),"requestId":context.request_id}),
+                                    )
+                                }
+                                _ => {}
+                            }
+                            tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+                            response = match relay.response(&context).await {
+                                Ok(response) => response,
+                                Err(code) => {
+                                    return rpc_error(
+                                        status(&code),
+                                        id,
+                                        -32000,
+                                        "Local tool response unavailable",
+                                        json!({"code":code}),
+                                    )
+                                }
+                            };
+                        }
+                    }
                     rpc_error(
                         StatusCode::OK,
                         id,

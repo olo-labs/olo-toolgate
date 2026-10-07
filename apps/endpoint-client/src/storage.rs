@@ -114,6 +114,8 @@ impl ProtectedStore {
             name,
             "device-key"
                 | "journal.json"
+                | "permissions.json"
+                | "remote-journal.json"
                 | "service.lock"
                 | "fleet-intent.json"
                 | "fleet-active.json"

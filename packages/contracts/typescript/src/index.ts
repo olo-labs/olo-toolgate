@@ -206,6 +206,7 @@ export interface BuiltinIpcRequest {
   readonly requestId: string;
   readonly operation: BuiltinOperation;
   readonly invocation?: BuiltinInvocation;
+  readonly agentId?: string;
 }
 /** Fixed service tool boundary; validate schema before use. */
 export interface BuiltinIpcResponse {
@@ -538,6 +539,8 @@ export interface DeviceIdentity {
 export interface EndpointCheckIn {
   readonly sequence: number;
   readonly report: ClientReport;
+  readonly configurationDigest?: string;
+  readonly localTools?: ReadonlyArray<BuiltinToolInfo>;
 }
 /** Endpoint identity foundation wire model. */
 export interface EndpointCheckInAck {
@@ -546,6 +549,8 @@ export interface EndpointCheckInAck {
   readonly serverTimeUnixMs: number;
   readonly nextIntervalSeconds: number;
   readonly identity?: DeviceIdentity;
+  readonly configuration?: EndpointPermissionConfiguration;
+  readonly task?: RemoteToolTask;
 }
 /** Endpoint identity foundation wire model. */
 export interface EndpointDeviceRecord {
@@ -610,6 +615,23 @@ export interface EndpointEnrollmentStart {
   readonly platform: ClientPlatform;
   readonly csrPem: string;
   readonly capabilities: ReadonlyArray<string>;
+}
+/** Server-cached complete replacement of device permissions, acknowledged by digest on the next authenticated poll. */
+export interface EndpointPermissionConfiguration {
+  readonly serverId: string;
+  readonly deviceId: string;
+  readonly userId: string;
+  readonly revision: number;
+  readonly digest: string;
+  readonly permissions: ReadonlyArray<EndpointPermissionRule>;
+}
+/** Device-owner permission scope used only for local discovery; protected calls still require online authorization. */
+export interface EndpointPermissionRule {
+  readonly toolId: string;
+  readonly action: string;
+  readonly agentIds: ReadonlyArray<string>;
+  readonly resource: ResourceDescriptor;
+  readonly decision: Decision;
 }
 /** Endpoint identity foundation wire model. */
 export interface EndpointRevokeRequest {
@@ -834,6 +856,10 @@ export interface LocalRuntimeStatus {
   readonly state: LocalRuntimeState;
   readonly version: string;
 }
+/** Only enabled local definitions applicable to this verified agent and device. */
+export interface LocalToolCatalog {
+  readonly tools: ReadonlyArray<BuiltinToolInfo>;
+}
 /** One JSON stdin document; arguments never become process command strings. */
 export interface LocalToolInput {
   readonly protocolVersion: number;
@@ -908,6 +934,61 @@ export interface PolicyInput {
   readonly action: string;
   readonly resource: ResourceDescriptor;
   readonly argumentsDigest: string;
+}
+/** A leased client rechecks the exact pending operation online before execution. */
+export interface RemoteToolAuthorization {
+  readonly requestId: string;
+  readonly leaseId: string;
+  readonly request: AuthorizationRequest;
+}
+/** Fresh remote operation deadline, never a reusable grant. */
+export interface RemoteToolAuthorizationAck {
+  readonly expiresAtUnixMs: number;
+}
+/** Bounded recent local-tool request progress. */
+export interface RemoteToolPage {
+  readonly items: ReadonlyArray<RemoteToolRecord>;
+}
+/** Request progress visible to an administrator without arguments or results. */
+export interface RemoteToolRecord {
+  readonly requestId: string;
+  readonly deviceId: string;
+  readonly agentId: string;
+  readonly toolId: string;
+  readonly state: RemoteToolState;
+  readonly receivedAtUnixMs: number;
+  readonly expiresAtUnixMs: number;
+  readonly submittedAtUnixMs?: number;
+  readonly responseAtUnixMs?: number;
+  readonly completedAtUnixMs?: number;
+  readonly error?: ErrorCode;
+}
+/** Gateway-private queued request/result response. */
+export interface RemoteToolResponse {
+  readonly record: RemoteToolRecord;
+  readonly result?: RemoteToolResult;
+}
+/** Exact leased execution response. Failed execution carries a sanitized error code. */
+export interface RemoteToolResult {
+  readonly requestId: string;
+  readonly leaseId: string;
+  readonly output?: Record<string, unknown>;
+  readonly error?: ErrorCode;
+}
+export type RemoteToolState = "RECEIVED" | "WAITING_FOR_POLL" | "SUBMITTED" | "RESPONSE_RECEIVED" | "DONE" | "FAILED" | "EXPIRED";
+/** Dedicated Gateway-authenticated request for one device-local tool. */
+export interface RemoteToolSubmission {
+  readonly input: PolicyInput;
+  readonly request: AuthorizationRequest;
+  readonly expiresAtUnixMs: number;
+}
+/** Bounded lease delivered only over device-authenticated polling; executable definitions are never accepted from an agent. */
+export interface RemoteToolTask {
+  readonly requestId: string;
+  readonly leaseId: string;
+  readonly input: PolicyInput;
+  readonly request: AuthorizationRequest;
+  readonly expiresAtUnixMs: number;
 }
 /** Observed package state, distinct from assigned desired state. */
 export interface ReportedPackage {

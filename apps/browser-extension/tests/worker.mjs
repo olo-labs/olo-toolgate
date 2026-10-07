@@ -2,33 +2,68 @@
 // SPDX-License-Identifier: Apache-2.0
 import {beforeEach,test} from 'node:test';
 import assert from 'node:assert/strict';
-let listener,state={},nativeCalls=0,cancelled=[],download;
+let listener,state={},nativeCalls=[],nativeResponse;
 const id='emmemldedebhbloibichmmdlbpjakfkf',origin='https://gate.example';
 globalThis.chrome={
-  runtime:{id,onMessage:{addListener(fn){listener=fn;}},getManifest(){return {version_name:'0.10.0-dev',version:'0.10.0.23'};},async sendNativeMessage(){nativeCalls++;throw Error('Host unavailable');}},
-  storage:{local:{async get(key){return {[key]:state[key]};},async remove(key){delete state[key];}},session:{async set(){}}},
-  action:{async openPopup(){}},
-  downloads:{async search(){return download?[download]:[];},async cancel(value){cancelled.push(value);}}
+  runtime:{id,onInstalled:{addListener(){}},onMessage:{addListener(fn){listener=fn;}},getManifest(){return {version_name:'0.10.0-dev',version:'0.10.0.23'};},async sendNativeMessage(host,message){nativeCalls.push(message);if(nativeResponse instanceof Error)throw nativeResponse;if(typeof nativeResponse==='function')return nativeResponse(message);return message.operation==='enroll'?{challenge:{userCode:'ABCDEF0123456789'}}:nativeResponse;}},
+  storage:{local:{async get(key){return {[key]:state[key]};},async set(values){Object.assign(state,values);},async remove(key){delete state[key];}}}
 };
 await import('../worker.js');
-beforeEach(()=>{state={};nativeCalls=0;cancelled=[];download=undefined;});
+beforeEach(()=>{state={};nativeCalls=[];nativeResponse=Error('Host unavailable');});
 function request(operation,url=origin+'/console/#enroll'){
   return new Promise(resolve=>listener({operation},{tab:{id:2,url}},resolve));
 }
-test('unapproved origins cannot probe local IPC',async()=>{
-  const result=await request('status');assert.equal(result.phase,'approval');assert.equal(nativeCalls,0);
+test('extension availability does not probe IPC before Connect',async()=>{
+  assert.equal((await request('hello')).phase,'available');
+  assert.equal((await request('status')).phase,'available');
+  assert.equal(nativeCalls.length,0);
   assert.equal((await request('status','https://gate.example/other')).error,'INVALID_ORIGIN');
 });
-test('native host absence remains unavailable, not connected',async()=>{
-  state[origin]={approved:true};const result=await request('status');assert.equal(nativeCalls,1);assert.equal(result.client,null);
+test('Connect passes the current console to the system and starts enrollment for an installed client',async()=>{
+  nativeResponse={health:{state:'UNENROLLED',ready:false},serverUrl:'https://control.example'};
+  const result=await request('connect');
+  assert.deepEqual(nativeCalls,[{operation:'connect',consoleUrl:origin+'/console/#enroll'},{operation:'enroll'}]);
+  assert.equal(result.phase,'ready');assert.equal(result.userCode,'ABCDEF0123456789');
+  assert.equal((await request('status')).userCode,'ABCDEF0123456789');
 });
-test('progress survives a worker restart and tracks this extension download',async()=>{
-  state[origin]={approved:true,downloadId:42,userCode:'ABCDEF0123456789'};download={id:42,byExtensionId:id,state:'complete'};
-  const result=await request('status');assert.equal(result.phase,'open-installer');assert.equal(result.userCode,'ABCDEF0123456789');
+test('already enrolled clients are not enrolled again',async()=>{
+  nativeResponse={health:{state:'ACTIVE',ready:true},serverUrl:origin};
+  await request('connect');assert.equal(nativeCalls.length,1);
 });
-test('cancel only touches this extension active download and clears approval',async()=>{
-  state[origin]={approved:true,downloadId:42};download={id:42,byExtensionId:id,state:'in_progress'};
-  await request('cancel');assert.deepEqual(cancelled,[42]);assert.equal(state[origin],undefined);
-  state[origin]={approved:true,downloadId:43};download={id:43,byExtensionId:'another-extension',state:'in_progress'};
-  await request('cancel');assert.deepEqual(cancelled,[42]);
+test('native host absence reports setup required without claiming a client',async()=>{
+  const result=await request('connect');assert.equal(result.phase,'setup-required');assert.equal(result.client,null);
+});
+test('cancel prevents a pending gateway operation from publishing or enrolling',async()=>{
+  let complete;
+  nativeResponse={};
+  const saved=chrome.runtime.sendNativeMessage;
+  chrome.runtime.sendNativeMessage=async()=>new Promise(resolve=>{complete=resolve;});
+  const pending=request('connect');
+  while(!complete)await new Promise(resolve=>setImmediate(resolve));
+  await request('cancel');complete({health:{state:'UNENROLLED',ready:false}});
+  assert.equal((await pending).phase,'cancelled');assert.equal(state[origin],undefined);
+  chrome.runtime.sendNativeMessage=saved;
+});
+test('only one Connect operation per origin can run at a time',async()=>{
+  state[origin]={approved:true,phase:'connecting'};
+  assert.equal((await request('connect')).phase,'connecting');assert.equal(nativeCalls.length,0);
+});
+test('a gateway switch in another tab cannot report this origin as connected',async()=>{
+  state[origin]={approved:true,phase:'ready',serverUrl:origin,userCode:'ABCDEF0123456789'};
+  nativeResponse={health:{state:'ACTIVE',ready:true},serverUrl:'https://other.example'};
+  const status=await request('status');
+  assert.equal(status.phase,'gateway-changed');assert.equal(status.client,null);assert.equal(status.userCode,undefined);
+});
+test('installation appearing after Connect resumes without a repeated Windows prompt',async()=>{
+  await request('connect');
+  nativeResponse={health:{state:'UNENROLLED',ready:false},serverUrl:origin};
+  assert.equal((await request('status')).phase,'installation-detected');
+  assert.equal((await request('status')).phase,'available');
+  assert.equal((await request('connect')).phase,'ready');
+});
+test('a cancelled gateway change is not retried automatically while a client exists',async()=>{
+  nativeResponse=message=>message.operation==='connect'?{error:'UNAVAILABLE'}:{health:{state:'ACTIVE',ready:true}};
+  await request('connect');
+  assert.equal(state[origin].waitForInstallation,false);
+  assert.equal((await request('status')).phase,'setup-required');
 });

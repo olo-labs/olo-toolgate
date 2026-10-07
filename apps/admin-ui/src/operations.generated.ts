@@ -7,6 +7,8 @@ export const operations = {
   publicClientInstallers: { method: 'GET', path: '/api/public/v1/installers' },
   publicClientDownloads: { method: 'GET', path: '/api/public/v1/clients' },
   publicClientBinary: { method: 'GET', path: '/api/public/v1/clients/{filename}' },
+  publicClientConfiguration: { method: 'GET', path: '/api/public/v1/clients/configuration' },
+  publicConfiguredWindowsInstaller: { method: 'GET', path: '/api/public/v1/clients/setup/{target}' },
   clientDiscovery: { method: 'GET', path: '/.well-known/olo-toolgate-client' },
   startEndpointEnrollment: { method: 'POST', path: '/api/control/v1/endpoint/enrollments' },
   pollEndpointEnrollment: { method: 'POST', path: '/api/control/v1/endpoint/enrollments/poll' },
@@ -81,6 +83,12 @@ export const operations = {
   prepareBuilderPublication: { method: 'POST', path: '/api/control/v1/builder/drafts/{id}/publication' },
   publishBuilderRelease: { method: 'POST', path: '/api/control/v1/builder/drafts/{id}/release' },
   deployBuilderDraft: { method: 'POST', path: '/api/control/v1/builder/drafts/{id}/deploy' },
+  queryLocalMcpCatalog: { method: 'POST', path: '/api/control/v1/mcp/catalog' },
+  submitLocalMcpRequest: { method: 'POST', path: '/api/control/v1/mcp/requests' },
+  listLocalMcpRequests: { method: 'GET', path: '/api/control/v1/mcp/requests' },
+  receiveLocalMcpResponse: { method: 'POST', path: '/api/control/v1/mcp/responses' },
+  authorizeClientMcpRequest: { method: 'POST', path: '/api/control/v1/mcp/authorize' },
+  submitClientMcpResult: { method: 'POST', path: '/api/control/v1/mcp/results' },
 } as const;
 export interface DirectoryRecords {
   agents: ControlAgent;

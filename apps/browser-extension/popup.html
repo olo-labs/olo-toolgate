@@ -2,9 +2,5 @@
 <!-- Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0 -->
 <html lang="en"><head><meta charset="utf-8"><title>ToolGate Connect</title><link rel="stylesheet" href="popup.css"></head>
 <body><h1>ToolGate Connect</h1><p id="origin"></p><p id="status" role="status">Open your ToolGate Enroll device page.</p>
-<label>Windows architecture <select id="target"><option value="x86_64-pc-windows-msvc">x64</option><option value="aarch64-pc-windows-msvc">ARM64</option></select></label>
-<button id="approve">Approve this site and connect</button><button id="install" disabled>Download verified installer</button>
-<button id="open" disabled>Open installer</button><button id="enroll" disabled>Start enrollment</button>
-<p>Accept the license and Windows administrator prompt. Enter your organization's HTTPS server address in the installer. Confirm the fingerprint in the console afterward.</p>
-<p>Closing this popup stops a pending checksum download. Cancel in the console stops an active installer download; close the Windows installer separately.</p>
+<p>Your ToolGate page supplies the gateway URL. Windows may request administrator permission. Review any enrollment fingerprint in the console.</p>
 <script src="popup.js" type="module"></script></body></html>

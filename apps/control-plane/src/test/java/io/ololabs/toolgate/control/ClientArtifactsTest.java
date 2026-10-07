@@ -51,6 +51,14 @@ final class ClientArtifactsTest {
         }
         Files.writeString(directory.resolve("installers.json"),codec.json(Map.of("version",original.version(),"artifacts",installers)));
         var assets=new ClientArtifacts(Optional.of(directory.toString()),codec);assertEquals(3,assets.installers().artifacts().size());
+        var configured=assets.configuredWindowsInstaller("x86_64-pc-windows-msvc","https://control.example.test");
+        assertEquals("no-store",configured.getHeaderString("Cache-Control"));
+        assertTrue(configured.getHeaderString("Content-Disposition").contains("--"+java.util.HexFormat.of().formatHex("https://control.example.test".getBytes(java.nio.charset.StandardCharsets.US_ASCII))+".setup.exe"));
+        var configuredBytes=new java.io.ByteArrayOutputStream();
+        ((jakarta.ws.rs.core.StreamingOutput)configured.getEntity()).write(configuredBytes);
+        var windows=assets.installers().artifacts().stream().filter(a->a.platform()==io.ololabs.toolgate.contracts.ClientPlatform.WINDOWS).findFirst().orElseThrow();
+        assertArrayEquals(Files.readAllBytes(directory.resolve(windows.filename())),configuredBytes.toByteArray());
+        assertThrows(Failure.class,()->assets.configuredWindowsInstaller("x86_64-pc-windows-msvc","https://evil.example\"\r\n"));
         var installer=assets.installers().artifacts().getFirst();var response=assets.download(installer.filename());
         ((jakarta.ws.rs.core.StreamingOutput)response.getEntity()).write(java.io.OutputStream.nullOutputStream());
         var suffix=switch(installer.platform()){case WINDOWS->"setup.exe";case MACOS->"dmg";case LINUX->"run";};

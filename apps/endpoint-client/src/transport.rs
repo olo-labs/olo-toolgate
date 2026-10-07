@@ -6,6 +6,20 @@ use olo_toolgate_contracts::*;
 use std::{future::Future, pin::Pin, sync::Arc, time::Duration};
 pub type Call<'a, T> = Pin<Box<dyn Future<Output = Result<T>> + Send + 'a>>;
 pub trait ControlPort: Send + Sync {
+    fn remote_authorize(
+        &self,
+        _identity: DeviceIdentity,
+        _request: RemoteToolAuthorization,
+    ) -> Call<'_, RemoteToolAuthorizationAck> {
+        Box::pin(async { Err(Failure::Unsupported) })
+    }
+    fn remote_result(
+        &self,
+        _identity: DeviceIdentity,
+        _result: RemoteToolResult,
+    ) -> Call<'_, RemoteToolRecord> {
+        Box::pin(async { Err(Failure::Unsupported) })
+    }
     fn builder_poll(&self, _identity: DeviceIdentity) -> Call<'_, BuilderTestPoll> {
         Box::pin(async { Err(Failure::Unsupported) })
     }
@@ -136,6 +150,44 @@ impl HttpsControl {
     }
 }
 impl ControlPort for HttpsControl {
+    fn remote_authorize(
+        &self,
+        identity: DeviceIdentity,
+        request: RemoteToolAuthorization,
+    ) -> Call<'_, RemoteToolAuthorizationAck> {
+        Box::pin(async move {
+            let client = Self::builder(&self.config)?
+                .identity(self.key.tls_identity(&identity)?)
+                .build()
+                .map_err(|_| Failure::Unavailable)?;
+            self.request(
+                &client,
+                "/api/control/v1/mcp/authorize",
+                Some(self.contracts.encode("RemoteToolAuthorization", &request)?),
+                "RemoteToolAuthorizationAck",
+            )
+            .await
+        })
+    }
+    fn remote_result(
+        &self,
+        identity: DeviceIdentity,
+        result: RemoteToolResult,
+    ) -> Call<'_, RemoteToolRecord> {
+        Box::pin(async move {
+            let client = Self::builder(&self.config)?
+                .identity(self.key.tls_identity(&identity)?)
+                .build()
+                .map_err(|_| Failure::Unavailable)?;
+            self.request(
+                &client,
+                "/api/control/v1/mcp/results",
+                Some(self.contracts.encode("RemoteToolResult", &result)?),
+                "RemoteToolRecord",
+            )
+            .await
+        })
+    }
     fn builder_poll(&self, identity: DeviceIdentity) -> Call<'_, BuilderTestPoll> {
         Box::pin(async move {
             let client = Self::builder(&self.config)?

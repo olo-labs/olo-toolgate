@@ -12,6 +12,7 @@ public interface Store {
     interface Session {
         default FleetStore fleet() { throw Failure.unavailable(); }
         default BuilderStore builder() { throw Failure.unavailable(); }
+        default McpStore mcp() { throw Failure.unavailable(); }
         Directory load();
         boolean used(io.ololabs.toolgate.control.domain.Ids.RecordId id);
         void save(Directory before, Directory after);
@@ -40,6 +41,8 @@ public interface Store {
         EndpointRecord endpoint(String deviceId);
         EndpointRecord endpointKey(String fingerprint);
         void saveEndpoint(EndpointRecord endpoint);
+        default EndpointConfiguration endpointConfiguration(String deviceId) { throw Failure.unavailable(); }
+        default void saveEndpointConfiguration(EndpointConfiguration configuration) { throw Failure.unavailable(); }
     }
     /** Immutable signed wire bytes and compiler bytes, committed with audit/replay. */
     record BundleRecord(long sequence, String document, String policy, long directoryRevision) {}
@@ -54,4 +57,5 @@ public interface Store {
                             String csr, String userId, String certificate, long expiresAt, long lastPoll) {}
     record EndpointRecord(String id, String fingerprint, String document, String csr,
                           String reportDigest, String acknowledgment) {}
+    record EndpointConfiguration(String deviceId, long sourceRevision, String document, String acknowledgedDigest, String localTools) {}
 }

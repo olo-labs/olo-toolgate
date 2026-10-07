@@ -6,10 +6,10 @@ their links. These development installers are unsigned; signing and notarization
 are separate release steps. An installer cannot remove SmartScreen or Gatekeeper
 warnings. Do not disable machine-wide security protections.
 
-Windows: open the `.setup.exe`, approve UAC, and enter your organization's HTTPS
-Control server address. Setup installs the Windows LocalSystem service with
+Windows: download the `.setup.exe` from your ToolGate page and approve UAC.
+The gateway URL is supplied automatically; setup never asks for a URL or credentials. Setup installs the Windows LocalSystem service with
 automatic startup and registers an entry in Installed Apps for uninstallation.
-It also registers the protected Chrome native messaging bridge. Use Enroll device →
+It also installs the Chrome extension files, protected native messaging bridge and a tray icon. The tray starts at login and shows connection and enrollment status. Use Enroll device →
 Connect in the Admin console and follow the [Chrome Connect guide](connect.md).
 
 Installer downloads use stable names, such as
@@ -17,12 +17,21 @@ Installer downloads use stable names, such as
 download API resolves that name to the current validated installer and sends
 `Cache-Control: no-store`; versioned files and manifests remain immutable for
 checksum verification. GitHub releases also include these stable installer names.
-In Connect, **Download Chrome extension** downloads the Windows setup EXE, which
+In Connect, **Install Chrome extension and client** downloads the same Windows setup EXE, which
 contains the client, native bridge and unpacked Chrome extension. There is no
 separate ZIP download. Open chrome://extensions, enable Developer mode and choose
 Load unpacked from `Program Files\OLO\ToolGateSetup\chrome-extension`.
 Chrome still requires the user's extension approval. Windows client ZIP archives
 are internal CI build inputs and are not public installation downloads.
+
+The configured Windows download endpoint is `/api/public/v1/clients/setup/<target>`.
+It uses the server-owned `toolgate.control.endpoint.control-url` setting and carries
+that public HTTPS origin as a hex suffix in the suggested EXE filename. Do not rename
+the file before initial installation. The hint is limited to 90 ASCII characters to
+fit Windows filename limits. The EXE bytes and checksums remain identical to the
+versioned release. Plain release EXEs can use `/SERVER=<HTTPS origin>` for managed
+silent installation; without that configuration, setup reports a missing configuration
+and directs users to the ToolGate page instead of asking for a URL.
 
 macOS: open the `.dmg`, then `Install ToolGate.app`. Enter your HTTPS Control server
 and approve administrator authentication. A system LaunchDaemon runs independently
@@ -38,9 +47,10 @@ executable, or run `chmod +x ./olo-toolgate-client-*.run`, then open/run it. Thi
 permission step depends on the desktop; universal unattended browser-to-install
 behavior is not supported. Linux requires systemd; this is not a .deb/.rpm package.
 
-Installation is initial-install only and rejects an existing configured client.
-To replace an existing installation, uninstall first; enrollment custody is retained
-by default. Do not use `--purge` unless you intend to remove enrollment state.
+Windows setup detects an existing client and offers repair/reinstall or uninstall.
+Repair retains configuration and enrollment for the same gateway. Connect from another
+ToolGate page switches gateways and starts a new enrollment. Linux/macOS installs
+remain initial-install only. Enrollment keys are retained on uninstall by default. Do not use `--purge` unless you intend to remove enrollment state.
 Use the installed client `uninstall` command as administrator on Linux/macOS;
 Windows Installed Apps invokes this command. Installation does not authorize tools
 or enroll a device. Complete enrollment using the [endpoint guide](../../apps/endpoint-client/README.md).

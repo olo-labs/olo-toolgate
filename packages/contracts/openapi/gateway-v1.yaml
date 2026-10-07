@@ -4,7 +4,7 @@ openapi: 3.1.0
 info:
   title: OLO ToolGate Gateway Core
   version: 0.10.0-dev
-  description: Stateless runtime decisions, exact-bound human approvals and single-use execution permits. No tool execution. Management uses a separate restricted listener.
+  description: Stateless runtime decisions, exact-bound human approvals and single-use execution permits. Optional client MCP relay executes enrolled device tools through Control polling. Management uses a separate restricted listener.
 servers:
   - url: https://gateway.example.invalid
 security:
@@ -122,7 +122,7 @@ paths:
   /mcp:
     post:
       operationId: mcpSkeleton
-      description: Stateless 2026-07-28 skeleton. Ping and empty discovery; tools/call authorizes but cannot execute. JSON-RPC and mirrored metadata headers required.
+      description: Stateless 2026-07-28 transport. With localMcp enabled, discovery returns only applicable installed client definitions and ALLOW calls wait for the next client poll and bounded result. ASK blocks. Without a relay, discovery is empty and execution is unsupported. JSON-RPC and mirrored metadata headers required.
       requestBody:
         required: true
         content:

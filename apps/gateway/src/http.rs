@@ -35,6 +35,7 @@ use tracing::Instrument;
 
 /// Per-process safety state; no distributed authorization state is held here.
 pub struct AppState {
+    pub relay: Option<Arc<dyn crate::relay::RelayPort>>,
     pub gateway: Gateway,
     pub auth: Authenticator,
     pub config: Config,
@@ -53,7 +54,7 @@ pub(crate) struct Correlation {
     traceparent: String,
 }
 #[derive(Clone, Copy)]
-struct CredentialDeadline(u64);
+pub(crate) struct CredentialDeadline(pub(crate) u64);
 
 impl AppState {
     /// Construct only after startup validation and credential loading.
@@ -68,6 +69,7 @@ impl AppState {
             .as_bytes(),
         );
         Self {
+            relay: None,
             admission: Semaphore::new(config.limits.max_concurrent_requests),
             rate: RateLimit::new(config.limits.requests_per_second),
             gateway,

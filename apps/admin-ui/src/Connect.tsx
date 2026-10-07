@@ -4,7 +4,7 @@ import {useEffect, useRef, useState} from 'react';
 import type {ClientInstallerManifest} from '@olo-labs/toolgate-contracts';
 
 type ExtensionRelease = {protocol:number;version:string;chromeVersion:string;extensionId:string;storeUrl:string;filename:string;sha256:string;bytes:number};
-export type ConnectStatus = {protocol:number;version:string;chromeVersion:string;phase:string;userCode?:string;client?:{health?:{ready:boolean};error?:unknown}};
+export type ConnectStatus = {protocol:number;version:string;chromeVersion:string;phase:string;serverUrl?:string;userCode?:string;client?:{health?:{ready:boolean};error?:unknown}};
 
 /** Bounded, same-window status bridge. Local presence never grants authorization. */
 export function extensionStatus(signal:AbortSignal,operation:'hello'|'connect'|'status'|'cancel'='status'):Promise<ConnectStatus> {
@@ -16,14 +16,14 @@ export function extensionStatus(signal:AbortSignal,operation:'hello'|'connect'|'
       if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='toolgate-connect-response'||event.data.id!==id)return;
       cleanup();resolve(event.data as ConnectStatus);
     };
-    const timer=setTimeout(()=>{cleanup();reject(Error('Extension unavailable'));},operation==='hello'?2000:25000);
+    const timer=setTimeout(()=>{cleanup();reject(Error('Extension unavailable'));},operation==='hello'?2000:operation==='connect'?900000:25000);
     window.addEventListener('message',receive);signal.addEventListener('abort',abort,{once:true});
     if(signal.aborted){abort();return;}
     window.postMessage({channel:'toolgate-connect-request',id,operation},location.origin);
   });
 }
 export function Connect({onCode,onCancel}:{onCode:(code:string)=>void;onCancel?:()=>void}) {
-  const [message,setMessage]=useState('Connect checks the local client through the Chrome extension, then guides installation if needed.');
+  const [message,setMessage]=useState('Connect installs the client if needed and configures it for this gateway through the Chrome extension.');
   const [busy,setBusy]=useState(false),[release,setRelease]=useState<ExtensionRelease>();
   const [installer,setInstaller]=useState<string>();
   const active=useRef<AbortController|undefined>(undefined);
@@ -52,33 +52,34 @@ export function Connect({onCode,onCancel}:{onCode:(code:string)=>void;onCancel?:
             const asset=Array.isArray(setup.artifacts)?setup.artifacts.find(a=>a.platform==='WINDOWS'&&a.target===target):undefined;
             if(setup.version===value.version&&asset&&asset.filename===`olo-toolgate-client-${value.version}-${target}.setup.exe`
               &&/^[a-f0-9]{64}$/.test(asset.sha256)&&Number.isSafeInteger(asset.bytes)&&asset.bytes>0&&asset.bytes<=104857600)
-              setInstaller(`olo-toolgate-client-${target}.setup.exe`);
+              setInstaller(target);
           }
         }
       } catch { /* Missing setup must not turn an extension ZIP into an installer. */ }
-      const deadline=Date.now()+600000;let first=true;let previousCode='';
+      const deadline=Date.now()+900000;let detected=false;let requested=false;let previousCode='';
       while(!controller.signal.aborted&&Date.now()<deadline) {
         let status:ConnectStatus|undefined;
-        try { status=await extensionStatus(controller.signal,first?'hello':'status'); } catch { if(controller.signal.aborted)break; }
-        const openPopup=first;
-        first=false;
+        try { status=await extensionStatus(controller.signal,detected?'status':'hello'); } catch { if(controller.signal.aborted)break;detected=false; }
         if(controller.signal.aborted)break;
-        if(!status) setMessage('Install the Chrome extension below, then reload this page and click Connect again.');
+        if(!status) setMessage('Install the Chrome extension below. This page will detect it automatically and continue client setup.');
         else if(status.protocol!==1||status.chromeVersion!==value.chromeVersion||status.version!==value.version)
-          setMessage('Upgrade the Chrome extension below, then reload this page and click Connect again.');
+          setMessage('Upgrade the Chrome extension below. This page will detect the new version automatically.');
         else {
-          if(openPopup)void extensionStatus(controller.signal,'connect').catch(()=>{});
+          detected=true;
+          if(status.phase==='installation-detected')requested=false;
+          if(!requested){requested=true;void extensionStatus(controller.signal,'connect').catch(()=>{});}
+          if(status.phase==='gateway-changed'&&previousCode){previousCode='';onCancel?.();}
           if(typeof status.userCode==='string'&&/^[A-F0-9]{16}$/.test(status.userCode)&&status.userCode!==previousCode){previousCode=status.userCode;onCode(status.userCode);}
           setMessage(status.client?.health&&!status.client.error
-            ? 'Client detected. Use Start enrollment in the extension if needed, then review the code and fingerprint below. Server check-in confirms this device is connected.'
-            : status.phase==='open-installer' ? 'Download complete. Open the Chrome extension and click Open installer. Accept the license and Windows permission prompt. Then click Start enrollment.'
-            : status.phase==='downloading' ? 'Downloading the verified client installer…'
-            : status.phase==='download-failed' ? 'Download failed or was cancelled. Retry in the Chrome extension.'
-            : 'Open ToolGate Connect from Chrome Extensions. Approve this site, then download the installer if the client is unavailable.');
+            ? 'Client detected'+(status.serverUrl?' at '+status.serverUrl:'')+'. Review the enrollment code and fingerprint below if requested. Server check-in confirms this device is connected.'
+            : status.phase==='connecting' ? 'Installing the verified client or updating its gateway URL. Approve Windows administrator permission if shown…'
+            : status.phase==='gateway-changed' ? 'The client was connected to another gateway. Click Retry Connect to use this gateway again.'
+            : status.phase==='setup-required' ? 'Install the combined client and Chrome extension setup below, then click Retry Connect. If setup is installed, check the gateway connection and Windows permissions.'
+            : 'Chrome extension detected. Configuring the client for this gateway…');
         }
         await new Promise<void>(resolve=>{
           const finish=()=>{clearTimeout(timer);controller.signal.removeEventListener('abort',finish);resolve();};
-          const timer=setTimeout(finish,3000);controller.signal.addEventListener('abort',finish,{once:true});
+          const timer=setTimeout(finish,2000);controller.signal.addEventListener('abort',finish,{once:true});
         });
       }
       if(!controller.signal.aborted)setMessage('Connect timed out. Retry when the extension and client are ready.');
@@ -90,10 +91,10 @@ export function Connect({onCode,onCancel}:{onCode:(code:string)=>void;onCancel?:
     <button onClick={()=>void start()}>{busy?'Retry Connect':'Connect'}</button>{busy&&<button onClick={cancel}>Cancel Connect</button>}
     <p role="status">{message}</p>
     {release&&<><p>Chrome extension {release.chromeVersion} · Client {release.version}</p>
+      {installer?<a href={`/api/public/v1/clients/setup/${installer}`} download>Install Chrome extension and client</a>:<p>Windows setup is not published for this client release.</p>}
+      <p>One EXE installs the client, Chrome extension files, native bridge and tray icon. This gateway's URL is supplied automatically; no URL entry is required. Windows may request administrator permission. Once Chrome approves the extension, this page detects the client and starts enrollment if needed.</p>
       {release.storeUrl?<a href={release.storeUrl} target="_blank" rel="noopener noreferrer">Install or upgrade Chrome extension</a>
-        : <>{installer?<a href={`/api/public/v1/clients/${installer}`} download>Download Chrome extension</a>:<p>Windows setup is not published for this client release.</p>}
-          <p>The download is a single Windows setup EXE containing the client and Chrome native bridge. Open it, accept the license and approve Windows permission. Chrome extension approval is a separate step.</p>
-          <p>A Chrome Web Store listing is not configured yet. After installing the current Windows setup, open chrome://extensions, enable Developer mode and choose Load unpacked. Select the chrome-extension folder under Program Files\OLO\ToolGateSetup. To upgrade, run the updated installer and reload the extension.</p></>}
+        : <p>A Chrome Web Store listing is not configured yet. Open chrome://extensions, enable Developer mode and choose Load unpacked from Program Files\OLO\ToolGateSetup\chrome-extension. This page continues automatically after Chrome approves the extension.</p>}
       <details><summary>Extension SHA-256</summary><code>{release.sha256}</code></details></>}
   </section>;
 }

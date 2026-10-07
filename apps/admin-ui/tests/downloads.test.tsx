@@ -32,7 +32,7 @@ it('offers Windows EXE installers without exposing Windows ZIP archives', async 
     filename: a.filename.replace(/\.(zip|tar\.gz)$/, a.platform === 'WINDOWS' ? '.setup.exe' : a.platform === 'MACOS' ? '.dmg' : '.run') })) };
   vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => Promise.resolve(new Response(JSON.stringify(url.endsWith('/installers') ? installers : manifest)))));
   render(<ClientDownloads />);
-  expect((await screen.findByRole('link', { name: 'Install Windows x64' })).getAttribute('href')).toBe('/api/public/v1/clients/olo-toolgate-client-x86_64-pc-windows-msvc.setup.exe');
+  expect((await screen.findByRole('link', { name: 'Install Windows x64' })).getAttribute('href')).toBe('/api/public/v1/clients/setup/x86_64-pc-windows-msvc');
   expect(screen.getByRole('link', { name: 'Install macOS x64' })).toBeTruthy();
   expect(screen.getByRole('link', { name: 'Install Linux x64' })).toBeTruthy();
   expect(screen.queryByRole('link', { name: 'Download Windows x64' })).toBeNull();
