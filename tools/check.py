@@ -114,6 +114,7 @@ def scans():
     audit(json.loads(metadata.stdout))
     # This read-only scan hook is runnable locally and is mandatory in CI.
     run(['docker','run','--rm','-v',f'{ROOT.as_posix()}:/repo:ro','zricethezav/gitleaks:v8.24.2','detect','--source=/repo','--no-git','--redact','--exit-code=1'])
+    run(['node', 'tools/ci/secret-scan.mjs'])
     from policy.secret_scan import checks as secret_scan_checks
     secret_scan_checks()
     from source_scan import scan

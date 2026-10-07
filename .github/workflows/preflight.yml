@@ -25,3 +25,5 @@ jobs:
         run: |
           node --test apps/browser-extension/tests/*.mjs
           python -m unittest discover -s tools/client -p test_extension.py
+      - name: Scan staged source and prove public-key allowances remain narrow
+        run: node tools/ci/secret-scan.mjs

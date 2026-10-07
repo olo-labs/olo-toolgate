@@ -12,4 +12,4 @@ if (current && current !== '.githooks') {
 }
 const result = spawnSync('git',['config','--local','core.hooksPath','.githooks']);
 if (result.status !== 0) process.exit(result.status ?? 1);
-console.log('Installed ToolGate pre-commit checks (TypeScript and UI unit/accessibility tests).');
+console.log('Installed ToolGate pre-commit checks (secret scan, TypeScript and UI unit/accessibility tests; Docker required).');

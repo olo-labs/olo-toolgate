@@ -11,6 +11,8 @@ if (unstaged.status !== 0) {
 }
 const extensionTests=spawnSync(process.execPath,['--test','apps/browser-extension/tests/protocol.mjs','apps/browser-extension/tests/worker.mjs'],{stdio:'inherit'});
 if(extensionTests.status!==0)process.exit(extensionTests.status??1);
+const secretScan=spawnSync(process.execPath,['tools/ci/secret-scan.mjs'],{stdio:'inherit'});
+if(secretScan.status!==0)process.exit(secretScan.status??1);
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 for (const args of [['run','ui:check'], ['--workspace','@olo-labs/toolgate-admin-ui','test']]) {
   const result = spawnSync(npm,args,{stdio:'inherit',shell:process.platform==='win32'});

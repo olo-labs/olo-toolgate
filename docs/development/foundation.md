@@ -4,9 +4,15 @@
 
 Run `npm ci` to install workspace dependencies and the repository pre-commit hook.
 For existing checkouts, `npm run hooks:install` installs it explicitly. The hook
-runs Chrome Connect protocol tests, TypeScript validation and the UI unit suite, including fast axe checks for
-uncontained navigation controls and nested main landmarks, without Java, Docker
-or a running backend. Run the same checks manually with `npm run precommit`.
+runs Chrome Connect protocol tests, a pinned Gitleaks scan of the Git index,
+TypeScript validation and the UI unit suite, including fast axe checks for
+uncontained navigation controls and nested main landmarks. Docker must be running;
+Java and a running backend are not required. Run the same checks manually with
+`npm run precommit`. Secret-scan regression checks allow only the exact reviewed
+Chrome public key at its identity path, and reject that key at another path,
+credentials and private keys in the identity file. The reusable CI preflight runs
+these checks before expensive builds. Ignored local configuration is not exported
+into the staged scan; the full CI source scan remains enabled.
 
 Stage UI/check changes before committing; the hook rejects unstaged changes in
 those paths so the tested files match the proposed commit. A failing check blocks

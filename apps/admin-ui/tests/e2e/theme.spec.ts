@@ -17,9 +17,13 @@ test('OLO branding, dark default, saved theme, system preference and mobile acce
     const image = new Image(); image.src = url; await image.decode();
     const canvas = document.createElement('canvas'); canvas.width=image.width; canvas.height=image.height;
     const context=canvas.getContext('2d')!; context.drawImage(image,0,0);
-    return {corner:context.getImageData(0,0,1,1).data[3],center:Array.from(context.getImageData(519,386,1,1).data)};
+    const rowAlpha=(y:number)=>Array.from(context.getImageData(0,y,canvas.width,1).data).filter((_,index)=>index%4===3);
+    return {width:image.width,height:image.height,corner:context.getImageData(0,0,1,1).data[3],
+      center:Array.from(context.getImageData(canvas.width/2,canvas.height/2,1,1).data),
+      top:Math.max(...rowAlpha(0)),bottom:Math.max(...rowAlpha(canvas.height-1))};
   },favicon!);
   expect(alpha.corner).toBe(0); expect(alpha.center).toEqual([255,255,255,255]);
+  expect(alpha.width).toBe(alpha.height);expect(alpha.top).toBe(0);expect(alpha.bottom).toBe(0);
   if (process.env.UI_PASSWORDLESS_TEST === '1') {
     await expect(page.getByRole('navigation')).toBeVisible();
     await expect(page.locator('.stat')).toHaveCount(6);

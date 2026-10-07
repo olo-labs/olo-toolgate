@@ -15,3 +15,12 @@ id = "jwt"
   regexTarget = "line"
   paths = ['''(^|/)tests/fixtures/(policy/signed-v1|approval/signed-v2|contracts/v1/valid|fleet/v1/signed|builder/v1/signed)\.json$''']
   regexes = ['''^\s*"jws":\s*"''']
+
+[[rules]]
+id = "generic-api-key"
+  [[rules.allowlists]]
+  description = "Exact Chrome extension public SPKI key; never a credential"
+  condition = "AND"
+  regexTarget = "secret"
+  paths = ['''(^|/)apps/browser-extension/identity\.json$''']
+  regexes = ['''^MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuMeYXl3SgQPz7Z3GqN4InqU8v0yiUOmE7sg1DS8DUoGJ5F4nP8jtVq3qqm4dGz5bfz6Sdej\+20DgE/Y2Nr2InUH87FB4RlLZ1CDlnaw/km4ytBK66r0\+cHXRy/THAC2TWwkX/io3qe3DnZ5L77vZkPbGecMRAucsmOvFOM2QnOTNNfYnJEJVmrYKpUbH/VYdm9qXuh7EIA95sAjpDoVQgGIDm\+f9UBrXexCtdUgVBx2g9kKpivpxOGMyrgxUI0JKepjGBe\+r4Js3ci1YQ5kpGsdmhTUt0L23gHKieaKTx3GBzdppVrg5FXSqTLWEXjryGgGpB1kYVGH6kxhZ6cp7jQIDAQAB$''']
