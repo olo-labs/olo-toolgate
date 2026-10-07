@@ -86,9 +86,18 @@ def smoke(image,browser):
         assert {a['platform'] for a in manifest['artifacts']}=={'WINDOWS','MACOS','LINUX'}
         for artifact in manifest['artifacts']:
             status,archive,headers=request(origin+'/api/public/v1/clients/'+artifact['filename'])
+            if artifact['platform']=='WINDOWS':
+                assert status==404
+                continue
             assert status==200 and len(archive)==artifact['bytes'] and hashlib.sha256(archive).hexdigest()==artifact['sha256']
             assert headers['X-Content-Type-Options']=='nosniff'
-        mark('three-platform anonymous native downloads/actual archive checksums')
+        status,installers=api('/api/public/v1/installers');assert status==200
+        assert {a['platform'] for a in installers['artifacts']}=={'WINDOWS','MACOS','LINUX'}
+        for installer in installers['artifacts']:
+            status,data,headers=request(origin+'/api/public/v1/clients/'+installer['filename'])
+            assert status==200 and len(data)==installer['bytes'] and hashlib.sha256(data).hexdigest()==installer['sha256']
+            assert headers['X-Content-Type-Options']=='nosniff'
+        mark('three-platform anonymous installer checksums/Windows ZIP rejected')
         assert api('/api/control/v1/users')[0]==401
         assert api('/api/quickstart/v1/vault')[0]==401
         assert request(origin+'/api/quickstart/v1/status',headers={'Host':'hostile.invalid'})[0]==401

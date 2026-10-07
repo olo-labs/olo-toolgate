@@ -40,10 +40,10 @@ export function ClientDownloads() {
         <h3>{label}</h3>{installers?.artifacts.filter(a => a.platform === platform).map(artifact => <div key={'installer-'+artifact.target}>
           <a href={`/api/public/v1/clients/olo-toolgate-client-${artifact.target}.${platform === 'WINDOWS' ? 'setup.exe' : platform === 'MACOS' ? 'dmg' : 'run'}`} download>{`Install ${label} ${artifact.target.startsWith('aarch64') ? 'ARM64' : 'x64'}`}</a>
           <details><summary>Verify installer SHA-256</summary><code>{artifact.sha256}</code></details>
-        </div>)}{manifest.artifacts.filter(a => a.platform === platform).map(artifact => <div key={artifact.target}>
+        </div>)}{manifest.artifacts.filter(a => a.platform === platform && platform !== 'WINDOWS').map(artifact => <div key={artifact.target}>
           <a href={`/api/public/v1/clients/${encodeURIComponent(artifact.filename)}`} download>{`Download ${label} ${artifact.target.startsWith('aarch64') ? 'ARM64' : 'x64'}`}</a>
           <details><summary>Verify SHA-256</summary><code>{artifact.sha256}</code></details>
-        </div>)}<p>{installers ? platform === 'LINUX' ? 'Mark the .run file executable, then open it. It requests administrator permission.' : 'Open the installer, enter your HTTPS server address and approve administrator permission.' : 'Extract the archive and follow its installation guide.'}</p>
+        </div>)}<p>{installers ? platform === 'LINUX' ? 'Mark the .run file executable, then open it. It requests administrator permission.' : 'Open the installer, enter your HTTPS server address and approve administrator permission.' : platform === 'WINDOWS' ? 'Windows installers are unavailable. Contact your administrator for a published installer.' : 'Extract the archive and follow its installation guide.'}</p>
       </article>)}</div></>}
     <p className="hint">Protected operations require current Gateway authorization. If authorization is unavailable, the service blocks the operation.</p>
     {installers && <p className="hint">These development installers are unsigned. Windows SmartScreen and macOS Gatekeeper may show warnings. Signing is planned separately.</p>}

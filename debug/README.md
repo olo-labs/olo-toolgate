@@ -9,8 +9,14 @@ Scripts work from any current directory and never commit or push.
 Requires Docker Desktop running Linux containers, Git, Node.js/npm, Python 3.11+
 and internet access for dependencies and base images. A Python environment is
 created under `.dev/debug/venv`. The matching Playwright Chromium browser is
-installed automatically after npm dependencies. Supply real client release assets under
-`deploy/client-assets/release` as required by the existing Quickstart build.
+installed automatically after npm dependencies. Native archives and one-click
+installers are fetched from the latest published GitHub release matching VERSION,
+verified by the canonical manifest tool, and included in the local image. The
+separately packaged Chrome extension in `deploy/client-assets/release` is retained.
+Windows/Chrome ZIPs are internal build inputs only. After installer-only releases
+are published, a clean machine must obtain their internal native bundle from the
+client CI `public-client-bundle` artifact in `.dev/debug/client-assets`; existing
+verified build inputs are retained there. The server never offers ZIP downloads.
 Errors stop deployment and remain visible in the console; failed checks leave
 the running debug stack untouched.
 

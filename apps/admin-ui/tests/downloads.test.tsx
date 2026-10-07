@@ -13,7 +13,8 @@ const manifest: ClientDownloadManifest = { version:'0.7.0-dev', artifacts:[
 it('downloads all three platforms without a login credential and explains logged-out service operation', async () => {
   const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify(manifest))); vi.stubGlobal('fetch',fetcher);
   render(<ClientDownloads />);
-  expect((await screen.findByRole('link',{name:'Download Windows x64'})).getAttribute('href')).toBe(`/api/public/v1/clients/${manifest.artifacts[0].filename}`);
+  await screen.findByText(/Windows installers are unavailable/);
+  expect(screen.queryByRole('link',{name:'Download Windows x64'})).toBeNull();
   expect(screen.getByRole('link',{name:'Download macOS x64'})).toBeTruthy(); expect(screen.getByRole('link',{name:'Download Linux x64'})).toBeTruthy();
   const options = fetcher.mock.calls[0][1]; expect(options.credentials).toBe('omit'); expect(options.headers).toBeUndefined();
   expect(screen.getByText(/keeps running when you lock the screen or log out/)).toBeTruthy();
@@ -26,7 +27,7 @@ it('rejects untrusted artifact URLs and script-bearing filenames', async () => {
   vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({...manifest,artifacts:manifest.artifacts.map(a=>({...a,filename:'../../secret'}))}))));
   render(<ClientDownloads />); expect(await screen.findByText(/Client downloads are unavailable/)).toBeTruthy(); expect(screen.queryByRole('link')).toBeNull();
 });
-it('offers unsigned installers without login and retains archive downloads', async () => {
+it('offers Windows EXE installers without exposing Windows ZIP archives', async () => {
   const installers = { ...manifest, artifacts: manifest.artifacts.map(a => ({ ...a,
     filename: a.filename.replace(/\.(zip|tar\.gz)$/, a.platform === 'WINDOWS' ? '.setup.exe' : a.platform === 'MACOS' ? '.dmg' : '.run') })) };
   vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => Promise.resolve(new Response(JSON.stringify(url.endsWith('/installers') ? installers : manifest)))));
@@ -34,6 +35,6 @@ it('offers unsigned installers without login and retains archive downloads', asy
   expect((await screen.findByRole('link', { name: 'Install Windows x64' })).getAttribute('href')).toBe('/api/public/v1/clients/olo-toolgate-client-x86_64-pc-windows-msvc.setup.exe');
   expect(screen.getByRole('link', { name: 'Install macOS x64' })).toBeTruthy();
   expect(screen.getByRole('link', { name: 'Install Linux x64' })).toBeTruthy();
-  expect(screen.getByRole('link', { name: 'Download Windows x64' })).toBeTruthy();
+  expect(screen.queryByRole('link', { name: 'Download Windows x64' })).toBeNull();
   expect(screen.getByText(/These development installers are unsigned/)).toBeTruthy();
 });

@@ -16,6 +16,17 @@ ROOT=Path(__file__).resolve().parents[2]
 EXTENSIONS={'WINDOWS':'setup.exe','MACOS':'dmg','LINUX':'run'}
 
 
+def embed_chrome(directory_payload, build_number=0):
+    if __package__:
+        from .extension import package as chrome_package
+    else:
+        from extension import package as chrome_package
+    directory=directory_payload.parent
+    metadata=chrome_package(directory/'chrome-build',build_number)
+    with zipfile.ZipFile(directory/'chrome-build'/metadata['filename']) as extension_archive:
+        extension_archive.extractall(directory_payload/'chrome-extension')
+
+
 def payload(archive):
     expected=hashlib.sha256(archive.read_bytes()).hexdigest()+'  '+archive.name
     if archive.with_name(archive.name+'.sha256').read_text().strip()!=expected:
@@ -72,6 +83,9 @@ def build(target,output):
                 path=directory_payload/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(data)
                 if name==executable:path.chmod(0o755)
             if platform=='WINDOWS':
+                # Ship the unpacked extension inside the EXE, never a second ZIP download.
+                build_number=int(subprocess.check_output(['git','rev-list','--count','HEAD'],cwd=ROOT)) if os.environ.get('GITHUB_ACTIONS')=='true' else 0
+                embed_chrome(directory_payload,build_number)
                 compiler=os.environ.get('CLIENT_ISCC_PATH',r'C:\Program Files (x86)\Inno Setup 6\ISCC.exe')
                 notice=Path(compiler).parent/'License.txt'
                 if not notice.is_file():raise ValueError('Installer compiler license missing')

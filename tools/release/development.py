@@ -13,6 +13,8 @@ import time
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT/'build/development'
+sys.path.insert(0,str(ROOT/'tools/client'))
+from publication import public_asset
 WORKFLOWS = {'control':'control.yml', 'gateway':'gateway.yml', 'quickstart':'quickstart.yml',
              'foundation':'foundation.yml', 'client':'client.yml'}
 IMAGES = {'control':('olo-toolgate-control:module05','olo-toolgate-control'),
@@ -82,6 +84,10 @@ def prepare():
                           ('client','public-client-bundle')]:
         run('gh','run','download',str(selected[name]),'--repo',repo,'--name',artifact,'--dir',str(OUTPUT/name))
     run(sys.executable,'tools/client/manifest.py','--source',str(OUTPUT/'client'),'--output',str(assets))
+    if not (assets/'installers.json').exists():raise ValueError('Native installers required for release')
+    # ZIP archives remain CI build inputs, never public Windows installation assets.
+    for path in assets.iterdir():
+        if not public_asset(path):path.unlink()
     manifest=json.loads((assets/'manifest.json').read_text())
     if len(manifest['artifacts'])!=6:raise ValueError('All six native OS/architecture packages are required')
     for component in IMAGES:

@@ -25,7 +25,10 @@ def main():
             status,raw,_=request(url);assert status==200;manifest=json.loads(raw)
             assert {a['platform'] for a in manifest['artifacts']}=={'WINDOWS','MACOS','LINUX'}
             for artifact in manifest['artifacts']:
-                status,data,headers=request(url+'/'+artifact['filename']);assert status==200
+                status,data,headers=request(url+'/'+artifact['filename'])
+                if artifact['platform']=='WINDOWS':
+                    assert status==404;continue
+                assert status==200
                 assert len(data)==artifact['bytes'] and hashlib.sha256(data).hexdigest()==artifact['sha256']
                 assert headers['X-Content-Type-Options']=='nosniff'
             assert request(runtime+'/api/control/v1/users')[0]==401

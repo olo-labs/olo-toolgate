@@ -6,11 +6,22 @@ import io
 import tarfile
 import tempfile
 import unittest
+import json
 from pathlib import Path
-from tools.client.installer import linux_bytes, payload
+from tools.client.installer import linux_bytes, payload, embed_chrome
 
 
 class InstallerTests(unittest.TestCase):
+    def test_windows_payload_contains_unpacked_chrome_extension(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory=Path(temporary)/'payload'
+            embed_chrome(directory,42)
+            manifest=json.loads((directory/'chrome-extension/manifest.json').read_text())
+            self.assertTrue(manifest['version'].endswith('.42'))
+            self.assertTrue((directory/'chrome-extension'/manifest['background']['service_worker']).is_file())
+            self.assertTrue((directory/'chrome-extension/LICENSE').is_file())
+            self.assertFalse(list(directory.rglob('*.zip')))
+
     def test_linux_payload_offset_hash_and_reproducibility(self):
         files={'olo-toolgate-client':b'fixture','LICENSE':b'license'}
         result=linux_bytes(files)

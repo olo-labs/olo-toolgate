@@ -18,7 +18,8 @@ test(`anonymous ${platform} downloads have matching checksums and accessible sta
   const labels = {WINDOWS:'Windows',MACOS:'macOS',LINUX:'Linux'};
   const native=manifest.artifacts.filter(artifact=>artifact.platform===platform);
   expect(native.length).toBeGreaterThan(0);
-  for (const artifact of native) {
+  if (platform === 'WINDOWS') await expect(page.locator('a[href$=".zip"]')).toHaveCount(0);
+  for (const artifact of native.filter(a=>a.platform !== 'WINDOWS')) {
     const architecture=artifact.target.startsWith('aarch64')?'ARM64':'x64';
     const pending = page.waitForEvent('download'); await page.getByRole('link',{name:`Download ${labels[artifact.platform]} ${architecture}`,exact:true}).click();
     const download = await pending; expect(download.suggestedFilename()).toBe(artifact.filename);

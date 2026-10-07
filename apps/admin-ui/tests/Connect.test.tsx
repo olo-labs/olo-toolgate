@@ -18,7 +18,7 @@ it('guides an incompatible extension upgrade and cancels polling',async()=>{
   chrome();bridge({protocol:1,chromeVersion:'0.10.0.22',version:'0.10.0-dev'});
   render(<Connect onCode={vi.fn()}/>);fireEvent.click(screen.getByRole('button',{name:'Connect'}));
   await screen.findByText(/Upgrade the Chrome extension/);expect(screen.getByRole('link',{name:'Download Chrome extension'}).getAttribute('href')).toBe('/api/public/v1/clients/olo-toolgate-client-x86_64-pc-windows-msvc.setup.exe');
-  expect(screen.getByRole('link',{name:'Download extension package for Chrome approval'}).getAttribute('download')).toBe('olo-toolgate-chrome.zip');
+  expect(screen.queryByRole('link',{name:'Download extension package for Chrome approval'})).toBeNull();
   fireEvent.click(screen.getByRole('button',{name:'Cancel Connect'}));await screen.findByText(/Connect cancelled/);
 });
 it('detects a client but requires separately verified enrollment',async()=>{
@@ -32,7 +32,7 @@ it('does not offer setup from a different client release',async()=>{
   render(<Connect onCode={vi.fn()}/>);fireEvent.click(screen.getByRole('button',{name:'Connect'}));
   await screen.findByText(/Windows setup is not published/);
   expect(screen.queryByRole('link',{name:'Download Chrome extension'})).toBeNull();
-  expect(screen.getByRole('link',{name:'Download extension package for Chrome approval'})).toBeTruthy();
+  expect(screen.queryByRole('link',{name:'Download extension package for Chrome approval'})).toBeNull();
   fireEvent.click(screen.getByRole('button',{name:'Cancel Connect'}));
 });
 it('rejects a malicious release URL',async()=>{

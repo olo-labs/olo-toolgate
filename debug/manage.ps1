@@ -46,6 +46,7 @@ try {
         Invoke-Checked $python @('tools/check.py', '--scans')
     }
     # Smoke-test the candidate before replacing the persistent debug container.
+    & "$PSScriptRoot/client-assets.ps1" -Python $python
     Invoke-Checked $python @('tools/quickstart/check.py', '--build', '--image', 'olo-toolgate-quickstart:debug')
     Invoke-Checked docker ($compose + @('up', '-d', '--wait', '--wait-timeout', '150', '--force-recreate', '--pull', 'never'))
     Write-Host 'ToolGate debug console: http://127.0.0.1:18090/console/'

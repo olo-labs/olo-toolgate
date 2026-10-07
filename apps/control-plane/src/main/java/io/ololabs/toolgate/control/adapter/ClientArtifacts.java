@@ -96,6 +96,8 @@ public class ClientArtifacts {
         file.position(0);
     }
     public jakarta.ws.rs.core.Response download(String filename) {
+        if(filename.endsWith(".zip"))
+            throw new Failure(ErrorCode.NOT_FOUND,404,"Use the Windows installer");
         manifest();var artifact=artifacts.get(filename);
         boolean stable=false;
         if(artifact==null&&installers!=null) {

@@ -93,7 +93,7 @@ export function Connect({onCode,onCancel}:{onCode:(code:string)=>void;onCancel?:
       {release.storeUrl?<a href={release.storeUrl} target="_blank" rel="noopener noreferrer">Install or upgrade Chrome extension</a>
         : <>{installer?<a href={`/api/public/v1/clients/${installer}`} download>Download Chrome extension</a>:<p>Windows setup is not published for this client release.</p>}
           <p>The download is a single Windows setup EXE containing the client and Chrome native bridge. Open it, accept the license and approve Windows permission. Chrome extension approval is a separate step.</p>
-          <a href={`/api/public/v1/clients/${release.filename}`} download="olo-toolgate-chrome.zip">Download extension package for Chrome approval</a><p>A Chrome Web Store listing is not configured yet. For development, extract the extension package, open chrome://extensions, enable Developer mode and choose Load unpacked. To upgrade, replace the extracted files and reload the extension.</p></>}
+          <p>A Chrome Web Store listing is not configured yet. After installing the current Windows setup, open chrome://extensions, enable Developer mode and choose Load unpacked. Select the chrome-extension folder under Program Files\OLO\ToolGateSetup. To upgrade, run the updated installer and reload the extension.</p></>}
       <details><summary>Extension SHA-256</summary><code>{release.sha256}</code></details></>}
   </section>;
 }

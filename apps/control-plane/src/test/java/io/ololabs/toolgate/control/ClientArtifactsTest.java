@@ -33,7 +33,7 @@ final class ClientArtifactsTest {
         Files.writeString(directory.resolve("extension.json"),codec.json(metadata));
         var assets=new ClientArtifacts(Optional.of(directory.toString()),codec);
         assertEquals(filename,assets.extension().get("filename"));
-        ((jakarta.ws.rs.core.StreamingOutput)assets.download(filename).getEntity()).write(java.io.OutputStream.nullOutputStream());
+        assertThrows(Failure.class,()->assets.download(filename));
         metadata.put("storeUrl","https://evil.example");Files.writeString(directory.resolve("extension.json"),codec.json(metadata));
         assertThrows(IllegalStateException.class,()->new ClientArtifacts(Optional.of(directory.toString()),codec));
         metadata.put("storeUrl","");metadata.put("filename","../evil.zip");Files.writeString(directory.resolve("extension.json"),codec.json(metadata));
@@ -70,7 +70,9 @@ final class ClientArtifactsTest {
     @Test void onlyPublishedArtifactNamesCanBeDownloaded()throws Exception{
         bundle();var assets=new ClientArtifacts(Optional.of(directory.toString()),codec);assertEquals(3,assets.manifest().artifacts().size());
         assertThrows(Failure.class,()->assets.download("../../secret"));
-        var artifact=assets.manifest().artifacts().getFirst();var response=assets.download(artifact.filename());
+        var windows=assets.manifest().artifacts().stream().filter(a->a.filename().endsWith(".zip")).findFirst().orElseThrow();
+        assertThrows(Failure.class,()->assets.download(windows.filename()));
+        var artifact=assets.manifest().artifacts().stream().filter(a->!a.filename().endsWith(".zip")).findFirst().orElseThrow();var response=assets.download(artifact.filename());
         var output=new java.io.ByteArrayOutputStream();((jakarta.ws.rs.core.StreamingOutput)response.getEntity()).write(output);assertEquals(artifact.bytes(),output.size());
         Files.writeString(directory.resolve(artifact.filename()),"corrupted");assertThrows(Failure.class,()->assets.download(artifact.filename()));
     }
@@ -80,7 +82,7 @@ final class ClientArtifactsTest {
     }
     @Test void transfersAreBoundedAndFailedOutputReleasesCapacity()throws Exception{
         bundle();var assets=new ClientArtifacts(Optional.of(directory.toString()),codec);
-        var filename=assets.manifest().artifacts().getFirst().filename();
+        var filename=assets.manifest().artifacts().stream().filter(a->!a.filename().endsWith(".zip")).findFirst().orElseThrow().filename();
         var first=assets.download(filename);var second=assets.download(filename);
         assertThrows(Failure.class,()->assets.download(filename));
         var broken=new java.io.OutputStream(){@Override public void write(int ignored)throws java.io.IOException{throw new java.io.IOException("closed test stream");}};

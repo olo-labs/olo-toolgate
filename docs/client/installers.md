@@ -18,9 +18,11 @@ download API resolves that name to the current validated installer and sends
 `Cache-Control: no-store`; versioned files and manifests remain immutable for
 checksum verification. GitHub releases also include these stable installer names.
 In Connect, **Download Chrome extension** downloads the Windows setup EXE, which
-contains the client and native bridge. **Download extension package for Chrome
-approval** remains a separate ZIP with a stable saved filename
-`olo-toolgate-chrome.zip`; it still requires Chrome's extension approval.
+contains the client, native bridge and unpacked Chrome extension. There is no
+separate ZIP download. Open chrome://extensions, enable Developer mode and choose
+Load unpacked from `Program Files\OLO\ToolGateSetup\chrome-extension`.
+Chrome still requires the user's extension approval. Windows client ZIP archives
+are internal CI build inputs and are not public installation downloads.
 
 macOS: open the `.dmg`, then `Install ToolGate.app`. Enter your HTTPS Control server
 and approve administrator authentication. A system LaunchDaemon runs independently
