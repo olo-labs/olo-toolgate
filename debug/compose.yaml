@@ -1,0 +1,25 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+services:
+  quickstart:
+    image: olo-toolgate-quickstart:debug
+    pull_policy: never
+    platform: linux/amd64
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 35s
+    environment:
+      TOOLGATE_DISABLE_ADMIN_PASSWORD: ${TOOLGATE_DISABLE_ADMIN_PASSWORD:-false}
+      TOOLGATE_QUICKSTART_DATABASE_MODE: sqlite
+      TOOLGATE_CACHE_MODE: embedded
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m,uid=65532,gid=65532
+    ports:
+      - "127.0.0.1:18090:8080"
+      - "127.0.0.1:18450:8443"
+    volumes:
+      - data:/data
+volumes:
+  data:
