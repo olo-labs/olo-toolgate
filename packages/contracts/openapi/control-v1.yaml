@@ -168,6 +168,8 @@ paths:
           description: Wrong tenant/user, inactive or revoked device
         '409':
           description: State, replay or polling conflict
+        '423':
+          description: Registered-key certificate recovery is blocked by disablement, deapproval or an expired connection deadline
         '503':
           description: Dependency unavailable
       security: []
@@ -191,7 +193,8 @@ paths:
     post:
       operationId: startEndpointEnrollment
       description: Anonymous direct HTTPS, verified P-256 CSR, bounded pending quota. This challenge creation
-        is not a grant and may be repeated after a lost response.
+        is not a grant and may be repeated after a lost response. An exact already approved device/key
+        can recover its public certificate without changing owner, enablement or connection deadline.
       responses:
         '200':
           description: Success; no-store
@@ -280,6 +283,7 @@ paths:
       description: Dedicated toolgate-enroller confirms device for their signed enabled user. Approval,
         identity registration, directory metadata, audit and idempotency commit atomically. Approvals
         enforce connectionExpiresAtUnixMs for certificates, renewal and all device access; omission defaults to 24 hours.
+        Explicit unlimitedConnection=true gives approval without an access deadline while certificates still renew.
       responses:
         '200':
           description: Success; no-store
@@ -323,7 +327,9 @@ paths:
         '401':
           description: Direct TLS and a device certificate are required
         '403':
-          description: Device is inactive, disabled or revoked
+          description: Device is inactive or permanently revoked
+        '423':
+          description: Device is disabled, deapproved or its connection deadline expired; access can be restored
         '503':
           description: Channel capacity or dependencies unavailable
   /api/control/v1/endpoint/check-in:
@@ -352,6 +358,8 @@ paths:
           description: Direct TLS/identity required
         '403': &id015
           description: Wrong tenant/user, inactive or revoked device
+        '423':
+          description: Device is disabled, deapproved or its connection deadline expired; retryable suspension
         '409': &id016
           description: State, replay or polling conflict
         '503':
@@ -363,6 +371,107 @@ paths:
             schema:
               $ref: ../schemas/v1/endpoint.schema.json#/$defs/EndpointCheckIn
       security: []
+  /api/control/v1/endpoint/devices:
+    get:
+      operationId: listEndpointDevices
+      description: Administrator lists all directory devices and unexpired pending requests in their tenant, including internal Quickstart executors.
+      responses:
+        '200':
+          description: Success; no-store
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/endpoint.schema.json#/$defs/EndpointManagedDevicePage
+        '401':
+          description: Direct TLS/identity required
+        '403':
+          description: Administrator role and same tenant required
+        '503':
+          description: Dependency unavailable
+  /api/control/v1/endpoint/devices/{id}/approval:
+    post:
+      operationId: setEndpointApproval
+      description: Administrator approves or deapproves an enrolled key without revoking it or changing its owner or directory enabled state. Explicit unlimitedConnection allows unlimited approval; certificate validity remains at most 24 hours.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/endpoint.schema.json#/$defs/EndpointApprovalRequest
+      responses:
+        '200':
+          description: Success; no-store
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/endpoint.schema.json#/$defs/EndpointDeviceRecord
+        '400':
+          description: Invalid approval deadline
+        '401':
+          description: Direct TLS/identity required
+        '403':
+          description: Administrator role and enabled user required
+        '409':
+          description: Approval revision changed or key permanently revoked
+        '503':
+          description: Dependency unavailable
+  /api/control/v1/endpoint/devices/{id}/enabled:
+    post:
+      operationId: setEndpointEnabled
+      description: Administrator enables or disables device directory activation independently of approval. A pending request may receive disabled directory metadata without granting credentials.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/endpoint.schema.json#/$defs/EndpointEnabledRequest
+      responses:
+        '200':
+          description: Success; no-store
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlDevice
+        '400':
+          description: Invalid bounded input
+        '401':
+          description: Direct TLS/identity required
+        '403':
+          description: Administrator role and enabled user required
+        '409':
+          description: Directory revision changed or no pending identity
+        '503':
+          description: Dependency unavailable
   /api/control/v1/endpoint/devices/{id}:
     get:
       operationId: getEndpointDevice

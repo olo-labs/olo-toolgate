@@ -8,6 +8,12 @@ Modules 03,08,09.
 
 Allow administrators/tool authors to create, test, version, deploy and later publish tools.
 
+Designated execution must use the current [registered device flow](../../control-plane/device-registry.md).
+Authoring or test success cannot approve a device, extend its connection deadline,
+reenable it or bypass tool/resource filters. Keep tenant/owner binding and current
+registry checks before test and runtime effects, alongside existing signed leases,
+permission narrowing and sandbox confinement.
+
 ## Mandatory Preparation
 
 Read the master prompt and requirements traceability document.

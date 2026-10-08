@@ -8,6 +8,12 @@ All primary runtime services.
 
 Make the system operable in a real Kubernetes environment.
 
+Deploy matching components for the current [device registry](../../control-plane/device-registry.md),
+including PostgreSQL migration V11. Preserve identities, approvals, owners and
+enablement across upgrades and restore. Keep runtime credentials private and rotate
+them independently of connection approval. Monitoring must distinguish readiness,
+connection freshness, suspension and policy denial; none is an execution grant.
+
 ## Mandatory Preparation
 
 Read the master prompt and requirements traceability document.

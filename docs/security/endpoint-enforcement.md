@@ -10,8 +10,13 @@ requests and expose only review metadata, never private device codes, CSRs or
 certificates. Decisions still bind the human approval to the reviewed fingerprint
 and commit identity, deadline, audit and idempotency atomically.
 
-New approvals have an absolute `connectionExpiresAtUnixMs` deadline (24 hours
-when omitted by an older API caller). Check-ins, socket authentication and tool
-access reject expired approvals. Certificates and renewal are capped at the
+New approvals use an absolute `connectionExpiresAtUnixMs` deadline (24 hours
+when omitted by an older API caller), or explicit `unlimitedConnection: true`.
+Enablement and connection approval are independent registry gates. Temporary
+disablement, deapproval or deadline expiry returns HTTP 423 and retains identity;
+permanent revocation remains irreversible. Check-ins, socket authentication and
+tool access reject suspended approval. Certificates and renewal are capped at the
 deadline, rounded down to X.509 second precision. Tool leases are also capped at
-the deadline, and open job sockets recheck authorization every five seconds.
+the finite deadline, and open job sockets recheck authorization every five seconds.
+Unlimited approval keeps certificates short lived and supports exact-key recovery
+after a long outage without changing the owner or grant.

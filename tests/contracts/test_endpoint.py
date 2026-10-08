@@ -11,6 +11,18 @@ from test_foundation import schemas_at, validators
 ROOT = Path(__file__).resolve().parents[2]
 
 class EndpointContractsTests(unittest.TestCase):
+    def test_management_snapshots_and_explicit_unlimited_approval_are_bounded(self):
+        models = validators(schemas_at(ROOT/'packages/contracts/schemas/v1'))
+        fixtures = json.loads((ROOT/'tests/fixtures/contracts/v1/valid.json').read_text())
+        page = {'items': [fixtures['EndpointManagedDevice']] * 544}
+        models['EndpointManagedDevicePage'].validate(page)
+        page['items'].append(fixtures['EndpointManagedDevice'])
+        with self.assertRaises(ValidationError): models['EndpointManagedDevicePage'].validate(page)
+        for name, field, invalid in [('EndpointApprovalRequest','expectedApprovalRevision',0),('EndpointEnabledRequest','expectedRevision',-1),('EndpointEnrollmentDecision','unlimitedConnection','true'),('EndpointManagedDevice','systemAvailable','true')]:
+            sample=copy.deepcopy(fixtures[name]); sample[field]=invalid
+            with self.assertRaises(ValidationError): models[name].validate(sample)
+        models['EndpointEnabledRequest'].validate({'expectedRevision':0,'enabled':False})
+
     def test_pending_enrollment_page_and_optional_connection_deadlines_are_bounded(self):
         models = validators(schemas_at(ROOT/'packages/contracts/schemas/v1'))
         fixtures = json.loads((ROOT/'tests/fixtures/contracts/v1/valid.json').read_text())

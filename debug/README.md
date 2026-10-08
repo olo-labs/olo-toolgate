@@ -1,5 +1,9 @@
 # Local debug stack
 
+The current Clients table combines registered devices and pending requests, with device names, registered users and detail tooltips. Enable/Disable and Approve/Deapprove are independent; approval may be timed or explicitly unlimited. Quickstart separately registers the fixed executor, HotFolder and REST forwarding. Redeploy without deleting toolgate-debug_data. Download the rebuilt Windows installer for the current certificate recovery behavior; existing device approval deadlines are not automatically extended.
+
+See [Device registry and tool-call controls](../docs/control-plane/device-registry.md).
+
 Double-click `start.bat` to test the working tree, build Control and Quickstart
 with the production Dockerfiles, smoke-test the new image, then start the console
 at http://127.0.0.1:18090/console/. `restart.bat` repeats the checks and build

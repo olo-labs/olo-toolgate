@@ -1,5 +1,9 @@
 # HotFolder and native client operations
 
+Quickstart HotFolder uses local-hotfolder for device-bound policy filters and checks its enabled owner, its own enablement and the fixed executor before effects. Installed-client HotFolder retains the enrolled client identity and the same client approval gates.
+
+See [Device registry and tool-call controls](../control-plane/device-registry.md).
+
 The service runs independently of interactive login. Windows uses an automatic
 LocalSystem service, macOS uses a system LaunchDaemon, and Linux uses a root
 systemd service enabled for multi-user boot. A locked or logged-out session does
@@ -155,9 +159,9 @@ deployment must apply its signing/notarization policy before distribution.
 
 ## Upgrade and troubleshooting
 
-Product/contracts/chart 0.7.0-dev are synchronized. IPC protocol 1 remains frozen;
-tools use additive protocol 2. No new database migration is introduced; Control
-requires existing Flyway V5. Discovery minimum client version uses SemVer minimum
+Deploy matching product/contracts/chart release metadata. IPC protocol 1 remains
+frozen; tools use additive protocol 2. Current device management requires the
+complete Control Flyway series through V11. Discovery minimum client version uses SemVer minimum
 comparison. Control is built with TLS client-auth REQUEST; enabling enrollment
 also requires external server TLS and device trust store with insecure HTTP
 disabled. Device routes live under `/api/control/v1/endpoint`; discovery remains
@@ -170,8 +174,11 @@ extractor and both paths for copy/move. Fix permissions administratively; never
 relax custody or TLS. A crash may leave an internal `.write-*` temporary file,
 causing inventory to fail closed. Stop the service, inspect and remove only the
 verified stale internal file as an administrator, then restart. Preserve user
-data and identity during recovery. Expired-certificate automatic re-enrollment
-and automatic installer repair remain outside this module.
+data and identity during recovery. Current clients can recover an expired
+certificate for the exact still-approved registered key; this cannot extend an
+approval deadline or bypass disablement. See the
+[device registry flow](../control-plane/device-registry.md). Partial installer
+repair can still require administrator action.
 
 See [Module 07 verification](../codex/modules/07-completion.md) for executed gates
 and the distinction between local evidence and native CI evidence.

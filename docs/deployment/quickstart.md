@@ -1,5 +1,9 @@
 # Quickstart deployment, production/debug execution and recovery
 
+The current Clients table combines registered devices and pending requests, with device names, registered users and detail tooltips. Enable/Disable and Approve/Deapprove are independent; approval may be timed or explicitly unlimited. Quickstart separately registers the fixed executor, HotFolder and REST forwarding. Keep the data volume during redeployment; existing approvals/enablement are retained. Internal runtime credentials rotate privately and HotFolder has its own device-bound identity.
+
+See [Device registry and tool-call controls](../control-plane/device-registry.md).
+
 [Walkthrough](../getting-started/one-minute-quickstart.md) ·
 [ADR 012](../adr/012-single-node-quickstart.md) ·
 [canonical API](../../packages/contracts/openapi/quickstart-v1.yaml).

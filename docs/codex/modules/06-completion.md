@@ -1,5 +1,9 @@
 # Module 06 verification report
 
+Historical Module 06 verification below is retained. Its expired-certificate recovery limitation has since been superseded by exact-key recovery under the current device registry; partial installer repair can still require administrator action.
+
+See [Device registry and tool-call controls](../../control-plane/device-registry.md).
+
 Status: **IN PROGRESS, NOT DONE**, 2026-10-03. The user requested a commit of the
 current changes. This report records the implemented foundation and outstanding
 gates rather than claiming completion under

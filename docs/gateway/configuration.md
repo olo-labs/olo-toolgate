@@ -1,5 +1,9 @@
 # Gateway configuration
 
+For client execution, route through the registered-client relay and enforce current registry state at discovery, dispatch, effect authorization and response. Standalone policy-only APIs retain transport compatibility; an authorization decision alone cannot enroll a device or execute a client tool.
+
+See [Device registry and tool-call controls](../control-plane/device-registry.md).
+
 `TOOLGATE_GATEWAY_CONFIG` and `TOOLGATE_GATEWAY_CREDENTIALS` select required JSON
 files. File fields override compiled capacity defaults; there are no environment
 policy/identity overrides or automatic reload. Unknown fields, duplicate extractor

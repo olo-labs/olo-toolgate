@@ -7,6 +7,12 @@ still apply; unsupported packages fail instead of invoking host interpreters.
 See [runtime configuration](local-runtimes.md), [service installation](install-and-enrollment.md)
 and [ADR 010](../adr/010-signed-fleet-reconciliation.md).
 
+The current [device registry](../control-plane/device-registry.md) independently
+gates owner/device enablement and installed-client connection approval. Assignment,
+activation and READY status never authorize tool execution; current filters and
+permits still apply. Approval revision is separate from report revision, and
+temporary suspension preserves the protected identity for later resumption.
+
 ## Trust and package format
 
 Use the additive [fleet schema](../../packages/contracts/schemas/v1/fleet.schema.json)
@@ -46,7 +52,8 @@ old key. Retain release keys needed to verify deployed/rollback versions.
 ## Production configuration
 
 Existing Control PostgreSQL, direct TLS/mTLS and authenticated administrative APIs
-are required. Run Flyway V6 with the migration role before serving; runtime role
+are required. Run the complete Flyway series through V11 with the migration role
+before serving; runtime role
 cannot create tables or alter immutable releases. Fleet writes, generations,
 idempotency and audit share one tenant-serialized transaction. Rollouts survive
 replica restart. No new mandatory server or embedded artifact store is introduced.

@@ -1,4 +1,8 @@
 # MCP Team Access Control Platform
+
+The current implemented device registry is specified by the linked reference below. Preserve its uniform execution gates, separate owner/enablement/approval/filter decisions and server-managed identity boundaries when applying the broader roadmap in this document.
+
+See [Device registry and tool-call controls](../control-plane/device-registry.md).
 ## Monorepo Architecture, Security, Endpoint Enforcement, Admin UX, API-to-MCP Builder, Deployment and Implementation Specification
 
 **Status:** Architecture / build specification  

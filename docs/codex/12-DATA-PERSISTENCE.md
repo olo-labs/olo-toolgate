@@ -1,5 +1,11 @@
 # Data and Persistence
 
+Preserve the current [device registry transactions](../control-plane/device-registry.md).
+Enrollment/owner binding, approval and enablement changes, certificate recovery,
+audit and idempotency must commit together. Approval CAS is independent of report
+revision. PostgreSQL migration V11 extends allowed audit events; Quickstart SQLite
+must preserve the same behavior and retained state without a destructive reset.
+
 ## Production
 
 Use external PostgreSQL for authoritative mutable server state.

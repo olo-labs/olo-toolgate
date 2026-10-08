@@ -1,5 +1,9 @@
 # Documentation Rules
 
+Keep registry flow, UI controls, routing/filter boundaries, APIs and implementation prompts synchronized with the current device-registry reference. Remove stale expired-certificate recovery limitations from current guides while preserving historical verification evidence.
+
+See [Device registry and tool-call controls](../control-plane/device-registry.md).
+
 ## Every Feature
 
 Update docs in same PR.

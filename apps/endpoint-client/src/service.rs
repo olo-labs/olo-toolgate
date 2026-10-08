@@ -668,10 +668,15 @@ impl ClientService {
         }
     }
     pub async fn enroll(&mut self) -> Result<EndpointEnrollmentPrompt> {
-        if self.journal.revoked || self.journal.identity.is_some() {
+        let now = self.clock()?;
+        let expired = self
+            .journal
+            .identity
+            .as_ref()
+            .is_some_and(|identity| identity.expires_at_unix_ms <= now);
+        if (self.journal.revoked || self.journal.identity.is_some()) && !expired {
             return Err(Failure::Conflict);
         }
-        let now = self.clock()?;
         if let Some(challenge) = &self.journal.challenge {
             if challenge.expires_at_unix_ms > now {
                 return Ok(self.prompt(challenge));
@@ -711,6 +716,8 @@ impl ClientService {
             return Err(Failure::Unauthorized);
         }
         self.journal.manifest = Some(manifest);
+        self.journal.identity = None;
+        self.journal.revoked = false;
         self.journal.challenge = Some(challenge.clone());
         self.state = EndpointState::Pending;
         self.save()?;
@@ -741,6 +748,16 @@ impl ClientService {
         let now = self.clock()?;
         if self.journal.revoked {
             return Err(Failure::Revoked);
+        }
+        if self
+            .journal
+            .identity
+            .as_ref()
+            .is_some_and(|identity| identity.expires_at_unix_ms <= now)
+        {
+            // Recover via a signed CSR for the same registered key. The server must still
+            // approve this device and owner; a disabled or deapproved identity cannot recover.
+            self.enroll().await?;
         }
         if self.journal.identity.is_none() {
             let Some(challenge) = &self.journal.challenge else {
@@ -965,6 +982,7 @@ mod tests {
         polls: AtomicU64,
         desired: AtomicU64,
         revoked: AtomicBool,
+        blocked: AtomicBool,
         authorizations: AtomicU64,
         deadline: AtomicU64,
         interval_ms: AtomicU64,
@@ -994,6 +1012,9 @@ mod tests {
                 self.polls.fetch_add(1, Ordering::SeqCst);
                 if self.revoked.load(Ordering::SeqCst) {
                     return Err(Failure::Revoked);
+                }
+                if self.blocked.load(Ordering::SeqCst) {
+                    return Err(Failure::Unavailable);
                 }
                 Ok(EndpointCheckInAck {
                     device_id: report.report.device_id,
@@ -1079,6 +1100,7 @@ mod tests {
             polls: AtomicU64::new(0),
             desired: AtomicU64::new(0),
             revoked: AtomicBool::new(false),
+            blocked: AtomicBool::new(false),
             authorizations: AtomicU64::new(0),
             deadline: AtomicU64::new(crate::now() + 29000),
             interval_ms: AtomicU64::new(500),
@@ -1234,6 +1256,39 @@ mod tests {
         drop(large_read);
         drop(job);
         drop(denied);
+        drop(service);
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+    #[tokio::test]
+    async fn temporary_disable_keeps_identity_and_resumes_pending_report() {
+        let (mut service, gateway, directory) = test_service();
+        let mut identity: DeviceIdentity =
+            serde_json::from_value(fixtures()["DeviceIdentity"].clone()).unwrap();
+        identity.expires_at_unix_ms = crate::now() + 60000;
+        service.journal.identity = Some(identity);
+        gateway.blocked.store(true, Ordering::SeqCst);
+        assert_eq!(service.tick().await, Err(Failure::Unavailable));
+        assert!(!service.journal.revoked);
+        assert!(service.journal.identity.is_some());
+        assert_eq!(service.journal.pending_report.as_ref().unwrap().sequence, 1);
+        gateway.blocked.store(false, Ordering::SeqCst);
+        service.tick().await.unwrap();
+        assert_eq!(service.journal.sequence, 1);
+        assert!(service.journal.pending_report.is_none());
+        drop(service);
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+    #[tokio::test]
+    async fn expired_certificate_attempts_recovery_without_revoking_or_sending_check_in() {
+        let (mut service, gateway, directory) = test_service();
+        let mut identity: DeviceIdentity =
+            serde_json::from_value(fixtures()["DeviceIdentity"].clone()).unwrap();
+        identity.expires_at_unix_ms = crate::now() - 1000;
+        service.journal.identity = Some(identity);
+        assert_eq!(service.tick().await, Err(Failure::Unsupported));
+        assert_eq!(gateway.polls.load(Ordering::SeqCst), 0);
+        assert!(!service.journal.revoked);
+        assert!(service.journal.identity.is_some());
         drop(service);
         std::fs::remove_dir_all(directory).unwrap();
     }

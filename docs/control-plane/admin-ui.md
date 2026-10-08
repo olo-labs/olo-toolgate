@@ -2,9 +2,11 @@
 
 ## Purpose
 
-Module 03 delivers the directory foundation at `/console/`. Root `/` redirects
-there. React/TypeScript/Vite assets ship in the existing Control image: UI and
-versioned API share one administrative origin.
+The administration console lives at `/console/`; root `/` redirects there.
+React/TypeScript/Vite assets ship in the Control image and use generated operation
+metadata from the canonical API. UI and versioned API share one administrative origin.
+See [device registry and tool-call controls](device-registry.md) for the current
+enrollment, approval and execution flow.
 
 ## Authentication
 
@@ -17,20 +19,39 @@ session and aborts outstanding requests. The masked input clears on connection.
 Tokens never enter storage, cookies, URLs, exported configuration or app logs.
 
 Readers browse; the server rejects their mutation attempts with a visible error.
-Directory users do not provision IdP accounts or roles. This shell accepts an
-externally issued token; interactive OIDC redirects and Quickstart bootstrap
-are not implemented or claimed. Do not deploy developer test keys or the isolated
-test harness as a production identity provider. There is no default password,
-authentication bypass or production mock.
+Directory users do not provision external IdP accounts. Managed directory roles
+are still bounded by verified identity and server authorization. Production uses
+externally issued tokens. Quickstart additionally supplies its local bootstrap
+login and an explicitly configured loopback password-free debug mode; these do
+not replace a production identity provider. Do not deploy developer test keys or
+the isolated test harness as one. See [Quickstart deployment](../deployment/quickstart.md).
 
 ## Management and failures
 
 Dashboard values are first-page counts capped at 50, with `+` for further pages.
-They are directory metadata. Six sections support cursor paging, record
-inspection and loading/error/empty states. Clients display device records without
-enrollment or online status. Policies read WHO / CAN USE / WHERE / stored
-ALLOW-BLOCK. They have not been distributed to Gateway. Tool schemas render as
-text. Advanced protocol fields remain behind an optional disclosure.
+They are directory metadata and never grant access. Directory pages support
+record inspection and loading/error/empty states. Policies are edited separately
+from explicit signed publication to Gateway; saving a policy does not publish it.
+Tool schemas render as text. Advanced protocol fields remain behind an optional disclosure.
+
+**Devices → Enroll device** automatically lists unexpired requests for authorized
+enrollers to review by public code and fingerprint. **Devices → Clients** combines
+pending requests and registered devices, refreshing every two seconds. Device name
+and registered user are table columns; row details support hover, keyboard and the
+information button. Pending requests show **Awaiting registration**.
+
+Installed clients have independent **Enable / Disable** and **Approve / Deapprove**
+controls. Approval may end at a chosen local date/time or use **Unlimited time**.
+Changing approval uses its own stable revision, independent of check-ins. Neither
+enablement nor approval alone grants tool access. Connection status reflects fresh
+authenticated reports, not just approval. Temporary suspension preserves the key;
+permanent key revocation remains a separate API operation.
+
+Quickstart separately lists `local-builtins`, `local-hotfolder` and
+`local-rest-forwarding` under **Local tool requester**. These server-managed
+devices need no client approval and appear green while ready and enabled.
+Their disable controls gate real execution paths; existing tool/resource filters
+and target-client approval still apply.
 
 User create/edit/delete uses server validation and optimistic revisions. Conflict
 preserves inputs and offers Reload current record before resubmission. No policy
@@ -66,9 +87,9 @@ HTML/release metadata use no-store; hashed assets cache immutably. Preserve thes
 headers through proxies. Source maps and Vite's internal manifest are excluded.
 Runtime MIT copyright/license notices are included. Rebuild UI and backend
 together from the lockfile. Product version is injected into the console; shared
-wire contracts remain v1 at the current 0.5.0-dev development baseline. The normal
-version tool synchronizes the console for the next release. No DB migration is
-added by this module.
+wire contracts remain v1. The normal version tool synchronizes console release
+metadata. Deploy matching UI, Control and generated contracts; PostgreSQL migration
+V11 supports reversible device-control and identity-recovery audit events.
 
 During rolling upgrades, old HTML may reference assets absent on a new replica.
 Refresh the console after rollout. Retain previous asset sets at the proxy if
@@ -84,7 +105,7 @@ Database outages produce safe retryable errors and backend readiness failure.
 
 Protected Control CI builds/tests/scans the embedded assets, runs real browser
 E2E, and collects asset checksums and a production npm CycloneDX SBOM. Existing
-GHCR Control and OCI chart naming apply. Future Quickstart packaging reuses these
-assets and origin, then supplies local identity bootstrap/routing in Module 11.
-No Module 11 work is started here. See [developer commands](../../apps/admin-ui/README.md)
+GHCR Control and OCI chart naming apply. Quickstart packaging reuses these
+assets and origin and supplies local identity bootstrap and routing. See
+[developer commands](../../apps/admin-ui/README.md)
 and [ADR 004](../adr/004-embedded-admin-console.md).

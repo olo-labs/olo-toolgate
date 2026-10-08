@@ -1,5 +1,9 @@
 # How to debug ToolGate
 
+For HTTP 423, inspect device enablement, connection approval and its deadline. For server tools also inspect local-tools and the fixed executor. Retain protected identity and fix the blocking registry/filter; do not weaken TLS or custody.
+
+See [Device registry and tool-call controls](../control-plane/device-registry.md).
+
 For managed runtimes, start with `olo-toolgate-client runtimes status` and
 `runtimes prepare`. Check exact image/version, local engine access and resource/
 seccomp capability, plus the [runtime troubleshooting guide](../client/local-runtimes.md#limits-health-and-recovery).

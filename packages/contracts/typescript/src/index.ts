@@ -548,6 +548,13 @@ export interface DeviceIdentity {
   readonly issuerCertificatePem: string;
   readonly expiresAtUnixMs: number;
 }
+/** Reversible approval decision for an already enrolled key, preserving its owner and directory status. */
+export interface EndpointApprovalRequest {
+  readonly expectedApprovalRevision: number;
+  readonly approved: boolean;
+  readonly connectionExpiresAtUnixMs?: number;
+  readonly unlimitedConnection?: boolean;
+}
 /** Endpoint identity foundation wire model. */
 export interface EndpointCheckIn {
   readonly sequence: number;
@@ -578,6 +585,13 @@ export interface EndpointDeviceRecord {
   readonly reportSequence: number;
   readonly report?: ClientReport;
   readonly connectionExpiresAtUnixMs?: number;
+  readonly connectionApproved?: boolean;
+  readonly approvalRevision?: number;
+}
+/** Toggle device directory activation, including a pending device. Zero expects no directory record yet. */
+export interface EndpointEnabledRequest {
+  readonly expectedRevision: number;
+  readonly enabled: boolean;
 }
 /** Endpoint identity foundation wire model. */
 export interface EndpointEnrollmentChallenge {
@@ -594,6 +608,7 @@ export interface EndpointEnrollmentDecision {
   readonly keyFingerprint: string;
   readonly choice: EnrollmentChoice;
   readonly connectionExpiresAtUnixMs?: number;
+  readonly unlimitedConnection?: boolean;
 }
 /** All unexpired pending requests in the authenticated tenant; enrollment quota is 32. */
 export interface EndpointEnrollmentPage {
@@ -628,6 +643,7 @@ export interface EndpointEnrollmentReview {
   readonly state: EnrollmentState;
   readonly expiresAtUnixMs: number;
   readonly connectionExpiresAtUnixMs?: number;
+  readonly unlimitedConnection?: boolean;
 }
 /** Endpoint identity foundation wire model. */
 export interface EndpointEnrollmentStart {
@@ -636,6 +652,21 @@ export interface EndpointEnrollmentStart {
   readonly platform: ClientPlatform;
   readonly csrPem: string;
   readonly capabilities: ReadonlyArray<string>;
+}
+/** Directory identity, enrolled approval and pending request combined for administrative management. */
+export interface EndpointManagedDevice {
+  readonly deviceId: string;
+  readonly systemExecutor: boolean;
+  readonly directoryDevice?: ControlDevice;
+  readonly endpointDevice?: EndpointDeviceRecord;
+  readonly enrollment?: EndpointEnrollmentReview;
+  readonly registeredUser?: ControlUser;
+  readonly systemExecutorKind?: SystemExecutorKind;
+  readonly systemAvailable?: boolean;
+}
+/** All directory devices plus pending requests within the existing directory and enrollment quotas. */
+export interface EndpointManagedDevicePage {
+  readonly items: ReadonlyArray<EndpointManagedDevice>;
 }
 /** Server-cached complete replacement of device permissions, acknowledged by digest on the next authenticated poll. */
 export interface EndpointPermissionConfiguration {
@@ -1066,6 +1097,7 @@ export interface SignedExecutionPermit {
 export interface SignedPolicyBundle {
   readonly jws: string;
 }
+export type SystemExecutorKind = "BUILTINS" | "HOTFOLDER" | "REST_FORWARDING";
 /** Named operation and declared resource kinds. */
 export interface ToolAction {
   readonly name: string;

@@ -1,5 +1,11 @@
 # Observability and Operations
 
+Follow the current [device registry flow](../control-plane/device-registry.md).
+Distinguish pending approval, temporary HTTP 423 suspension, permanent revocation,
+connection freshness, server readiness and tool-filter denial. Green readiness is
+not an execution grant. Device-control audit events contain safe identity and
+operation metadata, never private keys, enrollment device codes or runtime tokens.
+
 ## Structured Logs
 
 JSON or structured output in production.

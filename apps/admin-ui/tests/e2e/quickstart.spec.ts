@@ -17,6 +17,13 @@ test('real Quickstart password, non-HA status, protected compute and vault names
   await expect(page.getByRole('columnheader',{name:'Connection',exact:true})).toBeVisible();
   const checkedInClient=page.getByRole('row').filter({hasText:'quickstart-test-device'});
   await expect(checkedInClient.locator('.client-connection.online')).toHaveText('Connected');
+  await expect(page.getByRole('columnheader',{name:'Device name',exact:true})).toBeVisible();
+  await expect(page.getByRole('columnheader',{name:'Registered user',exact:true})).toBeVisible();
+  for(const id of ['local-builtins','local-hotfolder','local-rest-forwarding']){
+    const row=page.getByRole('row').filter({hasText:id});await expect(row.locator('.client-connection.online')).toHaveText('Available');await expect(row).toContainText('Local tool requester');
+  }
+  await page.getByRole('button',{name:'Details for local-hotfolder',exact:true}).focus();await expect(page.getByRole('tooltip')).toContainText('HotFolder');
+  await page.keyboard.press('Escape');await expect(page.getByRole('tooltip')).toHaveCount(0);
   expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
   await page.locator('nav summary').filter({hasText:'Tools'}).click();
   await page.getByRole('link',{name:'Built-in tools and vault'}).click();

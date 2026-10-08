@@ -1,5 +1,9 @@
 # 007: Protected endpoint identity and browser enrollment
 
+Current extension to this accepted foundation: explicit timed/unlimited connection approval, reversible enablement/deapproval, stable approval revisions and exact-key certificate recovery. The original key-custody and TLS trust boundaries still apply.
+
+See [Device registry and tool-call controls](../control-plane/device-registry.md).
+
 Status: accepted, 2026-10-03. Scope: Module 06.
 
 Control owns pending enrollment, human confirmation, certificate issuance,

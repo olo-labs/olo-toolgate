@@ -15,6 +15,8 @@ package io.ololabs.toolgate.contracts;
  * @param reportSequence canonical reportSequence value
  * @param report canonical report value
  * @param connectionExpiresAtUnixMs canonical connectionExpiresAtUnixMs value
+ * @param connectionApproved canonical connectionApproved value
+ * @param approvalRevision canonical approvalRevision value
  */
 @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
 public record EndpointDeviceRecord(
@@ -27,7 +29,9 @@ public record EndpointDeviceRecord(
     @com.fasterxml.jackson.annotation.JsonProperty(value = "lastSeenUnixMs", required = true) Long lastSeenUnixMs,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "reportSequence", required = true) Long reportSequence,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "report", required = false) ClientReport report,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "connectionExpiresAtUnixMs", required = false) Long connectionExpiresAtUnixMs
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "connectionExpiresAtUnixMs", required = false) Long connectionExpiresAtUnixMs,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "connectionApproved", required = false) Boolean connectionApproved,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "approvalRevision", required = false) Long approvalRevision
 ) {
     /** Reject absent required references and copy collections to retain value semantics.
      *
@@ -41,6 +45,8 @@ public record EndpointDeviceRecord(
      * @param reportSequence canonical reportSequence value
      * @param report canonical report value
      * @param connectionExpiresAtUnixMs canonical connectionExpiresAtUnixMs value
+     * @param connectionApproved canonical connectionApproved value
+     * @param approvalRevision canonical approvalRevision value
      */
     public EndpointDeviceRecord {
         java.util.Objects.requireNonNull(deviceId, "deviceId");

@@ -8,6 +8,12 @@ Modules 02,06,08.
 
 Implement safe fleet package lifecycle.
 
+Preserve the [device registry controls](../../control-plane/device-registry.md).
+Assignments, signed artifacts and READY reports grant no tool access. Check current
+registered owner/device and installed-client approval at authenticated boundaries;
+execution still needs Gateway filters and permits. Keep approval revision separate
+from reported-state revision and preserve identity through temporary suspension.
+
 ## Mandatory Preparation
 
 Read the master prompt and requirements traceability document.

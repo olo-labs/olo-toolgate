@@ -95,7 +95,7 @@ public class EndpointSocket {
                 busy.set(false);
                 if(result.failed()){socket.close((short)1008,"Invalid job channel message");return;}
                 socket.writeTextMessage(codec.json(result.result()));
-                if(result.result().status()==401||result.result().status()==403)socket.close((short)1008,"Device authorization unavailable");
+                if(result.result().status()==401||result.result().status()==403||result.result().status()==423)socket.close((short)1008,"Device authorization unavailable");
             });
         });
     }

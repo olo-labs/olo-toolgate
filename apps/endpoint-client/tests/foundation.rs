@@ -50,6 +50,36 @@ impl Drop for Directory {
     }
 }
 struct Offline;
+#[test]
+fn composition_directory_gates_decode_closed_canonical_records() {
+    let contracts = Contracts::new().unwrap();
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../tests/fixtures/contracts/v1/valid.json"
+    ))
+    .unwrap();
+    let device: ControlDevice = contracts
+        .decode(
+            "ControlDevice",
+            &serde_json::to_vec(&fixture["ControlDevice"]).unwrap(),
+        )
+        .unwrap();
+    assert_eq!(
+        device.owner_user_id,
+        fixture["ControlDevice"]["ownerUserId"].as_str().unwrap()
+    );
+    let _: ControlUser = contracts
+        .decode(
+            "ControlUser",
+            &serde_json::to_vec(&fixture["ControlUser"]).unwrap(),
+        )
+        .unwrap();
+    let mut changed = fixture["ControlDevice"].clone();
+    changed["credential"] = serde_json::json!("not-directory-metadata");
+    assert_eq!(
+        contracts.decode::<ControlDevice>("ControlDevice", &serde_json::to_vec(&changed).unwrap()),
+        Err(Failure::Validation)
+    );
+}
 impl ControlPort for Offline {
     fn discovery(&self) -> Call<'_, SignedClientDiscovery> {
         Box::pin(async { Err(Failure::Unavailable) })

@@ -1,5 +1,9 @@
 # OLO ToolGate
 
+The current Clients table combines registered devices and pending requests, with device names, registered users and detail tooltips. Enable/Disable and Approve/Deapprove are independent; approval may be timed or explicitly unlimited. Quickstart separately registers the fixed executor, HotFolder and REST forwarding.
+
+See [Device registry and tool-call controls](docs/control-plane/device-registry.md).
+
 The [one-container Quickstart](docs/getting-started/one-minute-quickstart.md)
 now combines Gateway, Control and the console with persistent SQLite, a local
 encrypted vault, password bootstrap, safe built-ins and human approval. It is

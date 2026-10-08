@@ -1,5 +1,9 @@
 # Endpoint Client and HotFolder
 
+The current Clients table combines registered devices and pending requests, with device names, registered users and detail tooltips. Enable/Disable and Approve/Deapprove are independent; approval may be timed or explicitly unlimited. Quickstart separately registers the fixed executor, HotFolder and REST forwarding. Current clients retain their key during HTTP 423 suspension and recover an expired certificate only for their exact still-approved identity.
+
+See [Device registry and tool-call controls](../../docs/control-plane/device-registry.md).
+
 Module 08 adds opt-in [managed local runtimes](../../docs/client/local-runtimes.md).
 Approved images contain Python and other dependencies and can be provisioned
 automatically on first use. A system-accessible Linux OCI engine is required;
@@ -88,7 +92,10 @@ Uninstall stops/removes the OS service and retains identity by default.
 HotFolder documents are preserved, including when they reside inside the state directory.
 Revoke the identity in Control before retiring a machine. A failed partial
 installation requires administrator recovery of the fixed service/config paths;
-automatic repair and expired-certificate re-enrollment are not implemented.
+partial installation repair may require administrator action. Current clients
+recover an expired certificate for the exact still-approved key without changing
+its owner, enablement or connection deadline. See the
+[device registry flow](../../docs/control-plane/device-registry.md).
 
 CI builds six native OS/architecture combinations. `tools/client/package.py`
 produces deterministic tar/zip archives, SHA-256 checksums and a dependency SBOM.

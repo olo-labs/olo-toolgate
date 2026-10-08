@@ -1,5 +1,11 @@
 # Run Your First Tool
 
+First check the [device registry](../control-plane/device-registry.md).
+Installed clients need an enabled registered owner/device and current timed or
+unlimited connection approval. Quickstart's server tools use its registered fixed
+executor and HotFolder identities. All paths still require applicable Gateway
+filters and permits; installation, green status or approval alone grants no tool access.
+
 ## Built-In Tool
 
 Open:

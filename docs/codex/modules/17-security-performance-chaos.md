@@ -8,6 +8,13 @@ Primary feature set complete.
 
 Prove the design under attack, load and partial failure.
 
+Include the current [device registry boundaries](../../control-plane/device-registry.md):
+pending requests, owner/tenant mismatch, independent enablement/approval, finite
+expiry, unlimited approval with short-lived certificates, exact-key recovery,
+idempotent mutations and heartbeat/approval races. Prove fixed-executor, HotFolder
+device filters and REST relay suspension deny actual effects. Test bounded combined
+snapshots, accessible name/user/detail UI and unavailable readiness failing closed.
+
 ## Mandatory Preparation
 
 Read the master prompt and requirements traceability document.

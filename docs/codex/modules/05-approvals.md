@@ -6,6 +6,11 @@ Modules 01–04.
 
 ## Objective
 
+Current connection approval is governed by the [device registry](../../control-plane/device-registry.md).
+Keep it separate from ASK operation approval. Timed/unlimited connection approval
+cannot authorize a tool effect; current device/owner gates, filters and exact-operation
+permit consumption still apply. Earlier ASK approval cannot bypass device suspension.
+
 Add human-in-the-loop ASK decisions without weakening runtime protection.
 
 ## Mandatory Preparation

@@ -1,5 +1,7 @@
 # Documentation Index
 
+- [Device registry and uniform tool-call controls](control-plane/device-registry.md)
+
 - [How to run and use ToolGate](operations/execution-guide.md)
 - [How to debug ToolGate](operations/debugging.md)
 - [One-container Quickstart](getting-started/one-minute-quickstart.md)

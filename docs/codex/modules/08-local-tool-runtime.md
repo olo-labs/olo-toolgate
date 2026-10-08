@@ -8,6 +8,12 @@ Modules 06–07.
 
 Implement standard local execution protocol and runtime adapters.
 
+Follow the current [device registry execution flow](../../control-plane/device-registry.md).
+Resolve device identity from authenticated service context, check current owner,
+enablement and installed-client approval, then enforce Gateway filters and permits
+before effects. Registry approval never relaxes sandbox limits. Test disabled,
+deapproved and expired devices against actual execution, including restart/recovery.
+
 ## Mandatory Preparation
 
 Read the master prompt and requirements traceability document.

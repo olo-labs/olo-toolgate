@@ -1,5 +1,12 @@
 # Gateway API
 
+Managed tool execution also follows the [device registry gates](../control-plane/device-registry.md):
+trusted execution identity, current owner/device enablement, installed-client
+approval and the applicable user/agent/device/tool/action/resource filters. A
+policy-only API decision cannot enroll a device or execute a protected tool.
+Quickstart REST forwarding gates the existing client relay in addition to the
+selected client's registry state and filters.
+
 ## Purpose
 
 The canonical [OpenAPI](../../packages/contracts/openapi/gateway-v1.yaml) documents

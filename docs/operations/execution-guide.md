@@ -1,5 +1,9 @@
 # How to run and use ToolGate
 
+The current Clients table combines registered devices and pending requests, with device names, registered users and detail tooltips. Enable/Disable and Approve/Deapprove are independent; approval may be timed or explicitly unlimited. Quickstart separately registers the fixed executor, HotFolder and REST forwarding. Check device controls before running tools; resource grants and execution permits remain required.
+
+See [Device registry and tool-call controls](../control-plane/device-registry.md).
+
 This guide describes the implemented 0.7.0-dev system: Control with its embedded
 Admin UI, Gateway, and the native endpoint client. Read the
 [debugging guide](debugging.md) when startup, enrollment or tool execution fails.

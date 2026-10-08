@@ -2,6 +2,12 @@
 
 The Endpoint Client is a native managed service for Windows, Linux and macOS.
 
+Use the current [device registry flow](../control-plane/device-registry.md) for
+pending requests, owner binding, timed/unlimited approval and independent
+enablement. All client tool calls pass these gates and Gateway filters before
+protected effects. Installation, connection status and package assignment alone
+grant no execution permission.
+
 ## Owns
 
 - device identity.

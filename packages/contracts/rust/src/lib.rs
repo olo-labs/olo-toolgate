@@ -877,6 +877,17 @@ pub struct DeviceIdentity {
     pub issuer_certificate_pem: String,
     pub expires_at_unix_ms: u64,
 }
+/// Reversible approval decision for an already enrolled key, preserving its owner and directory status.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EndpointApprovalRequest {
+    pub expected_approval_revision: u64,
+    pub approved: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub connection_expires_at_unix_ms: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unlimited_connection: Option<bool>,
+}
 /// Endpoint identity foundation wire model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -921,6 +932,17 @@ pub struct EndpointDeviceRecord {
     pub report: Option<ClientReport>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub connection_expires_at_unix_ms: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub connection_approved: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub approval_revision: Option<u64>,
+}
+/// Toggle device directory activation, including a pending device. Zero expects no directory record yet.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EndpointEnabledRequest {
+    pub expected_revision: u64,
+    pub enabled: bool,
 }
 /// Endpoint identity foundation wire model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -942,6 +964,8 @@ pub struct EndpointEnrollmentDecision {
     pub choice: EnrollmentChoice,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub connection_expires_at_unix_ms: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unlimited_connection: Option<bool>,
 }
 /// All unexpired pending requests in the authenticated tenant; enrollment quota is 32.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -988,6 +1012,8 @@ pub struct EndpointEnrollmentReview {
     pub expires_at_unix_ms: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub connection_expires_at_unix_ms: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unlimited_connection: Option<bool>,
 }
 /// Endpoint identity foundation wire model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -998,6 +1024,31 @@ pub struct EndpointEnrollmentStart {
     pub platform: ClientPlatform,
     pub csr_pem: String,
     pub capabilities: Vec<String>,
+}
+/// Directory identity, enrolled approval and pending request combined for administrative management.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EndpointManagedDevice {
+    pub device_id: String,
+    pub system_executor: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub directory_device: Option<ControlDevice>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub endpoint_device: Option<EndpointDeviceRecord>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enrollment: Option<EndpointEnrollmentReview>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub registered_user: Option<ControlUser>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub system_executor_kind: Option<SystemExecutorKind>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub system_available: Option<bool>,
+}
+/// All directory devices plus pending requests within the existing directory and enrollment quotas.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EndpointManagedDevicePage {
+    pub items: Vec<EndpointManagedDevice>,
 }
 /// Server-cached complete replacement of device permissions, acknowledged by digest on the next authenticated poll.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1710,6 +1761,16 @@ pub struct SignedExecutionPermit {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct SignedPolicyBundle {
     pub jws: String,
+}
+/// Canonical SystemExecutorKind wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SystemExecutorKind {
+    #[serde(rename = "BUILTINS")]
+    Builtins,
+    #[serde(rename = "HOTFOLDER")]
+    Hotfolder,
+    #[serde(rename = "REST_FORWARDING")]
+    RestForwarding,
 }
 /// Named operation and declared resource kinds.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

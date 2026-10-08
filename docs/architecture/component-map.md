@@ -1,5 +1,9 @@
 # Component Map
 
+Control owns the device registry and approvals. Gateway applies filters and routes calls; the selected registered executor owns effects. Quickstart has distinct fixed-executor, HotFolder and REST-forwarding records; installed clients retain certificate-bound identity.
+
+See [Device registry and tool-call controls](../control-plane/device-registry.md).
+
 | Component | Language | Owns | Must Not Own |
 |---|---|---|---|
 | Gateway | Rust | Runtime auth, routing, permits, runtime audit | Admin UI, package execution |

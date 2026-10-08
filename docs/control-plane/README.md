@@ -1,5 +1,9 @@
 # Control Plane
 
+The current Clients table combines registered devices and pending requests, with device names, registered users and detail tooltips. Enable/Disable and Approve/Deapprove are independent; approval may be timed or explicitly unlimited. Quickstart separately registers the fixed executor, HotFolder and REST forwarding.
+
+See [Device registry and tool-call controls](device-registry.md).
+
 Module 02 implements tenant-scoped users, teams, agents, tools, policies and device
 records, versioned CRUD, append-only mutation audit and bounded JSON/YAML configuration
 import/export. See [configuration](configuration.md), [API](../api/control-plane-api.md),

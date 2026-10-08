@@ -47,7 +47,7 @@ final class FleetTest {
         var fleet=new FleetService(store,codec,crypto(),endpoint,clock,true,"fleet","server");
         for(var id:List.of("device-a","device-b")){
             directory.mutate(admin,Ids.Kind.DEVICE,id,"CREATE",codec.json(new ControlDevice(id,id,true,1L,"owner")),0,id,"request");
-            store.transaction(tenant,true,tx->{tx.saveEndpoint(new Store.EndpointRecord(id,DirectoryService.digest(id),codec.json(new EndpointDeviceRecord(id,"fleet","owner",DirectoryService.digest(id),EndpointState.ACTIVE,1L,1700000000000L,1L,null,null)),"public","0".repeat(64),"{}"));return null;});
+            store.transaction(tenant,true,tx->{tx.saveEndpoint(new Store.EndpointRecord(id,DirectoryService.digest(id),codec.json(new EndpointDeviceRecord(id,"fleet","owner",DirectoryService.digest(id),EndpointState.ACTIVE,1L,1700000000000L,1L,null,null,null,null)),"public","0".repeat(64),"{}"));return null;});
         }
         var release=codec.model(fixtures().get("release").toString(),FleetPackageRelease.class);
         var publication=fleet.publish(admin,codec.json(release),"publish","request");assertEquals(publication,fleet.publish(admin,codec.json(release),"publish","request"));

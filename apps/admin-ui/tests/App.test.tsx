@@ -75,7 +75,7 @@ describe('Management shell states', () => {
     vi.stubGlobal('fetch',vi.fn().mockImplementation(async () => response())); render(<App />); await connect();
     await waitFor(() => expect(screen.getAllByRole('link',{name:/View directory/}).length).toBe(7));
     window.location.hash = '#devices'; fireEvent(window,new HashChangeEvent('hashchange'));
-    await screen.findByRole('heading',{name:'Clients'}); await screen.findByRole('heading',{name:'No clients on this page'});
+    await screen.findByRole('heading',{name:'Clients'}); await screen.findByText('No devices or pending requests.');
     expect(screen.getByRole('link',{name:'Clients'}).getAttribute('aria-current')).toBe('page');
   });
   it('renders directory loading/error/retry states', async () => {
@@ -87,10 +87,9 @@ describe('Management shell states', () => {
     let enrolled=false;
     const record={id:'new-device',name:'Newly enrolled computer',enabled:true,revision:1,ownerUserId:'owner',groupIds:[]};
     vi.stubGlobal('fetch',vi.fn().mockImplementation(async(url:string)=>{
-      if(url==='/api/control/v1/endpoint/devices/new-device')return new Response(JSON.stringify({deviceId:record.id,userId:'owner',state:'ACTIVE',lastSeenUnixMs:Date.now(),reportSequence:1}));
-      return response(enrolled&&url.startsWith('/api/control/v1/devices')?[record]:[]);
+      return response(enrolled&&url==='/api/control/v1/endpoint/devices'?[{deviceId:record.id,systemExecutor:false,directoryDevice:record,endpointDevice:{deviceId:record.id,userId:'owner',state:'ACTIVE',lastSeenUnixMs:Date.now(),reportSequence:1}}]:[]);
     }));
-    window.location.hash='#devices';render(<App/>);await connect();await screen.findByRole('heading',{name:'No clients on this page'});
+    window.location.hash='#devices';render(<App/>);await connect();await screen.findByText('No devices or pending requests.');
     fireEvent.click(screen.getByRole('button',{name:'Add client'}));
     fireEvent.change(screen.getByLabelText('Display name'),{target:{value:'Keep this draft'}});
     enrolled=true;

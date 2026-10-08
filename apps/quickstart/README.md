@@ -1,5 +1,9 @@
 # Quickstart composition
 
+The current Clients table combines registered devices and pending requests, with device names, registered users and detail tooltips. Enable/Disable and Approve/Deapprove are independent; approval may be timed or explicitly unlimited. Quickstart separately registers the fixed executor, HotFolder and REST forwarding.
+
+See [Device registry and tool-call controls](../../docs/control-plane/device-registry.md).
+
 One non-HA Linux image contains the real Control JVM, Rust Gateway, fixed Rust
 built-in executor and embedded console. SQLite and private generated keys live
 under `/data`; no PostgreSQL, external identity provider or Docker socket is

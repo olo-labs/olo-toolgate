@@ -37,6 +37,7 @@ export function ClientConnection({client,id,enabled,ownerUserId}:{client:Control
   else if(snapshot?.error==='unavailable'||snapshot&&!valid)label='Status unavailable';
   else if(device&&valid) {
     if(device.state==='REVOKED')label='Revoked';
+    else if(device.connectionApproved===false)label='Needs approval';
     else if(device.connectionExpiresAtUnixMs!==undefined&&device.connectionExpiresAtUnixMs<=now)label='Approval expired';
     else if(device.userId!==ownerUserId)label='Enrollment mismatch';
     else if(device.state!=='ACTIVE')label='Offline';

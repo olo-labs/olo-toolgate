@@ -1,5 +1,9 @@
 # Trust Boundaries
 
+Managed tool execution uses a trusted registered device, current owner/device enablement, installed-client connection approval, and the existing agent/tool/action/resource filters before every protected effect. Registration, green availability or deployment never grants execution. Device identity comes from a verified TLS peer or composition-owned credential, never an asserted header or tool argument.
+
+See [Device registry and tool-call controls](../control-plane/device-registry.md).
+
 ## Marketplace Trust
 
 Marketplace signature means:

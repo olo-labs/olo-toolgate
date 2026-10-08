@@ -1,5 +1,9 @@
 # Signed policy bundles — protocol and operations
 
+Device gates complement signed policy bundles. HotFolder authorization is bound to local-hotfolder so its device-specific filters match; server-managed approval does not bypass deterministic policy or ASK permits.
+
+See [Device registry and tool-call controls](device-registry.md).
+
 Module 04 compiles reviewed directory policies in Control and distributes verified,
 immutable snapshots to Gateway. [ADR 005](../adr/005-signed-policy-bundles.md) records
 the trust model. Software/contracts/chart are `0.4.0-dev`; bundle format is v1,

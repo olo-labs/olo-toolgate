@@ -9,13 +9,15 @@ package io.ololabs.toolgate.contracts;
  * @param keyFingerprint canonical keyFingerprint value
  * @param choice canonical choice value
  * @param connectionExpiresAtUnixMs canonical connectionExpiresAtUnixMs value
+ * @param unlimitedConnection canonical unlimitedConnection value
  */
 @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
 public record EndpointEnrollmentDecision(
     @com.fasterxml.jackson.annotation.JsonProperty(value = "userCode", required = true) String userCode,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "keyFingerprint", required = true) String keyFingerprint,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "choice", required = true) EnrollmentChoice choice,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "connectionExpiresAtUnixMs", required = false) Long connectionExpiresAtUnixMs
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "connectionExpiresAtUnixMs", required = false) Long connectionExpiresAtUnixMs,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "unlimitedConnection", required = false) Boolean unlimitedConnection
 ) {
     /** Reject absent required references and copy collections to retain value semantics.
      *
@@ -23,6 +25,7 @@ public record EndpointEnrollmentDecision(
      * @param keyFingerprint canonical keyFingerprint value
      * @param choice canonical choice value
      * @param connectionExpiresAtUnixMs canonical connectionExpiresAtUnixMs value
+     * @param unlimitedConnection canonical unlimitedConnection value
      */
     public EndpointEnrollmentDecision {
         java.util.Objects.requireNonNull(userCode, "userCode");

@@ -10,6 +10,14 @@ const review = {enrollmentId:'enrollment-1', userCode:'ABCDEF0123456789', device
 function clientFor(transport:typeof fetch){return new ControlClient('test-only-token',vi.fn(),async(url,options)=>
   url==='/api/control/v1/endpoint/enrollments'?new Response(JSON.stringify({items:[]})):transport(url,options));}
 describe('Endpoint enrollment', () => {
+  it('supports explicit unlimited approval and omits the finite deadline',async()=>{
+    window.location.hash='#enroll?code=ABCDEF0123456789';
+    const transport=vi.fn<typeof fetch>().mockResolvedValueOnce(new Response(JSON.stringify(review))).mockResolvedValue(new Response(JSON.stringify({...review,state:'APPROVED',unlimitedConnection:true})));
+    render(<Enrollment client={clientFor(transport)}/>);fireEvent.click(screen.getByRole('button',{name:'Review device'}));await screen.findByRole('checkbox');
+    fireEvent.change(screen.getByLabelText('Connection duration'),{target:{value:'unlimited'}});fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Enroll device'}));
+    await screen.findByText('Connection approved for unlimited time.');
+    expect(JSON.parse(String(transport.mock.calls[1][1]?.body))).toEqual({userCode:review.userCode,keyFingerprint:review.keyFingerprint,choice:'APPROVE',unlimitedConnection:true});
+  });
   it('automatically finds new requests and stops polling when unmounted',async()=>{
     vi.useFakeTimers();let items:typeof review[]=[];
     const transport=vi.fn<typeof fetch>().mockImplementation(async()=>new Response(JSON.stringify({items})));

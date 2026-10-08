@@ -5,11 +5,7 @@ import type { EndpointEnrollmentReview, EnrollmentChoice } from '@olo-labs/toolg
 import { ControlClient } from './api';
 import { Failure } from './Failure';
 import { Connect } from './Connect';
-
-function localDateTime(time:number) {
-  const date=new Date(time);
-  return new Date(time-date.getTimezoneOffset()*60000).toISOString().slice(0,16);
-}
+import {ApprovalDuration,defaultDuration,durationBody,validDuration} from './ApprovalDuration';
 
 /** Human confirmation displays server-verified scope; backend owns identity and certificate issuance. */
 export function Enrollment({ client }: { client: ControlClient }) {
@@ -19,7 +15,7 @@ export function Enrollment({ client }: { client: ControlClient }) {
   const [busy,setBusy] = useState(false); const [confirmed,setConfirmed] = useState(false);
   const [pending,setPending]=useState<readonly EndpointEnrollmentReview[]>();const [listError,setListError]=useState<unknown>();
   const [refresh,setRefresh]=useState(0);const [refreshing,setRefreshing]=useState(false);
-  const [until,setUntil]=useState(()=>localDateTime(Date.now()+86400000));const [timeError,setTimeError]=useState('');
+  const [duration,setDuration]=useState(defaultDuration);const [timeError,setTimeError]=useState('');
   const [now,setNow]=useState(Date.now());const [liveness,setLiveness]=useState('');
   useEffect(()=>{
     const controller=new AbortController();let timer:ReturnType<typeof setTimeout>;
@@ -54,22 +50,21 @@ export function Enrollment({ client }: { client: ControlClient }) {
   function clearReview(){setReview(undefined);setConfirmed(false);setTimeError('');}
   async function load(selectedCode:string) {
     if (busy) return;setBusy(true);setError(undefined);clearReview();setCode(selectedCode);
-    try {setReview(await client.enrollment(selectedCode));setUntil(localDateTime(Date.now()+86400000));}
+    try {setReview(await client.enrollment(selectedCode));setDuration(defaultDuration());}
     catch (failure) {setError(failure);} finally {setBusy(false);}
   }
   function submitReview(event:FormEvent){event.preventDefault();void load(code);}
   async function decide(choice: EnrollmentChoice) {
     if (!review || busy || !confirmed) return;
-    const connectionExpiresAtUnixMs=new Date(until).getTime();
-    if(choice==='APPROVE'&&(!Number.isSafeInteger(connectionExpiresAtUnixMs)||connectionExpiresAtUnixMs<=Date.now())){setTimeError('Choose a future date and time.');return;}
+    if(choice==='APPROVE'&&!validDuration(duration,Date.now())){setTimeError('Choose a future date and time.');return;}
     setBusy(true);setError(undefined);setTimeError('');
     try {
       setReview(await client.decideEnrollment({userCode:review.userCode,keyFingerprint:review.keyFingerprint,choice,
-        ...(choice==='APPROVE'?{connectionExpiresAtUnixMs}:{})},crypto.randomUUID()));
+        ...(choice==='APPROVE'?durationBody(duration):{})},crypto.randomUUID()));
       setConfirmed(false);setRefresh(value=>value+1);
     }catch (failure) {setError(failure);clearReview();setRefresh(value=>value+1);} finally {setBusy(false);}
   }
-  const validUntil=Number.isSafeInteger(new Date(until).getTime())&&new Date(until).getTime()>now;
+  const validUntil=validDuration(duration,now);
   return <><p className="eyebrow">Endpoint identity</p><h1>Enroll this device</h1>
     <Connect onCode={value=>{setCode(value);clearReview();}} onCancel={clearReview} />
     <p>Devices waiting for approval appear below. Compare the code and key fingerprint with the client on that device before approving access.</p>
@@ -94,10 +89,9 @@ export function Enrollment({ client }: { client: ControlClient }) {
       <dt>Code</dt><dd>{review.userCode}</dd><dt>Key fingerprint</dt><dd><code>{review.keyFingerprint}</code></dd>
       <dt>Status</dt><dd>{review.state}</dd><dt>Request expires</dt><dd>{new Date(review.expiresAtUnixMs).toLocaleString()}</dd>
       {review.connectionExpiresAtUnixMs!==undefined&&<><dt>Connection allowed until</dt><dd>{new Date(review.connectionExpiresAtUnixMs).toLocaleString()}</dd></>}</dl>
-      {review.state === 'PENDING' && <><label htmlFor="connection-until">Allow connection until</label>
-        <input id="connection-until" type="datetime-local" required value={until} min={localDateTime(now)} onChange={event=>{setUntil(event.target.value);setTimeError('');}} disabled={busy} aria-describedby="connection-until-help" />
-        <p id="connection-until-help">Your local time ({Intl.DateTimeFormat().resolvedOptions().timeZone}). Access ends automatically at this time. Default: 24 hours.</p>
-        {(timeError||!validUntil)&&<p role="alert">{timeError||'Choose a future date and time.'}</p>}
+      {review.unlimitedConnection&&<p>Connection approved for unlimited time.</p>}
+      {review.state === 'PENDING' && <><ApprovalDuration value={duration} onChange={value=>{setDuration(value);setTimeError('');}} now={now} disabled={busy}/>
+        {timeError&&validUntil&&<p role="alert">{timeError}</p>}
         <label><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} disabled={busy} /> I compared the code and fingerprint on my device.</label>
         <button onClick={() => void decide('APPROVE')} disabled={busy || !confirmed || !validUntil || review.expiresAtUnixMs<=now}>Enroll device</button>
         <button onClick={() => void decide('DENY')} disabled={busy || !confirmed || review.expiresAtUnixMs<=now}>Deny enrollment</button></>}

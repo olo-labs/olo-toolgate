@@ -6,6 +6,12 @@ concurrency and replay protection. No Slack, Teams, queue or cache is required.
 See [ADR 006](../adr/006-ask-approvals.md) and
 [signed policy bundles](policy-bundles.md).
 
+Connection approval is a separate [device registry control](device-registry.md).
+Timed or unlimited device approval permits authenticated connection; it does not
+approve an ASK operation. Every execution path must still pass current device and
+owner gates, policy filters and exact-operation permit consumption. Deapproving or
+disabling a device cannot be bypassed with an earlier human tool approval.
+
 ## Request and decision flow
 
 1. An administrator creates an enabled ASK policy and publishes it. Policies

@@ -294,6 +294,8 @@ def client_credentials():
 def configure():
     runtime = secrets.token_urlsafe(48); atomic(DATA/'run/runtime-token', runtime)
     credentials = [{'tokenSha256': hashlib.sha256(runtime.encode()).hexdigest(), 'tenantId': TENANT, 'userId': 'local-tools', 'agentId': 'agent-default', 'deviceId': 'local-builtins', 'expiresAtUnixMs': int(time.time()*1000)+86400000}]
+    hotfolder = secrets.token_urlsafe(48); atomic(DATA/'run/hotfolder-token', hotfolder)
+    credentials.append({'tokenSha256': hashlib.sha256(hotfolder.encode()).hexdigest(), 'tenantId': TENANT, 'userId': 'local-tools', 'agentId': 'agent-default', 'deviceId': 'local-hotfolder', 'expiresAtUnixMs': int(time.time()*1000)+86400000})
     credentials.extend(client_credentials())
     atomic(DATA/'run/credentials.json', json.dumps(credentials))
     numbers = key('policy').public_key().public_numbers()
@@ -352,7 +354,7 @@ def fleet_keys():
 
 
 def machine():
-    atomic(DATA/'run/machine-token', jwt(['toolgate-bundle-reader', 'toolgate-approval-gateway', 'toolgate-relay-gateway'], 'gateway'))
+    atomic(DATA/'run/machine-token', jwt(['toolgate-bundle-reader', 'toolgate-approval-gateway', 'toolgate-relay-gateway', 'toolgate-reader'], 'gateway'))
 
 
 def seed(catalog):
@@ -362,7 +364,9 @@ def seed(catalog):
                ('users', {'id': 'local-tools', 'name': 'Local tool requester', 'enabled': True, 'revision': 1}),
                ('teams', {'id': 'team-default', 'name': 'Default workspace', 'enabled': True, 'revision': 1, 'userIds': ['admin', 'local-tools']}),
                ('agents', {'id': 'agent-default', 'name': 'Local agent', 'enabled': True, 'revision': 1, 'ownerUserId': 'local-tools'}),
-               ('devices', {'id':'local-builtins','name':'Quickstart fixed executor','enabled':True,'revision':1,'ownerUserId':'local-tools'})]
+               ('devices', {'id':'local-builtins','name':'Quickstart fixed executor','enabled':True,'revision':1,'ownerUserId':'local-tools'}),
+               ('devices', {'id':'local-hotfolder','name':'HotFolder','enabled':True,'revision':1,'ownerUserId':'local-tools'}),
+               ('devices', {'id':'local-rest-forwarding','name':'REST call forwarding','enabled':True,'revision':1,'ownerUserId':'local-tools'})]
     for item in catalog:
         if item['toolId']=='web.search': continue
         resource = {'kind': 'FILE' if item['toolId'].startswith('hotfolder.') else 'CUSTOM', 'locator': 'hotfolder'}
@@ -429,7 +433,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             value=strict(body) if isinstance(body,bytes) else body
             if isinstance(value,dict) and 'code' in value:
                 code={'INVALID_REQUEST':'VALIDATION','RATE_LIMITED':'DEPENDENCY_UNAVAILABLE'}.get(value['code'],value['code'])
-                body={'code':code,'requestId':request_id,'retryable':status in (429,503)}
+                body={'code':code,'requestId':request_id,'retryable':status in (423,429,503)}
         raw = body if isinstance(body, bytes) else json.dumps(body).encode()
         self.send_response(status); self.send_header('Content-Type', kind)
         self.send_header('Content-Length', str(len(raw))); self.send_header('Cache-Control', 'no-store')
@@ -496,6 +500,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     client.request(self.command, self.path, raw or None, headers)
                     response = client.getresponse(); body = response.read(64*1024*1024+1)
                     if len(body)>64*1024*1024: raise ValueError()
+                    if path=='/api/control/v1/endpoint/devices' and self.command=='GET' and response.status==200:
+                        page=strict(body)
+                        for device in page['items']:
+                            if device.get('systemExecutor'): device['systemAvailable']=self.server.ready.is_set()
+                        body=json.dumps(page).encode()
                     if path in ('/console/','/console/index.html') and response.status==200 and b'toolgate-mode' not in body:
                         body = body.replace(b'<head>', b'<head><meta name="toolgate-mode" content="quickstart">', 1)
                     return self.reply(response.status, body, response.getheader('Content-Type','application/octet-stream'),dict(response.getheaders()))

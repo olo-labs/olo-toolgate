@@ -1,5 +1,9 @@
 # Core Data Flows
 
+Current execution flow: tool call → trusted device identity → owner/device enablement → installed-client approval/deadline → agent/device/tool/resource filters → fresh authorization/permit → selected executor → rechecked result and audit.
+
+See [Device registry and tool-call controls](../control-plane/device-registry.md).
+
 ## Marketplace Import
 
 ```text

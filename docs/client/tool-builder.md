@@ -6,9 +6,15 @@ Anonymous native client downloads remain on the console home page; authoring is
 an administrative action. See [ADR 011](../adr/011-designated-client-tool-authoring.md),
 [runtime installation](local-runtimes.md) and [fleet configuration](package-deployment.md).
 
+Use the current [device registry controls](../control-plane/device-registry.md)
+for designated-client tests and deployed execution. Authoring/test success does
+not approve or reenable the client. Current owner/device/connection gates apply
+alongside signed leases, resource filters and runtime isolation.
+
 ## Production configuration
 
-Use Control and clients version **0.10.0-dev or newer**. Apply Flyway V7 with the
+Use matching Control/UI/contracts and supported clients. Apply the complete
+Flyway migration series, including V11 for current device controls, with the
 migration identity before serving traffic. The runtime database identity has
 bounded tenant-scoped access; sealed drafts and versions cannot be edited/deleted.
 Back up the database, retained release descriptors and external trust settings.

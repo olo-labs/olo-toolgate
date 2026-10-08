@@ -1,5 +1,9 @@
 # Security Policy
 
+Managed tool execution uses a trusted registered device, current owner/device enablement, installed-client connection approval, and the existing agent/tool/action/resource filters before every protected effect. Registration, green availability or deployment never grants execution. Temporary suspension retains the protected key; permanent revocation cannot be undone through approval or recovery.
+
+See [Device registry and tool-call controls](docs/control-plane/device-registry.md).
+
 Managed local runtime tools execute only in a non-root, digest-pinned sandbox
 without host mounts, credentials, network or child processes. Missing or unsupported
 runtime capabilities fail closed. Keep the trusted local engine/kernel patched;

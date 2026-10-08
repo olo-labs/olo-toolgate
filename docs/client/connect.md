@@ -1,6 +1,10 @@
 <!-- Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0 -->
 # Chrome Connect
 
+The current Clients table combines registered devices and pending requests, with device names, registered users and detail tooltips. Enable/Disable and Approve/Deapprove are independent; approval may be timed or explicitly unlimited. Quickstart separately registers the fixed executor, HotFolder and REST forwarding.
+
+See [Device registry and tool-call controls](../control-plane/device-registry.md).
+
 In the Admin console, open Devices ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Enroll device and click **Connect**. Chrome on Windows is currently supported. Other browsers and operating systems use the existing client downloads.
 
 1. Download **Install Chrome extension and client**. This is one Windows EXE containing the service, Chrome native bridge, extension files and tray icon. Open it and approve Windows permission. Setup shows an optional **Gateway URL** field, defaulting to `https://localhost:18450` for a new installation. Keep that value for a local gateway, or copy the current **Gateway URL** shown beside the downloads on Enroll Device. Setup obtains the local quickstart CA over loopback, verifies the HTTPS gateway, and saves app-specific trust under `C:\ProgramData\OLO\ToolGate\` without a Windows Root store import. No gateway credentials are required. Repair pre-fills the existing gateway; `/SERVER=` can pre-fill a managed installation.

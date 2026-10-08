@@ -22,17 +22,69 @@ use std::sync::{Arc, Mutex};
 struct LocalGateway {
     client: reqwest::Client,
     token: String,
+    hotfolder_token: String,
     outcome: Arc<Mutex<Option<Value>>>,
     contracts: Contracts,
 }
 impl AuthorizationPort for LocalGateway {
     fn authorize(&self, request: AuthorizationRequest) -> Call<'_, ()> {
         Box::pin(async move {
+            // Read current directory enablement before every effect, including ALLOW policies.
+            // This is the fixed Quickstart adapter; no agent can choose the service identity.
+            let machine = olo_toolgate_client::tool_gateway::secret(std::path::Path::new(
+                "/data/run/machine-token",
+            ))?;
+            let response = self
+                .client
+                .get("http://127.0.0.1:8082/api/control/v1/users/local-tools")
+                .bearer_auth(&machine)
+                .send()
+                .await
+                .map_err(|_| Failure::Unavailable)?;
+            if response.status() != 200 {
+                return Err(Failure::Unauthorized);
+            }
+            let owner: olo_toolgate_contracts::ControlUser = self.contracts.decode(
+                "ControlUser",
+                &olo_toolgate_client::tool_gateway::body(response).await?,
+            )?;
+            if owner.id != "local-tools" || !owner.enabled {
+                return Err(Failure::Unauthorized);
+            }
+            let devices: &[&str] = if request.tool_id.starts_with("hotfolder.") {
+                &["local-builtins", "local-hotfolder"]
+            } else {
+                &["local-builtins"]
+            };
+            for id in devices {
+                let response = self
+                    .client
+                    .get(format!("http://127.0.0.1:8082/api/control/v1/devices/{id}"))
+                    .bearer_auth(&machine)
+                    .send()
+                    .await
+                    .map_err(|_| Failure::Unavailable)?;
+                if response.status() != 200 {
+                    return Err(Failure::Unauthorized);
+                }
+                let device: olo_toolgate_contracts::ControlDevice = self.contracts.decode(
+                    "ControlDevice",
+                    &olo_toolgate_client::tool_gateway::body(response).await?,
+                )?;
+                if device.id != *id || !device.enabled || device.owner_user_id != "local-tools" {
+                    return Err(Failure::Unauthorized);
+                }
+            }
             let correlation = olo_toolgate_client::identity::nonce()?;
+            let token = if request.tool_id.starts_with("hotfolder.") {
+                &self.hotfolder_token
+            } else {
+                &self.token
+            };
             let response = self
                 .client
                 .post("http://127.0.0.1:8081/v2/authorize")
-                .bearer_auth(&self.token)
+                .bearer_auth(token)
                 .header("x-request-id", &correlation)
                 .header(
                     "traceparent",
@@ -74,7 +126,7 @@ impl AuthorizationPort for LocalGateway {
                 let response = self
                     .client
                     .post("http://127.0.0.1:8081/v1/permits/consume")
-                    .bearer_auth(&self.token)
+                    .bearer_auth(token)
                     .header("x-request-id", &correlation)
                     .header(
                         "traceparent",
@@ -160,6 +212,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let settings: Settings = serde_json::from_slice(&std::fs::read("/data/run/builtins.json")?)?;
     let token = olo_toolgate_client::tool_gateway::secret(&settings.gateway_token_path)
         .map_err(|_| "Invalid private token")?;
+    let hotfolder_token = olo_toolgate_client::tool_gateway::secret(std::path::Path::new(
+        "/data/run/hotfolder-token",
+    ))
+    .map_err(|_| "Invalid HotFolder token")?;
     let outcome = Arc::new(Mutex::new(None));
     let client = reqwest::Client::builder()
         .no_proxy()
@@ -172,6 +228,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let authorization = Arc::new(LocalGateway {
         client,
         token: token.clone(),
+        hotfolder_token,
         outcome: outcome.clone(),
         contracts: Contracts::new().map_err(|_| "Invalid canonical contracts")?,
     });

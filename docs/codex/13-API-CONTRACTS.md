@@ -1,5 +1,9 @@
 # API Contracts
 
+Use the current registry’s closed canonical models and generated bindings. Keep expectedApprovalRevision independent of heartbeat revision, directory expectedRevision separate, and unlimitedConnection explicit; document retryable HTTP 423 suspensions.
+
+See [Device registry and tool-call controls](../control-plane/device-registry.md).
+
 ## Canonical OpenAPI
 
 HTTP contracts live under:

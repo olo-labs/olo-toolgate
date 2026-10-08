@@ -13,6 +13,7 @@ SECURITY.md
 docs/README.md
 docs/INDEX.md
 docs/architecture/overview.md
+docs/control-plane/device-registry.md
 docs/security/security-invariants.md
 "
 

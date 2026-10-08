@@ -8,6 +8,12 @@ Module 00.
 
 Implement the high-performance stateless runtime authorization gateway foundation.
 
+For current maintenance, follow [device registry and tool-call controls](../../control-plane/device-registry.md).
+Managed execution must resolve a trusted registered device and check its live
+registry gates before effects. Keep deterministic user/agent/device/tool/action/resource
+filters and fresh permits; caller-supplied device fields cannot select an executor.
+Policy-only authorization compatibility does not grant enrollment or execution.
+
 ## Mandatory Preparation
 
 Read the master prompt and requirements traceability document.

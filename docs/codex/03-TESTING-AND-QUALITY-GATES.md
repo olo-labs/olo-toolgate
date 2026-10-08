@@ -1,5 +1,9 @@
 # Testing and Quality Gates
 
+Verify the current registry boundaries on PostgreSQL and SQLite: pending approval, finite/unlimited access, owner/tenant binding, stable approval CAS, independent enablement, HTTP 423 recovery, irreversible revocation, certificate recovery and actual server/client effect denial. Verify name/user columns and accessible details in the browser.
+
+See [Device registry and tool-call controls](../control-plane/device-registry.md).
+
 ## Unit
 
 Cover pure behavior:

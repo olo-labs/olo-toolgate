@@ -30,6 +30,17 @@ classifications remain a compatibility floor; managed role assignments replace
 legacy runtime template grants. Deploy matching Control/UI/contracts versions.
 Gateway bundle wire versions remain unchanged.
 
+Role device scope applies to the trusted registered execution identity, not an
+arbitrary device ID supplied by a caller. Installed-client enrollment binds the
+reviewed key to a registered human owner. Owner/device enablement and connection
+approval are independent live registry gates, in addition to published role and
+tool/resource filters. Unlimited connection approval grants no broader role scope.
+
+Quickstart's fixed executor, HotFolder and REST-forwarding records are owned by
+`local-tools`; HotFolder authorization uses its own `local-hotfolder` credential.
+REST forwarding also checks the selected installed client's identity and scope.
+See [device registry and tool-call controls](../control-plane/device-registry.md).
+
 Tests cover direct/team escalation, signed-role disagreement, stale revisions,
 references, disabled roles, invalid scopes/templates, per-user device separation
 and last-root protection.

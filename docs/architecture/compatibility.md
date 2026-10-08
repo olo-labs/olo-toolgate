@@ -26,6 +26,22 @@ schema reader
 
 Unsupported packages may be visible but cannot be installed.
 
+## Current device registry compatibility
+
+The [device registry](../control-plane/device-registry.md) adds canonical v1
+management models/routes, explicit unlimited approval, independent approval and
+directory revisions, and reversible HTTP 423 suspension. Deploy matching Control,
+UI and generated contracts; PostgreSQL requires Flyway V11. Retained legacy device
+records default to approved with approval revision one until changed. Omitting
+both duration fields keeps the 24-hour API default. Unlimited approval still uses
+short-lived certificates.
+
+Use the current client for exact-key certificate recovery after a long outage.
+Existing identities, owners and enablement survive redeployment. Quickstart seeds
+only missing server devices; review HotFolder policies explicitly scoped to the
+former `local-builtins` identity. The module baselines below are historical version
+evidence, not the current deployment's migration or registry requirements.
+
 ## Module 04 compatibility baseline
 
 | Component/artifact | Version | Compatibility |

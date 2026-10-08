@@ -1,5 +1,9 @@
 # Module 07 — HotFolder and Safe Built-in Tools
 
+For current maintenance, preserve the device registry flow and uniform execution gates. Treat pending enrollment, enablement, connection approval and tool filters as separate checks. Support explicit unlimited approval with short-lived certificates, reversible HTTP 423 suspension, stable approval revisions and exact-key recovery. Verify tenant/owner binding and real effect denial; do not infer access from installation, green status or a registry row.
+
+See [Device registry and tool-call controls](../../control-plane/device-registry.md).
+
 ## Dependencies
 
 Module 06 plus Gateway authorization.

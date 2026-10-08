@@ -1,5 +1,9 @@
 # Control Plane
 
+Control owns registry identity, approval and enablement in one tenant-scoped transactional boundary. V11 adds management/recovery audit events. Current APIs use stable approval revisions separately from heartbeat and directory revisions.
+
+See [Device registry and tool-call controls](../../docs/control-plane/device-registry.md).
+
 **Status:** Module 02 runtime
 
 **Primary stack:** Java 21 / Quarkus 3.40.1

@@ -8,6 +8,13 @@ Module 02.
 
 Implement the simple-first management UI.
 
+Maintain the current [device registry UI](../../control-plane/device-registry.md).
+Show pending and registered devices together with device-name and registered-user
+columns, accessible details, connection state, approval and expiry. Provide
+independent enable/disable and approve/deapprove controls, with explicit timed or
+unlimited approval. Server-managed devices show real readiness and have no client
+approval form. Keep permission and revision checks on the server and test API failures.
+
 ## Mandatory Preparation
 
 Read the master prompt and requirements traceability document.

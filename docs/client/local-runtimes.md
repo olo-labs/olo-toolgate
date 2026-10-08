@@ -5,6 +5,13 @@ and output are JSON; the privileged identity service never launches an interpret
 or untrusted native program directly on the host. Read
 [ADR 009](../adr/009-managed-local-runtime-sandbox.md) for the isolation decision.
 
+Execution also follows the current [device registry](../control-plane/device-registry.md).
+An installed client requires its enabled matching owner, enabled directory device
+and current connection approval before filters, leases and runtime effects.
+Unlimited approval does not broaden package permissions or sandbox limits.
+Temporary HTTP 423 suspension preserves identity; recovery reuses only the same
+still-approved key and does not extend the access grant.
+
 ## Installation and first run
 
 An administrator must provision a system-accessible **Linux Docker Engine** and

@@ -1,5 +1,9 @@
 # Shared Contracts
 
+Device registry wire models and management APIs are canonical in endpoint.schema.json and control-v1.yaml. Generate bindings after schema changes; approval concurrency is independent of report and directory revisions. Preserve old callers’ 24-hour default and require an explicit unlimited flag.
+
+See [Device registry and tool-call controls](docs/control-plane/device-registry.md).
+
 ## Purpose
 
 OLO ToolGate treats shared contracts as a **versioned, publishable product**.

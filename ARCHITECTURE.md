@@ -1,5 +1,9 @@
 # Architecture
 
+Managed tool execution uses a trusted registered device, current owner/device enablement, installed-client connection approval, and the existing agent/tool/action/resource filters before every protected effect. Registration, green availability or deployment never grants execution.
+
+See [Device registry and tool-call controls](docs/control-plane/device-registry.md).
+
 Module 08 separates privileged identity custody from untrusted execution through
 a local OCI sandbox port. Protected image/tool registration and fresh Gateway
 authorization are separate inputs; JSON stdin/stdout never becomes command text.

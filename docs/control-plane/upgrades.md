@@ -1,8 +1,9 @@
 # Control Plane deployment and upgrades
 
-Product, shared contracts and chart are `0.4.0-dev`, retaining v1 wire paths. The
-canonical Control contracts are additive; the frozen foundation corpus remains
-compatible. The image name is `ghcr.io/olo-labs/olo-toolgate-control:<version>`.
+Deploy matching product, shared contracts and chart release metadata, retaining
+v1 wire paths. The canonical Control contracts are additive; the frozen foundation
+corpus remains compatible. The image name is
+`ghcr.io/olo-labs/olo-toolgate-control:<version>`.
 Protected `control-release` CI publishes the exact tested/scanned image, its SBOM
 and provenance. Maven/chart publication and raw contract assets use the existing
 foundation release workflow. Configure remote credentials only in protected CI.
@@ -70,7 +71,7 @@ Helm rollback restores application/configuration/resources, never database schem
 The smoke path changes the directory limit, rolls out both replicas, then rolls
 back and verifies persisted rows. Schema rollback is a database restore or forward
 fix coordinated with application compatibility. Never use Flyway clean as recovery.
-The current application requires V3 schema. See the
+The current application requires the complete migration series through V11. See the
 [signed bundle migration/restore runbook](policy-bundles.md) before downgrading
 a deployed signed-policy source or restoring older publication history. Export/import configuration is not a database or audit backup.
 
@@ -90,3 +91,19 @@ trust and test/audit evidence. Do not downgrade to a pre-V7 writer against this
 database or edit reserved versions to recover a failed release. Restore a
 consistent database/mirror/trust backup or apply a forward migration. No new
 Helm values are required; existing fleet/device TLS configuration is reused.
+
+## Current device registry upgrade
+
+Follow [device registry and tool-call controls](device-registry.md). V11 extends
+the audit constraint for approve/deapprove, enable/disable and exact-key identity
+recovery while retaining prior events. Deploy matching Control/UI/contracts.
+Approval revision is independent of report revision; legacy records remain approved
+with revision one until changed. Timed approval still expires, and explicit
+unlimited approval uses short-lived certificates.
+
+Preserve retained identities, owners, approval/deadline and enablement. Quickstart
+seeds only missing server devices. HotFolder now authorizes as `local-hotfolder`;
+review policies explicitly scoped only to `local-builtins` and publish the intended
+new scope. REST forwarding still checks target-client state and filters. Use current
+clients for exact-key recovery after an extended certificate outage. PostgreSQL
+schema rollback remains a coordinated restore or forward fix, not a Helm rollback.

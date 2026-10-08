@@ -8,6 +8,13 @@ Module 00.
 
 Implement the organization management backend with clean domain/application/adapter layering.
 
+Preserve the current [device registry](../../control-plane/device-registry.md):
+joined pending/registered views, same-tenant owner binding, finite/unlimited
+connection approval, independent enablement and stable approval revisions.
+Mutations must commit audit and idempotency atomically on PostgreSQL and SQLite.
+Keep reversible HTTP 423 suspension distinct from irreversible key revocation;
+exact-key certificate recovery must retain the existing owner and grant.
+
 ## Mandatory Preparation
 
 Read the master prompt and requirements traceability document.

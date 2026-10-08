@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Real one-image SQLite, Gateway, ASK, direct TLS enrollment and offline recovery gate."""
 import argparse
+import base64
 import hashlib
 import importlib.util
 import json
@@ -109,6 +110,10 @@ def smoke(image,browser):
         assert api('/api/quickstart/v1/login',body={'password':bootstrap,'newPassword':'short'},method='POST')[0]==400
         status,result=api('/api/quickstart/v1/login',body={'password':bootstrap,'newPassword':password},method='POST');assert status==200
         admin=result['accessToken'];assert api('/api/control/v1/users',admin)[0]==200
+        status,managed=api('/api/control/v1/endpoint/devices',admin);assert status==200,(status,managed)
+        systems={item['deviceId']:item for item in managed['items'] if item['systemExecutor']}
+        assert set(systems)=={'local-builtins','local-hotfolder','local-rest-forwarding'}
+        assert all(item['systemAvailable'] and item['registeredUser']['id']=='local-tools' for item in systems.values())
         mark('clean boot/bootstrap/password/host-origin/auth')
         def invoke(tool,args):return api('/api/quickstart/v1/invoke',admin,{'toolId':tool,'arguments':args},'POST')
         status,result=invoke('calculator.evaluate',{'expression':'2+3*4'});assert status==200,(status,result);assert result['result']['value']==14
@@ -116,10 +121,52 @@ def smoke(image,browser):
         assert invoke('hotfolder.read_text',{'path':'other.txt'})[0]==403
         assert invoke('hotfolder.delete',{'path':'welcome.txt'})[0] in (400,501)
         status,result=invoke('hotfolder.read_text',{'path':'welcome.txt'});assert status==200,(status,result)
+        def enable(device,revision,value):
+            result=api('/api/control/v1/endpoint/devices/'+device+'/enabled',admin,{'expectedRevision':revision,'enabled':value},'POST')
+            assert result[0]==200,result
+            return result[1]['revision']
+        revision=enable('local-hotfolder',1,False)
+        assert invoke('hotfolder.read_text',{'path':'welcome.txt'})[0]==403
+        assert invoke('calculator.evaluate',{'expression':'2+3*4'})[0]==200
+        enable('local-hotfolder',revision,True)
+        assert invoke('hotfolder.read_text',{'path':'welcome.txt'})[0]==200
+        revision=enable('local-builtins',1,False)
+        assert invoke('calculator.evaluate',{'expression':'2+3*4'})[0]==403
+        enable('local-builtins',revision,True)
+        # A separate registry row must also be the policy identity, not just a display label.
+        status,policy=api('/api/control/v1/policies/default-hotfolder.read_text',admin);assert status==200
+        def scope_hotfolder(ids):
+            nonlocal policy
+            path='/api/control/v1/policies/'+policy['id']
+            updated={**policy,'deviceIds':ids}
+            status,raw,_=request(origin+path,admin,updated,'PUT',{'If-Match':'"'+str(policy['revision'])+'"','Idempotency-Key':secrets.token_hex(16)})
+            assert status==200,(status,raw);policy=json.loads(raw)
+            revision=api('/api/control/v1/config/export',admin)[1]['revision']
+            wire=api('/api/control/v1/bundles/current',admin)[1]['jws'].split('.')[1]
+            sequence=json.loads(base64.urlsafe_b64decode(wire+'='*(-len(wire)%4)))['sequence']
+            assert api('/api/control/v1/bundles/publish',admin,{'directoryRevision':revision,'expectedSequence':sequence,'lifetimeMs':86400000,'graceMs':0},'POST')[0]==201
+        def wait_hotfolder(expected):
+            deadline=time.monotonic()+10
+            while True:
+                status,result=invoke('hotfolder.read_text',{'path':'welcome.txt'})
+                if status==expected:return
+                if time.monotonic()>=deadline:raise AssertionError((status,result,expected))
+                time.sleep(.2)
+        scope_hotfolder(['local-builtins']);wait_hotfolder(403)
+        scope_hotfolder(['local-hotfolder']);wait_hotfolder(200)
+        scope_hotfolder([]);wait_hotfolder(200)
+        mark('registered HotFolder identity/device filters/independent disable controls')
         write={'path':'welcome.txt','text':'Approved persistent note\n'}
-        status,pending=invoke('hotfolder.write_text',write);assert status==202,(status,pending);assert pending['decision']=='ASK'
+        deadline=time.monotonic()+10
+        while True:
+            status,pending=invoke('hotfolder.write_text',write)
+            if status==202:break
+            if time.monotonic()>=deadline:raise AssertionError((status,pending))
+            time.sleep(.2)  # ASK must use the exact current bundle after the scope publications.
+        assert pending['decision']=='ASK'
         status,queue=api('/api/control/v1/approvals',admin);assert status==200,(status,queue)
         approval=next(item for item in queue['items'] if item['id']==pending['approvalId'])
+        assert approval['input']['context']['deviceId']=='local-hotfolder'
         status,result=api('/api/control/v1/approvals/'+approval['id']+'/decision',admin,{'decision':'APPROVE_ONCE','expectedRevision':approval['revision']},'POST');assert status==200,(status,result)
         status,result=invoke('hotfolder.write_text',write);assert status==200,(status,result)
         status,result=invoke('hotfolder.write_text',write);assert status!=200,(status,result)
@@ -143,6 +190,12 @@ def smoke(image,browser):
             agent=module.Agent(secure,runtime_token,ca)
             assert module.VERSION in agent.rpc('server/discover')['supportedVersions']
             assert agent.rpc('tools/list')['tools']==[]
+            revision=enable('local-rest-forwarding',1,False)
+            try:agent.rpc('tools/list')
+            except ValueError as failure:assert str(failure).startswith('MCP HTTP 403:'),str(failure)
+            else:raise AssertionError('Disabled forwarding unexpectedly returned tools')
+            enable('local-rest-forwarding',revision,True)
+            assert agent.rpc('tools/list')['tools']==[]
             mark('agent-facing TLS MCP/header forwarding/unenrolled catalog isolation')
             assert tls(secure+'/.well-known/olo-toolgate-client',context)[0]==200
             device_key=ec.generate_private_key(ec.SECP256R1())
@@ -151,6 +204,8 @@ def smoke(image,browser):
             status,challenge=tls(secure+'/api/control/v1/endpoint/enrollments',context,body=body,method='POST');assert status==200,(status,challenge)
             status,pending=api('/api/control/v1/endpoint/enrollments',admin);assert status==200 and pending['items'][0]['deviceId']==body['deviceId'],(status,pending)
             assert 'deviceCode' not in json.dumps(pending) and 'csrPem' not in json.dumps(pending)
+            managed=api('/api/control/v1/endpoint/devices',admin)[1]
+            assert next(item for item in managed['items'] if item['deviceId']==body['deviceId'])['enrollment']['state']=='PENDING'
             status,review=api('/api/control/v1/endpoint/enrollments/review?code='+challenge['userCode'],admin);assert status==200,(status,review)
             status,result=api('/api/control/v1/endpoint/enrollments/decision',admin,{'userCode':challenge['userCode'],'keyFingerprint':review['keyFingerprint'],'choice':'APPROVE'},'POST');assert status==200,(status,result)
             assert 0 < result['connectionExpiresAtUnixMs']-int(time.time()*1000) <= 86400000
@@ -161,6 +216,16 @@ def smoke(image,browser):
             context.load_cert_chain(str(certificate),str(private))
             report_body={'sequence':1,'report':{'deviceId':body['deviceId'],'clientVersion':body['clientVersion'],'appliedRevision':0,'packages':[]}}
             status,result=tls(secure+'/api/control/v1/endpoint/check-in',context,body=report_body,method='POST');assert status==200,(status,result)
+            revision=enable(body['deviceId'],1,False)
+            assert tls(secure+'/api/control/v1/endpoint/check-in',context,body=report_body,method='POST')[0]==423
+            enable(body['deviceId'],revision,True)
+            assert api('/api/control/v1/endpoint/devices/'+body['deviceId']+'/approval',admin,{'expectedApprovalRevision':1,'approved':False},'POST')[0]==200
+            assert tls(secure+'/api/control/v1/endpoint/check-in',context,body=report_body,method='POST')[0]==423
+            assert api('/api/control/v1/endpoint/devices/'+body['deviceId']+'/approval',admin,{'expectedApprovalRevision':2,'approved':True,'unlimitedConnection':True},'POST')[0]==200
+            time.sleep(.5);report_body['sequence']=2
+            assert tls(secure+'/api/control/v1/endpoint/check-in',context,body=report_body,method='POST')[0]==200
+            row=next(item for item in api('/api/control/v1/endpoint/devices',admin)[1]['items'] if item['deviceId']==body['deviceId'])
+            assert row['registeredUser']['id']=='admin' and row['endpointDevice']['connectionApproved'] is True and 'connectionExpiresAtUnixMs' not in row['endpointDevice']
         mark('real CSR/browser enrollment/direct mTLS check-in')
         if browser:
             env=dict(os.environ,UI_TEST_ORIGIN=origin,QUICKSTART_PASSWORD=password)

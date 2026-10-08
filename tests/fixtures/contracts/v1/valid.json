@@ -978,6 +978,23 @@
   "EndpointEnrollmentPage": {
     "items": []
   },
+  "SystemExecutorKind": "HOTFOLDER",
+  "EndpointManagedDevice": {
+    "deviceId": "device-1",
+    "systemExecutor": false
+  },
+  "EndpointManagedDevicePage": {
+    "items": []
+  },
+  "EndpointApprovalRequest": {
+    "expectedApprovalRevision": 1,
+    "approved": true,
+    "unlimitedConnection": true
+  },
+  "EndpointEnabledRequest": {
+    "expectedRevision": 0,
+    "enabled": false
+  },
   "EndpointEnrollmentDecision": {
     "userCode": "AAAAAAAAAAAAAAAA",
     "keyFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

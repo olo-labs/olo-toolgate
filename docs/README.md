@@ -1,5 +1,9 @@
 # OLO ToolGate Documentation
 
+The current Clients table combines registered devices and pending requests, with device names, registered users and detail tooltips. Enable/Disable and Approve/Deapprove are independent; approval may be timed or explicitly unlimited. Quickstart separately registers the fixed executor, HotFolder and REST forwarding.
+
+See [Device registry and tool-call controls](control-plane/device-registry.md).
+
 **Repository:** `https://github.com/olo-labs/olo-toolgate`
 
 OLO ToolGate is a self-hosted platform to **build, distribute, authorize, and govern AI tools across users, agents, devices, and resources**.

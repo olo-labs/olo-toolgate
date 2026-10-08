@@ -1,5 +1,9 @@
 # One-Minute Quickstart
 
+The current Clients table combines registered devices and pending requests, with device names, registered users and detail tooltips. Enable/Disable and Approve/Deapprove are independent; approval may be timed or explicitly unlimited. Quickstart separately registers the fixed executor, HotFolder and REST forwarding.
+
+See [Device registry and tool-call controls](../control-plane/device-registry.md).
+
 The real Gateway, SQLite-backed Control, Admin UI and Rust fixed tools run in one
 non-root container. **Single-node, non-HA; local evaluation only.** No external
 PostgreSQL, Redis, Vault or Kubernetes is needed. Custom author code still runs

@@ -1,8 +1,27 @@
 # Control Plane API
 
-The Module 03 console consumes this canonical API on the same origin. Generated
-operation metadata imports the shared TypeScript contracts; no wire changes or
-UI-specific endpoints are added. See [console behavior](../control-plane/admin-ui.md).
+The console consumes this canonical API on the same origin. Generated operation
+metadata imports the shared TypeScript contracts. Device-management operations
+are defined in the canonical OpenAPI and schemas, with no browser-owned security
+decisions. See [console behavior](../control-plane/admin-ui.md).
+
+## Device registry operations
+
+`GET /api/control/v1/endpoint/devices` returns the bounded combined view of
+registered directory devices, installed-client approvals, pending enrollments and
+registered users. Quickstart enriches server-managed rows with availability.
+`POST /endpoint/devices/{id}/approval` accepts `expectedApprovalRevision` and
+`approved`, with a finite `connectionExpiresAtUnixMs` or explicit
+`unlimitedConnection: true`. `POST /endpoint/devices/{id}/enabled` independently
+accepts the directory `expectedRevision` and `enabled`. Both paths use the
+`/api/control/v1` prefix, require admin authority and commit audit/idempotency
+with the mutation. Approval revision is separate from heartbeat revision.
+
+Enrollment review/decision requires an enabled same-tenant human enroller and
+verified code/fingerprint. Pending metadata cannot issue a certificate. Permanent
+`/endpoint/devices/{id}/revoke` retires the key and cannot be undone by reapproval.
+See [the registry reference](../control-plane/device-registry.md) for complete
+requests, expiry, legacy defaults and routing boundaries.
 
 ## Purpose
 

@@ -18,6 +18,7 @@ public final class McpService {
     private RemoteToolRecord record(McpStore.Row row){return codec.model(row.record(),RemoteToolRecord.class);}
     private RemoteToolTask task(McpStore.Row row){return codec.model(row.task(),RemoteToolTask.class);}
     private EndpointDeviceRecord device(Store.Session tx,RequestContext context){
+        endpoints.requireServerExecutor(tx,"local-rest-forwarding");
         if(!tenant.value().equals(context.tenantId())||context.deviceId()==null)throw forbidden();
         var row=tx.endpoint(context.deviceId());if(row==null)throw forbidden();var device=codec.model(row.document(),EndpointDeviceRecord.class);endpoints.active(tx,device);
         var agent=tx.load().entries().get(Ids.Kind.AGENT.id(context.agentId()));
@@ -41,12 +42,12 @@ public final class McpService {
         if(local.tools().stream().noneMatch(t->t.enabled()&&t.toolId().equals(task.request().toolId())&&t.action().equals(task.request().action())))throw forbidden();
     }
     public Store.Reply catalog(DirectoryService.Actor actor,boolean gateway,String body){gateway(actor,gateway);var context=codec.model(body,RequestContext.class);
-        return store.transaction(tenant,true,tx->{long now=now(tx);if(!tenant.value().equals(context.tenantId()))throw forbidden();if(context.deviceId()==null||tx.endpoint(context.deviceId())==null)return reply(new LocalToolCatalog(List.of()));var device=device(tx,context);if(device.lastSeenUnixMs()==0||now-device.lastSeenUnixMs()>120000)return reply(new LocalToolCatalog(List.of()));
+        return store.transaction(tenant,true,tx->{long now=now(tx);endpoints.requireServerExecutor(tx,"local-rest-forwarding");if(!tenant.value().equals(context.tenantId()))throw forbidden();if(context.deviceId()==null||tx.endpoint(context.deviceId())==null)return reply(new LocalToolCatalog(List.of()));var device=device(tx,context);if(device.lastSeenUnixMs()==0||now-device.lastSeenUnixMs()>120000)return reply(new LocalToolCatalog(List.of()));
             var configuration=permissions(tx,device);var local=codec.model(tx.endpointConfiguration(device.deviceId()).localTools(),LocalToolCatalog.class);
             return reply(new LocalToolCatalog(local.tools().stream().filter(t->t.enabled()&&visible(configuration,context.agentId(),t.toolId(),t.action())).toList()));});}
     public Store.Reply submit(DirectoryService.Actor actor,boolean gateway,String body,String requestId){gateway(actor,gateway);var submission=codec.model(body,RemoteToolSubmission.class);var input=submission.input();
         if(!input.toolId().equals(submission.request().toolId())||!input.action().equals(submission.request().action()))throw forbidden();
-        return store.transaction(tenant,true,tx->{long now=now(tx);var previous=tx.mcp().get(input.context().requestId());
+        return store.transaction(tenant,true,tx->{long now=now(tx);endpoints.requireServerExecutor(tx,"local-rest-forwarding");var previous=tx.mcp().get(input.context().requestId());
             if(previous!=null){var old=task(previous);if(!old.input().equals(input)||!old.request().equals(submission.request()))throw Failure.conflict();return reply(new RemoteToolResponse(record(previous),null));}
             var device=device(tx,input.context());if(device.lastSeenUnixMs()==0||now-device.lastSeenUnixMs()>120000)throw Failure.unavailable();
             if(submission.expiresAtUnixMs()<=now||submission.expiresAtUnixMs()>now+30000)throw Failure.validation();
