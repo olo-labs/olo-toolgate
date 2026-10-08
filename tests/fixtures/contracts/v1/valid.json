@@ -2285,5 +2285,35 @@
         }
       }
     ]
+  },
+  "ClientSocketOperation": "CHECK_IN",
+  "ClientSocketRequest": {
+    "requestId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "operation": "CHECK_IN",
+    "body": {
+      "sequence": 1,
+      "report": {
+        "deviceId": "device-1",
+        "clientVersion": "0.1.0-dev",
+        "appliedRevision": 1,
+        "packages": [
+          {
+            "packageId": "community/calculator",
+            "version": "0.1.0-dev",
+            "state": "READY"
+          }
+        ]
+      }
+    }
+  },
+  "ClientSocketReply": {
+    "requestId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "status": 200,
+    "body": {
+      "deviceId": "device-1",
+      "sequence": 1,
+      "serverTimeUnixMs": 1,
+      "nextIntervalSeconds": 10
+    }
   }
 }

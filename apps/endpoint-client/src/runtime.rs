@@ -42,11 +42,11 @@ pub async fn run(config: Config, shutdown: tokio::sync::watch::Receiver<bool>) -
             let delay = {
                 let mut state = heartbeat_service.lock().await;
                 let _ = state.tick().await;
-                state.next_delay_seconds()
+                state.next_delay_millis()
             };
             // Network time counts toward the cycle; never overlap or catch up missed requests.
-            next =
-                (started + std::time::Duration::from_secs(delay)).max(tokio::time::Instant::now());
+            next = (started + std::time::Duration::from_millis(delay))
+                .max(tokio::time::Instant::now());
         }
     });
     tracing::info!(

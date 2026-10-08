@@ -177,13 +177,20 @@ function Directory({ client, kind }: { client: ControlClient; kind: DirectoryKin
   const [selected,setSelected] = useState<RecordValue>(); const [creating,setCreating] = useState(false);
   useEffect(() => {
     const abort = new AbortController(); setPage(undefined); setError(undefined); setSelected(undefined); setCreating(false);
-    client.list(kind,cursor,abort.signal).then(result => { if (!abort.signal.aborted) setPage(result); }).catch(failure => { if (!abort.signal.aborted) setError(failure); });
-    return () => abort.abort();
+    let pending=false;
+    async function poll() {
+      if(pending)return;pending=true;
+      try {const result=await client.list(kind,cursor,abort.signal);if(!abort.signal.aborted){setPage(result);setError(undefined);}}
+      catch(failure){if(!abort.signal.aborted)setError(failure);}
+      finally {pending=false;}
+    }
+    void poll();const timer=kind==='devices'?setInterval(()=>void poll(),2000):undefined;
+    return () => {abort.abort();clearInterval(timer);};
   },[client,kind,cursor,attempt]);
   const refresh = () => setAttempt(attempt+1);
   return <><div className="page-heading"><div><p className="eyebrow">Organization directory</p><h1>{label}</h1></div><div className="actions"><button onClick={refresh}>Refresh</button>{<button className="primary" onClick={() => { setSelected(undefined); setCreating(true); }}>Add {kind==='users'?'user':kind==='teams'?'team':kind==='roles'?'role':kind==='tools'?'tool':kind==='policies'?'policy':kind==='agents'?'agent':'client'}</button>}</div></div>
     <p className="intro">{kind === 'users' ? 'Assign roles directly or through team membership. Identity provider authentication remains required for portal access.' : kind === 'policies' ? 'Review who can use what, and where. These records have not been distributed to runtime gateways.' : kind === 'devices' ? 'Manage registered clients. Directory activation and device enrollment are separate approvals.' : `Browse registered ${label.toLowerCase()} in your organization.`}</p>
-    {kind==='devices'&&<p className="hint">Green means an active client checked in within the last two minutes. Red means the client is offline or unavailable; the status label explains why. Connection status refreshes every two seconds.</p>}
+    {kind==='devices'&&<p className="hint">Green means an active client checked in within the last two minutes. Red means the client is offline or unavailable; the status label explains why. The client list and connection status refresh every two seconds.</p>}
     {error ? <Failure error={error} retry={refresh} /> : !page ? <p role="status">Loading {label.toLowerCase()}…</p> : <>
       {page.items.length === 0 ? <section className="empty"><h2>No {label.toLowerCase()} on this page</h2><p>{kind === 'users' ? 'Add a directory user to get started.' : 'Records will appear here when they are added to Control.'}</p></section> :
         <div className="table-wrap"><table><caption className="sr-only">{label} directory</caption><thead><tr><th scope="col">Name</th><th scope="col">Identifier</th>{kind==='devices'&&<th scope="col">Connection</th>}<th scope="col">Directory status</th>{kind==='users'&&<th scope="col">Role</th>}<th scope="col">Revision</th></tr></thead><tbody>{page.items.map(record => <tr key={record.id}><th scope="row"><button className="record-link" onClick={() => { setSelected(record); setCreating(false); }}>{record.name}</button></th><td><code>{record.id}</code></td>{kind==='devices'&&<td><ClientConnection client={client} id={record.id} enabled={record.enabled} ownerUserId={'ownerUserId' in record?record.ownerUserId:''}/></td>}<td><span className={`status ${record.enabled ? 'enabled' : ''}`}>{record.enabled ? 'Enabled' : 'Disabled'}</span></td>{kind==='users'&&<td>{'access' in record&&record.access?record.access.roleIds?.length?record.access.roleIds.join(', '):record.access.role==='SUPER_ADMIN'?'Super Admin':record.access.role==='ADMINISTRATOR'?'Administrator':'Basic':'Identity provider'}</td>}<td>{record.revision}</td></tr>)}</tbody></table></div>}

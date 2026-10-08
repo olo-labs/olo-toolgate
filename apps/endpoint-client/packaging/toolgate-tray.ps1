@@ -13,8 +13,12 @@ $script:trayProcess = $null
 $script:trayStarted = $null
 $script:trayDetail = 'Checking the ToolGate service...'
 $script:trayState = ''
+. (Join-Path $PSScriptRoot 'toolgate-icons.ps1')
+$trayLogo = Join-Path $PSScriptRoot 'olo.png'
+$trayConnectedIcon = New-ToolGateStatusIcon -LogoPath $trayLogo -Connected $true
+$trayOfflineIcon = New-ToolGateStatusIcon -LogoPath $trayLogo -Connected $false
 $trayIcon = New-Object System.Windows.Forms.NotifyIcon
-$trayIcon.Icon = [System.Drawing.SystemIcons]::Information
+$trayIcon.Icon = $trayOfflineIcon
 $trayIcon.Text = 'ToolGate: checking service'
 $trayIcon.Visible = $true
 $trayMenu = New-Object System.Windows.Forms.ContextMenuStrip
@@ -23,9 +27,14 @@ $trayStatus.add_Click({
     [System.Windows.Forms.MessageBox]::Show($script:trayDetail, 'OLO ToolGate') | Out-Null
 })
 $trayConsole = $trayMenu.Items.Add('Open ToolGate console')
+$trayEnroll = $trayMenu.Items.Add('Enroll this device')
+$trayEnroll.add_Click({
+    Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList @('-NoProfile', '-STA', '-ExecutionPolicy', 'RemoteSigned', '-WindowStyle', 'Hidden', '-File', "`"$(Join-Path $PSScriptRoot 'toolgate-enroll.ps1')`"") -WindowStyle Hidden
+})
 $trayConsole.add_Click({
     $trayServer = (Get-ItemProperty -LiteralPath 'HKLM:\Software\OLO\ToolGate' -ErrorAction SilentlyContinue).ServerUrl
     if ($trayServer -match '^https://[a-zA-Z0-9.\[\]:/-]+$') {
+        if ($trayServer -eq 'https://localhost:18450') { $trayServer = 'http://127.0.0.1:18090' }
         $trayRoute = if ($script:trayState -in @('UNENROLLED', 'PENDING')) { '/console/#enroll' } else { '/console/' }
         Start-Process ($trayServer.TrimEnd('/') + $trayRoute)
     }
@@ -73,24 +82,24 @@ $trayTimer.add_Tick({
                 default { 'Checking connection' }
             }
             $trayGuidance = switch ($trayState) {
-                'UNENROLLED' { 'Open Enroll Device and click Connect to start enrollment.' }
+                'UNENROLLED' { 'Choose Enroll this device from the tray menu, then approve it in the console.' }
                 'PENDING' { 'Approve the enrollment code and fingerprint on Enroll Device.' }
                 'REVOKED' { 'Contact your administrator to enroll this device again.' }
                 default { if ($trayHealth.ready) { 'Protected tools are ready.' } else { 'Protected tools will be ready after enrollment and a successful gateway check-in.' } }
             }
             $script:trayDetail = "Service running`r`nStatus: $trayStatusText`r`n$trayGuidance`r`nSuccessful check-ins: $($trayHealth.successfulCheckIns)`r`nFailed check-ins: $($trayHealth.failedCheckIns)"
             $trayIcon.Text = 'ToolGate: ' + $trayStatusText
-            $trayIcon.Icon = if ($trayHealth.ready) { [System.Drawing.SystemIcons]::Information } else { [System.Drawing.SystemIcons]::Warning }
+            $trayIcon.Icon = if ($trayHealth.ready -and $trayState -eq 'ACTIVE') { $trayConnectedIcon } else { $trayOfflineIcon }
         } catch {
             $trayService = Get-Service -Name OloToolGateClient -ErrorAction SilentlyContinue
             if ($trayService.Status -eq 'Running') {
                 $script:trayDetail = 'ToolGate service is running. Its status is busy or unavailable to this Windows account.'
                 $trayIcon.Text = 'ToolGate: service running, status pending'
-                $trayIcon.Icon = [System.Drawing.SystemIcons]::Warning
+                $trayIcon.Icon = $trayOfflineIcon
             } else {
                 $script:trayDetail = 'ToolGate service is unavailable.'
                 $trayIcon.Text = 'ToolGate: service unavailable'
-                $trayIcon.Icon = [System.Drawing.SystemIcons]::Error
+                $trayIcon.Icon = $trayOfflineIcon
             }
         } finally {
             $script:trayProcess.Dispose()
@@ -107,7 +116,7 @@ $trayTimer.add_Tick({
     try {
         $script:trayProcess = [System.Diagnostics.Process]::Start($trayStart)
         $script:trayStarted = Get-Date
-    } catch { $script:trayDetail = 'Could not contact the ToolGate service.' }
+    } catch { $script:trayDetail = 'Could not contact the ToolGate service.'; $trayIcon.Icon = $trayOfflineIcon }
 })
 try {
     $trayTimer.Start()
@@ -121,6 +130,8 @@ try {
     }
     $trayIcon.Visible = $false
     $trayIcon.Dispose()
+    $trayConnectedIcon.Dispose()
+    $trayOfflineIcon.Dispose()
     $trayMenu.Dispose()
     $trayMutex.ReleaseMutex()
     $trayMutex.Dispose()

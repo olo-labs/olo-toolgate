@@ -10,6 +10,85 @@ use std::path::Path;
 struct SiteConfiguration {
     server_url: String,
 }
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct LocalTrust {
+    server_url: String,
+    ca_certificate_pem: String,
+}
+pub struct Installation {
+    pub server_url: String,
+    pub ca_certificate_pem: Option<String>,
+}
+/// Bootstrap local quickstart trust through loopback only, then verify HTTPS before installation.
+pub async fn installation(value: &str) -> Result<Installation> {
+    let server_url = installation_server(value).await?;
+    let input = value.trim();
+    let console = if matches!(
+        server_url.as_str(),
+        "https://localhost:18450" | "https://127.0.0.1:18450"
+    ) {
+        Some("http://127.0.0.1:18090".to_owned())
+    } else if input.starts_with("http://localhost:") || input.starts_with("http://127.0.0.1:") {
+        Some(input.trim_end_matches('/').to_owned())
+    } else if input.starts_with("localhost:") || input.starts_with("127.0.0.1:") {
+        Some(format!("http://{}", input.trim_end_matches('/')))
+    } else {
+        None
+    };
+    let Some(console) = console else {
+        return Ok(Installation {
+            server_url,
+            ca_certificate_pem: None,
+        });
+    };
+    let _ = rustls::crypto::ring::default_provider().install_default();
+    let client = reqwest::Client::builder()
+        .no_proxy()
+        // This loopback HTTP bootstrap must also work on fresh systems without OS CA roots.
+        .tls_certs_only(std::iter::empty())
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(|_| Failure::Unavailable)?;
+    let trust: LocalTrust = serde_json::from_slice(
+        &fetch(
+            &client,
+            &format!("{console}/api/public/v1/clients/local-trust"),
+            20000,
+        )
+        .await?,
+    )
+    .map_err(|_| Failure::Validation)?;
+    let url = reqwest::Url::parse(&server_url).map_err(|_| Failure::Validation)?;
+    if !matches!(url.host_str(), Some("localhost" | "127.0.0.1"))
+        || crate::config::origin(&trust.server_url)? != server_url
+        || trust.ca_certificate_pem.len() > 16384
+    {
+        return Err(Failure::Validation);
+    }
+    let root = reqwest::Certificate::from_pem(trust.ca_certificate_pem.as_bytes())
+        .map_err(|_| Failure::Validation)?;
+    let verified = reqwest::Client::builder()
+        .no_proxy()
+        .https_only(true)
+        .tls_certs_only([root])
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(|_| Failure::Unavailable)?;
+    // Verify the selected HTTPS gateway with this CA before persisting trust.
+    fetch(
+        &verified,
+        &format!("{server_url}/.well-known/olo-toolgate-client"),
+        16384,
+    )
+    .await?;
+    Ok(Installation {
+        server_url,
+        ca_certificate_pem: Some(trust.ca_certificate_pem),
+    })
+}
 pub fn console_origin(value: &str) -> Result<String> {
     let mut url = reqwest::Url::parse(value).map_err(|_| Failure::Validation)?;
     if !url.path().starts_with("/console/") || value.len() > 2048 {
@@ -48,7 +127,7 @@ async fn fetch(client: &reqwest::Client, url: &str, limit: u64) -> Result<Vec<u8
 pub async fn connect(console_url: &str) -> Result<String> {
     let origin = console_origin(console_url)?;
     let server = site_server(&origin).await?;
-    configure_client(server)
+    configure_client(server).await
 }
 /// Setup can use the local console address while service traffic remains HTTPS.
 pub async fn installation_server(value: &str) -> Result<String> {
@@ -77,11 +156,14 @@ pub async fn installation_server(value: &str) -> Result<String> {
 }
 async fn site_server(origin: &str) -> Result<String> {
     let _ = rustls::crypto::ring::default_provider().install_default();
-    let client = reqwest::Client::builder()
+    let mut builder = reqwest::Client::builder()
+        .no_proxy()
         .redirect(reqwest::redirect::Policy::none())
-        .timeout(std::time::Duration::from_secs(15))
-        .build()
-        .map_err(|_| Failure::Unavailable)?;
+        .timeout(std::time::Duration::from_secs(15));
+    if origin.starts_with("http://") {
+        builder = builder.tls_certs_only(std::iter::empty());
+    }
+    let client = builder.build().map_err(|_| Failure::Unavailable)?;
     let document = fetch(
         &client,
         &format!("{origin}/api/public/v1/clients/configuration"),
@@ -92,7 +174,8 @@ async fn site_server(origin: &str) -> Result<String> {
         serde_json::from_slice(&document).map_err(|_| Failure::Validation)?;
     crate::config::origin(&config.server_url)
 }
-fn configure_client(server: String) -> Result<String> {
+async fn configure_client(server: String) -> Result<String> {
+    let installation = installation(&server).await?;
     let executable = std::env::current_exe().map_err(|_| Failure::Unavailable)?;
     let cli = executable
         .parent()
@@ -105,7 +188,39 @@ fn configure_client(server: String) -> Result<String> {
     let operation = if installed.exists() {
         let settings = crate::config::Config::load(&installed)?;
         if settings.server_url == server && settings.authorized_peers.contains(&peer) {
-            return Ok(server);
+            let trust_matches = match (
+                installation.ca_certificate_pem.as_deref(),
+                settings.ca_certificate_path.as_ref(),
+            ) {
+                (Some(ca), Some(path)) => {
+                    let bytes = crate::storage::read_owned(path, 16384, false)?;
+                    let current = std::str::from_utf8(&bytes).map_err(|_| Failure::Validation)?;
+                    crate::identity::certificate_der(ca)?
+                        == crate::identity::certificate_der(current)?
+                }
+                (None, _) => true,
+                _ => false,
+            };
+            if trust_matches {
+                if let Ok(response) = crate::ipc::call(
+                    &settings.ipc_endpoint,
+                    olo_toolgate_contracts::ClientIpcOperation::Health,
+                )
+                .await
+                {
+                    if response.health.is_some_and(|health| {
+                        health.ready
+                            || matches!(
+                                health.state,
+                                olo_toolgate_contracts::EndpointState::Unenrolled
+                                    | olo_toolgate_contracts::EndpointState::Pending
+                                    | olo_toolgate_contracts::EndpointState::Revoked
+                            )
+                    }) {
+                        return Ok(server);
+                    }
+                }
+            }
         }
         "configure"
     } else {

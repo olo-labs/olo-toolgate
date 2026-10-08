@@ -68,6 +68,7 @@ final class EndpointTest {
         assertEquals(409,assertThrows(Failure.class,()->decide(s,challenge,EnrollmentChoice.DENY,"other-key")).status());
         s.clock.time+=5000;var result=poll(s,challenge);assertEquals(EnrollmentState.CONSUMED,result.state());var identity=result.identity();assertEquals("owner",identity.userId());assertEquals("endpoint",identity.tenantId());
         var peer=certificate(identity);assertEquals(review.keyFingerprint(),s.issuer.peerFingerprint(peer,s.clock.time));assertEquals(-1,peer.getBasicConstraints());
+        s.service.verifySocketPeer(peer);
         assertEquals(List.of("1.3.6.1.5.5.7.3.2"),peer.getExtendedKeyUsage());
         s.clock.time+=5000;assertEquals(identity,poll(s,challenge).identity());
         var report=new ClientReport("device","0.6.0-dev",0L,List.of());var body=codec.json(new EndpointCheckIn(1L,report,null,null));
@@ -76,14 +77,22 @@ final class EndpointTest {
         assertEquals(409,assertThrows(Failure.class,()->s.service.checkIn(peer,codec.json(new EndpointCheckIn(1L,new ClientReport("device","0.6.1",0L,List.of()),null,null)),"changed")).status());
         assertEquals(403,assertThrows(Failure.class,()->s.service.checkIn(peer,codec.json(new EndpointCheckIn(2L,new ClientReport("other","0.6.0-dev",0L,List.of()),null,null)),"wrong")).status());
         assertEquals(409,assertThrows(Failure.class,()->s.service.checkIn(peer,codec.json(new EndpointCheckIn(3L,report,null,null)),"gap")).status());
-        s.clock.time+=2000;
-        var fast=codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(2L,report,null,null)),"two-second").body(),EndpointCheckInAck.class);
+        assertFalse(ack.body().contains("nextIntervalMs"));
+        var optedIn=codec.model(s.service.checkIn(peer,body,"millisecond-retry",true).body(),EndpointCheckInAck.class);
+        assertEquals(500L,optedIn.nextIntervalMs());
+        assertEquals(ack.body(),s.service.checkIn(peer,body,"legacy-retry").body());
+        s.clock.time+=249;
+        assertEquals(409,assertThrows(Failure.class,()->s.service.checkIn(peer,codec.json(new EndpointCheckIn(2L,report,null,null)),"burst",true)).status());
+        s.clock.time+=1;
+        var fast=codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(2L,report,null,null)),"millisecond",true).body(),EndpointCheckInAck.class);
         assertEquals(2L,fast.nextIntervalSeconds());
+        assertEquals(500L,fast.nextIntervalMs());
         s.clock.time=START+50000000;var renewed=codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(3L,report,null,null)),"renew").body(),EndpointCheckInAck.class).identity();assertNotNull(renewed);assertTrue(renewed.expiresAtUnixMs()>identity.expiresAtUnixMs());
         var device=codec.model(s.service.device(s.admin,"device").body(),EndpointDeviceRecord.class);assertEquals(3,device.reportSequence());
         var revoked=s.service.revoke(s.admin,"device",codec.json(new EndpointRevokeRequest(device.revision())),"revoke","request");assertEquals(revoked.body(),s.service.revoke(s.admin,"device",codec.json(new EndpointRevokeRequest(device.revision())),"revoke","request").body());
         assertEquals(403,assertThrows(Failure.class,()->s.service.checkIn(certificate(renewed),codec.json(new EndpointCheckIn(4L,report,null,null)),"revoked")).status());
         assertEquals(403,assertThrows(Failure.class,()->s.service.checkIn(peer,body,"replay-after-revoke")).status());
+        assertEquals(403,assertThrows(Failure.class,()->s.service.verifySocketPeer(peer)).status());
         var audit=s.directory.audit(s.admin,0,100).body();for(var event:List.of("ENROLLMENT_CREATE","ENROLLMENT_APPROVE","ENROLLMENT_CONSUME","DEVICE_CHECK_IN","DEVICE_RENEW","DEVICE_REVOKE"))assertTrue(audit.contains(event));
         assertFalse(audit.contains(challenge.deviceCode()));assertFalse(s.directory.export(s.admin,false).body().contains("certificatePem"));
     }
@@ -123,10 +132,10 @@ final class EndpointTest {
         var policy=new ControlPolicy("local-permission","Local permission",true,1L,"local.tool","invoke",resource,Decision.ALLOW,List.of("owner"),List.of(),List.of("agent-one"),List.of("client"));
         s.directory.mutate(s.admin,Ids.Kind.POLICY,policy.id(),"CREATE",codec.json(policy),0,"create-policy","request");
         var local=new BuiltinToolInfo("local.tool","invoke","Installed local tool",true,Map.of());var report=new ClientReport("client","0.10.0-dev",0L,List.of());
-        var first=codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(1L,report,null,List.of(local))),"poll-one").body(),EndpointCheckInAck.class);
+        var first=codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(1L,report,null,List.of(local))),"poll-one",true).body(),EndpointCheckInAck.class);
         assertNotNull(first.configuration());assertEquals(1L,first.configuration().revision());assertEquals(1,first.configuration().permissions().size());
-        var digest=first.configuration().digest();s.clock.time+=2000;
-        assertNull(codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(2L,report,digest,List.of(local))),"poll-two").body(),EndpointCheckInAck.class).configuration());
+        var digest=first.configuration().digest();s.clock.time+=500;
+        assertNull(codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(2L,report,digest,List.of(local))),"poll-two",true).body(),EndpointCheckInAck.class).configuration());
         var gateway=new DirectoryService.Actor(new Ids.TenantId("endpoint"),DirectoryService.digest("gateway"),false);var relay=s.service.relay();
         var context=new RequestContext("relay-request","endpoint","owner","agent-one","client");
         assertEquals(1,codec.model(relay.catalog(gateway,true,codec.json(context)).body(),LocalToolCatalog.class).tools().size());
@@ -138,7 +147,7 @@ final class EndpointTest {
         var waiting=codec.model(relay.submit(gateway,true,codec.json(submission),"agent-request").body(),RemoteToolResponse.class);
         assertEquals(RemoteToolState.WAITING_FOR_POLL,waiting.record().state());
         assertEquals(waiting,codec.model(relay.submit(gateway,true,codec.json(submission),"agent-retry").body(),RemoteToolResponse.class));
-        s.clock.time+=2000;var delivered=codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(3L,report,digest,List.of(local))),"poll-three").body(),EndpointCheckInAck.class).task();assertNotNull(delivered);
+        s.clock.time+=500;var delivered=codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(3L,report,digest,List.of(local))),"poll-three",true).body(),EndpointCheckInAck.class).task();assertNotNull(delivered);
         var bound=new AuthorizationRequest("local.tool","invoke",Map.of("path",new com.fasterxml.jackson.databind.node.TextNode(resource.locator()),"input",(com.fasterxml.jackson.databind.JsonNode)codec.value(codec.json(arguments)),"runtimeImage",new com.fasterxml.jackson.databind.node.TextNode("reviewed-image")));
         assertEquals(delivered.expiresAtUnixMs(),codec.model(relay.authorize(peer,codec.json(new RemoteToolAuthorization(delivered.requestId(),delivered.leaseId(),bound))).body(),RemoteToolAuthorizationAck.class).expiresAtUnixMs());
         var result=new RemoteToolResult(delivered.requestId(),delivered.leaseId(),Map.of("text",new com.fasterxml.jackson.databind.node.TextNode("hello")),null);
@@ -150,9 +159,9 @@ final class EndpointTest {
         var nextContext=new RequestContext("revoked-request","endpoint","owner","agent-one","client");relay.submit(gateway,true,codec.json(new RemoteToolSubmission(new PolicyInput(nextContext,input.toolId(),input.action(),resource,input.argumentsDigest()),request,s.clock.time+29000)),"queued-before-change");
         var block=new ControlPolicy(policy.id(),policy.name(),true,1L,policy.toolId(),policy.action(),resource,Decision.BLOCK,policy.userIds(),policy.teamIds(),policy.agentIds(),policy.deviceIds());s.directory.mutate(s.admin,Ids.Kind.POLICY,policy.id(),"UPDATE",codec.json(block),1,"block-policy","request");
         assertTrue(codec.model(relay.catalog(gateway,true,codec.json(context)).body(),LocalToolCatalog.class).tools().isEmpty());
-        s.clock.time+=2000;var changed=codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(4L,report,digest,List.of(local))),"changed-poll").body(),EndpointCheckInAck.class);assertNotNull(changed.configuration());assertEquals(2L,changed.configuration().revision());assertNotEquals(digest,changed.configuration().digest());assertNull(changed.task());
+        s.clock.time+=500;var changed=codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(4L,report,digest,List.of(local))),"changed-poll",true).body(),EndpointCheckInAck.class);assertNotNull(changed.configuration());assertEquals(2L,changed.configuration().revision());assertNotEquals(digest,changed.configuration().digest());assertNull(changed.task());
         assertEquals(RemoteToolState.FAILED,codec.model(relay.response(gateway,true,codec.json(nextContext),"failed-response").body(),RemoteToolResponse.class).record().state());
         assertThrows(Failure.class,()->relay.response(gateway,true,codec.json(context),"old-result-after-change"));
-        s.clock.time+=2000;assertNull(codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(5L,report,changed.configuration().digest(),List.of(local))),"ack-change").body(),EndpointCheckInAck.class).configuration());
+        s.clock.time+=500;assertNull(codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(5L,report,changed.configuration().digest(),List.of(local))),"ack-change",true).body(),EndpointCheckInAck.class).configuration());
     }
 }

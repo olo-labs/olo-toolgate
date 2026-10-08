@@ -32,12 +32,13 @@ Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 
 [Run]
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -STA -ExecutionPolicy RemoteSigned -WindowStyle Hidden -File ""{app}\packaging\toolgate-tray.ps1"""; Flags: nowait runasoriginaluser
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -STA -ExecutionPolicy RemoteSigned -WindowStyle Hidden -File ""{app}\packaging\toolgate-enroll.ps1"""; Flags: nowait runasoriginaluser skipifsilent
 
 [Code]
 #include "windows-context.iss"
 var MaintenancePage: TInputOptionWizardPage;
     GatewayPage: TInputQueryWizardPage;
-    ConfiguredServer: String; ExistingClient, MaintenanceComplete: Boolean;
+    ConfiguredServer, SetupPeer, SetupSource, HostManifestBackup: String; ExistingClient, MaintenanceComplete, SetupCompleted: Boolean;
 function StorePublished: Boolean;
 begin
   Result := '{#ChromeStoreUrl}' <> '';
@@ -50,7 +51,7 @@ procedure InitializeWizard;
 begin
   ExistingClient := FileExists(ExpandConstant('{commonappdata}\OLO\ToolGate\client.json'));
   ConfiguredServer := ExpandConstant('{param:SERVER|}');
-  if WizardSilent and (ConfiguredServer = '') then ConfiguredServer := ServerFromDownload;
+  if ConfiguredServer = '' then ConfiguredServer := ServerFromDownload;
   if ExistingClient and (ConfiguredServer = '') then
     RegQueryStringValue(HKLM, 'Software\OLO\ToolGate', 'ServerUrl', ConfiguredServer);
   ConfiguredServer := SetupServer(ConfiguredServer);
@@ -97,18 +98,46 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 var ExitCode: Integer; Output: TExecOutput;
 begin
   Result := '';
+  SetupPeer := ExpandConstant('{param:PEER|}');
+  if SetupPeer = '' then begin
+    ExtractTemporaryFile('toolgate-setup-peer.ps1');
+    if not ExecAndCaptureOutput(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+      '-NoProfile -ExecutionPolicy RemoteSigned -File "' + ExpandConstant('{tmp}\toolgate-setup-peer.ps1') + '"', '', SW_HIDE, ewWaitUntilTerminated, ExitCode, Output) or
+      (ExitCode <> 0) or Output.Error or (GetArrayLength(Output.StdOut) <> 1) then begin
+      Result := 'Could not identify the desktop account. Retry setup from your Windows desktop.';
+      Exit;
+    end;
+    SetupPeer := Trim(Output.StdOut[0]);
+  end;
   if not WizardSilent then ConfiguredServer := SetupServer(GatewayPage.Values[0]);
+  SetupSource := ConfiguredServer;
   if not ValidSetupServer(ConfiguredServer) then
     Result := 'Enter a valid gateway URL, such as https://localhost:18450.'
   else begin
     ExtractTemporaryFile('olo-toolgate-client.exe');
     if not ExecAndCaptureOutput(ExpandConstant('{tmp}\olo-toolgate-client.exe'),
-      'resolve-server --server "' + ConfiguredServer + '"', '', SW_SHOWNORMAL, ewWaitUntilTerminated, ExitCode, Output) or
+      'resolve-installation --server "' + ConfiguredServer + '"', '', SW_HIDE, ewWaitUntilTerminated, ExitCode, Output) or
       (ExitCode <> 0) or Output.Error or (GetArrayLength(Output.StdOut) <> 1) then
-      Result := 'Could not resolve the Gateway URL. Enter the HTTPS Gateway URL shown on Enroll Device, such as https://localhost:18450, then retry.'
+      Result := 'Could not verify the gateway connection. Start the local gateway container before setup, or enter its published HTTPS Gateway URL, then retry.'
     else if not ValidServer(Output.StdOut[0]) then
       Result := 'The console did not publish a valid HTTPS Gateway URL.'
     else ConfiguredServer := Output.StdOut[0];
+  end;
+  if (Result = '') and ExistingClient then begin
+    HostManifestBackup := ExpandConstant('{app}\browser-host.updating.json');
+    if FileExists(HostManifestBackup) then begin
+      Result := 'Another client upgrade is pending. Finish that setup before retrying.';
+      Exit;
+    end;
+    if FileExists(ExpandConstant('{app}\browser-host.json')) and
+      not RenameFile(ExpandConstant('{app}\browser-host.json'), HostManifestBackup) then begin
+      Result := 'Could not pause the Chrome bridge for upgrade.';
+      Exit;
+    end;
+    ExtractTemporaryFile('toolgate-upgrade.ps1');
+    if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+      '-NoProfile -ExecutionPolicy RemoteSigned -File "' + ExpandConstant('{tmp}\toolgate-upgrade.ps1') + '" -InstalledDirectory "' + ExpandConstant('{app}') + '"', '', SW_HIDE, ewWaitUntilTerminated, ExitCode) or
+      (ExitCode <> 0) then Result := 'Could not close the installed tray and Chrome bridge. Retry setup.';
   end;
 end;
 procedure CurStepChanged(CurStep: TSetupStep);
@@ -117,8 +146,8 @@ begin
   if CurStep = ssPostInstall then begin
     Operation := 'install';
     if ExistingClient then Operation := 'reinstall';
-    Parameters := Operation + ' --server "' + ConfiguredServer + '"';
-    Peer := ExpandConstant('{param:PEER|}');
+    Parameters := Operation + ' --server "' + SetupSource + '"';
+    Peer := SetupPeer;
     if Peer <> '' then begin
       if (Pos('S-1-', Peer) <> 1) or (Pos('"', Peer) <> 0) or (Pos(' ', Peer) <> 0) then
         RaiseException('Invalid Windows account.');
@@ -126,7 +155,7 @@ begin
     end;
     if ExistingClient then begin
       if not Exec(ExpandConstant('{app}\olo-toolgate-client.exe'),
-        'configure --server "' + ConfiguredServer + '"', '', SW_HIDE, ewWaitUntilTerminated, ExitCode) or (ExitCode <> 0) then
+        'configure --server "' + SetupSource + '"', '', SW_HIDE, ewWaitUntilTerminated, ExitCode) or (ExitCode <> 0) then
         RaiseException('Could not update the existing gateway configuration.');
     end;
     if not Exec(ExpandConstant('{app}\olo-toolgate-client.exe'),
@@ -138,6 +167,18 @@ begin
     HostDocument := '{"name":"io.ololabs.toolgate.connect","description":"ToolGate protected client bridge","path":"' + HostPath + '","type":"stdio","allowed_origins":["chrome-extension://emmemldedebhbloibichmmdlbpjakfkf/"]}';
     if not SaveStringToFile(ExpandConstant('{app}\browser-host.json'), HostDocument, False) then
       RaiseException('Could not register the Chrome client bridge.');
+    if HostManifestBackup <> '' then DeleteFile(HostManifestBackup);
+    SetupCompleted := True;
+  end;
+end;
+procedure DeinitializeSetup;
+var ExitCode: Integer;
+begin
+  if not SetupCompleted and (HostManifestBackup <> '') and FileExists(HostManifestBackup) then begin
+    if not FileExists(ExpandConstant('{app}\browser-host.json')) then
+      RenameFile(HostManifestBackup, ExpandConstant('{app}\browser-host.json'));
+    ExecAsOriginalUser(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+      '-NoProfile -STA -ExecutionPolicy RemoteSigned -WindowStyle Hidden -File "' + ExpandConstant('{app}\packaging\toolgate-tray.ps1') + '"', '', SW_HIDE, ewNoWait, ExitCode);
   end;
 end;
 function InitializeUninstall: Boolean;

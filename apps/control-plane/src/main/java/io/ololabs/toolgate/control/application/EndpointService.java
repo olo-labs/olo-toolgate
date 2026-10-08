@@ -129,6 +129,18 @@ public final class EndpointService {
         });
     }
     public Store.Reply checkIn(java.security.cert.X509Certificate peer,String body,String requestId) {
+        return checkIn(peer,body,requestId,false);
+    }
+    public String issuerCertificate() { available();return issuer.issuerCertificate(); }
+    public void verifySocketPeer(java.security.cert.X509Certificate peer) {
+        transaction((tx,now)->{authenticate(tx,peer,now);return null;});
+    }
+    private Store.Reply interval(Store.Reply reply,boolean milliseconds) {
+        var ack=codec.model(reply.body(),EndpointCheckInAck.class);
+        var negotiated=new EndpointCheckInAck(ack.deviceId(),ack.sequence(),ack.serverTimeUnixMs(),ack.nextIntervalSeconds(),milliseconds?500L:null,ack.identity(),ack.configuration(),ack.task());
+        return new Store.Reply(reply.status(),codec.json(negotiated),reply.revision());
+    }
+    public Store.Reply checkIn(java.security.cert.X509Certificate peer,String body,String requestId,boolean milliseconds) {
         available();
         var check=codec.model(body,EndpointCheckIn.class);Ids.valid(requestId);var fingerprint=issuer.peerFingerprint(peer,clock.millis());
         var digest=DirectoryService.digest(codec.json(check));
@@ -136,17 +148,17 @@ public final class EndpointService {
             var device=codec.model(row.document(),EndpointDeviceRecord.class);active(tx,device);
             if(!device.deviceId().equals(check.report().deviceId()))throw forbidden();
             if(check.report().appliedRevision()!=0||!check.report().packages().isEmpty())FleetService.validateReport(tx,codec,check.report());
-            if(check.sequence().equals(device.reportSequence())){if(!digest.equals(row.reportDigest()))throw Failure.conflict();return new Store.Reply(200,row.acknowledgment(),device.revision());}
+            if(check.sequence().equals(device.reportSequence())){if(!digest.equals(row.reportDigest()))throw Failure.conflict();return interval(new Store.Reply(200,row.acknowledgment(),device.revision()),milliseconds);}
             if(check.sequence()!=device.reportSequence()+1)throw Failure.conflict();
-            // Allow the two-second client cycle with transport jitter; reject request bursts.
-            if(device.reportSequence()>0 && now-device.lastSeenUnixMs()<1000)throw Failure.conflict();
+            // Allow the 500 ms cycle with transport jitter; reject request bursts.
+            if(device.reportSequence()>0 && now-device.lastSeenUnixMs()<250)throw Failure.conflict();
             DeviceIdentity renewed=null;if(peer.getNotAfter().getTime()-now<43200000)renewed=issuer.issue(row.csr(),device.deviceId(),tenant.value(),device.userId(),server,now);
             var configuration=new EndpointPermissions(codec).poll(tx,device,server,check.configurationDigest(),check.localTools());
             var task=relay().poll(tx,device,now,requestId);
-            var ack=new EndpointCheckInAck(device.deviceId(),check.sequence(),now,2L,renewed,configuration,task);
+            var ack=new EndpointCheckInAck(device.deviceId(),check.sequence(),now,2L,null,renewed,configuration,task);
             var updated=new EndpointDeviceRecord(device.deviceId(),tenant.value(),device.userId(),fingerprint,EndpointState.ACTIVE,device.revision()+1,now,check.sequence(),check.report());
             var response=reply(ack,updated.revision());tx.saveEndpoint(new Store.EndpointRecord(row.id(),row.fingerprint(),codec.json(updated),row.csr(),digest,response.body()));
-            tx.audit(fingerprint,renewed==null?"DEVICE_CHECK_IN":"DEVICE_RENEW","endpoint:"+row.id(),updated.revision(),requestId,digest);return response;
+            tx.audit(fingerprint,renewed==null?"DEVICE_CHECK_IN":"DEVICE_RENEW","endpoint:"+row.id(),updated.revision(),requestId,digest);return interval(response,milliseconds);
         });
     }
     public EndpointDeviceRecord authenticate(Store.Session tx,java.security.cert.X509Certificate peer,long now){

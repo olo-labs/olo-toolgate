@@ -60,6 +60,7 @@ def package(binary, target, output):
              'README.md':(ROOT/'apps/endpoint-client/README.md').read_text().replace('../../docs/','docs/').encode(),
              'sbom.cdx.json':(json.dumps(sbom,sort_keys=True,indent=2)+'\n').encode()}
     if 'windows' in target:
+        files['packaging/olo.png']=(ROOT/'apps/admin-ui/src/assets/olo.png').read_bytes()
         host=binary.with_name('olo-toolgate-browser-host.exe')
         host_bytes=host.read_bytes();verify_binary(host_bytes,target)
         files[host.name]=host_bytes

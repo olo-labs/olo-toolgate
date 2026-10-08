@@ -92,6 +92,8 @@ def build(target,output):
                 (directory_payload/'packaging').mkdir(exist_ok=True)
                 shutil.copyfile(ROOT/'apps/endpoint-client/packaging/toolgate-tray.ps1',directory_payload/'packaging/toolgate-tray.ps1')
                 shutil.copyfile(ROOT/'apps/endpoint-client/packaging/toolgate-packets.ps1',directory_payload/'packaging/toolgate-packets.ps1')
+                shutil.copyfile(ROOT/'apps/endpoint-client/packaging/toolgate-enroll.ps1',directory_payload/'packaging/toolgate-enroll.ps1')
+                shutil.copyfile(ROOT/'apps/endpoint-client/packaging/toolgate-setup-peer.ps1',directory_payload/'packaging/toolgate-setup-peer.ps1')
                 compiler=os.environ.get('CLIENT_ISCC_PATH',r'C:\Program Files (x86)\Inno Setup 6\ISCC.exe')
                 notice=Path(compiler).parent/'License.txt'
                 if not notice.is_file():raise ValueError('Installer compiler license missing')

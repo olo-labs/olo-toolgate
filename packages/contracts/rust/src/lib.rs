@@ -540,6 +540,37 @@ pub struct ClientReport {
     pub applied_revision: u64,
     pub packages: Vec<ReportedPackage>,
 }
+/// Canonical ClientSocketOperation wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ClientSocketOperation {
+    #[serde(rename = "CHECK_IN")]
+    CheckIn,
+    #[serde(rename = "AUTHORIZE")]
+    Authorize,
+    #[serde(rename = "RESULT")]
+    Result,
+    #[serde(rename = "BUILDER_POLL")]
+    BuilderPoll,
+    #[serde(rename = "BUILDER_RESULT")]
+    BuilderResult,
+}
+/// Correlated status and response; body is validated again as the expected response contract.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ClientSocketReply {
+    pub request_id: String,
+    pub status: u64,
+    pub body: std::collections::BTreeMap<String, serde_json::Value>,
+}
+/// Correlated bounded request; body is validated again as the selected operation contract.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ClientSocketRequest {
+    pub request_id: String,
+    pub operation: ClientSocketOperation,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub body: Option<std::collections::BTreeMap<String, serde_json::Value>>,
+}
 /// Version 1 deterministic exact-match rules, with unconditional default deny.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -865,6 +896,8 @@ pub struct EndpointCheckInAck {
     pub sequence: u64,
     pub server_time_unix_ms: u64,
     pub next_interval_seconds: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_interval_ms: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub identity: Option<DeviceIdentity>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

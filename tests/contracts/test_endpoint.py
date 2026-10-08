@@ -11,6 +11,23 @@ from test_foundation import schemas_at, validators
 ROOT = Path(__file__).resolve().parents[2]
 
 class EndpointContractsTests(unittest.TestCase):
+    def test_job_socket_rejects_unknown_operations_and_unstructured_frames(self):
+        models = validators(schemas_at(ROOT/'packages/contracts/schemas/v1'))
+        sample = json.loads((ROOT/'tests/fixtures/contracts/v1/valid.json').read_text())['ClientSocketRequest']
+        for field, invalid in (('operation','EXECUTE'),('requestId','unbound'),('body','command string')):
+            changed = copy.deepcopy(sample); changed[field] = invalid
+            with self.assertRaises(ValidationError): models['ClientSocketRequest'].validate(changed)
+
+    def test_check_in_interval_supports_milliseconds_and_legacy_seconds(self):
+        models = validators(schemas_at(ROOT/'packages/contracts/schemas/v1'))
+        sample = json.loads((ROOT/'tests/fixtures/contracts/v1/valid.json').read_text())['EndpointCheckInAck']
+        models['EndpointCheckInAck'].validate(sample)
+        sample['nextIntervalMs'] = 500
+        models['EndpointCheckInAck'].validate(sample)
+        for invalid in (499, 500.5, 3600001):
+            sample['nextIntervalMs'] = invalid
+            with self.assertRaises(ValidationError): models['EndpointCheckInAck'].validate(sample)
+
     def test_private_device_code_cannot_enter_public_prompt(self):
         models = validators(schemas_at(ROOT/'packages/contracts/schemas/v1'))
         fixtures = json.loads((ROOT/'tests/fixtures/contracts/v1/valid.json').read_text())

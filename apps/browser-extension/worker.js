@@ -68,6 +68,16 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
     } catch { /* Missing host, denied OS peer or stopped client remains unavailable. */ }
     if (result.client?.health && state.serverUrl && result.client.serverUrl !== state.serverUrl)
       return {...result,client:null,phase:'gateway-changed'};
+    if (!result.client?.error && ['UNENROLLED','PENDING'].includes(result.client?.health?.state)) {
+      const enrollment=await chrome.runtime.sendNativeMessage('io.ololabs.toolgate.connect',{operation:'enroll'});
+      // A completed installer repair can replace an expired enrollment while this tab remains open.
+      const current=(await chrome.storage.local.get(origin))[origin];
+      if(!current?.approved||current.phase!=='ready'||current.serverUrl!==state.serverUrl)return {...result,client:null,phase:'cancelled'};
+      if(!enrollment.error&&enrollment.challenge) {
+        state.userCode=enrollment.challenge.userCode;
+        await chrome.storage.local.set({[origin]:state});
+      }
+    }
     return {...result,phase:state.phase,serverUrl:state.serverUrl,userCode:state.userCode};
   })().then(reply).catch(() => reply({error:'UNAVAILABLE'}));
   return true;

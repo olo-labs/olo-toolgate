@@ -12,6 +12,7 @@ final readonly class EndpointCheckInAck implements \JsonSerializable {
         public int $sequence,
         public int $serverTimeUnixMs,
         public int $nextIntervalSeconds,
+        public ?int $nextIntervalMs = null,
         public ?DeviceIdentity $identity = null,
         public ?EndpointPermissionConfiguration $configuration = null,
         public ?RemoteToolTask $task = null
@@ -19,7 +20,7 @@ final readonly class EndpointCheckInAck implements \JsonSerializable {
 
     /** Decode a structural model; canonical schema validation is also required. */
     public static function fromArray(array $data): self {
-        if (array_diff(array_keys($data), ['deviceId', 'sequence', 'serverTimeUnixMs', 'nextIntervalSeconds', 'identity', 'configuration', 'task']) || array_diff(['deviceId', 'sequence', 'serverTimeUnixMs', 'nextIntervalSeconds'], array_keys($data))) {
+        if (array_diff(array_keys($data), ['deviceId', 'sequence', 'serverTimeUnixMs', 'nextIntervalSeconds', 'nextIntervalMs', 'identity', 'configuration', 'task']) || array_diff(['deviceId', 'sequence', 'serverTimeUnixMs', 'nextIntervalSeconds'], array_keys($data))) {
             throw new \InvalidArgumentException('Unknown or missing contract fields');
         }
         return new self(
@@ -27,6 +28,7 @@ final readonly class EndpointCheckInAck implements \JsonSerializable {
             $data['sequence'],
             $data['serverTimeUnixMs'],
             $data['nextIntervalSeconds'],
+            array_key_exists('nextIntervalMs', $data) ? $data['nextIntervalMs'] : null,
             array_key_exists('identity', $data) ? DeviceIdentity::fromArray($data['identity']) : null,
             array_key_exists('configuration', $data) ? EndpointPermissionConfiguration::fromArray($data['configuration']) : null,
             array_key_exists('task', $data) ? RemoteToolTask::fromArray($data['task']) : null

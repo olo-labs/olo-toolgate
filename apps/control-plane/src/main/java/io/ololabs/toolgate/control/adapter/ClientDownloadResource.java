@@ -12,6 +12,7 @@ import io.smallrye.common.annotation.Blocking;
 public class ClientDownloadResource {
     @Inject ClientArtifacts artifacts;
     @Inject org.eclipse.microprofile.config.Config config;
+    @Inject io.ololabs.toolgate.control.application.EndpointService endpoints;
     @GET public Response home(){return Response.seeOther(java.net.URI.create("/console/")).build();}
     @GET @Path("api/public/v1/clients") @Produces("application/json")
     public Response manifest(){return Response.ok(artifacts.manifest()).header("Cache-Control","no-store").build();}
@@ -27,6 +28,11 @@ public class ClientDownloadResource {
     }
     @GET @Path("api/public/v1/clients/configuration") @Produces("application/json")
     public Response configuration(){return Response.ok(java.util.Map.of("serverUrl",serverUrl())).header("Cache-Control","no-store").build();}
+    @GET @Path("api/public/v1/clients/local-trust") @Produces("application/json")
+    public Response localTrust(){
+        if(!config.getOptionalValue("toolgate.quickstart.enabled",Boolean.class).orElse(false))throw new NotFoundException();
+        return Response.ok(java.util.Map.of("serverUrl",serverUrl(),"caCertificatePem",endpoints.issuerCertificate())).header("Cache-Control","no-store").build();
+    }
     @GET @Path("api/public/v1/clients/setup/{target}")
     public Response configuredSetup(@PathParam("target")String target){return artifacts.configuredWindowsInstaller(target,serverUrl());}
     @GET @Path("api/public/v1/clients/{filename}")

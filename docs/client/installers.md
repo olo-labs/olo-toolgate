@@ -8,11 +8,12 @@ warnings. Do not disable machine-wide security protections.
 
 Windows: download the `.setup.exe` from your ToolGate page and approve UAC.
 Setup has an optional **Gateway URL** field. For a new installation it defaults to
-`https://localhost:18450`; leave it unchanged for a gateway running locally, or paste
+the gateway carried by the console download link, falling back to `https://localhost:18450`; leave it unchanged for a gateway running locally, or paste
 the current **Gateway URL** shown alongside the downloads on Enroll Device. No
 credentials are required. Setup installs the Windows LocalSystem service with
 automatic startup and registers an entry in Installed Apps for uninstallation.
-It also installs the Chrome extension files, protected native messaging bridge and a tray icon. The tray starts at login and shows connection and enrollment status. Use Enroll device →
+Setup configures local quickstart CA trust automatically in `C:\ProgramData\OLO\ToolGate\`, verifies HTTPS, and starts enrollment in the console. Approve the device code and fingerprint there. The tray also has **Enroll this device**, so Chrome is optional for enrollment. No debug helper or manual CA export is needed for client installation.
+It also installs the Chrome extension files, protected native messaging bridge and a tray icon. The tray starts at login and shows connection and enrollment status. Use Enroll device Ã¢â€ â€™
 Connect in the Admin console and follow the [Chrome Connect guide](connect.md).
 
 Installer downloads use stable names, such as
@@ -29,12 +30,12 @@ are internal CI build inputs and are not public installation downloads.
 
 The configured Windows download endpoint is `/api/public/v1/clients/setup/<target>`.
 It uses the server-owned `toolgate.control.endpoint.control-url` setting and carries
-that public HTTPS origin as a hex suffix in the suggested EXE filename for unattended
+that public HTTPS origin as a hex suffix in the suggested EXE filename for interactive and unattended
 installation. The hint is limited to 90 ASCII characters to
 fit Windows filename limits. The EXE bytes and checksums remain identical to the
 versioned release. Plain release EXEs can use `/SERVER=<HTTPS origin>` for managed
-silent installation. Interactive setup uses the optional field; repair starts with
-the existing gateway. A blank field uses `https://localhost:18450`. Silent setup uses
+silent installation. Interactive setup uses the optional field; the configured download prefills it, then repair falls back to
+the existing gateway. A blank field uses `https://localhost:18450`. Both setup modes use
 `/SERVER=`, then the download hint, then the existing gateway, then the localhost
 default. A loopback HTTP console address is resolved to its published HTTPS gateway
 before changing the service. Client communication remains HTTPS. The local console
@@ -58,6 +59,11 @@ Windows setup detects an existing client and offers repair/reinstall or uninstal
 Repair retains configuration and enrollment for the same gateway. Connect from another
 ToolGate page switches gateways and starts a new enrollment. Linux/macOS installs
 remain initial-install only. Enrollment keys are retained on uninstall by default. Do not use `--purge` unless you intend to remove enrollment state.
+If a fresh debug data volume replaces the local gateway CA, Windows setup or Retry Connect
+verifies the new gateway and clears the old enrollment and gateway-specific settings,
+even if the public config already contains the new CA. It preserves the device key and
+starts a new enrollment. Removing a container while retaining its data volume preserves
+the gateway CA and enrollment. The Clients list refreshes automatically after enrollment.
 Use the installed client `uninstall` command as administrator on Linux/macOS;
 Windows Installed Apps invokes this command. Installation does not authorize tools
 or enroll a device. Complete enrollment using the [endpoint guide](../../apps/endpoint-client/README.md).

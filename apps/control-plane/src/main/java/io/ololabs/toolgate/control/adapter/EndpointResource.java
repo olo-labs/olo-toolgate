@@ -41,7 +41,7 @@ public class EndpointResource {
     @POST @Path("enrollments/poll") @Consumes("application/json") public Response poll(String document){tls();return response(service.poll(body(document),correlation.id()),"POLL");}
     @GET @Path("enrollments/review") @RolesAllowed("toolgate-enroller") public Response review(@QueryParam("code")String code){return response(service.review(actor(),user(),code),"REVIEW");}
     @POST @Path("enrollments/decision") @Consumes("application/json") @RolesAllowed("toolgate-enroller") public Response decide(@HeaderParam("Idempotency-Key")String key,String document){return response(service.decide(actor(),user(),body(document),key,correlation.id()),"DECIDE");}
-    @POST @Path("check-in") @Consumes("application/json") public Response checkIn(String document){return response(service.checkIn(peer(),body(document),correlation.id()),"CHECK_IN");}
+    @POST @Path("check-in") @Consumes("application/json") public Response checkIn(@HeaderParam("X-ToolGate-Poll-Interval-Unit")String unit,String document){return response(service.checkIn(peer(),body(document),correlation.id(),"milliseconds".equals(unit)),"CHECK_IN");}
     @GET @Path("devices/{id}") @RolesAllowed("toolgate-admin") public Response device(@PathParam("id")String id){return response(service.device(actor(),id),"DEVICE");}
     @POST @Path("devices/{id}/revoke") @Consumes("application/json") @RolesAllowed("toolgate-admin") public Response revoke(@PathParam("id")String id,@HeaderParam("Idempotency-Key")String key,String document){return response(service.revoke(actor(),id,body(document),key,correlation.id()),"REVOKE");}
 }

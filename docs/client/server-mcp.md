@@ -1,7 +1,7 @@
 <!-- Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0 -->
 # Client tools through the Gateway
 
-An enrolled client checks in with Control every two seconds while connected. Each
+An enrolled client checks in with Control every 500 ms while connected. Each
 poll reports the tools actually installed and ready on that device. Control caches
 the device's effective permissions and their digest. A change sends a complete
 replacement on the next poll; Control repeats it until the client acknowledges the
@@ -92,3 +92,14 @@ poll. Only its fixed runtime proxy routes delegate opaque bearer validation to
 Gateway; Control administrator JWT and client mTLS routes retain their existing
 authentication. See `debug/agent-mimic.bat` for a sequential discovery/write/log
 example and `debug/README.md` for local setup.
+
+Current clients request millisecond intervals with `X-ToolGate-Poll-Interval-Unit: milliseconds`. Control replies with `nextIntervalMs: 500`; that value takes precedence over the legacy `nextIntervalSeconds`. Older clients receive the original two-second response, and current clients fall back to seconds against an older server.
+
+When a remote tool or builder job is delivered, the client opens a direct mTLS
+WebSocket at `/api/control/v1/endpoint/socket`. Check-ins, permission replacements,
+job authorization and results then share that bidirectional channel. WebSocket
+ping/pong frames run every five seconds, including during execution. The client
+closes the channel 30 seconds after jobs finish, then continues 500 ms HTTPS polls.
+A dropped or unavailable channel falls back to the existing durable HTTP protocol;
+lease, permission, sequence and replay checks apply to every socket message too.
+Packet diagnostics show connection, ping/pong, idle disconnect and fallback states.

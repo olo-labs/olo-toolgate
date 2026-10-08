@@ -71,6 +71,30 @@ paths:
           description: Public transfer capacity reached
         '503':
           description: Release unavailable or integrity validation failed
+  /api/public/v1/clients/local-trust:
+    get:
+      operationId: publicLocalClientTrust
+      security: []
+      description: Public CA bootstrap for local quickstart installations. Clients accept this only over loopback and verify the selected HTTPS gateway before persisting trust.
+      responses:
+        '200':
+          description: Public local gateway origin and CA certificate; no-store
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [serverUrl, caCertificatePem]
+                properties:
+                  serverUrl:
+                    type: string
+                    format: uri
+                    maxLength: 2048
+                  caCertificatePem:
+                    type: string
+                    maxLength: 16384
+        '404':
+          description: Local quickstart bootstrap is disabled
   /api/public/v1/clients/configuration:
     get:
       operationId: publicClientConfiguration
@@ -270,11 +294,34 @@ paths:
           type: string
           minLength: 1
           maxLength: 128
+  /api/control/v1/endpoint/socket:
+    get:
+      operationId: endpointJobSocket
+      description: RFC 6455 upgrade with a verified active mTLS device. ClientSocketRequest and ClientSocketReply frames use existing check-in, authorization, result and builder contracts. Ping/pong verifies liveness; the channel closes after job inactivity. Browser origins and bearer substitutes are rejected.
+      security:
+      - deviceCertificate: []
+      responses:
+        '101':
+          description: Bidirectional authenticated active-job channel
+        '401':
+          description: Direct TLS and a device certificate are required
+        '403':
+          description: Device is inactive, disabled or revoked
+        '503':
+          description: Channel capacity or dependencies unavailable
   /api/control/v1/endpoint/check-in:
     post:
       operationId: endpointCheckIn
       description: Actual verified TLS peer certificate plus active registry. No bearer/header substitute.
         Sequence and exact report replay are transactional; certificates renew before expiry.
+      parameters:
+      - in: header
+        name: X-ToolGate-Poll-Interval-Unit
+        required: false
+        description: Opt in to nextIntervalMs; legacy clients continue receiving nextIntervalSeconds.
+        schema:
+          type: string
+          enum: [milliseconds]
       responses:
         '200':
           description: Success; no-store

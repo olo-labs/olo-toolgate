@@ -64,8 +64,14 @@ administrator prompt. It exports this debug stack's public CA, repairs the nativ
 service, enrolls the device after matching its real key fingerprint, installs the
 two exact tool grants, waits for Gateway readiness, and runs the mimic requests.
 Only this local password-free debug stack supports the automatic approval helper.
+The repair waits for the installer process to finish. Retrying resumes an already
+completed repair when the installed binaries and Gateway CA match this build.
 
 After setup, run `agent-mimic.bat` to mimic an agent through `https://localhost:18450/mcp`.
+Both setup and mimic commands also save their visible console output, including
+errors, in timestamped files under `.dev/debug/logs/`. Each run prints its log path.
+After a Gateway restart, setup waits for a new authenticated client check-in and
+prints progress; the client's outage retry interval can reach five minutes.
 It calls `server/discover`, then `tools/list`, then waits for each client tool to
 finish before sending the next call. `hotfolder.write_text` creates
 `rahul-nigam.txt` containing exactly `My Name is Rahul Nigam` in the installed
@@ -85,12 +91,14 @@ restarts only this Compose project. This helper requires the debug stack's
 configured password-free administrator login. The mimic script itself uses the
 agent credential and never an administrator credential.
 
-For first setup after building, export this stack's public CA with
-`docker cp toolgate-debug-quickstart-1:/data/keys/device-ca.crt .dev/debug/toolgate-quickstart-ca.crt`,
-then run `powershell -NoProfile -File debug/prepare-local-client.ps1` and wait for
-`.dev/debug/native-prepare-result.json` to confirm success. Windows requires its
-administrator prompt to repair the service. The CA is configured only in this
-client, with TLS certificate validation enabled. Then run the enrollment helper.
+Fresh client installation needs only the EXE downloaded from Enroll Device while
+this container is running. Setup obtains the public local CA, validates HTTPS,
+stores the certificate in the client's protected configuration directory, installs
+the service/native bridge/tray, and starts enrollment. Approve the device in the
+console; Chrome is optional when enrolling from setup or the tray menu.
+`prepare-local-client.ps1` now invokes this same installer and does not export,
+copy or configure a CA. The mimic helper still saves a public CA for its own agent
+HTTPS connection; it does not supply client installation configuration.
 The Gateway default remains `https://localhost:18450`; the mimic PowerShell wrapper
 also accepts `-Gateway`, `-TokenFile`, `-CaFile`, and `-File` for an already configured
 deployment.
@@ -104,9 +112,19 @@ request IDs, status, poll sequence, configuration digest/counts and tool/job sta
 Enrollment codes, certificates, leases, credentials, tool arguments and outputs
 are redacted. Client `peerRequestId` matches the Control server's `requestId`.
 
+Current clients poll task and configuration changes every 500 ms while healthy.
+Receiving a job opens a direct mTLS WebSocket; job authorization, results and
+polls use that channel until 30 seconds after the last job finishes. Ping/pong
+frames run every five seconds. Packet logs include `CONNECTED`, `PING`, `PONG`,
+`PEER_PING`, `IDLE_DISCONNECTED` and `HTTP_FALLBACK`; server socket packets have
+`transport: WEBSOCKET`. A lost socket falls back to the durable HTTPS routes.
+
 The automated native Linux regression runs with
 `python tools/client/mcp_smoke.py --image olo-toolgate-quickstart:debug --binary <current-linux-client>`.
 It owns only disposable containers and volumes, enrolls with a real CSR and mTLS
 identity, invokes this same mimic script through the HTTPS MCP route, verifies
 the file on the client, checks both requests reached DONE, and verifies packet
 logs contain SEND/RECEIVE without the credential, enrollment code or file text.
+It also verifies a fresh client install obtains its own CA, measures the 500 ms
+poll cadence, rejects sockets without device identity, and checks bidirectional
+heartbeats and idle disconnect. Results are written to `build/quickstart/mcp-smoke.json`.

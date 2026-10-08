@@ -31,10 +31,10 @@ pub fn client(ca: Option<&Path>) -> Result<reqwest::Client> {
         .connect_timeout(Duration::from_secs(3))
         .pool_max_idle_per_host(1);
     if let Some(path) = ca {
-        builder = builder.add_root_certificate(
-            reqwest::Certificate::from_pem(&crate::storage::read_owned(path, 16384, false)?)
-                .map_err(|_| Failure::Validation)?,
-        );
+        builder = builder.tls_certs_only([reqwest::Certificate::from_pem(
+            &crate::storage::read_owned(path, 16384, false)?,
+        )
+        .map_err(|_| Failure::Validation)?]);
     }
     builder.build().map_err(|_| Failure::Unavailable)
 }

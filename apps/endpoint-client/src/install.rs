@@ -113,29 +113,49 @@ pub fn install(server: &str) -> Result<()> {
     install_for_peer(server, None)
 }
 pub fn install_for_peer(server: &str, peer: Option<&str>) -> Result<()> {
-    install_config(server, peer, None)
+    install_for_peer_with_ca(server, peer, None)
+}
+pub fn install_for_peer_with_ca(server: &str, peer: Option<&str>, ca: Option<&str>) -> Result<()> {
+    install_config(server, peer, None, ca)
 }
 pub fn reinstall(server: &str, peer: Option<&str>) -> Result<()> {
+    reinstall_with_ca(server, peer, None)
+}
+pub fn reinstall_with_ca(server: &str, peer: Option<&str>, ca: Option<&str>) -> Result<()> {
     admin()?;
     validate_peer(peer)?;
+    #[cfg(windows)]
+    if ca.is_some() {
+        // Reconcile persisted enrollment too: the config may already contain a replacement CA.
+        configure_with_ca(server, peer, ca)?;
+    }
     let previous = Config::load(&config_path())?;
     if crate::config::origin(server)? != previous.server_url {
         return Err(Failure::Conflict);
     }
     uninstall(false)?;
-    install_config(server, peer, Some(previous))
+    install_config(server, peer, Some(previous), ca)
 }
 #[cfg(not(windows))]
 pub fn configure(_: &str, _: Option<&str>) -> Result<()> {
     Err(Failure::Unsupported)
 }
+#[cfg(not(windows))]
+pub fn configure_with_ca(_: &str, _: Option<&str>, _: Option<&str>) -> Result<()> {
+    Err(Failure::Unsupported)
+}
 #[cfg(windows)]
 pub fn configure(server: &str, peer: Option<&str>) -> Result<()> {
+    configure_with_ca(server, peer, None)
+}
+#[cfg(windows)]
+pub fn configure_with_ca(server: &str, peer: Option<&str>, ca: Option<&str>) -> Result<()> {
     admin()?;
     validate_peer(peer)?;
     let server = crate::config::origin(server)?;
     let mut settings = Config::load(&config_path())?;
-    let changed = settings.server_url != server;
+    let trust_changed = local_gateway_trust_changed(&settings, ca)?;
+    let changed = settings.server_url != server || trust_changed;
     if changed {
         settings.server_url = server.clone();
         // These settings contain gateway destinations, pins and credentials from the old site.
@@ -166,6 +186,14 @@ pub fn configure(server: &str, peer: Option<&str>) -> Result<()> {
     let mut backups = Vec::new();
     let update = (|| {
         stop_windows_service()?;
+        if let Some(ca) = ca {
+            settings.ca_certificate_path = Some(save_ca(ca)?);
+            std::fs::write(
+                &temporary,
+                serde_json::to_vec_pretty(&settings).map_err(|_| Failure::Validation)?,
+            )
+            .map_err(|_| Failure::Unavailable)?;
+        }
         if changed {
             for name in [
                 "journal.json",
@@ -175,7 +203,7 @@ pub fn configure(server: &str, peer: Option<&str>) -> Result<()> {
                 "fleet-active.json",
             ] {
                 let source = settings.state_directory.join(name);
-                if source.exists() {
+                if source.try_exists().map_err(|_| Failure::Unavailable)? {
                     crate::storage::check_owned(&source, true)?;
                     let backup =
                         source.with_extension(format!("{}.json", crate::identity::nonce()?));
@@ -273,7 +301,89 @@ fn validate_peer(peer: Option<&str>) -> Result<()> {
     }
     Ok(())
 }
-fn install_config(server: &str, peer: Option<&str>, previous: Option<Config>) -> Result<()> {
+/// Only installer-verified local quickstart trust is supplied here. Its CA is also
+/// the device issuer, so a recreated gateway invalidates enrollment even when its URL is unchanged.
+#[cfg(any(windows, test))]
+fn local_gateway_trust_changed(settings: &Config, ca: Option<&str>) -> Result<bool> {
+    let Some(ca) = ca else { return Ok(false) };
+    let expected = crate::identity::certificate_der(ca)?;
+    if let Some(path) = &settings.ca_certificate_path {
+        let current = crate::storage::read_owned(path, 16384, false)?;
+        let current = std::str::from_utf8(&current).map_err(|_| Failure::Validation)?;
+        if crate::identity::certificate_der(current)? != expected {
+            return Ok(true);
+        }
+    }
+    let journal_path = settings.state_directory.join("journal.json");
+    if journal_path
+        .try_exists()
+        .map_err(|_| Failure::Unavailable)?
+    {
+        let bytes = crate::storage::read_owned(&journal_path, 131072, true)?;
+        let journal: serde_json::Value =
+            serde_json::from_slice(&bytes).map_err(|_| Failure::Validation)?;
+        for field in ["manifest", "identity"] {
+            if let Some(saved) = journal.get(field).filter(|value| !value.is_null()) {
+                let issuer = saved
+                    .get("issuerCertificatePem")
+                    .and_then(|value| value.as_str())
+                    .ok_or(Failure::Validation)?;
+                if crate::identity::certificate_der(issuer)? != expected {
+                    return Ok(true);
+                }
+            }
+        }
+    }
+    Ok(false)
+}
+fn save_ca(ca: &str) -> Result<PathBuf> {
+    if ca.len() > 16384 {
+        return Err(Failure::Validation);
+    }
+    reqwest::Certificate::from_pem(ca.as_bytes()).map_err(|_| Failure::Validation)?;
+    use sha2::Digest;
+    let path = config_path()
+        .parent()
+        .ok_or(Failure::Validation)?
+        .join(format!(
+            "gateway-ca-{}.crt",
+            sha2::Sha256::digest(ca.as_bytes())
+                .iter()
+                .map(|byte| format!("{byte:02x}"))
+                .collect::<String>()
+        ));
+    crate::storage::check_parents(&path)?;
+    if path.exists() {
+        if crate::storage::read_owned(&path, 16384, false)? != ca.as_bytes() {
+            return Err(Failure::Conflict);
+        }
+        return Ok(path);
+    }
+    let temporary = path.with_extension(format!("{}.crt", crate::identity::nonce()?));
+    use std::io::Write;
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o644).custom_flags(libc::O_NOFOLLOW);
+    }
+    let mut file = options.open(&temporary).map_err(|_| Failure::Unavailable)?;
+    file.write_all(ca.as_bytes())
+        .and_then(|_| file.sync_all())
+        .map_err(|_| Failure::Unavailable)?;
+    drop(file);
+    #[cfg(windows)]
+    crate::platform::windows::protect_install_acl(&temporary, true)?;
+    std::fs::rename(&temporary, &path).map_err(|_| Failure::Unavailable)?;
+    Ok(path)
+}
+fn install_config(
+    server: &str,
+    peer: Option<&str>,
+    previous: Option<Config>,
+    ca: Option<&str>,
+) -> Result<()> {
     admin()?;
     let origin = crate::config::origin(server)?;
     validate_peer(peer)?;
@@ -328,6 +438,9 @@ fn install_config(server: &str, peer: Option<&str>, previous: Option<Config>) ->
         if !settings.authorized_peers.iter().any(|value| value == peer) {
             settings.authorized_peers.push(peer.to_owned());
         }
+    }
+    if let Some(ca) = ca {
+        settings.ca_certificate_path = Some(save_ca(ca)?);
     }
     settings.validate()?;
     let executable = std::env::current_exe().map_err(|_| Failure::Unavailable)?;
@@ -497,4 +610,64 @@ pub fn uninstall(purge: bool) -> Result<()> {
     std::fs::remove_file(config_path()).map_err(|_| Failure::Unavailable)?;
     std::fs::remove_file(binary_path()).map_err(|_| Failure::Unavailable)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn repair_detects_stale_enrollment_after_config_ca_was_already_updated() {
+        #[cfg(windows)]
+        let base = PathBuf::from(std::env::var_os("ProgramData").unwrap());
+        #[cfg(target_os = "macos")]
+        let base = PathBuf::from("/private/tmp");
+        #[cfg(all(unix, not(target_os = "macos")))]
+        let base = std::env::temp_dir();
+        let directory = base.join(format!(
+            "toolgate-trust-test-{}",
+            crate::identity::nonce().unwrap()
+        ));
+        let store = crate::storage::ProtectedStore::open(directory.clone()).unwrap();
+        let old = rcgen::generate_simple_self_signed(vec!["localhost".into()])
+            .unwrap()
+            .cert
+            .pem();
+        let new = rcgen::generate_simple_self_signed(vec!["localhost".into()])
+            .unwrap()
+            .cert
+            .pem();
+        let path = directory.join("ca.crt");
+        std::fs::write(&path, &new).unwrap();
+        #[cfg(windows)]
+        crate::platform::windows::protect_acl(&path).unwrap();
+        let settings = Config {
+            deployment: None,
+            execution: None,
+            tools: None,
+            server_url: "https://localhost:18450".into(),
+            state_directory: directory.clone(),
+            ipc_endpoint: ipc_endpoint(),
+            authorized_peers: vec!["test".into()],
+            ca_certificate_path: Some(path.clone()),
+            request_timeout_seconds: 10,
+        };
+        assert!(!local_gateway_trust_changed(&settings, Some(&new)).unwrap());
+        let journal = |issuer: &str| {
+            serde_json::to_vec(
+                &serde_json::json!({"identity":{"issuerCertificatePem":issuer},"manifest":null}),
+            )
+            .unwrap()
+        };
+        store.write("journal.json", &journal(&old)).unwrap();
+        // This was missed when setup compared only its already-updated config CA.
+        assert!(local_gateway_trust_changed(&settings, Some(&new)).unwrap());
+        assert!(!local_gateway_trust_changed(&settings, None).unwrap());
+        store.write("journal.json", &journal(&new)).unwrap();
+        assert!(!local_gateway_trust_changed(&settings, Some(&new.replace('\n', "\r\n"))).unwrap());
+        std::fs::write(&path, &old).unwrap();
+        assert!(local_gateway_trust_changed(&settings, Some(&new)).unwrap());
+        std::fs::remove_file(path).unwrap();
+        std::fs::remove_file(directory.join("journal.json")).unwrap();
+        std::fs::remove_dir(directory).unwrap();
+    }
 }

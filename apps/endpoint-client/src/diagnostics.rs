@@ -37,6 +37,7 @@ fn summarize(value: &Value, depth: usize) -> Value {
                 | "appliedRevision"
                 | "serverTimeUnixMs"
                 | "nextIntervalSeconds"
+                | "nextIntervalMs"
                 | "expiresAtUnixMs"
                 | "digest"
                 | "permissionDigest"

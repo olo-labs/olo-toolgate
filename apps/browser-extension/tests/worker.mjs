@@ -30,6 +30,20 @@ test('already enrolled clients are not enrolled again',async()=>{
   nativeResponse={health:{state:'ACTIVE',ready:true},serverUrl:origin};
   await request('connect');assert.equal(nativeCalls.length,1);
 });
+test('a completed repair replaces a stale enrollment code in an open tab',async()=>{
+  state[origin]={approved:true,phase:'ready',serverUrl:origin,userCode:'1111111111111111'};
+  nativeResponse={health:{state:'UNENROLLED',ready:false},serverUrl:origin};
+  const result=await request('status');
+  assert.equal(result.userCode,'ABCDEF0123456789');assert.equal(state[origin].userCode,result.userCode);
+  assert.deepEqual(nativeCalls,[{operation:'health'},{operation:'enroll'}]);
+});
+test('cancel during status enrollment cannot restore the old Connect session',async()=>{
+  state[origin]={approved:true,phase:'ready',serverUrl:origin};let complete;
+  nativeResponse=message=>message.operation==='enroll'?new Promise(resolve=>{complete=resolve;}):{health:{state:'UNENROLLED',ready:false},serverUrl:origin};
+  const pending=request('status');while(!complete)await new Promise(resolve=>setImmediate(resolve));
+  await request('cancel');complete({challenge:{userCode:'ABCDEF0123456789'}});
+  assert.equal((await pending).phase,'cancelled');assert.equal(state[origin],undefined);
+});
 test('native host absence reports setup required without claiming a client',async()=>{
   const result=await request('connect');assert.equal(result.phase,'setup-required');assert.equal(result.client,null);
 });

@@ -173,10 +173,18 @@ async fn handle<S: AsyncWrite + Unpin>(
         challenge: None,
         error: None,
     };
-    // Busy service returns backpressure instead of accumulating an unbounded local queue.
-    let mut state = match service.try_lock() {
-        Ok(state) => state,
-        Err(_) => {
+    // Health may wait briefly behind a poll. Listener permits bound waiting readers;
+    // mutating commands still return immediate backpressure instead of queuing effects.
+    let locked = if matches!(&request.operation, ClientIpcOperation::Health) {
+        tokio::time::timeout(Duration::from_secs(5), service.lock())
+            .await
+            .ok()
+    } else {
+        service.try_lock().ok()
+    };
+    let mut state = match locked {
+        Some(state) => state,
+        None => {
             response.error = Some(ErrorCode::Conflict);
             return write(stream, &contracts.encode("ClientIpcResponse", &response)?).await;
         }

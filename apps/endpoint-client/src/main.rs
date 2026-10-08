@@ -129,19 +129,30 @@ async fn command(arguments: Vec<String>) -> Result<()> {
             );
             Ok(())
         }
+        "resolve-installation" if arguments.len() == 3 && arguments[1] == "--server" => {
+            println!(
+                "{}",
+                olo_toolgate_client::browser::installation(&arguments[2])
+                    .await?
+                    .server_url
+            );
+            Ok(())
+        }
         "install" | "reinstall" | "configure"
             if (arguments.len() == 3 || arguments.len() == 5)
                 && arguments[1] == "--server"
                 && (arguments.len() == 3 || arguments[3] == "--peer") =>
         {
             let peer = arguments.get(4).map(String::as_str);
-            let server = olo_toolgate_client::browser::installation_server(&arguments[2]).await?;
+            let installation = olo_toolgate_client::browser::installation(&arguments[2]).await?;
+            let server = &installation.server_url;
+            let ca = installation.ca_certificate_pem.as_deref();
             if operation == "configure" {
-                olo_toolgate_client::install::configure(&server, peer)
+                olo_toolgate_client::install::configure_with_ca(server, peer, ca)
             } else if operation == "reinstall" {
-                olo_toolgate_client::install::reinstall(&server, peer)
+                olo_toolgate_client::install::reinstall_with_ca(server, peer, ca)
             } else {
-                olo_toolgate_client::install::install_for_peer(&server, peer)
+                olo_toolgate_client::install::install_for_peer_with_ca(server, peer, ca)
             }
         }
         "uninstall" if arguments.len() == 1 || arguments == ["uninstall", "--purge"] => {
@@ -195,10 +206,13 @@ async fn command(arguments: Vec<String>) -> Result<()> {
                 return Err(Failure::Unavailable);
             }
             if let Some(challenge) = response.challenge {
-                let url = format!(
+                let mut url = format!(
                     "{}?code={}",
                     challenge.verification_uri, challenge.user_code
                 );
+                if let Some(route) = url.strip_prefix("https://localhost:18450/") {
+                    url = format!("http://127.0.0.1:18090/{route}");
+                }
                 println!(
                     "Open {url} to confirm this device. Enrollment expires at {}.",
                     challenge.expires_at_unix_ms

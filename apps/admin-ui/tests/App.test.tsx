@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { App } from '../src/App';
 import axe from 'axe-core';
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.location.hash = ''; });
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); window.location.hash = ''; });
 function response(items: unknown[] = []) { return new Response(JSON.stringify({items})); }
 async function connect() { fireEvent.change(screen.getByLabelText('Access token'),{target:{value:'test-only-secret'}}); fireEvent.click(screen.getByRole('button',{name:'Connect to workspace'})); await screen.findByRole('navigation'); }
 
@@ -82,6 +82,20 @@ describe('Management shell states', () => {
     window.location.hash = '#teams'; const directory = vi.fn().mockResolvedValueOnce(response()).mockResolvedValueOnce(new Response('{}',{status:503})).mockResolvedValue(response()); const fetcher = vi.fn().mockImplementation((url:string) => url.startsWith('/api/public/') ? Promise.resolve(new Response('{}',{status:503})) : directory()); vi.stubGlobal('fetch',fetcher);
     render(<App />); await connect(); expect((await screen.findByRole('alert')).textContent).toContain('could not complete');
     fireEvent.click(screen.getByRole('button',{name:'Try again'})); await screen.findByRole('heading',{name:'No teams on this page'});
+  });
+  it('discovers newly enrolled clients without reloading or losing an open editor',async()=>{
+    let enrolled=false;
+    const record={id:'new-device',name:'Newly enrolled computer',enabled:true,revision:1,ownerUserId:'owner',groupIds:[]};
+    vi.stubGlobal('fetch',vi.fn().mockImplementation(async(url:string)=>{
+      if(url==='/api/control/v1/endpoint/devices/new-device')return new Response(JSON.stringify({deviceId:record.id,userId:'owner',state:'ACTIVE',lastSeenUnixMs:Date.now(),reportSequence:1}));
+      return response(enrolled&&url.startsWith('/api/control/v1/devices')?[record]:[]);
+    }));
+    window.location.hash='#devices';render(<App/>);await connect();await screen.findByRole('heading',{name:'No clients on this page'});
+    fireEvent.click(screen.getByRole('button',{name:'Add client'}));
+    fireEvent.change(screen.getByLabelText('Display name'),{target:{value:'Keep this draft'}});
+    enrolled=true;
+    expect(await screen.findByRole('button',{name:record.name},{timeout:3500})).toBeTruthy();expect(await screen.findByText('Connected')).toBeTruthy();
+    expect((screen.getByLabelText('Display name') as HTMLInputElement).value).toBe('Keep this draft');
   });
   it('renders untrusted record labels as text without executable HTML', async () => {
     window.location.hash='#users';const name='<img src=x onerror=alert(1)>';

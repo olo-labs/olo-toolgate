@@ -54,6 +54,7 @@ pub struct ClientService {
     started: Instant,
     successes: u64,
     failures: u64,
+    check_in_interval_ms: u64,
     observed: u64,
     boot_time: u64,
 }
@@ -155,6 +156,7 @@ impl ClientService {
             started: Instant::now(),
             successes: 0,
             failures: 0,
+            check_in_interval_ms: 500,
             observed,
             boot_time: observed,
         })
@@ -788,7 +790,7 @@ impl ClientService {
             && self
                 .journal
                 .last_success
-                .is_some_and(|last| now.saturating_sub(last) < 2000)
+                .is_some_and(|last| now.saturating_sub(last) < self.check_in_interval_ms)
         {
             return Ok(());
         }
@@ -848,6 +850,13 @@ impl ClientService {
         {
             return Err(Failure::Unauthorized);
         }
+        let interval_ms = ack
+            .next_interval_ms
+            .unwrap_or_else(|| ack.next_interval_seconds.saturating_mul(1000));
+        if !(500..=3600000).contains(&interval_ms) {
+            return Err(Failure::Validation);
+        }
+        self.check_in_interval_ms = interval_ms;
         if let Some(identity) = ack.identity {
             verify_identity(
                 &identity,
@@ -935,14 +944,14 @@ impl ClientService {
         }
         Ok(())
     }
-    pub fn next_delay_seconds(&self) -> u64 {
+    pub fn next_delay_millis(&self) -> u64 {
         if self.journal.challenge.is_some() {
-            return 5;
+            return 5000;
         }
         if self.state == EndpointState::Active {
-            return 2;
+            return self.check_in_interval_ms;
         }
-        (5_u64.saturating_mul(1_u64 << self.failures.min(6))).min(300)
+        (5_u64.saturating_mul(1_u64 << self.failures.min(6))).min(300) * 1000
     }
 }
 
@@ -958,6 +967,7 @@ mod tests {
         revoked: AtomicBool,
         authorizations: AtomicU64,
         deadline: AtomicU64,
+        interval_ms: AtomicU64,
     }
     impl ControlPort for Gateway {
         fn discovery(&self) -> Call<'_, SignedClientDiscovery> {
@@ -990,6 +1000,10 @@ mod tests {
                     sequence: report.sequence,
                     server_time_unix_ms: crate::now(),
                     next_interval_seconds: 2,
+                    next_interval_ms: match self.interval_ms.load(Ordering::SeqCst) {
+                        0 => None,
+                        interval => Some(interval),
+                    },
                     identity: None,
                     configuration: None,
                     task: None,
@@ -1067,6 +1081,7 @@ mod tests {
             revoked: AtomicBool::new(false),
             authorizations: AtomicU64::new(0),
             deadline: AtomicU64::new(crate::now() + 29000),
+            interval_ms: AtomicU64::new(500),
         });
         let service = ClientService::open(config, store, key, gateway.clone()).unwrap();
         (service, gateway, directory)
@@ -1223,6 +1238,31 @@ mod tests {
         std::fs::remove_dir_all(directory).unwrap();
     }
     #[tokio::test]
+    async fn millisecond_interval_falls_back_to_legacy_seconds_and_rejects_invalid_values() {
+        let (mut service, gateway, directory) = test_service();
+        let mut identity: DeviceIdentity =
+            serde_json::from_value(fixtures()["DeviceIdentity"].clone()).unwrap();
+        identity.expires_at_unix_ms = crate::now() + 60000;
+        service.journal.identity = Some(identity);
+        service.tick().await.unwrap();
+        assert_eq!(service.next_delay_millis(), 500);
+        service.journal.last_success = Some(crate::now());
+        service.tick().await.unwrap();
+        assert_eq!(gateway.polls.load(Ordering::SeqCst), 1);
+        gateway.interval_ms.store(0, Ordering::SeqCst);
+        service.journal.last_success = Some(crate::now() - 2000);
+        service.tick().await.unwrap();
+        assert_eq!(service.next_delay_millis(), 2000);
+        service.journal.last_success = Some(crate::now());
+        service.tick().await.unwrap();
+        assert_eq!(gateway.polls.load(Ordering::SeqCst), 2);
+        gateway.interval_ms.store(499, Ordering::SeqCst);
+        service.journal.last_success = Some(crate::now() - 2000);
+        assert_eq!(service.tick().await, Err(Failure::Validation));
+        drop(service);
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+    #[tokio::test]
     async fn polls_continue_during_a_job_and_revocation_cancels_it() {
         let (mut service, gateway, directory) = test_service();
         let fixtures: serde_json::Value = serde_json::from_str(include_str!(
@@ -1245,8 +1285,8 @@ mod tests {
             .unwrap()
             .unwrap();
         assert!(service.health().ready);
-        assert_eq!(service.next_delay_seconds(), 2);
-        tokio::time::sleep(std::time::Duration::from_millis(2050)).await;
+        assert_eq!(service.next_delay_millis(), 500);
+        tokio::time::sleep(std::time::Duration::from_millis(550)).await;
         tokio::time::timeout(std::time::Duration::from_secs(1), service.tick())
             .await
             .unwrap()
@@ -1255,7 +1295,7 @@ mod tests {
         assert_eq!(gateway.desired.load(Ordering::SeqCst), 2);
         assert_eq!(service.health().successful_check_ins, 2);
         gateway.revoked.store(true, Ordering::SeqCst);
-        tokio::time::sleep(std::time::Duration::from_millis(2050)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(550)).await;
         assert_eq!(service.tick().await, Err(Failure::Revoked));
         assert_eq!(service.health().state, EndpointState::Revoked);
         let mut job = service.builder_job.take().unwrap();

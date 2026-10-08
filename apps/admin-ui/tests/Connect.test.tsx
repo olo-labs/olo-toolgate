@@ -26,6 +26,20 @@ it('detects a client but requires separately verified enrollment',async()=>{
   const code=vi.fn();render(<Connect onCode={code}/>);fireEvent.click(screen.getByRole('button',{name:'Connect'}));
   await screen.findByText(/Client detected/);expect(code).toHaveBeenCalledWith('ABCDEF0123456789');expect(screen.queryByText(/^Connected:/)).toBeNull();
 });
+it('does not claim an offline client has checked in or connected',async()=>{
+  chrome();bridge({protocol:1,chromeVersion:release.chromeVersion,version:release.version,phase:'ready',serverUrl:'https://localhost:18450',client:{health:{ready:false,state:'OFFLINE'}}});
+  render(<Connect onCode={vi.fn()}/>);fireEvent.click(screen.getByRole('button',{name:'Connect'}));
+  await screen.findByText(/The client is offline/);
+  expect(screen.queryByText(/confirms this device is connected|reports successful gateway check-ins/)).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:'Cancel Connect'}));
+});
+it('shows pending enrollment before confirming a connection',async()=>{
+  chrome();bridge({protocol:1,chromeVersion:release.chromeVersion,version:release.version,phase:'ready',client:{health:{ready:false,state:'PENDING'}},userCode:'ABCDEF0123456789'});
+  const code=vi.fn();render(<Connect onCode={code}/>);fireEvent.click(screen.getByRole('button',{name:'Connect'}));
+  await screen.findByText(/Complete enrollment using the code/);expect(code).toHaveBeenCalledWith('ABCDEF0123456789');
+  expect(screen.queryByText(/reports successful gateway check-ins/)).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:'Cancel Connect'}));
+});
 it('does not offer setup from a different client release',async()=>{
   chrome();bridge({protocol:1,chromeVersion:release.chromeVersion,version:release.version,phase:'approved'});
   vi.stubGlobal('fetch',vi.fn().mockImplementation((url:string)=>Promise.resolve(new Response(JSON.stringify(url.endsWith('/installers')?{...setup,version:'0.9.0'}:release)))));

@@ -346,6 +346,19 @@ export interface ClientReport {
   readonly appliedRevision: number;
   readonly packages: ReadonlyArray<ReportedPackage>;
 }
+export type ClientSocketOperation = "CHECK_IN" | "AUTHORIZE" | "RESULT" | "BUILDER_POLL" | "BUILDER_RESULT";
+/** Correlated status and response; body is validated again as the expected response contract. */
+export interface ClientSocketReply {
+  readonly requestId: string;
+  readonly status: number;
+  readonly body: Record<string, unknown>;
+}
+/** Correlated bounded request; body is validated again as the selected operation contract. */
+export interface ClientSocketRequest {
+  readonly requestId: string;
+  readonly operation: ClientSocketOperation;
+  readonly body?: Record<string, unknown>;
+}
 /** Version 1 deterministic exact-match rules, with unconditional default deny. */
 export interface CompiledPolicy {
   readonly formatVersion: number;
@@ -548,6 +561,7 @@ export interface EndpointCheckInAck {
   readonly sequence: number;
   readonly serverTimeUnixMs: number;
   readonly nextIntervalSeconds: number;
+  readonly nextIntervalMs?: number;
   readonly identity?: DeviceIdentity;
   readonly configuration?: EndpointPermissionConfiguration;
   readonly task?: RemoteToolTask;

@@ -57,7 +57,7 @@ export function ClientDownloads() {
         <input id="installer-gateway-url" value={gatewayUrl} readOnly onFocus={event => event.currentTarget.select()} />
         <button type="button" onClick={() => void copyGateway()}>Copy Gateway URL</button></>
         : <p>{gatewayFailed ? 'Gateway URL is unavailable. Contact your administrator for the current address.' : 'Loading Gateway URL…'}</p>}
-      <p>Windows setup has an optional Gateway URL field. Paste this gateway's address, or keep <code>https://localhost:18450</code> for a gateway running on this computer. No credentials are required.</p>
+      <p>The Windows download selects this gateway automatically. Its optional Gateway URL field lets you change it; a local gateway uses <code>https://localhost:18450</code>. Setup configures local certificate trust. No credentials are required.</p>
       {copyStatus && <p role="status">{copyStatus}</p>}
     </div>
     {failed ? <p aria-live="polite">Client downloads are unavailable. Contact your administrator for a published release.</p>
@@ -68,9 +68,9 @@ export function ClientDownloads() {
         </div>)}{manifest.artifacts.filter(a => a.platform === platform && platform !== 'WINDOWS').map(artifact => <div key={artifact.target}>
           <a href={`/api/public/v1/clients/${encodeURIComponent(artifact.filename)}`} download>{`Download ${label} ${artifact.target.startsWith('aarch64') ? 'ARM64' : 'x64'}`}</a>
           <details><summary>Verify SHA-256</summary><code>{artifact.sha256}</code></details>
-        </div>)}<p>{installers ? platform === 'LINUX' ? 'Mark the .run file executable, then open it. It requests administrator permission.' : platform === 'WINDOWS' ? 'Open the single EXE and approve administrator permission. Keep the local Gateway URL or paste the address shown above. Existing installations offer repair/reinstall or uninstall. A tray icon shows client status.' : 'Open the installer, enter your HTTPS server address and approve administrator permission.' : platform === 'WINDOWS' ? 'Windows installers are unavailable. Contact your administrator for a published installer.' : 'Extract the archive and follow its installation guide.'}</p>
+        </div>)}<p>{installers ? platform === 'LINUX' ? 'Mark the .run file executable, then open it. It requests administrator permission.' : platform === 'WINDOWS' ? 'Open the single EXE and approve administrator permission. The gateway and local certificate trust are configured by setup. Existing installations offer repair/reinstall or uninstall. The OLO tray icon is green when connected and red when offline or awaiting enrollment.' : 'Open the installer, enter your HTTPS server address and approve administrator permission.' : platform === 'WINDOWS' ? 'Windows installers are unavailable. Contact your administrator for a published installer.' : 'Extract the archive and follow its installation guide.'}</p>
       </article>)}</div></>}
-    {installers?.artifacts.some(a=>a.platform==='WINDOWS')&&<p className="hint">Windows setup includes the Chrome extension files. Chrome approval is required separately; click Connect on Enroll Device for the Chrome setup steps before enrolling.</p>}
+    {installers?.artifacts.some(a=>a.platform==='WINDOWS')&&<p className="hint">Setup starts device enrollment. You can also choose Enroll this device from the tray menu. The included Chrome extension files support the page's Connect flow after Chrome approval.</p>}
     <p className="hint">Protected operations require current Gateway authorization. If authorization is unavailable, the service blocks the operation.</p>
     {installers && <p className="hint">These development installers are unsigned. Windows SmartScreen and macOS Gatekeeper may show warnings. Signing is planned separately.</p>}
   </section>;

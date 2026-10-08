@@ -254,3 +254,64 @@ async fn unauthorized_ipc_rejected_before_reading_payload() {
         Err(Failure::Unauthorized)
     );
 }
+
+#[tokio::test]
+async fn health_waits_for_poll_but_enrollment_retains_immediate_backpressure() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    for operation in [ClientIpcOperation::Health, ClientIpcOperation::Enroll] {
+        let directory = Directory::new();
+        let service = Arc::new(tokio::sync::Mutex::new(service(&directory)));
+        let guard = service.lock().await;
+        let contracts = Arc::new(Contracts::new().unwrap());
+        let (mut stream, mut peer) = tokio::io::duplex(8192);
+        let request = ClientIpcRequest {
+            protocol_version: 1,
+            request_id: "health-poll-contention".into(),
+            operation: operation.clone(),
+        };
+        let bytes = contracts.encode("ClientIpcRequest", &request).unwrap();
+        peer.write_u32(bytes.len() as u32).await.unwrap();
+        peer.write_all(&bytes).await.unwrap();
+        let state = service.clone();
+        let schema = contracts.clone();
+        let pending = tokio::spawn(async move {
+            ipc::connection(
+                &mut stream,
+                "authorized",
+                &["authorized".into()],
+                &state,
+                &schema,
+            )
+            .await
+        });
+        if matches!(operation, ClientIpcOperation::Health) {
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            assert!(
+                !pending.is_finished(),
+                "Health must wait for the active poll"
+            );
+            drop(guard);
+        } else {
+            tokio::time::timeout(std::time::Duration::from_secs(2), async {
+                while !pending.is_finished() {
+                    tokio::task::yield_now().await
+                }
+            })
+            .await
+            .unwrap();
+            drop(guard);
+        }
+        pending.await.unwrap().unwrap();
+        let count = peer.read_u32().await.unwrap() as usize;
+        let mut bytes = vec![0; count];
+        peer.read_exact(&mut bytes).await.unwrap();
+        let response: ClientIpcResponse = contracts.decode("ClientIpcResponse", &bytes).unwrap();
+        if matches!(operation, ClientIpcOperation::Health) {
+            assert!(response.error.is_none());
+            assert_eq!(response.health.unwrap().state, EndpointState::Unenrolled);
+        } else {
+            assert_eq!(response.error, Some(ErrorCode::Conflict));
+            assert!(response.challenge.is_none());
+        }
+    }
+}

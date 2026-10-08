@@ -9,6 +9,7 @@ package io.ololabs.toolgate.contracts;
  * @param sequence canonical sequence value
  * @param serverTimeUnixMs canonical serverTimeUnixMs value
  * @param nextIntervalSeconds canonical nextIntervalSeconds value
+ * @param nextIntervalMs canonical nextIntervalMs value
  * @param identity canonical identity value
  * @param configuration canonical configuration value
  * @param task canonical task value
@@ -19,6 +20,7 @@ public record EndpointCheckInAck(
     @com.fasterxml.jackson.annotation.JsonProperty(value = "sequence", required = true) Long sequence,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "serverTimeUnixMs", required = true) Long serverTimeUnixMs,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "nextIntervalSeconds", required = true) Long nextIntervalSeconds,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "nextIntervalMs", required = false) Long nextIntervalMs,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "identity", required = false) DeviceIdentity identity,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "configuration", required = false) EndpointPermissionConfiguration configuration,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "task", required = false) RemoteToolTask task
@@ -29,6 +31,7 @@ public record EndpointCheckInAck(
      * @param sequence canonical sequence value
      * @param serverTimeUnixMs canonical serverTimeUnixMs value
      * @param nextIntervalSeconds canonical nextIntervalSeconds value
+     * @param nextIntervalMs canonical nextIntervalMs value
      * @param identity canonical identity value
      * @param configuration canonical configuration value
      * @param task canonical task value

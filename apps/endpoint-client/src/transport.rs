@@ -63,6 +63,7 @@ pub struct HttpsControl {
     key: Arc<DeviceKey>,
     contracts: Arc<Contracts>,
     packets: crate::diagnostics::PacketLog,
+    socket: crate::socket::Channel,
 }
 impl HttpsControl {
     pub fn new(config: Config, key: Arc<DeviceKey>, contracts: Arc<Contracts>) -> Result<Self> {
@@ -71,6 +72,7 @@ impl HttpsControl {
             .build()
             .map_err(|_| Failure::Unavailable)?;
         Ok(Self {
+            socket: crate::socket::Channel::default(),
             packets: crate::diagnostics::PacketLog::open(config.state_directory.clone())?,
             origin: crate::config::origin(&config.server_url)?,
             client,
@@ -83,6 +85,7 @@ impl HttpsControl {
         let _ = rustls::crypto::ring::default_provider().install_default();
         let mut builder = reqwest::Client::builder()
             .https_only(true)
+            .http1_only()
             .redirect(reqwest::redirect::Policy::none())
             .no_proxy()
             .tls_sslkeylogfile(false)
@@ -95,7 +98,7 @@ impl HttpsControl {
         if let Some(path) = &config.ca_certificate_path {
             let bytes = crate::storage::read_owned(path, 16384, false)?;
             let root = reqwest::Certificate::from_pem(&bytes).map_err(|_| Failure::Validation)?;
-            builder = builder.add_root_certificate(root);
+            builder = builder.tls_certs_only([root]);
         }
         Ok(builder)
     }
@@ -129,6 +132,9 @@ impl HttpsControl {
         request = request
             .header("Accept", "application/json")
             .header("X-Request-ID", &correlation);
+        if path == "/api/control/v1/endpoint/check-in" {
+            request = request.header("X-ToolGate-Poll-Interval-Unit", "milliseconds");
+        }
         let mut response = if let Some(body) = body {
             request
                 .header("Content-Type", "application/json")
@@ -218,13 +224,47 @@ impl ControlPort for HttpsControl {
                 .identity(self.key.tls_identity(&identity)?)
                 .build()
                 .map_err(|_| Failure::Unavailable)?;
-            self.request(
-                &client,
-                "/api/control/v1/mcp/authorize",
-                Some(self.contracts.encode("RemoteToolAuthorization", &request)?),
-                "RemoteToolAuthorizationAck",
-            )
-            .await
+            self.socket
+                .ensure(
+                    &client,
+                    &self.origin,
+                    identity.expires_at_unix_ms,
+                    Some((request.request_id.clone(), crate::now() + 30000)),
+                    &self.packets,
+                )
+                .await;
+            let body = self.contracts.encode("RemoteToolAuthorization", &request)?;
+            let response: RemoteToolAuthorizationAck = if let Some(result) = self
+                .socket
+                .call(
+                    ClientSocketOperation::Authorize,
+                    Some(&body),
+                    "RemoteToolAuthorizationAck",
+                    &self.contracts,
+                    &self.packets,
+                )
+                .await
+            {
+                result?
+            } else {
+                self.request(
+                    &client,
+                    "/api/control/v1/mcp/authorize",
+                    Some(self.contracts.encode("RemoteToolAuthorization", &request)?),
+                    "RemoteToolAuthorizationAck",
+                )
+                .await?
+            };
+            self.socket
+                .ensure(
+                    &client,
+                    &self.origin,
+                    identity.expires_at_unix_ms,
+                    Some((request.request_id.clone(), response.expires_at_unix_ms)),
+                    &self.packets,
+                )
+                .await;
+            Ok(response)
         })
     }
     fn remote_result(
@@ -237,13 +277,32 @@ impl ControlPort for HttpsControl {
                 .identity(self.key.tls_identity(&identity)?)
                 .build()
                 .map_err(|_| Failure::Unavailable)?;
-            self.request(
-                &client,
-                "/api/control/v1/mcp/results",
-                Some(self.contracts.encode("RemoteToolResult", &result)?),
-                "RemoteToolRecord",
-            )
-            .await
+            let body = self.contracts.encode("RemoteToolResult", &result)?;
+            let response = if let Some(response) = self
+                .socket
+                .call(
+                    ClientSocketOperation::Result,
+                    Some(&body),
+                    "RemoteToolRecord",
+                    &self.contracts,
+                    &self.packets,
+                )
+                .await
+            {
+                response
+            } else {
+                self.request(
+                    &client,
+                    "/api/control/v1/mcp/results",
+                    Some(self.contracts.encode("RemoteToolResult", &result)?),
+                    "RemoteToolRecord",
+                )
+                .await
+            };
+            if response.is_ok() {
+                self.socket.finished(&result.request_id).await;
+            }
+            response
         })
     }
     fn builder_poll(&self, identity: DeviceIdentity) -> Call<'_, BuilderTestPoll> {
@@ -252,13 +311,39 @@ impl ControlPort for HttpsControl {
                 .identity(self.key.tls_identity(&identity)?)
                 .build()
                 .map_err(|_| Failure::Unavailable)?;
-            self.request(
-                &client,
-                "/api/control/v1/builder/tests/poll",
-                None,
-                "BuilderTestPoll",
-            )
-            .await
+            let response: BuilderTestPoll = if let Some(response) = self
+                .socket
+                .call(
+                    ClientSocketOperation::BuilderPoll,
+                    None,
+                    "BuilderTestPoll",
+                    &self.contracts,
+                    &self.packets,
+                )
+                .await
+            {
+                response?
+            } else {
+                self.request(
+                    &client,
+                    "/api/control/v1/builder/tests/poll",
+                    None,
+                    "BuilderTestPoll",
+                )
+                .await?
+            };
+            if response.task.is_some() {
+                self.socket
+                    .ensure(
+                        &client,
+                        &self.origin,
+                        identity.expires_at_unix_ms,
+                        Some(("builder".into(), crate::now() + 120000)),
+                        &self.packets,
+                    )
+                    .await;
+            }
+            Ok(response)
         })
     }
     fn builder_result(
@@ -271,13 +356,32 @@ impl ControlPort for HttpsControl {
                 .identity(self.key.tls_identity(&identity)?)
                 .build()
                 .map_err(|_| Failure::Unavailable)?;
-            self.request(
-                &client,
-                "/api/control/v1/builder/tests/results",
-                Some(self.contracts.encode("BuilderTestResult", &result)?),
-                "BuilderTestRecord",
-            )
-            .await
+            let body = self.contracts.encode("BuilderTestResult", &result)?;
+            let response = if let Some(response) = self
+                .socket
+                .call(
+                    ClientSocketOperation::BuilderResult,
+                    Some(&body),
+                    "BuilderTestRecord",
+                    &self.contracts,
+                    &self.packets,
+                )
+                .await
+            {
+                response
+            } else {
+                self.request(
+                    &client,
+                    "/api/control/v1/builder/tests/results",
+                    Some(self.contracts.encode("BuilderTestResult", &result)?),
+                    "BuilderTestRecord",
+                )
+                .await
+            };
+            if response.is_ok() {
+                self.socket.finished("builder").await;
+            }
+            response
         })
     }
     fn desired(&self, identity: DeviceIdentity) -> Call<'_, FleetSignedDocument> {
@@ -400,13 +504,49 @@ impl ControlPort for HttpsControl {
                 .identity(self.key.tls_identity(&identity)?)
                 .build()
                 .map_err(|_| Failure::Unavailable)?;
-            self.request(
-                &client,
-                "/api/control/v1/endpoint/check-in",
-                Some(self.contracts.encode("EndpointCheckIn", &request)?),
-                "EndpointCheckInAck",
-            )
-            .await
+            self.socket
+                .ensure(
+                    &client,
+                    &self.origin,
+                    identity.expires_at_unix_ms,
+                    None,
+                    &self.packets,
+                )
+                .await;
+            let body = self.contracts.encode("EndpointCheckIn", &request)?;
+            let response: EndpointCheckInAck = if let Some(response) = self
+                .socket
+                .call(
+                    ClientSocketOperation::CheckIn,
+                    Some(&body),
+                    "EndpointCheckInAck",
+                    &self.contracts,
+                    &self.packets,
+                )
+                .await
+            {
+                response?
+            } else {
+                self.request(
+                    &client,
+                    "/api/control/v1/endpoint/check-in",
+                    Some(self.contracts.encode("EndpointCheckIn", &request)?),
+                    "EndpointCheckInAck",
+                )
+                .await?
+            };
+            if let Some(task) = &response.task {
+                self.socket
+                    .ensure(
+                        &client,
+                        &self.origin,
+                        identity.expires_at_unix_ms,
+                        Some((task.request_id.clone(), task.expires_at_unix_ms)),
+                        &self.packets,
+                    )
+                    .await;
+            }
+            Ok(response)
         })
     }
 }

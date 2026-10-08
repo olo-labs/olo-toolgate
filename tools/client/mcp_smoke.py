@@ -2,12 +2,15 @@
 # SPDX-License-Identifier: Apache-2.0
 """Real isolated HTTPS Gateway -> poll -> native client -> result -> agent-mimic regression."""
 import argparse
+import base64
 import hashlib
 import importlib.util
 import json
 from pathlib import Path
 import re
 import secrets
+import ssl
+import statistics
 import subprocess
 import sys
 import tempfile
@@ -46,11 +49,17 @@ def main():
                     with urllib.request.urlopen(req,timeout=20) as response:return response.status,json.loads(response.read())
                 except urllib.error.HTTPError as response:return response.code,json.loads(response.read())
             admin=api('/api/quickstart/v1/login',{})[1]['accessToken']
-            ca=directory/'ca.crt';ca.write_bytes(run(['docker','exec',server,'cat','/data/keys/device-ca.crt'],capture_output=True).stdout)
-            config={'serverUrl':'https://localhost:8443','stateDirectory':'/state/private','ipcEndpoint':'/run/olo-toolgate/client.sock','authorizedPeers':['0'],'caCertificatePath':'/state/ca.crt','requestTimeoutSeconds':10}
-            (directory/'client.json').write_text(json.dumps(config),encoding='utf-8')
-            boot='mkdir -p /run/olo-toolgate; cp /input/client.json /input/ca.crt /state/; chmod 600 /state/client.json /state/ca.crt; exec /client service --config /state/client.json'
-            client=run(['docker','run','-d','--read-only','--cap-drop=ALL','--security-opt=no-new-privileges','--network','container:'+server,'--tmpfs','/run:rw,nosuid,size=8m','-v',volumes[1]+':/state','-v',directory.as_posix()+':/input:ro','-v',args.binary.resolve().as_posix()+':/client:ro','ubuntu:24.04','sh','-c',boot],capture_output=True,text=True).stdout.strip();containers.append(client)
+            ca=directory/'ca.crt';ca.write_bytes(api('/api/public/v1/clients/local-trust')[1]['caCertificatePem'].encode('ascii'))
+            # A browser/agent administrator token cannot replace a device's TLS identity.
+            socket_probe=urllib.request.Request('https://127.0.0.1:'+tls_port+'/api/control/v1/endpoint/socket',headers={'Authorization':'Bearer '+admin,'Connection':'Upgrade','Upgrade':'websocket','Sec-WebSocket-Version':'13','Sec-WebSocket-Key':base64.b64encode(secrets.token_bytes(16)).decode('ascii')})
+            try:
+                urllib.request.urlopen(socket_probe,context=ssl.create_default_context(cafile=str(ca)),timeout=15)
+                raise AssertionError('Anonymous socket accepted')
+            except urllib.error.HTTPError as rejected:assert rejected.code==401,rejected.code
+            # The container has no systemd. Stub only its fixed service-manager commands;
+            # use the real client install command for paths, trust bootstrap, config and binary.
+            boot="set -eu; mkdir -p /etc/systemd/system; printf '#!/bin/sh\\nexit 0\\n' > /usr/bin/systemctl; chmod 755 /usr/bin/systemctl; if [ ! -e /etc/olo-toolgate/client.json ]; then echo 'Resolving local gateway'; /client resolve-server --server http://localhost:8080; echo 'Verifying gateway trust'; /client resolve-installation --server http://localhost:8080; echo 'Installing client'; /client install --server http://localhost:8080; fi; mkdir -p /run/olo-toolgate; chmod 755 /run/olo-toolgate; echo 'Starting installed service'; exec /usr/local/lib/olo-toolgate/olo-toolgate-client service"
+            client=run(['docker','run','-d','--cap-drop=ALL','--security-opt=no-new-privileges','--network','container:'+server,'--tmpfs','/run:rw,nosuid,size=8m','-v',volumes[1]+':/var/lib','-v',args.binary.resolve().as_posix()+':/client:ro','ubuntu:24.04','sh','-c',boot],capture_output=True,text=True).stdout.strip();containers.append(client)
             def cli(*arguments):return run(['docker','exec',client,'/client',*arguments],capture_output=True,text=True).stdout
             def healthy():
                 try:return json.loads(cli('health')).get('ready',False)
@@ -62,6 +71,9 @@ def main():
                     if time.monotonic()>deadline:raise RuntimeError('Client IPC unavailable')
                     time.sleep(.5)
             assert health['state']=='UNENROLLED'
+            installed=json.loads(run(['docker','exec',client,'cat','/etc/olo-toolgate/client.json'],capture_output=True,text=True).stdout)
+            assert installed['serverUrl']=='https://localhost:8443' and installed['caCertificatePath'].startswith('/etc/olo-toolgate/gateway-ca-')
+            assert run(['docker','exec',client,'cat',installed['caCertificatePath']],capture_output=True).stdout==ca.read_bytes()
             prompt=cli('enroll');code=re.search(r'code=([A-F0-9]{16})',prompt).group(1);fingerprint=re.search(r'fingerprint in your browser: ([a-f0-9]{64})',prompt).group(1)
             status,review=api('/api/control/v1/endpoint/enrollments/review?code='+code);assert status==200 and review['keyFingerprint']==fingerprint
             device=review['deviceId']
@@ -94,7 +106,7 @@ def main():
             # Permission replacement is acknowledged by an actual client poll before discovery.
             time.sleep(2)
             entry=module.mimic(module.Agent('https://127.0.0.1:'+tls_port,token_file,ca),'rahul-nigam.txt')
-            assert run(['docker','exec',client,'cat','/state/private/hotfolder/rahul-nigam.txt'],capture_output=True,text=True).stdout==module.TEXT
+            assert run(['docker','exec',client,'cat','/var/lib/olo-toolgate/hotfolder/rahul-nigam.txt'],capture_output=True,text=True).stdout==module.TEXT
             assert entry['service']=='client' and entry['event']=='protocol_packet'
             status,records=api('/api/control/v1/mcp/requests');assert status==200
             done=[record for record in records['items'] if record['deviceId']==device and record['agentId']==agent]
@@ -104,9 +116,29 @@ def main():
             for logs in (server_logs.stdout+server_logs.stderr,client_logs.stdout+client_logs.stderr):
                 assert 'protocol_packet' in logs and 'SEND' in logs and 'RECEIVE' in logs
                 for secret in (token,admin,code,module.TEXT):assert secret not in logs
-            print('PASS real TLS discovery, two sequential polled client calls, exact file, one log entry, DONE handoffs and packet redaction',flush=True)
+            time.sleep(6)
+            packets=[json.loads(line) for line in run(['docker','exec',client,'cat','/var/lib/olo-toolgate/packets.jsonl'],capture_output=True,text=True).stdout.splitlines()]
+            polls=[packet for packet in packets if packet['direction']=='RECEIVE' and packet.get('status')==200 and (packet['path']=='/api/control/v1/endpoint/check-in' or packet['message'].get('operation')=='CHECK_IN')]
+            assert len(polls)>=6 and all(packet['message'].get('body',packet['message']).get('nextIntervalMs')==500 for packet in polls[-6:])
+            times=[packet['timestampUnixMs'] for packet in polls[-6:]]
+            median=statistics.median(right-left for left,right in zip(times,times[1:]))
+            assert 400<=median<=850,median
+            socket_packets=[packet for packet in packets if packet['path']=='/api/control/v1/endpoint/socket']
+            assert any(packet['message'].get('state')=='CONNECTED' for packet in socket_packets)
+            assert any(packet['message'].get('state')=='PING' for packet in socket_packets) and any(packet['message'].get('state')=='PONG' for packet in socket_packets)
+            pings=[packet['timestampUnixMs'] for packet in socket_packets if packet['message'].get('state')=='PING']
+            assert len(pings)>=2 and 4000<=pings[-1]-pings[-2]<=6500,pings
+            assert any(packet['message'].get('state')=='PEER_PING' for packet in socket_packets)
+            assert any(packet['message'].get('operation')=='RESULT' for packet in socket_packets)
+            logs=run(['docker','logs',server],capture_output=True,text=True)
+            assert 'WEBSOCKET' in logs.stdout+logs.stderr and 'client_socket' in logs.stdout+logs.stderr
+            time.sleep(31)
+            packets=[json.loads(line) for line in run(['docker','exec',client,'cat','/var/lib/olo-toolgate/packets.jsonl'],capture_output=True,text=True).stdout.splitlines()]
+            assert any(packet['message'].get('state')=='IDLE_DISCONNECTED' for packet in packets)
+            assert any(packet['path']=='/api/control/v1/endpoint/check-in' and packet.get('status')==200 for packet in packets[-15:])
+            print(f'PASS fresh installation/automatic CA, TLS discovery, two calls, exact file, one log entry, DONE, redaction, {median} ms polls, WebSocket results, ping/pong and idle disconnect',flush=True)
             output=ROOT/'build/quickstart';output.mkdir(parents=True,exist_ok=True)
-            (output/'mcp-smoke.json').write_text(json.dumps({'deviceId':device,'requests':done,'fileTextVerified':True,'oneLogEntry':True,'packetRedaction':True},indent=2)+'\n')
+            (output/'mcp-smoke.json').write_text(json.dumps({'deviceId':device,'requests':done,'freshClientInstall':True,'automaticCaTrust':True,'medianPollIntervalMs':median,'webSocketResults':True,'pingPong':True,'idleDisconnect':True,'socketRejectsNonDevice':True,'fileTextVerified':True,'oneLogEntry':True,'packetRedaction':True},indent=2)+'\n')
     except Exception:
         output=ROOT/'build/quickstart';output.mkdir(parents=True,exist_ok=True)
         for index,container in enumerate(containers):

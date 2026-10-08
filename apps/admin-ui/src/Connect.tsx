@@ -4,7 +4,7 @@ import {useEffect, useRef, useState} from 'react';
 import type {ClientInstallerManifest} from '@olo-labs/toolgate-contracts';
 
 type ExtensionRelease = {protocol:number;version:string;chromeVersion:string;extensionId:string;storeUrl:string;filename:string;sha256:string;bytes:number};
-export type ConnectStatus = {protocol:number;version:string;chromeVersion:string;phase:string;serverUrl?:string;userCode?:string;client?:{health?:{ready:boolean};error?:unknown}};
+export type ConnectStatus = {protocol:number;version:string;chromeVersion:string;phase:string;serverUrl?:string;userCode?:string;client?:{health?:{ready:boolean;state?:string};error?:unknown}};
 
 /** Bounded, same-window status bridge. Local presence never grants authorization. */
 export function extensionStatus(signal:AbortSignal,operation:'hello'|'connect'|'status'|'cancel'='status'):Promise<ConnectStatus> {
@@ -71,7 +71,11 @@ export function Connect({onCode,onCancel}:{onCode:(code:string)=>void;onCancel?:
           if(status.phase==='gateway-changed'&&previousCode){previousCode='';onCancel?.();}
           if(typeof status.userCode==='string'&&/^[A-F0-9]{16}$/.test(status.userCode)&&status.userCode!==previousCode){previousCode=status.userCode;onCode(status.userCode);}
           setMessage(status.client?.health&&!status.client.error
-            ? 'Client detected'+(status.serverUrl?' at '+status.serverUrl:'')+'. Review the enrollment code and fingerprint below if requested. Server check-in confirms this device is connected.'
+            ? 'Client detected'+(status.serverUrl?' at '+status.serverUrl:'')+'. '+(status.client.health.ready
+              ? 'The client reports successful gateway check-ins. Open Clients to view its current server status.'
+              : status.client.health.state==='REVOKED' ? 'Device access was revoked. Contact your administrator.'
+              : ['UNENROLLED','PENDING'].includes(status.client.health.state??'') ? 'Complete enrollment using the code and fingerprint below. Connection will be confirmed after the first successful check-in.'
+              : 'The client is offline: no recent successful gateway check-in. Retry Connect to repair gateway setup and review enrollment if requested.')
             : status.phase==='connecting' ? 'Installing the verified client or updating its gateway URL. Approve Windows administrator permission if shown…'
             : status.phase==='gateway-changed' ? 'The client was connected to another gateway. Click Retry Connect to use this gateway again.'
             : status.phase==='setup-required' ? 'Install the combined client and Chrome extension setup below, then click Retry Connect. If setup is installed, check the gateway connection and Windows permissions.'
@@ -92,7 +96,7 @@ export function Connect({onCode,onCancel}:{onCode:(code:string)=>void;onCancel?:
     <p role="status">{message}</p>
     {release&&<><p>Chrome extension {release.chromeVersion} · Client {release.version}</p>
       {installer?<a href={`/api/public/v1/clients/setup/${installer}`} download>Install Chrome extension and client</a>:<p>Windows setup is not published for this client release.</p>}
-      <p>One EXE installs the client, Chrome extension files, native bridge and tray icon. Setup includes an optional Gateway URL field: keep https://localhost:18450 for a local gateway, or paste the Gateway URL shown in the client downloads below. Windows may request administrator permission. Once Chrome approves the extension, this page detects the client and starts enrollment if needed.</p>
+      <p>One EXE installs the client, Chrome extension files, native bridge and OLO tray icon. The download selects this gateway and setup configures local certificate trust. The optional Gateway URL field lets you change the address; a local gateway uses https://localhost:18450. Windows may request administrator permission. Once Chrome approves the extension, this page detects the client and starts enrollment if needed.</p>
       {release.storeUrl?<a href={release.storeUrl} target="_blank" rel="noopener noreferrer">Install or upgrade Chrome extension</a>
         : <div className="guidance"><h3>Enable the Chrome extension for this local build</h3>
           <p>A Chrome Web Store listing is not configured yet. The EXE installs extension files; Chrome requires you to enable them before this page can detect the client.</p>

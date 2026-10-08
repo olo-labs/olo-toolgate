@@ -405,6 +405,12 @@
           "minimum": 2,
           "maximum": 3600
         },
+        "nextIntervalMs": {
+          "type": "integer",
+          "minimum": 500,
+          "maximum": 3600000,
+          "description": "Negotiated check-in interval for clients requesting milliseconds; takes precedence over nextIntervalSeconds."
+        },
         "identity": {
           "$ref": "endpoint.schema.json#/$defs/DeviceIdentity"
         },
@@ -934,6 +940,64 @@
       "required": [
         "tools"
       ]
+    },
+    "ClientSocketOperation": {
+      "type": "string",
+      "enum": [
+        "CHECK_IN",
+        "AUTHORIZE",
+        "RESULT",
+        "BUILDER_POLL",
+        "BUILDER_RESULT"
+      ],
+      "description": "Fixed authenticated operations on the active-job channel."
+    },
+    "ClientSocketRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{32}$"
+        },
+        "operation": {
+          "$ref": "#/$defs/ClientSocketOperation"
+        },
+        "body": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "requestId",
+        "operation"
+      ],
+      "description": "Correlated bounded request; body is validated again as the selected operation contract."
+    },
+    "ClientSocketReply": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{32}$"
+        },
+        "status": {
+          "type": "integer",
+          "minimum": 200,
+          "maximum": 599
+        },
+        "body": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "requestId",
+        "status",
+        "body"
+      ],
+      "description": "Correlated status and response; body is validated again as the expected response contract."
     }
   }
 }

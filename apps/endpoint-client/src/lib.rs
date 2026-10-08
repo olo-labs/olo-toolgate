@@ -19,6 +19,7 @@ pub mod platform;
 mod remote;
 pub mod runtime;
 pub mod service;
+mod socket;
 pub mod storage;
 pub mod tool_gateway;
 pub mod transport;

@@ -18,7 +18,7 @@ Control address, with no setup credentials. Chrome extension approval remains a
 browser requirement. The native host accepts setup and health commands only and
 uses the packaged protected CLI with Windows elevation for configuration changes.
 
-Use the existing authenticated client check-in channel on a two-second healthy
+Use the existing authenticated client check-in channel on a 500 ms healthy
 cycle. Control stores a per-device effective permission snapshot, revision, digest,
 acknowledgment and installed tool catalog. A changed set is sent as a full
 replacement until acknowledged. Discovery narrows this set to the authenticated

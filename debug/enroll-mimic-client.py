@@ -26,13 +26,18 @@ def main():
         return result.stdout
     def health_until(predicate, timeout=45):
         deadline=time.monotonic()+timeout
+        next_progress=time.monotonic()+15
         while True:
             try:
                 health=json.loads(client('health'))
                 if predicate(health):return health
             except (ValueError, KeyError):pass
             if time.monotonic()>deadline:raise ValueError('Client IPC or authenticated check-in unavailable; inspect the client packet log')
-            time.sleep(1)
+            if time.monotonic()>=next_progress:
+                print('Waiting for the client service to become ready.',flush=True)
+                next_progress=time.monotonic()+15
+            # Avoid repeatedly hitting the same phase of the service poll lock.
+            time.sleep(.8+secrets.randbelow(500)/1000)
     token=None
     opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
     def api(path,body=None,method=None,headers=None):
@@ -66,7 +71,7 @@ def main():
         previous=json.loads(saved.read_text(encoding='utf-8'))
         if previous.get('gateway')!='https://localhost:18450':raise ValueError('Saved client belongs to another Gateway')
         device=previous['deviceId']
-    health_until(lambda value:value.get('ready') is True)
+    health_until(lambda value:value.get('ready') is True,timeout=360)
     status,record=api('/api/control/v1/endpoint/devices/'+urllib.parse.quote(device,safe=''))
     if status!=200 or record['state']!='ACTIVE' or record['reportSequence']<1:raise ValueError('Server has not observed the enrolled client')
     user=record['userId']
@@ -108,6 +113,7 @@ def main():
     script="import json,os,pathlib,sys; p=pathlib.Path('/data/client-runtime-credentials.json'); values=json.loads(p.read_text()) if p.exists() else []; item=json.load(sys.stdin); values=[v for v in values if v['agentId']!=item['agentId']]; values.append(item); p.write_text(json.dumps(values)); p.chmod(0o600)"
     subprocess.run(['docker','exec','-i','--user','65532',container,'/opt/quickstart-python/bin/python','-c',script],input=json.dumps(credential),text=True,check=True,capture_output=True)
     (local/'mimic-client.json').write_text(json.dumps({'gateway':'https://localhost:18450','deviceId':device,'agentId':AGENT,'userId':user,'tokenExpiresAtUnixMs':credential['expiresAtUnixMs']},indent=2)+'\n',encoding='utf-8')
+    print('Restarting the debug Gateway to load the device-bound agent credential.',flush=True)
     subprocess.run(['docker','compose','--project-name','toolgate-debug','--project-directory',str(ROOT/'debug'),'-f',str(ROOT/'debug/compose.yaml'),'restart','quickstart'],cwd=ROOT,check=True)
     deadline=time.monotonic()+120
     while True:
@@ -115,9 +121,25 @@ def main():
         if ready=='healthy':break
         if time.monotonic()>deadline:raise ValueError('Gateway restart did not become healthy')
         time.sleep(1)
-    health_until(lambda value:value.get('ready') is True)
-    # Let the next two-second poll acknowledge the replacement permission set.
-    time.sleep(3)
+    # Local IPC can be busy during reconnect/backoff. Observe the same authenticated
+    # server check-in used by the Clients indicator, after the restarted Gateway is ready.
+    device_path='/api/control/v1/endpoint/devices/'+urllib.parse.quote(device,safe='')
+    status,current=api(device_path)
+    if status!=200:raise ValueError('Enrolled device unavailable after Gateway restart')
+    baseline=current['reportSequence']
+    # The installed client's bounded outage backoff reaches 300 seconds. Allow that
+    # cycle plus its network timeout instead of declaring a healthy installation failed.
+    deadline=time.monotonic()+360
+    next_progress=time.monotonic()+15
+    print('Waiting for a fresh client check-in; reconnect retries can take up to five minutes.',flush=True)
+    while True:
+        status,current=api(device_path)
+        if status==200 and current['state']=='ACTIVE' and current['reportSequence']>baseline:break
+        if time.monotonic()>deadline:raise ValueError('Client has not completed an authenticated check-in after Gateway restart')
+        if time.monotonic()>=next_progress:
+            print('Still waiting for the client reconnect poll.',flush=True)
+            next_progress=time.monotonic()+15
+        time.sleep(1)
     print('Enrolled client '+device+'. Exact file/log grants and a 24-hour device-bound agent credential are ready.',flush=True)
     return 0
 
