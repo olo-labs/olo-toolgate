@@ -975,6 +975,9 @@
     "state": "PENDING",
     "expiresAtUnixMs": 1
   },
+  "EndpointEnrollmentPage": {
+    "items": []
+  },
   "EndpointEnrollmentDecision": {
     "userCode": "AAAAAAAAAAAAAAAA",
     "keyFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

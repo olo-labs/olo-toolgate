@@ -82,6 +82,13 @@ public class PostgresStore implements Store {
             try (var s=statement("SELECT count(*) FROM control_enrollments WHERE tenant_id=? AND expires_at>?",now);var rows=s.executeQuery()) {rows.next();return rows.getLong(1);}
             catch (SQLException e) { throw Failure.unavailable(); }
         }
+        public java.util.List<EnrollmentRecord> enrollments(long now) {
+            try (var s=statement("SELECT enrollment_id,code_digest,device_digest,document,csr,user_id,certificate,expires_at,last_poll FROM control_enrollments WHERE tenant_id=? AND expires_at>? ORDER BY expires_at,enrollment_id LIMIT 32",now);var rows=s.executeQuery()) {
+                var result=new java.util.ArrayList<EnrollmentRecord>();
+                while(rows.next())result.add(new EnrollmentRecord(rows.getString(1),rows.getString(2),rows.getString(3),rows.getString(4),rows.getString(5),rows.getString(6),rows.getString(7),rows.getLong(8),rows.getLong(9)));
+                return java.util.List.copyOf(result);
+            }catch(SQLException failure){throw Failure.unavailable();}
+        }
         public void pruneEnrollments(long now) {
             try (var s=statement("DELETE FROM control_enrollments WHERE tenant_id=? AND expires_at<=?",now)) {s.executeUpdate();}
             catch (SQLException e) { throw Failure.unavailable(); }

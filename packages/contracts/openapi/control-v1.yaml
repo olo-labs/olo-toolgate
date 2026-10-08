@@ -172,6 +172,22 @@ paths:
           description: Dependency unavailable
       security: []
   /api/control/v1/endpoint/enrollments:
+    get:
+      operationId: listEndpointEnrollments
+      description: Dedicated toolgate-enroller with an enabled same-tenant user lists all unexpired pending devices. No device codes, CSRs or certificates are returned.
+      responses:
+        '200':
+          description: Success; no-store; at most 32 requests
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/endpoint.schema.json#/$defs/EndpointEnrollmentPage
+        '401':
+          description: Direct TLS/identity required
+        '403':
+          description: Wrong tenant/user
+        '503':
+          description: Dependency unavailable
     post:
       operationId: startEndpointEnrollment
       description: Anonymous direct HTTPS, verified P-256 CSR, bounded pending quota. This challenge creation
@@ -262,7 +278,8 @@ paths:
     post:
       operationId: decideEndpointEnrollment
       description: Dedicated toolgate-enroller confirms device for their signed enabled user. Approval,
-        identity registration, directory metadata, audit and idempotency commit atomically.
+        identity registration, directory metadata, audit and idempotency commit atomically. Approvals
+        enforce connectionExpiresAtUnixMs for certificates, renewal and all device access; omission defaults to 24 hours.
       responses:
         '200':
           description: Success; no-store

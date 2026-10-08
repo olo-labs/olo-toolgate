@@ -50,7 +50,8 @@ public final class McpService {
             if(previous!=null){var old=task(previous);if(!old.input().equals(input)||!old.request().equals(submission.request()))throw Failure.conflict();return reply(new RemoteToolResponse(record(previous),null));}
             var device=device(tx,input.context());if(device.lastSeenUnixMs()==0||now-device.lastSeenUnixMs()>120000)throw Failure.unavailable();
             if(submission.expiresAtUnixMs()<=now||submission.expiresAtUnixMs()>now+30000)throw Failure.validation();
-            var task=new RemoteToolTask(input.context().requestId(),UUID.randomUUID().toString(),input,submission.request(),submission.expiresAtUnixMs());allowed(tx,task);
+            long expires=device.connectionExpiresAtUnixMs()==null?submission.expiresAtUnixMs():Math.min(submission.expiresAtUnixMs(),device.connectionExpiresAtUnixMs());
+            var task=new RemoteToolTask(input.context().requestId(),UUID.randomUUID().toString(),input,submission.request(),expires);allowed(tx,task);
             if(codec.json(task).getBytes(java.nio.charset.StandardCharsets.UTF_8).length>16384)throw Failure.validation();
             tx.mcp().prune(Math.max(0,now-86400000));if(tx.mcp().count()>=1000||tx.mcp().pending(device.deviceId(),17).size()>=16)throw Failure.conflict();
             var record=new RemoteToolRecord(task.requestId(),device.deviceId(),input.context().agentId(),input.toolId(),RemoteToolState.WAITING_FOR_POLL,now,task.expiresAtUnixMs(),null,null,null,null);

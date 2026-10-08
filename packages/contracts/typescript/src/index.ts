@@ -577,6 +577,7 @@ export interface EndpointDeviceRecord {
   readonly lastSeenUnixMs: number;
   readonly reportSequence: number;
   readonly report?: ClientReport;
+  readonly connectionExpiresAtUnixMs?: number;
 }
 /** Endpoint identity foundation wire model. */
 export interface EndpointEnrollmentChallenge {
@@ -592,6 +593,11 @@ export interface EndpointEnrollmentDecision {
   readonly userCode: string;
   readonly keyFingerprint: string;
   readonly choice: EnrollmentChoice;
+  readonly connectionExpiresAtUnixMs?: number;
+}
+/** All unexpired pending requests in the authenticated tenant; enrollment quota is 32. */
+export interface EndpointEnrollmentPage {
+  readonly items: ReadonlyArray<EndpointEnrollmentReview>;
 }
 /** Endpoint identity foundation wire model. */
 export interface EndpointEnrollmentPoll {
@@ -621,6 +627,7 @@ export interface EndpointEnrollmentReview {
   readonly keyFingerprint: string;
   readonly state: EnrollmentState;
   readonly expiresAtUnixMs: number;
+  readonly connectionExpiresAtUnixMs?: number;
 }
 /** Endpoint identity foundation wire model. */
 export interface EndpointEnrollmentStart {

@@ -259,6 +259,12 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 9007199254740991
+        },
+        "connectionExpiresAtUnixMs": {
+          "description": "Approved connection deadline; absent before approval or for legacy records.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         }
       },
       "required": [
@@ -286,6 +292,12 @@
         },
         "choice": {
           "$ref": "endpoint.schema.json#/$defs/EnrollmentChoice"
+        },
+        "connectionExpiresAtUnixMs": {
+          "description": "Future connection deadline for APPROVE. Omission defaults to 24 hours; ignored for DENY.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         }
       },
       "required": [
@@ -293,6 +305,19 @@
         "keyFingerprint",
         "choice"
       ]
+    },
+    "EndpointEnrollmentPage": {
+      "type": "object",
+      "description": "All unexpired pending requests in the authenticated tenant; enrollment quota is 32.",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 32,
+          "items": { "$ref": "endpoint.schema.json#/$defs/EndpointEnrollmentReview" }
+        }
+      },
+      "required": ["items"]
     },
     "DeviceIdentity": {
       "type": "object",
@@ -466,6 +491,12 @@
         },
         "report": {
           "$ref": "client.schema.json#/$defs/ClientReport"
+        },
+        "connectionExpiresAtUnixMs": {
+          "description": "Server-enforced connection deadline; absent for devices approved before deadline support.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         }
       },
       "required": [

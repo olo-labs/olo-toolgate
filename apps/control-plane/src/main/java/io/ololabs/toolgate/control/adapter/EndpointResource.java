@@ -38,6 +38,7 @@ public class EndpointResource {
     private String body(String body){if(body==null||body.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>65536)throw Failure.validation();return body;}
     private Response response(Store.Reply reply,String operation){metrics.counter("toolgate_control_endpoint_operations_total","operation",operation).increment();return Response.status(reply.status()).header("Cache-Control","no-store").header("ETag","\""+reply.revision()+"\"").entity(reply.body()).build();}
     @POST @Path("enrollments") @Consumes("application/json") public Response start(String document){tls();return response(service.start(body(document),correlation.id()),"START");}
+    @GET @Path("enrollments") @RolesAllowed("toolgate-enroller") public Response pending(){return response(service.pending(actor(),user()),"LIST");}
     @POST @Path("enrollments/poll") @Consumes("application/json") public Response poll(String document){tls();return response(service.poll(body(document),correlation.id()),"POLL");}
     @GET @Path("enrollments/review") @RolesAllowed("toolgate-enroller") public Response review(@QueryParam("code")String code){return response(service.review(actor(),user(),code),"REVIEW");}
     @POST @Path("enrollments/decision") @Consumes("application/json") @RolesAllowed("toolgate-enroller") public Response decide(@HeaderParam("Idempotency-Key")String key,String document){return response(service.decide(actor(),user(),body(document),key,correlation.id()),"DECIDE");}

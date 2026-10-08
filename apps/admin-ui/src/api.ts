@@ -131,6 +131,7 @@ export class ControlClient {
   decideApproval(id: string, decision: ApprovalDecisionRequest, key: string): Promise<ApprovalRecord> {
     return this.send(operations.decideApproval, { id, body: decision, key });
   }
+  pendingEnrollments(signal?:AbortSignal):Promise<import('@olo-labs/toolgate-contracts').EndpointEnrollmentPage>{return this.send(operations.listEndpointEnrollments,{signal});}
   enrollment(code: string, signal?: AbortSignal): Promise<EndpointEnrollmentReview> {
     return this.send(operations.reviewEndpointEnrollment, { query: new URLSearchParams({ code }), signal });
   }

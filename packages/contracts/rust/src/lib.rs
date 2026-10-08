@@ -919,6 +919,8 @@ pub struct EndpointDeviceRecord {
     pub report_sequence: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub report: Option<ClientReport>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub connection_expires_at_unix_ms: Option<u64>,
 }
 /// Endpoint identity foundation wire model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -938,6 +940,14 @@ pub struct EndpointEnrollmentDecision {
     pub user_code: String,
     pub key_fingerprint: String,
     pub choice: EnrollmentChoice,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub connection_expires_at_unix_ms: Option<u64>,
+}
+/// All unexpired pending requests in the authenticated tenant; enrollment quota is 32.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EndpointEnrollmentPage {
+    pub items: Vec<EndpointEnrollmentReview>,
 }
 /// Endpoint identity foundation wire model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -976,6 +986,8 @@ pub struct EndpointEnrollmentReview {
     pub key_fingerprint: String,
     pub state: EnrollmentState,
     pub expires_at_unix_ms: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub connection_expires_at_unix_ms: Option<u64>,
 }
 /// Endpoint identity foundation wire model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

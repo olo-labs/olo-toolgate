@@ -23,6 +23,7 @@ it.each([
   [{lastSeenUnixMs:Date.now()-121000},'Offline'],
   [{lastSeenUnixMs:0,reportSequence:0},'No check-in yet'],
   [{lastSeenUnixMs:Date.now(),state:'REVOKED'},'Revoked'],
+  [{lastSeenUnixMs:Date.now(),connectionExpiresAtUnixMs:Date.now()-1},'Approval expired'],
   [{lastSeenUnixMs:Date.now(),userId:'another-owner'},'Enrollment mismatch'],
   [{lastSeenUnixMs:Date.now(),deviceId:'another-client'},'Status unavailable'],
   [{lastSeenUnixMs:'not-a-timestamp'},'Status unavailable'],
@@ -35,6 +36,15 @@ it('does not equate a directory-enabled client with an enrolled client',async()=
   const {client}=clientWith({code:'NOT_FOUND'},404);
   render(<ClientConnection client={client} id="client-1" enabled ownerUserId="owner-1"/>);
   expect((await screen.findByText('Not enrolled')).className).toContain('offline');
+});
+it('stops showing connected when approval expires even with fresh check-ins',async()=>{
+  vi.useFakeTimers();vi.setSystemTime(new Date('2026-10-08T12:00:00Z'));
+  const expires=Date.now()+2000;
+  const {client}=clientWith({...device,lastSeenUnixMs:Date.now(),connectionExpiresAtUnixMs:expires});
+  render(<ClientConnection client={client} id="client-1" enabled ownerUserId="owner-1"/>);
+  await act(async()=>{await vi.advanceTimersByTimeAsync(0);});expect(screen.getByText('Connected').title).toContain('Allowed until:');
+  await act(async()=>{await vi.advanceTimersByTimeAsync(2000);});
+  expect(screen.getByText('Approval expired').className).toContain('offline');
 });
 it('shows disabled clients as red without polling their connection',async()=>{
   const {client,transport}=clientWith({...device,lastSeenUnixMs:Date.now()});

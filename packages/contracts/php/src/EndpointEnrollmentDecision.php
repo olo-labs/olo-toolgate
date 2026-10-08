@@ -10,18 +10,20 @@ final readonly class EndpointEnrollmentDecision implements \JsonSerializable {
     public function __construct(
         public string $userCode,
         public string $keyFingerprint,
-        public EnrollmentChoice $choice
+        public EnrollmentChoice $choice,
+        public ?int $connectionExpiresAtUnixMs = null
     ) {}
 
     /** Decode a structural model; canonical schema validation is also required. */
     public static function fromArray(array $data): self {
-        if (array_diff(array_keys($data), ['userCode', 'keyFingerprint', 'choice']) || array_diff(['userCode', 'keyFingerprint', 'choice'], array_keys($data))) {
+        if (array_diff(array_keys($data), ['userCode', 'keyFingerprint', 'choice', 'connectionExpiresAtUnixMs']) || array_diff(['userCode', 'keyFingerprint', 'choice'], array_keys($data))) {
             throw new \InvalidArgumentException('Unknown or missing contract fields');
         }
         return new self(
             $data['userCode'],
             $data['keyFingerprint'],
-            EnrollmentChoice::from($data['choice'])
+            EnrollmentChoice::from($data['choice']),
+            array_key_exists('connectionExpiresAtUnixMs', $data) ? $data['connectionExpiresAtUnixMs'] : null
         );
     }
 

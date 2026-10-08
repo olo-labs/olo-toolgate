@@ -16,12 +16,13 @@ final readonly class EndpointDeviceRecord implements \JsonSerializable {
         public int $revision,
         public int $lastSeenUnixMs,
         public int $reportSequence,
-        public ?ClientReport $report = null
+        public ?ClientReport $report = null,
+        public ?int $connectionExpiresAtUnixMs = null
     ) {}
 
     /** Decode a structural model; canonical schema validation is also required. */
     public static function fromArray(array $data): self {
-        if (array_diff(array_keys($data), ['deviceId', 'tenantId', 'userId', 'keyFingerprint', 'state', 'revision', 'lastSeenUnixMs', 'reportSequence', 'report']) || array_diff(['deviceId', 'tenantId', 'userId', 'keyFingerprint', 'state', 'revision', 'lastSeenUnixMs', 'reportSequence'], array_keys($data))) {
+        if (array_diff(array_keys($data), ['deviceId', 'tenantId', 'userId', 'keyFingerprint', 'state', 'revision', 'lastSeenUnixMs', 'reportSequence', 'report', 'connectionExpiresAtUnixMs']) || array_diff(['deviceId', 'tenantId', 'userId', 'keyFingerprint', 'state', 'revision', 'lastSeenUnixMs', 'reportSequence'], array_keys($data))) {
             throw new \InvalidArgumentException('Unknown or missing contract fields');
         }
         return new self(
@@ -33,7 +34,8 @@ final readonly class EndpointDeviceRecord implements \JsonSerializable {
             $data['revision'],
             $data['lastSeenUnixMs'],
             $data['reportSequence'],
-            array_key_exists('report', $data) ? ClientReport::fromArray($data['report']) : null
+            array_key_exists('report', $data) ? ClientReport::fromArray($data['report']) : null,
+            array_key_exists('connectionExpiresAtUnixMs', $data) ? $data['connectionExpiresAtUnixMs'] : null
         );
     }
 

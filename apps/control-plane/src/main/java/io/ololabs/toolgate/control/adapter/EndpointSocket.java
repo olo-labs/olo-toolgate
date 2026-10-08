@@ -46,10 +46,13 @@ public class EndpointSocket {
     }
     private void channel(io.vertx.core.Vertx vertx,ServerWebSocket socket,X509Certificate peer){
         event("CONNECTED");
-        var closed=new AtomicBoolean();var busy=new AtomicBoolean();
+        var closed=new AtomicBoolean();var busy=new AtomicBoolean();var checking=new AtomicBoolean();
         var pong=new AtomicLong(System.nanoTime());var lastJob=new AtomicLong(System.nanoTime());
         var jobs=new java.util.concurrent.ConcurrentHashMap<String,Long>();
         long timer=vertx.setPeriodic(5000,ignored->{
+            if(checking.compareAndSet(false,true))vertx.executeBlocking(()->{endpoints.verifySocketPeer(peer);return true;}).onComplete(auth->{
+                checking.set(false);if(auth.failed()&&!closed.get())socket.close((short)1008,"Device authorization unavailable");
+            });
             long now=System.nanoTime();jobs.entrySet().removeIf(entry->entry.getValue()<=System.currentTimeMillis());
             if(now-pong.get()>15000000000L){event("PONG_TIMEOUT");socket.close((short)1001,"Liveness timeout");}
             else if(jobs.isEmpty()&&now-lastJob.get()>35000000000L){event("IDLE_DISCONNECTED");socket.close((short)1000,"Job channel idle");}

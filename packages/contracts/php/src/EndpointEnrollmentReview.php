@@ -14,12 +14,13 @@ final readonly class EndpointEnrollmentReview implements \JsonSerializable {
         public ClientPlatform $platform,
         public string $keyFingerprint,
         public EnrollmentState $state,
-        public int $expiresAtUnixMs
+        public int $expiresAtUnixMs,
+        public ?int $connectionExpiresAtUnixMs = null
     ) {}
 
     /** Decode a structural model; canonical schema validation is also required. */
     public static function fromArray(array $data): self {
-        if (array_diff(array_keys($data), ['enrollmentId', 'userCode', 'deviceId', 'platform', 'keyFingerprint', 'state', 'expiresAtUnixMs']) || array_diff(['enrollmentId', 'userCode', 'deviceId', 'platform', 'keyFingerprint', 'state', 'expiresAtUnixMs'], array_keys($data))) {
+        if (array_diff(array_keys($data), ['enrollmentId', 'userCode', 'deviceId', 'platform', 'keyFingerprint', 'state', 'expiresAtUnixMs', 'connectionExpiresAtUnixMs']) || array_diff(['enrollmentId', 'userCode', 'deviceId', 'platform', 'keyFingerprint', 'state', 'expiresAtUnixMs'], array_keys($data))) {
             throw new \InvalidArgumentException('Unknown or missing contract fields');
         }
         return new self(
@@ -29,7 +30,8 @@ final readonly class EndpointEnrollmentReview implements \JsonSerializable {
             ClientPlatform::from($data['platform']),
             $data['keyFingerprint'],
             EnrollmentState::from($data['state']),
-            $data['expiresAtUnixMs']
+            $data['expiresAtUnixMs'],
+            array_key_exists('connectionExpiresAtUnixMs', $data) ? $data['connectionExpiresAtUnixMs'] : null
         );
     }
 

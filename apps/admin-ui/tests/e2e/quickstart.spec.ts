@@ -27,3 +27,33 @@ test('real Quickstart password, non-HA status, protected compute and vault names
   expect(await page.evaluate(()=>localStorage.length+sessionStorage.length)).toBe(0);
   await page.getByRole('button',{name:'Disconnect'}).click();await expect(page.getByLabel('Password',{exact:true})).toHaveValue('');
 });
+
+test('pending devices can be reviewed and approved until a local date and time',async({page})=>{
+  test.skip(!process.env.QUICKSTART_PASSWORD,'Requires actual composed Quickstart fixture');
+  const devices=['device-one','device-two'].map((deviceId,index)=>({enrollmentId:`enrollment-${index}`,deviceId,userCode:String(index+1).repeat(16),platform:'WINDOWS',keyFingerprint:'a'.repeat(64),state:'PENDING',expiresAtUnixMs:Date.now()+600000}));
+  let pending=devices;
+  let decision:Record<string,unknown>|undefined;
+  await page.route('**/api/control/v1/endpoint/enrollments',route=>route.fulfill({json:{items:pending}}));
+  await page.route('**/api/control/v1/endpoint/enrollments/review?*',route=>route.fulfill({json:devices[1]}));
+  await page.route('**/api/control/v1/endpoint/enrollments/decision',route=>{
+    decision=route.request().postDataJSON();pending=[devices[0]];
+    return route.fulfill({json:{...devices[1],state:'APPROVED',connectionExpiresAtUnixMs:decision?.connectionExpiresAtUnixMs}});
+  });
+  await page.route('**/api/control/v1/endpoint/devices/device-two',route=>route.fulfill({json:{deviceId:'device-two',keyFingerprint:'a'.repeat(64),state:'ACTIVE',reportSequence:1,lastSeenUnixMs:Date.now()}}));
+  await page.goto('/console/');await page.getByLabel('Password',{exact:true}).fill(process.env.QUICKSTART_PASSWORD!);
+  await page.getByRole('button',{name:'Connect to workspace'}).click();await expect(page.getByRole('heading',{name:'Your organization, at a glance'})).toBeVisible();
+  await page.goto('/console/#enroll');await expect(page.getByRole('button',{name:'Review device-one'})).toBeVisible();
+  await page.getByRole('button',{name:'Review device-two'}).click();
+  await page.getByLabel('Allow connection until').fill('2030-01-01T18:30');
+  await expect(page.getByRole('button',{name:'Enroll device',exact:true})).toBeDisabled();
+  await page.getByRole('checkbox').check();
+  expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
+  await page.getByRole('button',{name:'Enroll device',exact:true}).click();
+  await expect(page.getByText('Connection allowed until',{exact:true})).toBeVisible();
+  expect(decision).toMatchObject({userCode:devices[1].userCode,keyFingerprint:devices[1].keyFingerprint,choice:'APPROVE'});
+  expect(decision?.connectionExpiresAtUnixMs).toBe(await page.evaluate(()=>new Date('2030-01-01T18:30').getTime()));
+  await expect(page.getByRole('button',{name:'Review device-two'})).toHaveCount(0);
+  await expect(page.getByText('Connected: this device has checked in with ToolGate.')).toBeVisible();
+  await page.setViewportSize({width:390,height:844});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});

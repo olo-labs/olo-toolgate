@@ -5,6 +5,14 @@ import { ApiError, ControlClient } from '../src/api';
 const user = {id:'namespace:user/item',name:'User',enabled:true,revision:7};
 
 describe('Control transport contract', () => {
+  it('lists pending enrollment requests with authenticated no-store transport',async()=>{
+    const transport=vi.fn<typeof fetch>().mockImplementation(async()=>new Response(JSON.stringify({items:[]})));
+    const client=new ControlClient('test-token',vi.fn(),transport);
+    expect(await client.pendingEnrollments()).toEqual({items:[]});
+    expect(transport.mock.calls[0][0]).toBe('/api/control/v1/endpoint/enrollments');
+    expect(transport.mock.calls[0][1]).toMatchObject({method:'GET',cache:'no-store',credentials:'omit'});
+    expect(new Headers(transport.mock.calls[0][1]?.headers).get('Authorization')).toBe('Bearer test-token');
+  });
   it('uses canonical team CRUD routes with membership, revisions and idempotency', async () => {
     const team={id:'team:default',name:'Default',enabled:true,revision:3,userIds:['alice','bob']};
     const transport=vi.fn<typeof fetch>().mockImplementation(async (_url,options)=>options?.method==='DELETE'?new Response(null,{status:204}):new Response(JSON.stringify(team)));

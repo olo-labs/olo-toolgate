@@ -11,6 +11,22 @@ from test_foundation import schemas_at, validators
 ROOT = Path(__file__).resolve().parents[2]
 
 class EndpointContractsTests(unittest.TestCase):
+    def test_pending_enrollment_page_and_optional_connection_deadlines_are_bounded(self):
+        models = validators(schemas_at(ROOT/'packages/contracts/schemas/v1'))
+        fixtures = json.loads((ROOT/'tests/fixtures/contracts/v1/valid.json').read_text())
+        page = {'items': [fixtures['EndpointEnrollmentReview']] * 32}
+        models['EndpointEnrollmentPage'].validate(page)
+        page['items'].append(fixtures['EndpointEnrollmentReview'])
+        with self.assertRaises(ValidationError): models['EndpointEnrollmentPage'].validate(page)
+        for name in ('EndpointEnrollmentDecision', 'EndpointEnrollmentReview', 'EndpointDeviceRecord'):
+            sample = copy.deepcopy(fixtures[name])
+            models[name].validate(sample)  # Existing records and older API callers remain readable.
+            sample['connectionExpiresAtUnixMs'] = 1900000000000
+            models[name].validate(sample)
+            for invalid in (-1, 9007199254740992, 1.5, 'forever'):
+                sample['connectionExpiresAtUnixMs'] = invalid
+                with self.assertRaises(ValidationError): models[name].validate(sample)
+
     def test_job_socket_rejects_unknown_operations_and_unstructured_frames(self):
         models = validators(schemas_at(ROOT/'packages/contracts/schemas/v1'))
         sample = json.loads((ROOT/'tests/fixtures/contracts/v1/valid.json').read_text())['ClientSocketRequest']

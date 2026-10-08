@@ -9,6 +9,7 @@ import io.ololabs.toolgate.contracts.SignedClientDiscovery;
 public interface DeviceIssuer {
     String fingerprint(String csr);
     DeviceIdentity issue(String csr,String device,String tenant,String user,String server,long now);
+    DeviceIdentity issue(String csr,String device,String tenant,String user,String server,long now,long connectionExpiresAt);
     SignedClientDiscovery discovery(String payload);
     String issuerCertificate();
     String peerFingerprint(java.security.cert.X509Certificate peer,long now);

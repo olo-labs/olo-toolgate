@@ -56,14 +56,14 @@ final class EndpointTest {
     }
     private EndpointEnrollmentChallenge start(Setup s,String device)throws Exception{return codec.model(s.service.start(codec.json(new EndpointEnrollmentStart(device,"0.6.0-dev",ClientPlatform.LINUX,csr(device),List.of("endpoint.identity.v1"))),"request").body(),EndpointEnrollmentChallenge.class);}
     private EndpointEnrollmentReview review(Setup s,EndpointEnrollmentChallenge challenge){return codec.model(s.service.review(s.admin,"owner",challenge.userCode()).body(),EndpointEnrollmentReview.class);}
-    private void decide(Setup s,EndpointEnrollmentChallenge challenge,EnrollmentChoice choice,String key){var review=review(s,challenge);s.service.decide(s.admin,"owner",codec.json(new EndpointEnrollmentDecision(challenge.userCode(),review.keyFingerprint(),choice)),key,"request");}
+    private void decide(Setup s,EndpointEnrollmentChallenge challenge,EnrollmentChoice choice,String key){var review=review(s,challenge);s.service.decide(s.admin,"owner",codec.json(new EndpointEnrollmentDecision(challenge.userCode(),review.keyFingerprint(),choice,START+604800000)),key,"request");}
     private EndpointEnrollmentResult poll(Setup s,EndpointEnrollmentChallenge challenge){return codec.model(s.service.poll(codec.json(new EndpointEnrollmentPoll(challenge.enrollmentId(),challenge.deviceCode())),"request").body(),EndpointEnrollmentResult.class);}
     private java.security.cert.X509Certificate certificate(DeviceIdentity identity)throws Exception{return (java.security.cert.X509Certificate)java.security.cert.CertificateFactory.getInstance("X.509").generateCertificate(new ByteArrayInputStream(identity.certificatePem().getBytes(java.nio.charset.StandardCharsets.US_ASCII)));}
     @Test void enrollmentBindsOwnerKeyAndDurableSequenceAndRevocation()throws Exception{
         var s=setup();var challenge=start(s,"device");var review=review(s,challenge);assertEquals(EnrollmentState.PENDING,poll(s,challenge).state());
         assertEquals(403,assertThrows(Failure.class,()->s.service.review(new DirectoryService.Actor(new Ids.TenantId("other"),"a".repeat(64),true),"owner",challenge.userCode())).status());
         assertEquals(403,assertThrows(Failure.class,()->s.service.review(s.admin,"unknown",challenge.userCode())).status());
-        assertEquals(409,assertThrows(Failure.class,()->s.service.decide(s.admin,"owner",codec.json(new EndpointEnrollmentDecision(challenge.userCode(),"0".repeat(64),EnrollmentChoice.APPROVE)),"wrong-key","request")).status());
+        assertEquals(409,assertThrows(Failure.class,()->s.service.decide(s.admin,"owner",codec.json(new EndpointEnrollmentDecision(challenge.userCode(),"0".repeat(64),EnrollmentChoice.APPROVE,null)),"wrong-key","request")).status());
         decide(s,challenge,EnrollmentChoice.APPROVE,"approve");decide(s,challenge,EnrollmentChoice.APPROVE,"approve");
         assertEquals(409,assertThrows(Failure.class,()->decide(s,challenge,EnrollmentChoice.DENY,"other-key")).status());
         s.clock.time+=5000;var result=poll(s,challenge);assertEquals(EnrollmentState.CONSUMED,result.state());var identity=result.identity();assertEquals("owner",identity.userId());assertEquals("endpoint",identity.tenantId());
@@ -108,7 +108,7 @@ final class EndpointTest {
         s.clock.time-=1;assertEquals(503,assertThrows(Failure.class,()->s.service.start(codec.json(new EndpointEnrollmentStart("regression","0.6.0-dev",ClientPlatform.LINUX,request,List.of())),"clock")).status());
     }
     @Test void competingDecisionsHaveOneWinnerAndAuditFailureRollsBack()throws Exception{
-        var s=setup();var challenge=start(s,"race");var review=review(s,challenge);var body=codec.json(new EndpointEnrollmentDecision(challenge.userCode(),review.keyFingerprint(),EnrollmentChoice.APPROVE));
+        var s=setup();var challenge=start(s,"race");var review=review(s,challenge);var body=codec.json(new EndpointEnrollmentDecision(challenge.userCode(),review.keyFingerprint(),EnrollmentChoice.APPROVE,null));
         var pool=java.util.concurrent.Executors.newFixedThreadPool(2);var barrier=new java.util.concurrent.CyclicBarrier(2);
         try{var tasks=new ArrayList<java.util.concurrent.Future<Boolean>>();for(int i=0;i<2;i++){final int n=i;tasks.add(pool.submit(()->{barrier.await();try{s.service.decide(s.admin,"owner",body,"race-"+n,"request");return true;}catch(Failure failure){assertEquals(409,failure.status());return false;}}));}
             int winners=0;for(var task:tasks)if(task.get())winners++;assertEquals(1,winners);
@@ -116,15 +116,53 @@ final class EndpointTest {
         var second=start(s,"audit");var secondReview=review(s,second);
         Store failing=new Store(){public<T>T transaction(Ids.TenantId tenant,boolean write,java.util.function.Function<Session,T> work){return s.store.transaction(tenant,write,tx->work.apply((Session)java.lang.reflect.Proxy.newProxyInstance(getClass().getClassLoader(),new Class<?>[]{Session.class},(proxy,method,args)->{if(method.getName().equals("audit"))throw Failure.unavailable();try{return method.invoke(tx,args);}catch(java.lang.reflect.InvocationTargetException failure){throw failure.getCause();}})));}};
         var service=new EndpointService(failing,codec,s.issuer,s.clock,true,"endpoint","server","Organization","https://control.example.test","https://gateway.example.test");
-        assertThrows(Failure.class,()->service.decide(s.admin,"owner",codec.json(new EndpointEnrollmentDecision(second.userCode(),secondReview.keyFingerprint(),EnrollmentChoice.APPROVE)),"audit-fail","request"));
+        assertThrows(Failure.class,()->service.decide(s.admin,"owner",codec.json(new EndpointEnrollmentDecision(second.userCode(),secondReview.keyFingerprint(),EnrollmentChoice.APPROVE,null)),"audit-fail","request"));
         assertEquals(EnrollmentState.PENDING,review(s,second).state());assertThrows(Failure.class,()->s.service.device(s.admin,"audit"));
     }
     @Test void permissionReplacementAndServerRelayedCallsTrackEveryHandoff()throws Exception{relayFlow(setup());}
+    @Test void pendingDeviceListAndConnectionDeadlinesUsePostgres()throws Exception{deadlineFlow(setup());}
+    @Test void pendingDeviceListAndConnectionDeadlinesUseSqlite(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory)throws Exception{
+        deadlineFlow(configured(new PostgresStore(SqliteState.open(directory.resolve("deadline.sqlite")),codec)));
+    }
+    private void deadlineFlow(Setup s)throws Exception{
+        var first=start(s,"timed");var second=start(s,"second");var denied=start(s,"denied");var legacy=start(s,"legacy-caller");
+        assertEquals(4,codec.model(s.service.pending(s.admin,"owner").body(),EndpointEnrollmentPage.class).items().size());
+        assertEquals(403,assertThrows(Failure.class,()->s.service.pending(new DirectoryService.Actor(new Ids.TenantId("other"),"b".repeat(64),true),"owner")).status());
+        assertEquals(403,assertThrows(Failure.class,()->s.service.pending(s.admin,"unknown")).status());
+        var review=review(s,first);long until=START+108000000; // 30 hours, longer than one certificate lifetime.
+        for(long invalid:List.of(START,START-1))assertEquals(400,assertThrows(Failure.class,()->s.service.decide(s.admin,"owner",codec.json(new EndpointEnrollmentDecision(first.userCode(),review.keyFingerprint(),EnrollmentChoice.APPROVE,invalid)),"invalid-"+invalid,"request")).status());
+        var body=codec.json(new EndpointEnrollmentDecision(first.userCode(),review.keyFingerprint(),EnrollmentChoice.APPROVE,until));
+        var approved=s.service.decide(s.admin,"owner",body,"timed-approval","request");
+        assertEquals(until,codec.model(approved.body(),EndpointEnrollmentReview.class).connectionExpiresAtUnixMs());
+        assertEquals(approved,s.service.decide(s.admin,"owner",body,"timed-approval","retry"));
+        decide(s,denied,EnrollmentChoice.DENY,"deny");
+        var legacyReview=review(s,legacy);s.service.decide(s.admin,"owner",codec.json(new EndpointEnrollmentDecision(legacy.userCode(),legacyReview.keyFingerprint(),EnrollmentChoice.APPROVE,null)),"legacy","request");
+        assertEquals(START+86400000,codec.model(s.service.device(s.admin,"legacy-caller").body(),EndpointDeviceRecord.class).connectionExpiresAtUnixMs());
+        var page=s.service.pending(s.admin,"owner").body();assertEquals(List.of(second.userCode()),codec.model(page,EndpointEnrollmentPage.class).items().stream().map(EndpointEnrollmentReview::userCode).toList());
+        for(String secret:List.of(first.deviceCode(),"csrPem","certificatePem","deviceCode"))assertFalse(page.contains(secret));
+        var identity=poll(s,first).identity();assertEquals(START+86400000,identity.expiresAtUnixMs());var peer=certificate(identity);
+        var report=new ClientReport("timed","0.6.0-dev",0L,List.of());
+        s.clock.time=START+50000000;
+        var renewed=codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(1L,report,null,null)),"renew").body(),EndpointCheckInAck.class).identity();
+        assertNotNull(renewed);assertEquals(until,renewed.expiresAtUnixMs());assertEquals(until,certificate(renewed).getNotAfter().getTime());
+        s.clock.time+=500;
+        assertNull(codec.model(s.service.checkIn(certificate(renewed),codec.json(new EndpointCheckIn(2L,report,null,null)),"capped").body(),EndpointCheckInAck.class).identity());
+        var device=codec.model(s.service.device(s.admin,"timed").body(),EndpointDeviceRecord.class);assertEquals(until,device.connectionExpiresAtUnixMs());
+        assertTrue(codec.model(s.service.pending(s.admin,"owner").body(),EndpointEnrollmentPage.class).items().isEmpty());
+        s.clock.time=until;
+        assertThrows(Failure.class,()->s.service.verifySocketPeer(certificate(renewed)));
+        assertThrows(Failure.class,()->s.service.checkIn(certificate(renewed),codec.json(new EndpointCheckIn(2L,report,null,null)),"expired-replay"));
+        assertEquals(403,assertThrows(Failure.class,()->s.store.transaction(s.admin.tenant(),true,tx->{s.service.active(tx,device);return null;})).status());
+        assertEquals(approved,s.service.decide(s.admin,"owner",body,"timed-approval","late-replay"));
+        assertEquals(until,codec.model(s.service.device(s.admin,"timed").body(),EndpointDeviceRecord.class).connectionExpiresAtUnixMs());
+    }
     @Test void quickstartPermissionReplacementAndRelayedCallsUseDurableSqlite(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory)throws Exception{
         relayFlow(configured(new PostgresStore(SqliteState.open(directory.resolve("relay.sqlite")),codec)));
     }
     private void relayFlow(Setup s)throws Exception{
-        var challenge=start(s,"client");decide(s,challenge,EnrollmentChoice.APPROVE,"approve-client");var identity=poll(s,challenge).identity();var peer=certificate(identity);
+        var challenge=start(s,"client");long connectionExpires=START+20000;
+        s.service.decide(s.admin,"owner",codec.json(new EndpointEnrollmentDecision(challenge.userCode(),review(s,challenge).keyFingerprint(),EnrollmentChoice.APPROVE,connectionExpires)),"approve-client","request");
+        var identity=poll(s,challenge).identity();var peer=certificate(identity);assertEquals(connectionExpires,identity.expiresAtUnixMs());
         for(var agent:List.of("agent-one","agent-two"))s.directory.mutate(s.admin,Ids.Kind.AGENT,agent,"CREATE",codec.json(new ControlAgent(agent,agent,true,1L,"owner")),0,"create-"+agent,"request");
         var definition=new ToolDefinition("local.tool","Local tool","Installed local tool",List.of(new ToolAction("invoke",List.of(ResourceKind.CUSTOM))),Map.of(),Map.of());
         s.directory.mutate(s.admin,Ids.Kind.TOOL,"local.tool","CREATE",codec.json(new ControlTool("local.tool","Local tool",true,1L,definition)),0,"create-tool","request");
@@ -146,6 +184,7 @@ final class EndpointTest {
         var submission=new RemoteToolSubmission(input,request,s.clock.time+29000);
         var waiting=codec.model(relay.submit(gateway,true,codec.json(submission),"agent-request").body(),RemoteToolResponse.class);
         assertEquals(RemoteToolState.WAITING_FOR_POLL,waiting.record().state());
+        assertEquals(connectionExpires,waiting.record().expiresAtUnixMs());
         assertEquals(waiting,codec.model(relay.submit(gateway,true,codec.json(submission),"agent-retry").body(),RemoteToolResponse.class));
         s.clock.time+=500;var delivered=codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(3L,report,digest,List.of(local))),"poll-three",true).body(),EndpointCheckInAck.class).task();assertNotNull(delivered);
         var bound=new AuthorizationRequest("local.tool","invoke",Map.of("path",new com.fasterxml.jackson.databind.node.TextNode(resource.locator()),"input",(com.fasterxml.jackson.databind.JsonNode)codec.value(codec.json(arguments)),"runtimeImage",new com.fasterxml.jackson.databind.node.TextNode("reviewed-image")));
@@ -163,5 +202,8 @@ final class EndpointTest {
         assertEquals(RemoteToolState.FAILED,codec.model(relay.response(gateway,true,codec.json(nextContext),"failed-response").body(),RemoteToolResponse.class).record().state());
         assertThrows(Failure.class,()->relay.response(gateway,true,codec.json(context),"old-result-after-change"));
         s.clock.time+=500;assertNull(codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(5L,report,changed.configuration().digest(),List.of(local))),"ack-change",true).body(),EndpointCheckInAck.class).configuration());
+        s.clock.time=connectionExpires;
+        assertEquals(403,assertThrows(Failure.class,()->relay.catalog(gateway,true,codec.json(context))).status());
+        assertThrows(Failure.class,()->relay.authorize(peer,codec.json(new RemoteToolAuthorization(delivered.requestId(),delivered.leaseId(),bound))));
     }
 }

@@ -60,9 +60,14 @@ public final class X509DeviceIssuer implements DeviceIssuer {
     }
     public String issuerCertificate() {return caPem;}
     public DeviceIdentity issue(String csr,String device,String tenant,String user,String server,long now) {
+        return issue(csr,device,tenant,user,server,now,Long.MAX_VALUE);
+    }
+    public DeviceIdentity issue(String csr,String device,String tenant,String user,String server,long now,long connectionExpiresAt) {
         try {
             ca.checkValidity(new Date(now));var request=request(csr);
-            long expires=Math.min(now+86400000,ca.getNotAfter().getTime());if(expires-now<3600000) throw Failure.unavailable();
+            long issuerLimit=Math.min(now+86400000,ca.getNotAfter().getTime());if(issuerLimit-now<3600000) throw Failure.unavailable();
+            // X.509 validity has second precision. Never round beyond the human-approved deadline.
+            long expires=Math.min(issuerLimit,connectionExpiresAt)/1000*1000;if(expires<=now)throw Failure.validation();
             var subject=new X500NameBuilder(BCStyle.INSTANCE).addRDN(BCStyle.CN,device).addRDN(BCStyle.OU,tenant).addRDN(BCStyle.O,server).build();
             var builder=new org.bouncycastle.cert.X509v3CertificateBuilder(X500Name.getInstance(ca.getSubjectX500Principal().getEncoded()),new java.math.BigInteger(159,random).add(java.math.BigInteger.ONE),new Date(now),new Date(expires),subject,request.getSubjectPublicKeyInfo());
             builder.addExtension(Extension.basicConstraints,true,new BasicConstraints(false));

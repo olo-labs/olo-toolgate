@@ -12,6 +12,7 @@ package io.ololabs.toolgate.contracts;
  * @param keyFingerprint canonical keyFingerprint value
  * @param state canonical state value
  * @param expiresAtUnixMs canonical expiresAtUnixMs value
+ * @param connectionExpiresAtUnixMs canonical connectionExpiresAtUnixMs value
  */
 @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
 public record EndpointEnrollmentReview(
@@ -21,7 +22,8 @@ public record EndpointEnrollmentReview(
     @com.fasterxml.jackson.annotation.JsonProperty(value = "platform", required = true) ClientPlatform platform,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "keyFingerprint", required = true) String keyFingerprint,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "state", required = true) EnrollmentState state,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "expiresAtUnixMs", required = true) Long expiresAtUnixMs
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "expiresAtUnixMs", required = true) Long expiresAtUnixMs,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "connectionExpiresAtUnixMs", required = false) Long connectionExpiresAtUnixMs
 ) {
     /** Reject absent required references and copy collections to retain value semantics.
      *
@@ -32,6 +34,7 @@ public record EndpointEnrollmentReview(
      * @param keyFingerprint canonical keyFingerprint value
      * @param state canonical state value
      * @param expiresAtUnixMs canonical expiresAtUnixMs value
+     * @param connectionExpiresAtUnixMs canonical connectionExpiresAtUnixMs value
      */
     public EndpointEnrollmentReview {
         java.util.Objects.requireNonNull(enrollmentId, "enrollmentId");

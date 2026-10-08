@@ -69,7 +69,7 @@ public final class EndpointService {
             tx.pruneEnrollments(now);if(tx.pendingEnrollments(now)>=32 || tx.endpoint(start.deviceId())!=null || tx.endpointKey(fingerprint)!=null)throw Failure.conflict();
             if(tx.load().entries().values().stream().noneMatch(e->e.id().kind()==Ids.Kind.USER&&e.enabled()))throw forbidden();
             String id=random(16),deviceCode=random(32),userCode=random(8).toUpperCase(Locale.ROOT);long expires=now+600000;
-            var review=new EndpointEnrollmentReview(id,userCode,start.deviceId(),start.platform(),fingerprint,EnrollmentState.PENDING,expires);
+            var review=new EndpointEnrollmentReview(id,userCode,start.deviceId(),start.platform(),fingerprint,EnrollmentState.PENDING,expires,null);
             tx.saveEnrollment(new Store.EnrollmentRecord(id,DirectoryService.digest(userCode),DirectoryService.digest(deviceCode),codec.json(review),start.csrPem(),null,null,expires,0));
             tx.audit(fingerprint,"ENROLLMENT_CREATE","endpoint:"+start.deviceId(),1,requestId,DirectoryService.digest(codec.json(start)));
             return reply(new EndpointEnrollmentChallenge(id,deviceCode,userCode,verification(),expires,5L),1);
@@ -84,7 +84,14 @@ public final class EndpointService {
             return reply(review,1);
         });
     }
-    private EndpointEnrollmentReview withState(EndpointEnrollmentReview r,EnrollmentState state){return new EndpointEnrollmentReview(r.enrollmentId(),r.userCode(),r.deviceId(),r.platform(),r.keyFingerprint(),state,r.expiresAtUnixMs());}
+    public Store.Reply pending(DirectoryService.Actor actor,String user) {
+        return transaction((tx,now)->{human(actor,user,tx);
+            var items=tx.enrollments(now).stream().map(row->codec.model(row.document(),EndpointEnrollmentReview.class))
+                .filter(review->review.state()==EnrollmentState.PENDING).toList();
+            return reply(new EndpointEnrollmentPage(items),0);
+        });
+    }
+    private EndpointEnrollmentReview withState(EndpointEnrollmentReview r,EnrollmentState state){return new EndpointEnrollmentReview(r.enrollmentId(),r.userCode(),r.deviceId(),r.platform(),r.keyFingerprint(),state,r.expiresAtUnixMs(),r.connectionExpiresAtUnixMs());}
     public Store.Reply decide(DirectoryService.Actor actor,String user,String body,String key,String requestId) {
         var decision=codec.model(body,EndpointEnrollmentDecision.class);Ids.valid(key);Ids.valid(requestId);var digest=DirectoryService.digest(body);
         return transaction((tx,now)->{
@@ -93,18 +100,20 @@ public final class EndpointService {
             var review=codec.model(row.document(),EndpointEnrollmentReview.class);
             if(review.state()!=EnrollmentState.PENDING||!review.keyFingerprint().equals(decision.keyFingerprint()))throw Failure.conflict();
             boolean approve=decision.choice()==EnrollmentChoice.APPROVE;
+            Long connectionExpires=approve?(decision.connectionExpiresAtUnixMs()==null?now+86400000:decision.connectionExpiresAtUnixMs()):null;
+            if(approve&&(connectionExpires>9007199254740991L||connectionExpires/1000*1000<=now))throw Failure.validation();
             var state=approve?EnrollmentState.APPROVED:EnrollmentState.DENIED;String certificate=null;
             if(approve){
                 if(tx.endpoint(review.deviceId())!=null||tx.endpointKey(review.keyFingerprint())!=null)throw Failure.conflict();
-                var identity=issuer.issue(row.csr(),review.deviceId(),tenant.value(),user,server,now);certificate=codec.json(identity);
-                var endpoint=new EndpointDeviceRecord(review.deviceId(),tenant.value(),user,review.keyFingerprint(),EndpointState.ACTIVE,1L,0L,0L,null);
+                var identity=issuer.issue(row.csr(),review.deviceId(),tenant.value(),user,server,now,connectionExpires);certificate=codec.json(identity);
+                var endpoint=new EndpointDeviceRecord(review.deviceId(),tenant.value(),user,review.keyFingerprint(),EndpointState.ACTIVE,1L,0L,0L,null,connectionExpires);
                 tx.saveEndpoint(new Store.EndpointRecord(review.deviceId(),review.keyFingerprint(),codec.json(endpoint),row.csr(),"0".repeat(64),"{}"));
                 // Directory metadata cannot grant device credentials; enrollment creates the matching bounded record atomically.
                 var before=tx.load();var id=Ids.Kind.DEVICE.id(review.deviceId());if(tx.used(id)||before.entries().containsKey(id))throw Failure.conflict();
                 var entry=codec.entry(Ids.Kind.DEVICE,codec.json(new ControlDevice(review.deviceId(),"Enrolled "+review.platform(),true,1L,user)));
                 var entries=new HashMap<>(before.entries());entries.put(id,entry);var after=new Directory(before.revision()+1,entries);after.validate(512,1048576);tx.save(before,after);
             }
-            var updated=withState(review,state);tx.saveEnrollment(new Store.EnrollmentRecord(row.id(),row.codeDigest(),row.deviceDigest(),codec.json(updated),row.csr(),approve?user:null,certificate,row.expiresAt(),row.lastPoll()));
+            var updated=new EndpointEnrollmentReview(review.enrollmentId(),review.userCode(),review.deviceId(),review.platform(),review.keyFingerprint(),state,review.expiresAtUnixMs(),connectionExpires);tx.saveEnrollment(new Store.EnrollmentRecord(row.id(),row.codeDigest(),row.deviceDigest(),codec.json(updated),row.csr(),approve?user:null,certificate,row.expiresAt(),row.lastPoll()));
             tx.audit(actor.id(),approve?"ENROLLMENT_APPROVE":"ENROLLMENT_DENY","endpoint:"+review.deviceId(),1,requestId,digest);
             var result=reply(updated,1);tx.remember(actor.id(),key,digest,result);return result;
         });
@@ -152,11 +161,13 @@ public final class EndpointService {
             if(check.sequence()!=device.reportSequence()+1)throw Failure.conflict();
             // Allow the 500 ms cycle with transport jitter; reject request bursts.
             if(device.reportSequence()>0 && now-device.lastSeenUnixMs()<250)throw Failure.conflict();
-            DeviceIdentity renewed=null;if(peer.getNotAfter().getTime()-now<43200000)renewed=issuer.issue(row.csr(),device.deviceId(),tenant.value(),device.userId(),server,now);
+            // A certificate already capped at the approved deadline needs no repeated renewal.
+            long connectionExpires=device.connectionExpiresAtUnixMs()==null?Long.MAX_VALUE:device.connectionExpiresAtUnixMs();
+            DeviceIdentity renewed=null;if(peer.getNotAfter().getTime()-now<43200000&&peer.getNotAfter().getTime()<connectionExpires/1000*1000)renewed=issuer.issue(row.csr(),device.deviceId(),tenant.value(),device.userId(),server,now,connectionExpires);
             var configuration=new EndpointPermissions(codec).poll(tx,device,server,check.configurationDigest(),check.localTools());
             var task=relay().poll(tx,device,now,requestId);
             var ack=new EndpointCheckInAck(device.deviceId(),check.sequence(),now,2L,null,renewed,configuration,task);
-            var updated=new EndpointDeviceRecord(device.deviceId(),tenant.value(),device.userId(),fingerprint,EndpointState.ACTIVE,device.revision()+1,now,check.sequence(),check.report());
+            var updated=new EndpointDeviceRecord(device.deviceId(),tenant.value(),device.userId(),fingerprint,EndpointState.ACTIVE,device.revision()+1,now,check.sequence(),check.report(),device.connectionExpiresAtUnixMs());
             var response=reply(ack,updated.revision());tx.saveEndpoint(new Store.EndpointRecord(row.id(),row.fingerprint(),codec.json(updated),row.csr(),digest,response.body()));
             tx.audit(fingerprint,renewed==null?"DEVICE_CHECK_IN":"DEVICE_RENEW","endpoint:"+row.id(),updated.revision(),requestId,digest);return interval(response,milliseconds);
         });
@@ -166,7 +177,7 @@ public final class EndpointService {
         if(row==null)throw forbidden();var device=codec.model(row.document(),EndpointDeviceRecord.class);active(tx,device);return device;
     }
     public void active(Store.Session tx,EndpointDeviceRecord device){
-        if(device.state()!=EndpointState.ACTIVE)throw forbidden();enabledUser(tx,device.userId());
+        if(device.state()!=EndpointState.ACTIVE||(device.connectionExpiresAtUnixMs()!=null&&device.connectionExpiresAtUnixMs()<=clock.millis()))throw forbidden();enabledUser(tx,device.userId());
         var entry=tx.load().entries().get(Ids.Kind.DEVICE.id(device.deviceId()));
         if(entry==null||!entry.enabled()||!device.userId().equals(codec.model(entry.document(),ControlDevice.class).ownerUserId()))throw forbidden();
     }
@@ -179,7 +190,7 @@ public final class EndpointService {
         return transaction((tx,now)->{var replay=tx.replay(actor.id(),key,digest);if(replay!=null)return replay;
             var row=tx.endpoint(id);if(row==null)throw Failure.conflict();var device=codec.model(row.document(),EndpointDeviceRecord.class);
             if(!request.expectedRevision().equals(device.revision())||device.state()==EndpointState.REVOKED)throw Failure.conflict();
-            var updated=new EndpointDeviceRecord(id,tenant.value(),device.userId(),row.fingerprint(),EndpointState.REVOKED,device.revision()+1,device.lastSeenUnixMs(),device.reportSequence(),device.report());
+            var updated=new EndpointDeviceRecord(id,tenant.value(),device.userId(),row.fingerprint(),EndpointState.REVOKED,device.revision()+1,device.lastSeenUnixMs(),device.reportSequence(),device.report(),device.connectionExpiresAtUnixMs());
             tx.saveEndpoint(new Store.EndpointRecord(id,row.fingerprint(),codec.json(updated),row.csr(),row.reportDigest(),row.acknowledgment()));
             tx.audit(actor.id(),"DEVICE_REVOKE","endpoint:"+id,updated.revision(),requestId,digest);var result=reply(updated,updated.revision());tx.remember(actor.id(),key,digest,result);return result;
         });

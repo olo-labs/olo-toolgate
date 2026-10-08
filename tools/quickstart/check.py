@@ -149,8 +149,12 @@ def smoke(image,browser):
             csr=x509.CertificateSigningRequestBuilder().subject_name(x509.Name([x509.NameAttribute(x509.NameOID.COMMON_NAME,'test-device')])).sign(device_key,hashes.SHA256())
             body={'deviceId':'quickstart-test-device','clientVersion':'0.10.0-dev','platform':'LINUX','csrPem':csr.public_bytes(serialization.Encoding.PEM).decode(),'capabilities':[]}
             status,challenge=tls(secure+'/api/control/v1/endpoint/enrollments',context,body=body,method='POST');assert status==200,(status,challenge)
+            status,pending=api('/api/control/v1/endpoint/enrollments',admin);assert status==200 and pending['items'][0]['deviceId']==body['deviceId'],(status,pending)
+            assert 'deviceCode' not in json.dumps(pending) and 'csrPem' not in json.dumps(pending)
             status,review=api('/api/control/v1/endpoint/enrollments/review?code='+challenge['userCode'],admin);assert status==200,(status,review)
             status,result=api('/api/control/v1/endpoint/enrollments/decision',admin,{'userCode':challenge['userCode'],'keyFingerprint':review['keyFingerprint'],'choice':'APPROVE'},'POST');assert status==200,(status,result)
+            assert 0 < result['connectionExpiresAtUnixMs']-int(time.time()*1000) <= 86400000
+            assert api('/api/control/v1/endpoint/enrollments',admin)[1]['items']==[]
             status,result=tls(secure+'/api/control/v1/endpoint/enrollments/poll',context,body={'enrollmentId':challenge['enrollmentId'],'deviceCode':challenge['deviceCode']},method='POST');assert status==200 and result['state']=='CONSUMED',(status,result)
             identity=result['identity'];certificate=temp/'device.pem';private=temp/'device-key.pem'
             certificate.write_text(identity['certificatePem'],encoding='utf-8');private.write_bytes(device_key.private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.PKCS8,serialization.NoEncryption()))

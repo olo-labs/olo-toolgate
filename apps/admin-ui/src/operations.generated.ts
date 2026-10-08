@@ -11,6 +11,7 @@ export const operations = {
   publicClientConfiguration: { method: 'GET', path: '/api/public/v1/clients/configuration' },
   publicConfiguredWindowsInstaller: { method: 'GET', path: '/api/public/v1/clients/setup/{target}' },
   clientDiscovery: { method: 'GET', path: '/.well-known/olo-toolgate-client' },
+  listEndpointEnrollments: { method: 'GET', path: '/api/control/v1/endpoint/enrollments' },
   startEndpointEnrollment: { method: 'POST', path: '/api/control/v1/endpoint/enrollments' },
   pollEndpointEnrollment: { method: 'POST', path: '/api/control/v1/endpoint/enrollments/poll' },
   reviewEndpointEnrollment: { method: 'GET', path: '/api/control/v1/endpoint/enrollments/review' },
