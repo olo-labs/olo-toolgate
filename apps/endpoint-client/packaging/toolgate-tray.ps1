@@ -12,6 +12,7 @@ $trayConfig = 'C:\ProgramData\OLO\ToolGate\client.json'
 $script:trayProcess = $null
 $script:trayStarted = $null
 $script:trayDetail = 'Checking the ToolGate service...'
+$script:trayState = ''
 $trayIcon = New-Object System.Windows.Forms.NotifyIcon
 $trayIcon.Icon = [System.Drawing.SystemIcons]::Information
 $trayIcon.Text = 'ToolGate: checking service'
@@ -25,8 +26,16 @@ $trayConsole = $trayMenu.Items.Add('Open ToolGate console')
 $trayConsole.add_Click({
     $trayServer = (Get-ItemProperty -LiteralPath 'HKLM:\Software\OLO\ToolGate' -ErrorAction SilentlyContinue).ServerUrl
     if ($trayServer -match '^https://[a-zA-Z0-9.\[\]:/-]+$') {
-        Start-Process ($trayServer.TrimEnd('/') + '/console/')
+        $trayRoute = if ($script:trayState -in @('UNENROLLED', 'PENDING')) { '/console/#enroll' } else { '/console/' }
+        Start-Process ($trayServer.TrimEnd('/') + $trayRoute)
     }
+})
+$trayPackets = $trayMenu.Items.Add('View messages sent / received')
+$trayPackets.add_Click({
+    $trayPacketScript = Join-Path $PSScriptRoot 'toolgate-packets.ps1'
+    try {
+        Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -Verb RunAs -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'RemoteSigned', '-File', "`"$trayPacketScript`"")
+    } catch { $script:trayDetail = 'Packet viewer was cancelled or could not start.' }
 })
 $trayUninstall = $trayMenu.Items.Add('Uninstall ToolGate...')
 $trayUninstall.add_Click({
@@ -54,8 +63,23 @@ $trayTimer.add_Tick({
             $trayHealth = $script:trayProcess.StandardOutput.ReadToEnd() | ConvertFrom-Json
             if ($trayHealth.error -or -not $trayHealth.state) { throw 'Health unavailable' }
             $trayState = [string]$trayHealth.state
-            $script:trayDetail = "Service running`r`nState: $trayState`r`nReady: $($trayHealth.ready)`r`nSuccessful check-ins: $($trayHealth.successfulCheckIns)`r`nFailed check-ins: $($trayHealth.failedCheckIns)"
-            $trayIcon.Text = 'ToolGate: ' + $trayState.ToLowerInvariant()
+            $script:trayState = $trayState
+            $trayStatusText = switch ($trayState) {
+                'UNENROLLED' { 'Enrollment required' }
+                'PENDING' { 'Waiting for enrollment approval' }
+                'REVOKED' { 'Enrollment revoked' }
+                'OFFLINE' { 'Offline - waiting for gateway' }
+                'ACTIVE' { if ($trayHealth.ready) { 'Connected' } else { 'Waiting for gateway check-in' } }
+                default { 'Checking connection' }
+            }
+            $trayGuidance = switch ($trayState) {
+                'UNENROLLED' { 'Open Enroll Device and click Connect to start enrollment.' }
+                'PENDING' { 'Approve the enrollment code and fingerprint on Enroll Device.' }
+                'REVOKED' { 'Contact your administrator to enroll this device again.' }
+                default { if ($trayHealth.ready) { 'Protected tools are ready.' } else { 'Protected tools will be ready after enrollment and a successful gateway check-in.' } }
+            }
+            $script:trayDetail = "Service running`r`nStatus: $trayStatusText`r`n$trayGuidance`r`nSuccessful check-ins: $($trayHealth.successfulCheckIns)`r`nFailed check-ins: $($trayHealth.failedCheckIns)"
+            $trayIcon.Text = 'ToolGate: ' + $trayStatusText
             $trayIcon.Icon = if ($trayHealth.ready) { [System.Drawing.SystemIcons]::Information } else { [System.Drawing.SystemIcons]::Warning }
         } catch {
             $trayService = Get-Service -Name OloToolGateClient -ErrorAction SilentlyContinue

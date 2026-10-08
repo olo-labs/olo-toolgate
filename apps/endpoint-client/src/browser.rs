@@ -47,9 +47,39 @@ async fn fetch(client: &reqwest::Client, url: &str, limit: u64) -> Result<Vec<u8
 }
 pub async fn connect(console_url: &str) -> Result<String> {
     let origin = console_origin(console_url)?;
+    let server = site_server(&origin).await?;
+    configure_client(server)
+}
+/// Setup can use the local console address while service traffic remains HTTPS.
+pub async fn installation_server(value: &str) -> Result<String> {
+    let value = value.trim();
+    if let Ok(server) = crate::config::origin(value) {
+        return Ok(server);
+    }
+    let value = if value.starts_with("localhost:") || value.starts_with("127.0.0.1:") {
+        format!("http://{value}")
+    } else {
+        value.to_owned()
+    };
+    let url = reqwest::Url::parse(&value).map_err(|_| Failure::Validation)?;
+    if value.len() > 2048
+        || url.scheme() != "http"
+        || !matches!(url.host_str(), Some("localhost" | "127.0.0.1"))
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.path() != "/"
+        || url.query().is_some()
+        || url.fragment().is_some()
+    {
+        return Err(Failure::Validation);
+    }
+    site_server(url.as_str().trim_end_matches('/')).await
+}
+async fn site_server(origin: &str) -> Result<String> {
+    let _ = rustls::crypto::ring::default_provider().install_default();
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
-        .timeout(std::time::Duration::from_secs(120))
+        .timeout(std::time::Duration::from_secs(15))
         .build()
         .map_err(|_| Failure::Unavailable)?;
     let document = fetch(
@@ -60,7 +90,9 @@ pub async fn connect(console_url: &str) -> Result<String> {
     .await?;
     let config: SiteConfiguration =
         serde_json::from_slice(&document).map_err(|_| Failure::Validation)?;
-    let server = crate::config::origin(&config.server_url)?;
+    crate::config::origin(&config.server_url)
+}
+fn configure_client(server: String) -> Result<String> {
     let executable = std::env::current_exe().map_err(|_| Failure::Unavailable)?;
     let cli = executable
         .parent()
@@ -130,6 +162,93 @@ fn elevate(path: &Path, parameters: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    async fn local_configuration(response: String) -> (String, tokio::task::JoinHandle<()>) {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let origin = format!("http://{}", listener.local_addr().unwrap());
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut request = Vec::new();
+            loop {
+                let mut bytes = [0; 1024];
+                let count = stream.read(&mut bytes).await.unwrap();
+                assert!(count > 0 && request.len() + count < 8192);
+                request.extend_from_slice(&bytes[..count]);
+                if request.windows(4).any(|part| part == b"\r\n\r\n") {
+                    break;
+                }
+            }
+            let request = String::from_utf8(request).unwrap();
+            assert!(request.starts_with("GET /api/public/v1/clients/configuration HTTP/1.1\r\n"));
+            assert!(!request.to_lowercase().contains("authorization:"));
+            stream.write_all(response.as_bytes()).await.unwrap();
+        });
+        (origin, server)
+    }
+    fn response(body: &str) -> String {
+        format!(
+            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        )
+    }
+    #[tokio::test]
+    async fn installer_resolves_local_console_to_https_without_browser_setup() {
+        let (origin, server) =
+            local_configuration(response(r#"{"serverUrl":"https://localhost:18450"}"#)).await;
+        let shorthand = origin.strip_prefix("http://").unwrap();
+        assert_eq!(
+            installation_server(shorthand).await.unwrap(),
+            "https://localhost:18450"
+        );
+        server.await.unwrap();
+        assert_eq!(
+            installation_server(" https://gate.example/ ")
+                .await
+                .unwrap(),
+            "https://gate.example"
+        );
+    }
+    #[tokio::test]
+    async fn installer_rejects_remote_http_credentials_and_non_origin_urls() {
+        for value in [
+            "http://gate.example",
+            "http://localhost.evil.example:18090",
+            "http://user:password@localhost:18090",
+            "https://user:password@gate.example",
+            "http://localhost:18090/other",
+            "http://localhost:18090/?server=evil",
+            "http://localhost:18090/#enroll",
+            "https://gate.example/other",
+            "https://gate.example?server=evil",
+            "file:///etc/passwd",
+        ] {
+            assert!(installation_server(value).await.is_err(), "{value}");
+        }
+    }
+    #[tokio::test]
+    async fn installer_never_follows_redirects_or_accepts_invalid_configuration() {
+        for body in [
+            r#"{"serverUrl":"http://gate.example"}"#,
+            r#"{"serverUrl":"https://user:password@gate.example"}"#,
+            r#"{"serverUrl":"https://gate.example/other"}"#,
+            r#"{"serverUrl":"https://gate.example","credentials":"unexpected"}"#,
+            "not-json",
+        ] {
+            let (origin, server) = local_configuration(response(body)).await;
+            assert!(installation_server(&origin).await.is_err());
+            server.await.unwrap();
+        }
+        let (origin, server) = local_configuration(
+            "HTTP/1.1 302 Found\r\nLocation: https://gate.example\r\nContent-Length: 0\r\n\r\n"
+                .into(),
+        )
+        .await;
+        assert!(installation_server(&origin).await.is_err());
+        server.await.unwrap();
+        let (origin, server) = local_configuration(response(&"x".repeat(4097))).await;
+        assert!(installation_server(&origin).await.is_err());
+        server.await.unwrap();
+    }
     #[test]
     fn only_https_console_origins_are_accepted() {
         assert_eq!(

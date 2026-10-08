@@ -1,7 +1,7 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
 import { afterEach, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { ClientDownloads } from '../src/ClientDownloads';
 import type { ClientDownloadManifest } from '@olo-labs/toolgate-contracts';
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
@@ -11,7 +11,7 @@ const manifest: ClientDownloadManifest = { version:'0.7.0-dev', artifacts:[
   { platform:'LINUX',target:'x86_64-unknown-linux-gnu',filename:'olo-toolgate-client-0.7.0-dev-x86_64-unknown-linux-gnu.tar.gz',sha256:'c'.repeat(64),bytes:123 },
 ] };
 it('downloads all three platforms without a login credential and explains logged-out service operation', async () => {
-  const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify(manifest))); vi.stubGlobal('fetch',fetcher);
+  const fetcher = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify(manifest)))); vi.stubGlobal('fetch',fetcher);
   render(<ClientDownloads />);
   await screen.findByText(/Windows installers are unavailable/);
   expect(screen.queryByRole('link',{name:'Download Windows x64'})).toBeNull();
@@ -37,4 +37,37 @@ it('offers Windows EXE installers without exposing Windows ZIP archives', async 
   expect(screen.getByRole('link', { name: 'Install Linux x64' })).toBeTruthy();
   expect(screen.queryByRole('link', { name: 'Download Windows x64' })).toBeNull();
   expect(screen.getByText(/These development installers are unsigned/)).toBeTruthy();
+});
+it('shows the published gateway rather than the console origin and copies it for setup', async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  vi.stubGlobal('navigator', { clipboard: { writeText } });
+  const fetcher = vi.fn().mockImplementation((url: string) => Promise.resolve(new Response(JSON.stringify(
+    url.endsWith('/configuration') ? { serverUrl: 'https://localhost:18450' } : manifest))));
+  vi.stubGlobal('fetch', fetcher);
+  render(<ClientDownloads />);
+  const field = await screen.findByLabelText('Gateway URL') as HTMLInputElement;
+  expect(field.value).toBe('https://localhost:18450');
+  expect(field.readOnly).toBe(true);
+  expect(screen.getByText('https://localhost:18450')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Copy Gateway URL' }));
+  expect(await screen.findByText('Gateway URL copied.')).toBeTruthy();
+  expect(writeText).toHaveBeenCalledWith('https://localhost:18450');
+  expect(fetcher.mock.calls.find(([url]) => url.endsWith('/configuration'))?.[1]).toMatchObject({ credentials: 'omit', redirect: 'error', cache: 'no-store' });
+});
+it('keeps the gateway selectable when clipboard access is unavailable', async () => {
+  vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockRejectedValue(Error('Unavailable')) } });
+  vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => Promise.resolve(new Response(JSON.stringify(
+    url.endsWith('/configuration') ? { serverUrl: 'https://gateway.example' } : manifest)))));
+  render(<ClientDownloads />);
+  await screen.findByLabelText('Gateway URL');
+  fireEvent.click(screen.getByRole('button', { name: 'Copy Gateway URL' }));
+  expect(await screen.findByText('Select the Gateway URL above and copy it.')).toBeTruthy();
+});
+it('does not advertise an invalid gateway as the installation address', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => Promise.resolve(new Response(JSON.stringify(
+    url.endsWith('/configuration') ? { serverUrl: 'https://user:password@gateway.example' } : manifest)))));
+  render(<ClientDownloads />);
+  expect(await screen.findByText(/Gateway URL is unavailable/)).toBeTruthy();
+  expect(screen.queryByLabelText('Gateway URL')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Copy Gateway URL' })).toBeNull();
 });

@@ -15,7 +15,7 @@ class BuiltinContracts(unittest.TestCase):
     def test_fixed_closed_catalog_has_no_delete_or_generic_execution(self):
         catalog=json.loads((ROOT/'packages/contracts/tools/builtins.json').read_text())['tools']
         expected={'hotfolder.'+name for name in ['list','read_text','write_text','append_text','mkdir','file_info','search_text','watch_events','hash','move','copy','list_events']}
-        expected.update(['calculator.evaluate','text.transform','json.validate','hash.sha256','system.info','web.search'])
+        expected.update(['client.read_log_entry','calculator.evaluate','text.transform','json.validate','hash.sha256','system.info','web.search'])
         self.assertEqual(expected,{tool['toolId'] for tool in catalog})
         for tool in catalog:
             Draft202012Validator.check_schema(tool['inputSchema'])

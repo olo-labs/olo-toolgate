@@ -274,9 +274,27 @@ def call(path, token=None, body=None, port=8082, secure=False, method=None, extr
     finally: client.close()
 
 
+def client_credentials():
+    """Optional administrator-installed hashes; never issue an agent token through the portal."""
+    if os.environ.get('TOOLGATE_QUICKSTART_CLIENT_CREDENTIALS', 'false') != 'true': return []
+    path = DATA/'client-runtime-credentials.json'
+    if not path.exists(): return []
+    metadata = path.stat()
+    if path.is_symlink() or not path.is_file() or metadata.st_size > 65536 or metadata.st_mode & 0o077 or metadata.st_uid not in (0, os.geteuid()): raise ValueError('Unsafe client credential file')
+    values = strict(path.read_bytes())
+    fields = {'tokenSha256','tenantId','userId','agentId','deviceId','expiresAtUnixMs'}
+    if not isinstance(values, list) or len(values) > 32: raise ValueError('Invalid client credentials')
+    now = int(time.time()*1000)
+    for value in values:
+        if not isinstance(value, dict) or set(value) != fields or value['tenantId'] != TENANT or not isinstance(value['expiresAtUnixMs'], int) or isinstance(value['expiresAtUnixMs'], bool) or not isinstance(value['tokenSha256'], str) or not re.fullmatch('[a-f0-9]{64}', value['tokenSha256']): raise ValueError('Invalid client credentials')
+        for field in ('userId','agentId','deviceId'):
+            if not isinstance(value[field], str) or not re.fullmatch('[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}', value[field]): raise ValueError('Invalid client identity')
+    return [value for value in values if value['expiresAtUnixMs'] > now]
+
 def configure():
     runtime = secrets.token_urlsafe(48); atomic(DATA/'run/runtime-token', runtime)
     credentials = [{'tokenSha256': hashlib.sha256(runtime.encode()).hexdigest(), 'tenantId': TENANT, 'userId': 'local-tools', 'agentId': 'agent-default', 'deviceId': 'local-builtins', 'expiresAtUnixMs': int(time.time()*1000)+86400000}]
+    credentials.extend(client_credentials())
     atomic(DATA/'run/credentials.json', json.dumps(credentials))
     numbers = key('policy').public_key().public_numbers()
     encode_number = lambda n: base64.urlsafe_b64encode(n.to_bytes((n.bit_length()+7)//8,'big')).rstrip(b'=').decode()
@@ -310,7 +328,9 @@ def configure():
                 'TOOLGATE_CONTROL_APPROVAL_ENABLED': 'true', 'TOOLGATE_CONTROL_ENDPOINT_ENABLED': 'true',
                 'TOOLGATE_CONTROL_ENDPOINT_PRIVATE_KEY_PATH': '/data/keys/device-ca.pem', 'TOOLGATE_CONTROL_ENDPOINT_CA_CERTIFICATE_PATH': '/data/keys/device-ca.crt',
                 'TOOLGATE_CONTROL_ENDPOINT_TENANT_ID': TENANT, 'TOOLGATE_CONTROL_ENDPOINT_SERVER_ID': 'quickstart-server',
-                'TOOLGATE_CONTROL_ENDPOINT_ORGANIZATION': 'Quickstart', 'TOOLGATE_CONTROL_ENDPOINT_CONTROL_URL': 'https://localhost:8443', 'TOOLGATE_CONTROL_ENDPOINT_GATEWAY_URL': 'https://localhost:8443',
+                'TOOLGATE_CONTROL_ENDPOINT_ORGANIZATION': 'Quickstart',
+                'TOOLGATE_CONTROL_ENDPOINT_CONTROL_URL': env.get('TOOLGATE_CONTROL_ENDPOINT_CONTROL_URL', 'https://localhost:8443'),
+                'TOOLGATE_CONTROL_ENDPOINT_GATEWAY_URL': env.get('TOOLGATE_CONTROL_ENDPOINT_GATEWAY_URL', 'https://localhost:8443'),
                 'TOOLGATE_CLIENT_DOWNLOADS_DIRECTORY': '/opt/toolgate/client-downloads'}
     if database_mode() == 'postgresql':
         for name in ('QUARKUS_DATASOURCE_JDBC_URL','QUARKUS_DATASOURCE_USERNAME','QUARKUS_DATASOURCE_PASSWORD','QUARKUS_FLYWAY_USERNAME','QUARKUS_FLYWAY_PASSWORD'):
@@ -447,7 +467,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if protected: session(self.headers.get('Authorization',''))
             if path=='/api/quickstart/v1/tools' and self.command=='GET':
                 catalog = self.server.cache.get()
-                return self.reply(200, {**catalog, 'tools': [{**item, 'enabled': item['toolId']!='web.search'} for item in catalog['tools']]})
+                return self.reply(200, {**catalog, 'tools': [{**item, 'enabled': item.get('enabled', False) and item['toolId']!='web.search'} for item in catalog['tools']]})
             if path=='/api/quickstart/v1/invoke' and self.command=='POST':
                 data = strict(raw)
                 token_ = (DATA/'run/runtime-token').read_text()

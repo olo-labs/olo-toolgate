@@ -82,6 +82,7 @@ pub struct Executor {
     web: Option<(reqwest::Client, String)>,
     web_domains: Vec<String>,
     epoch: String,
+    packet_log: Option<crate::diagnostics::PacketLog>,
 }
 impl Executor {
     pub fn new(settings: &Settings, authorization: Arc<dyn AuthorizationPort>) -> Result<Self> {
@@ -94,8 +95,10 @@ impl Executor {
         let mut validators = BTreeMap::new();
         for item in data["tools"].as_array().ok_or(Failure::Validation)? {
             let mut item = item.clone();
-            item["enabled"] =
-                json!(item["toolId"] != "web.search" || settings.web_search_token_path.is_some());
+            item["enabled"] = json!(
+                item["toolId"] != "client.read_log_entry"
+                    && (item["toolId"] != "web.search" || settings.web_search_token_path.is_some())
+            );
             let tool: BuiltinToolInfo =
                 serde_json::from_value(item).map_err(|_| Failure::Validation)?;
             validators.insert(
@@ -125,7 +128,19 @@ impl Executor {
             events: VecDeque::new(),
             sequence: 0,
             web,
+            packet_log: None,
         })
+    }
+    pub fn with_packet_log(mut self, log: crate::diagnostics::PacketLog) -> Self {
+        self.packet_log = Some(log);
+        if let Some(tool) = self
+            .catalog
+            .iter_mut()
+            .find(|tool| tool.tool_id == "client.read_log_entry")
+        {
+            tool.enabled = true;
+        }
+        self
     }
     pub fn catalog(&self) -> Vec<BuiltinToolInfo> {
         self.catalog.clone()
@@ -184,6 +199,9 @@ impl Executor {
             return Err(Failure::Expired);
         }
         let result = match tool.tool_id.as_str() {
+            "client.read_log_entry" => {
+                json!({"file":"packets.jsonl","entry":self.packet_log.as_ref().ok_or(Failure::Unsupported)?.latest()?})
+            }
             "hotfolder.list" => json!({"paths":self.folder.list()?}),
             "hotfolder.read_text" => {
                 json!({"text":String::from_utf8(self.folder.read(path)?).map_err(|_|Failure::Validation)?})

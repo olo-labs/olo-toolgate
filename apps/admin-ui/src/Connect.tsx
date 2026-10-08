@@ -23,7 +23,7 @@ export function extensionStatus(signal:AbortSignal,operation:'hello'|'connect'|'
   });
 }
 export function Connect({onCode,onCancel}:{onCode:(code:string)=>void;onCancel?:()=>void}) {
-  const [message,setMessage]=useState('Connect installs the client if needed and configures it for this gateway through the Chrome extension.');
+  const [message,setMessage]=useState('Install the combined setup and enable the Chrome extension, then Connect to configure this gateway and enroll the client.');
   const [busy,setBusy]=useState(false),[release,setRelease]=useState<ExtensionRelease>();
   const [installer,setInstaller]=useState<string>();
   const active=useRef<AbortController|undefined>(undefined);
@@ -48,11 +48,11 @@ export function Connect({onCode,onCancel}:{onCode:(code:string)=>void;onCancel?:
           const document=await setupResponse.text();
           if(document.length<=65536) {
             const setup=JSON.parse(document) as ClientInstallerManifest;
-            const target=/ARM|aarch64/i.test(navigator.userAgent)?'aarch64-pc-windows-msvc':'x86_64-pc-windows-msvc';
-            const asset=Array.isArray(setup.artifacts)?setup.artifacts.find(a=>a.platform==='WINDOWS'&&a.target===target):undefined;
-            if(setup.version===value.version&&asset&&asset.filename===`olo-toolgate-client-${value.version}-${target}.setup.exe`
+            const targets=/ARM|aarch64/i.test(navigator.userAgent)?['aarch64-pc-windows-msvc']:['x86_64-pc-windows-msvc','x86_64-pc-windows-gnu'];
+            const asset=Array.isArray(setup.artifacts)?targets.map(target=>setup.artifacts.find(a=>a.platform==='WINDOWS'&&a.target===target)).find(Boolean):undefined;
+            if(setup.version===value.version&&asset&&asset.filename===`olo-toolgate-client-${value.version}-${asset.target}.setup.exe`
               &&/^[a-f0-9]{64}$/.test(asset.sha256)&&Number.isSafeInteger(asset.bytes)&&asset.bytes>0&&asset.bytes<=104857600)
-              setInstaller(target);
+              setInstaller(asset.target);
           }
         }
       } catch { /* Missing setup must not turn an extension ZIP into an installer. */ }
@@ -61,7 +61,7 @@ export function Connect({onCode,onCancel}:{onCode:(code:string)=>void;onCancel?:
         let status:ConnectStatus|undefined;
         try { status=await extensionStatus(controller.signal,detected?'status':'hello'); } catch { if(controller.signal.aborted)break;detected=false; }
         if(controller.signal.aborted)break;
-        if(!status) setMessage('Install the Chrome extension below. This page will detect it automatically and continue client setup.');
+        if(!status) setMessage('Chrome extension not detected. Complete the Chrome setup steps below. This page will detect it automatically and continue client setup.');
         else if(status.protocol!==1||status.chromeVersion!==value.chromeVersion||status.version!==value.version)
           setMessage('Upgrade the Chrome extension below. This page will detect the new version automatically.');
         else {
@@ -92,9 +92,13 @@ export function Connect({onCode,onCancel}:{onCode:(code:string)=>void;onCancel?:
     <p role="status">{message}</p>
     {release&&<><p>Chrome extension {release.chromeVersion} · Client {release.version}</p>
       {installer?<a href={`/api/public/v1/clients/setup/${installer}`} download>Install Chrome extension and client</a>:<p>Windows setup is not published for this client release.</p>}
-      <p>One EXE installs the client, Chrome extension files, native bridge and tray icon. This gateway's URL is supplied automatically; no URL entry is required. Windows may request administrator permission. Once Chrome approves the extension, this page detects the client and starts enrollment if needed.</p>
+      <p>One EXE installs the client, Chrome extension files, native bridge and tray icon. Setup includes an optional Gateway URL field: keep https://localhost:18450 for a local gateway, or paste the Gateway URL shown in the client downloads below. Windows may request administrator permission. Once Chrome approves the extension, this page detects the client and starts enrollment if needed.</p>
       {release.storeUrl?<a href={release.storeUrl} target="_blank" rel="noopener noreferrer">Install or upgrade Chrome extension</a>
-        : <p>A Chrome Web Store listing is not configured yet. Open chrome://extensions, enable Developer mode and choose Load unpacked from Program Files\OLO\ToolGateSetup\chrome-extension. This page continues automatically after Chrome approves the extension.</p>}
+        : <div className="guidance"><h3>Enable the Chrome extension for this local build</h3>
+          <p>A Chrome Web Store listing is not configured yet. The EXE installs extension files; Chrome requires you to enable them before this page can detect the client.</p>
+          <ol><li>Install the combined setup above.</li><li>Open <code>chrome://extensions</code> in Chrome and enable <strong>Developer mode</strong>.</li>
+            <li>Click <strong>Load unpacked</strong> and select <code>C:\Program Files\OLO\ToolGateSetup\chrome-extension</code>.</li>
+            <li>Return to this page. Detection continues automatically while Connect is running; otherwise click <strong>Connect</strong>.</li></ol></div>}
       <details><summary>Extension SHA-256</summary><code>{release.sha256}</code></details></>}
   </section>;
 }

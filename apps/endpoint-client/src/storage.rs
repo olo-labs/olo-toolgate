@@ -113,6 +113,7 @@ impl ProtectedStore {
         if !matches!(
             name,
             "device-key"
+                | "packets.jsonl"
                 | "journal.json"
                 | "permissions.json"
                 | "remote-journal.json"

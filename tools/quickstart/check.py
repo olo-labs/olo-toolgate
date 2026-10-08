@@ -3,6 +3,7 @@
 """Real one-image SQLite, Gateway, ASK, direct TLS enrollment and offline recovery gate."""
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -136,6 +137,13 @@ def smoke(image,browser):
             temp=Path(temp);ca=temp/'ca.pem'
             ca.write_bytes(run(['docker','exec',container,'cat','/data/keys/device-ca.crt'],capture_output=True).stdout)
             context=ssl.create_default_context(cafile=str(ca));secure=f'https://127.0.0.1:{tls_port}'
+            runtime_token=temp/'agent-token'
+            runtime_token.write_bytes(run(['docker','exec',container,'cat','/data/run/runtime-token'],capture_output=True).stdout);runtime_token.chmod(0o600)
+            spec=importlib.util.spec_from_file_location('quickstart_mimic',ROOT/'debug/agent-mimic.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+            agent=module.Agent(secure,runtime_token,ca)
+            assert module.VERSION in agent.rpc('server/discover')['supportedVersions']
+            assert agent.rpc('tools/list')['tools']==[]
+            mark('agent-facing TLS MCP/header forwarding/unenrolled catalog isolation')
             assert tls(secure+'/.well-known/olo-toolgate-client',context)[0]==200
             device_key=ec.generate_private_key(ec.SECP256R1())
             csr=x509.CertificateSigningRequestBuilder().subject_name(x509.Name([x509.NameAttribute(x509.NameOID.COMMON_NAME,'test-device')])).sign(device_key,hashes.SHA256())

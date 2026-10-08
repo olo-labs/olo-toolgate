@@ -45,6 +45,9 @@ impl Contracts {
             ("SignedExecutionPermit", "approval"),
             ("ExecutionPermitUseRequest", "approval"),
             ("AuthorizationOutcome", "approval"),
+            ("LocalToolCatalog", "endpoint"),
+            ("RemoteToolSubmission", "endpoint"),
+            ("RemoteToolResponse", "endpoint"),
         ] {
             let options = jsonschema::options().with_registry(&registry);
             let schema = json!({"$schema":"https://json-schema.org/draft/2020-12/schema", "$ref":format!("https://schemas.ololabs.io/toolgate/v1/{file}.schema.json#/$defs/{name}")});

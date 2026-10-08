@@ -111,7 +111,9 @@ async fn execute(
             .tools
             .clone()
             .unwrap_or_else(|| builtin_settings(&config));
-        let mut executor = crate::builtins::Executor::new(&settings, auth)?;
+        let mut executor = crate::builtins::Executor::new(&settings, auth)?.with_packet_log(
+            crate::diagnostics::PacketLog::open(config.state_directory.clone())?,
+        );
         let input = BuiltinInvocation {
             tool_id: task.request.tool_id,
             arguments: task.request.arguments,

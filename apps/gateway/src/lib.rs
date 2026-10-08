@@ -7,6 +7,7 @@ pub mod audit;
 pub mod auth;
 pub mod bundles;
 pub mod config;
+mod diagnostics;
 pub mod extraction;
 pub mod http;
 pub mod limits;

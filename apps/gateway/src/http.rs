@@ -211,6 +211,7 @@ pub(crate) fn error(code: ErrorCode, id: &str) -> Response {
 
 async fn guard(State(s): State<Arc<AppState>>, mut request: Request, next: Next) -> Response {
     let started = Instant::now();
+    let mcp_packet = request.uri().path() == "/mcp";
     let correlation = s.correlation(request.headers());
     request.extensions_mut().insert(correlation.clone());
     let span = tracing::info_span!("runtime_request", service="gateway", version=env!("CARGO_PKG_VERSION"), request_id=%correlation.request_id, trace_id=%correlation.trace_id);
@@ -275,6 +276,15 @@ async fn guard(State(s): State<Arc<AppState>>, mut request: Request, next: Next)
     .instrument(span.clone())
     .await;
     let mut result = result;
+    if mcp_packet {
+        crate::diagnostics::packet(
+            "SEND",
+            "/mcp",
+            &correlation.request_id,
+            Some(result.status().as_u16()),
+            serde_json::json!({"code":"HTTP_RESPONSE"}),
+        );
+    }
     result.headers_mut().insert(
         "x-request-id",
         HeaderValue::from_str(&correlation.request_id).expect("generated ASCII identifier"),

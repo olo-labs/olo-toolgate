@@ -28,14 +28,15 @@ Source: "{#PayloadDirectory}\*"; DestDir: "{app}"; Flags: recursesubdirs createa
 Root: HKLM; Subkey: "Software\Google\Chrome\NativeMessagingHosts\io.ololabs.toolgate.connect"; ValueType: string; ValueData: "{app}\browser-host.json"; Flags: uninsdeletekey
 Root: HKLM32; Subkey: "Software\Google\Chrome\Extensions\emmemldedebhbloibichmmdlbpjakfkf"; ValueType: string; ValueName: "update_url"; ValueData: "https://clients2.google.com/service/update2/crx"; Check: StorePublished; Flags: uninsdeletekey
 Root: HKLM; Subkey: "Software\OLO\ToolGate"; ValueType: string; ValueName: "ServerUrl"; ValueData: "{code:ServerUrl}"; Flags: uninsdeletevalue
-Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "OloToolGateTray"; ValueData: """{sys}\WindowsPowerShell\v1.0\powershell.exe"" -NoProfile -WindowStyle Hidden -File ""{app}\packaging\toolgate-tray.ps1"""; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "OloToolGateTray"; ValueData: """{sys}\WindowsPowerShell\v1.0\powershell.exe"" -NoProfile -STA -ExecutionPolicy RemoteSigned -WindowStyle Hidden -File ""{app}\packaging\toolgate-tray.ps1"""; Flags: uninsdeletevalue
 
 [Run]
-Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -WindowStyle Hidden -File ""{app}\packaging\toolgate-tray.ps1"""; Flags: nowait runasoriginaluser
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -STA -ExecutionPolicy RemoteSigned -WindowStyle Hidden -File ""{app}\packaging\toolgate-tray.ps1"""; Flags: nowait runasoriginaluser
 
 [Code]
 #include "windows-context.iss"
 var MaintenancePage: TInputOptionWizardPage;
+    GatewayPage: TInputQueryWizardPage;
     ConfiguredServer: String; ExistingClient, MaintenanceComplete: Boolean;
 function StorePublished: Boolean;
 begin
@@ -49,15 +50,21 @@ procedure InitializeWizard;
 begin
   ExistingClient := FileExists(ExpandConstant('{commonappdata}\OLO\ToolGate\client.json'));
   ConfiguredServer := ExpandConstant('{param:SERVER|}');
-  if ConfiguredServer = '' then ConfiguredServer := ServerFromDownload;
+  if WizardSilent and (ConfiguredServer = '') then ConfiguredServer := ServerFromDownload;
   if ExistingClient and (ConfiguredServer = '') then
     RegQueryStringValue(HKLM, 'Software\OLO\ToolGate', 'ServerUrl', ConfiguredServer);
+  ConfiguredServer := SetupServer(ConfiguredServer);
   MaintenancePage := CreateInputOptionPage(wpWelcome, 'ToolGate is already installed',
     'Choose what to do with the existing client',
     'Reinstall preserves enrollment for the same gateway. Switching gateways starts a new enrollment. Uninstall removes the service and tray icon; device keys are retained.', True, False);
   MaintenancePage.Add('Repair / reinstall');
   MaintenancePage.Add('Uninstall');
   MaintenancePage.SelectedValueIndex := 0;
+  GatewayPage := CreateInputQueryPage(MaintenancePage.ID, 'Gateway connection',
+    'Choose the gateway for this computer',
+    'Copy the Gateway URL shown on Enroll Device, or keep https://localhost:18450 for a local gateway. No credentials are required.');
+  GatewayPage.Add('&Gateway URL (optional):', False);
+  GatewayPage.Values[0] := ConfiguredServer;
 end;
 function ShouldSkipPage(PageID: Integer): Boolean;
 begin
@@ -67,6 +74,12 @@ function NextButtonClick(CurPageID: Integer): Boolean;
 var ExitCode: Integer;
 begin
   Result := True;
+  if CurPageID = GatewayPage.ID then begin
+    ConfiguredServer := SetupServer(GatewayPage.Values[0]);
+    Result := ValidSetupServer(ConfiguredServer);
+    if not Result then
+      MsgBox('Enter a gateway URL, such as https://localhost:18450.', mbError, MB_OK);
+  end;
   if ExistingClient and (CurPageID = MaintenancePage.ID) and (MaintenancePage.SelectedValueIndex = 1) then begin
     Result := False;
     if Exec(ExpandConstant('{app}\unins000.exe'), '/SILENT /SUPPRESSMSGBOXES /NORESTART', '',
@@ -81,10 +94,22 @@ begin
   if MaintenanceComplete then begin Cancel := True; Confirm := False; end;
 end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
+var ExitCode: Integer; Output: TExecOutput;
 begin
   Result := '';
-  if not ValidServer(ConfiguredServer) then
-    Result := 'Gateway configuration is missing. Download this installer from your ToolGate page or use Chrome Connect; no URL entry is required.';
+  if not WizardSilent then ConfiguredServer := SetupServer(GatewayPage.Values[0]);
+  if not ValidSetupServer(ConfiguredServer) then
+    Result := 'Enter a valid gateway URL, such as https://localhost:18450.'
+  else begin
+    ExtractTemporaryFile('olo-toolgate-client.exe');
+    if not ExecAndCaptureOutput(ExpandConstant('{tmp}\olo-toolgate-client.exe'),
+      'resolve-server --server "' + ConfiguredServer + '"', '', SW_SHOWNORMAL, ewWaitUntilTerminated, ExitCode, Output) or
+      (ExitCode <> 0) or Output.Error or (GetArrayLength(Output.StdOut) <> 1) then
+      Result := 'Could not resolve the Gateway URL. Enter the HTTPS Gateway URL shown on Enroll Device, such as https://localhost:18450, then retry.'
+    else if not ValidServer(Output.StdOut[0]) then
+      Result := 'The console did not publish a valid HTTPS Gateway URL.'
+    else ConfiguredServer := Output.StdOut[0];
+  end;
 end;
 procedure CurStepChanged(CurStep: TSetupStep);
 var ExitCode: Integer; HostPath, HostDocument, Operation, Parameters, Peer: String;

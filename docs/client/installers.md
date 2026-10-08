@@ -7,7 +7,10 @@ are separate release steps. An installer cannot remove SmartScreen or Gatekeeper
 warnings. Do not disable machine-wide security protections.
 
 Windows: download the `.setup.exe` from your ToolGate page and approve UAC.
-The gateway URL is supplied automatically; setup never asks for a URL or credentials. Setup installs the Windows LocalSystem service with
+Setup has an optional **Gateway URL** field. For a new installation it defaults to
+`https://localhost:18450`; leave it unchanged for a gateway running locally, or paste
+the current **Gateway URL** shown alongside the downloads on Enroll Device. No
+credentials are required. Setup installs the Windows LocalSystem service with
 automatic startup and registers an entry in Installed Apps for uninstallation.
 It also installs the Chrome extension files, protected native messaging bridge and a tray icon. The tray starts at login and shows connection and enrollment status. Use Enroll device →
 Connect in the Admin console and follow the [Chrome Connect guide](connect.md).
@@ -26,12 +29,16 @@ are internal CI build inputs and are not public installation downloads.
 
 The configured Windows download endpoint is `/api/public/v1/clients/setup/<target>`.
 It uses the server-owned `toolgate.control.endpoint.control-url` setting and carries
-that public HTTPS origin as a hex suffix in the suggested EXE filename. Do not rename
-the file before initial installation. The hint is limited to 90 ASCII characters to
+that public HTTPS origin as a hex suffix in the suggested EXE filename for unattended
+installation. The hint is limited to 90 ASCII characters to
 fit Windows filename limits. The EXE bytes and checksums remain identical to the
 versioned release. Plain release EXEs can use `/SERVER=<HTTPS origin>` for managed
-silent installation; without that configuration, setup reports a missing configuration
-and directs users to the ToolGate page instead of asking for a URL.
+silent installation. Interactive setup uses the optional field; repair starts with
+the existing gateway. A blank field uses `https://localhost:18450`. Silent setup uses
+`/SERVER=`, then the download hint, then the existing gateway, then the localhost
+default. A loopback HTTP console address is resolved to its published HTTPS gateway
+before changing the service. Client communication remains HTTPS. The local console
+must be running for this resolution; setup offers a retry if it is unavailable.
 
 macOS: open the `.dmg`, then `Install ToolGate.app`. Enter your HTTPS Control server
 and approve administrator authentication. A system LaunchDaemon runs independently

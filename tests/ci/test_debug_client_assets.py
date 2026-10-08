@@ -1,0 +1,128 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+import hashlib
+import io
+import json
+from pathlib import Path
+import sys
+import tarfile
+import tempfile
+import unittest
+from unittest.mock import patch
+import zipfile
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools/client'))
+import debug_assets
+
+
+def binary(target):
+    raw = bytearray(160)
+    arm = target.startswith('aarch64')
+    if 'windows' in target:
+        raw[:2] = b'MZ'
+        raw[60:64] = (64).to_bytes(4, 'little')
+        raw[64:68] = b'PE\0\0'
+        raw[68:70] = (0xaa64 if arm else 0x8664).to_bytes(2, 'little')
+    elif 'apple' in target:
+        raw[:4] = b'\xcf\xfa\xed\xfe'
+        raw[4:8] = (0x100000c if arm else 0x1000007).to_bytes(4, 'little')
+    else:
+        raw[:6] = b'\x7fELF\x02\x01'
+        raw[18:20] = (183 if arm else 62).to_bytes(2, 'little')
+    return bytes(raw)
+
+
+def checksum(path):
+    path.with_name(path.name + '.sha256').write_text(
+        hashlib.sha256(path.read_bytes()).hexdigest() + '  ' + path.name + '\n')
+
+
+def archive(source, version, target, host=True):
+    executable = 'olo-toolgate-client.exe' if 'windows' in target else 'olo-toolgate-client'
+    files = {executable: binary(target), 'sbom.cdx.json': b'{"bomFormat":"CycloneDX"}'}
+    if 'windows' in target and host:
+        files['olo-toolgate-browser-host.exe'] = binary(target)
+    path = source / debug_assets.archive_name(version, target)
+    if 'windows' in target:
+        with zipfile.ZipFile(path, 'w') as writer:
+            for name, data in files.items():
+                writer.writestr(name, data)
+    else:
+        with tarfile.open(path, 'w:gz') as writer:
+            for name, data in files.items():
+                info = tarfile.TarInfo(name)
+                info.size = len(data)
+                writer.addfile(info, io.BytesIO(data))
+        suffix = 'dmg' if 'apple' in target else 'run'
+        installer = source / f'olo-toolgate-client-{version}-{target}.{suffix}'
+        installer.write_bytes(b'native fixture installer')
+        checksum(installer)
+    checksum(path)
+    return path
+
+
+class DebugClientAssetsTest(unittest.TestCase):
+    def test_legacy_inputs_do_not_override_a_current_gnu_bundle(self):
+        version = (debug_assets.ROOT / 'VERSION').read_text().strip()
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / 'source'
+            source.mkdir()
+            output = Path(temporary) / 'output'
+            legacy = archive(source, version, debug_assets.NATIVE_WINDOWS[0], host=False)
+            original = legacy.read_bytes()
+            archive(source, version, debug_assets.NATIVE_WINDOWS[1], host=False)
+            archive(source, version, 'x86_64-unknown-linux-gnu')
+            archive(source, version, 'x86_64-apple-darwin')
+
+            def compile_windows(destination):
+                archive(destination, version, debug_assets.GNU_TARGET)
+
+            def compile_installer(target, stage):
+                files = debug_assets.payload(stage / debug_assets.archive_name(version, target))
+                self.assertIn('olo-toolgate-browser-host.exe', files)
+                installer = stage / f'olo-toolgate-client-{version}-{target}.setup.exe'
+                installer.write_bytes(b'combined fixture installer')
+                checksum(installer)
+
+            with patch.object(debug_assets, 'build_windows_gnu', side_effect=compile_windows) as build, \
+                 patch.object(debug_assets, 'build_installer', side_effect=compile_installer) as install:
+                document = debug_assets.prepare(source, output)
+            build.assert_called_once_with(source)
+            self.assertEqual(install.call_args.args[0], debug_assets.GNU_TARGET)
+            self.assertEqual({item['target'] for item in document['artifacts']},
+                             {debug_assets.GNU_TARGET, 'x86_64-unknown-linux-gnu', 'x86_64-apple-darwin'})
+            installers = json.loads((output / 'installers.json').read_text())
+            self.assertIn(debug_assets.GNU_TARGET, {item['target'] for item in installers['artifacts']})
+            self.assertFalse(any(output.glob('*windows-msvc*')))
+            self.assertEqual(legacy.read_bytes(), original)
+            self.assertTrue((output / 'extension.json').is_file())
+
+    def test_compatible_native_ci_inputs_remain_native(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary)
+            for target in debug_assets.NATIVE_WINDOWS:
+                archive(source, 'fixture', target)
+            self.assertEqual(debug_assets.compatible_windows(source, 'fixture'),
+                             list(debug_assets.NATIVE_WINDOWS))
+
+    def test_bad_checksum_does_not_trigger_a_fallback(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary)
+            path = archive(source, 'fixture', debug_assets.NATIVE_WINDOWS[0], host=False)
+            path.write_bytes(path.read_bytes() + b'tampered')
+            with self.assertRaisesRegex(ValueError, 'checksum mismatch'):
+                debug_assets.compatible_windows(source, 'fixture')
+
+    def test_wrong_native_host_architecture_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary)
+            path = archive(source, 'fixture', debug_assets.NATIVE_WINDOWS[0])
+            with zipfile.ZipFile(path) as reader:
+                files = {name: reader.read(name) for name in reader.namelist()}
+            files['olo-toolgate-browser-host.exe'] = binary(debug_assets.NATIVE_WINDOWS[1])
+            with zipfile.ZipFile(path, 'w') as writer:
+                for name, data in files.items():
+                    writer.writestr(name, data)
+            checksum(path)
+            with self.assertRaisesRegex(ValueError, 'architecture does not match'):
+                debug_assets.compatible_windows(source, 'fixture')

@@ -14,6 +14,9 @@ services:
       TOOLGATE_DISABLE_ADMIN_PASSWORD: ${TOOLGATE_DISABLE_ADMIN_PASSWORD:-true}
       TOOLGATE_QUICKSTART_DATABASE_MODE: sqlite
       TOOLGATE_CACHE_MODE: embedded
+      TOOLGATE_QUICKSTART_CLIENT_CREDENTIALS: 'true'
+      TOOLGATE_CONTROL_ENDPOINT_CONTROL_URL: https://localhost:18450
+      TOOLGATE_CONTROL_ENDPOINT_GATEWAY_URL: https://localhost:18450
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=128m,uid=65532,gid=65532
     ports:

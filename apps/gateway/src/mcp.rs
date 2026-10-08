@@ -133,6 +133,13 @@ pub(crate) async fn ingress(State(s): State<Arc<AppState>>, request: Request) ->
             Value::Null,
         );
     }
+    crate::diagnostics::packet(
+        "RECEIVE",
+        "/mcp",
+        &correlation.request_id,
+        None,
+        json!({"method":if matches!(method,"ping"|"server/discover"|"tools/list"|"tools/call") {method} else {"unsupported"},"rpcIdDigest":crate::digest(id.to_string().as_bytes()),"arguments":"[redacted]"}),
+    );
     match method {
         "ping" => success(id, json!({})),
         "server/discover" => success(

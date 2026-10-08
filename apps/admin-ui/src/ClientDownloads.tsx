@@ -8,8 +8,21 @@ export function ClientDownloads() {
   const [manifest, setManifest] = useState<ClientDownloadManifest>();
   const [failed, setFailed] = useState(false);
   const [installers, setInstallers] = useState<ClientInstallerManifest>();
+  const [gatewayUrl, setGatewayUrl] = useState('');
+  const [gatewayFailed, setGatewayFailed] = useState(false);
+  const [copyStatus, setCopyStatus] = useState('');
   useEffect(() => {
     const controller = new AbortController();
+    fetch('/api/public/v1/clients/configuration', { credentials: 'omit', cache: 'no-store', redirect: 'error', signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10000)]) })
+      .then(async response => {
+        if (!response.ok) throw new Error('Unavailable');
+        const document = await response.text(); if (document.length > 4096) throw new Error('Too large');
+        const value = JSON.parse(document) as { serverUrl?: unknown };
+        if (typeof value.serverUrl !== 'string' || value.serverUrl.length > 2048) throw new Error('Invalid gateway');
+        const url = new URL(value.serverUrl);
+        if (url.protocol !== 'https:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw new Error('Invalid gateway');
+        if (!controller.signal.aborted) setGatewayUrl(url.origin);
+      }).catch(() => { if (!controller.signal.aborted) setGatewayFailed(true); });
     fetch('/api/public/v1/clients', { credentials: 'omit', cache: 'no-store', redirect: 'error', signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10000)]) })
       .then(async response => {
         if (!response.ok) throw new Error('Unavailable');
@@ -31,10 +44,22 @@ export function ClientDownloads() {
       }).catch(() => { if (!controller.signal.aborted) setFailed(true); });
     return () => controller.abort();
   }, []);
+  async function copyGateway() {
+    try { await navigator.clipboard.writeText(gatewayUrl); setCopyStatus('Gateway URL copied.'); }
+    catch { setCopyStatus('Select the Gateway URL above and copy it.'); }
+  }
   const platforms: ReadonlyArray<readonly [ClientPlatform, string]> = [['WINDOWS', 'Windows'], ['MACOS', 'macOS'], ['LINUX', 'Linux']];
   return <section className="client-downloads" aria-labelledby="client-download-heading">
     <p className="eyebrow">Endpoint client</p><h2 id="client-download-heading">Install ToolGate on your computer</h2>
     <p>Download without signing in. An administrator installs the system service; it keeps running when you lock the screen or log out. Enroll the device to use protected tools.</p>
+    <div className="guidance">
+      {gatewayUrl ? <><label htmlFor="installer-gateway-url">Gateway URL</label>
+        <input id="installer-gateway-url" value={gatewayUrl} readOnly onFocus={event => event.currentTarget.select()} />
+        <button type="button" onClick={() => void copyGateway()}>Copy Gateway URL</button></>
+        : <p>{gatewayFailed ? 'Gateway URL is unavailable. Contact your administrator for the current address.' : 'Loading Gateway URL…'}</p>}
+      <p>Windows setup has an optional Gateway URL field. Paste this gateway's address, or keep <code>https://localhost:18450</code> for a gateway running on this computer. No credentials are required.</p>
+      {copyStatus && <p role="status">{copyStatus}</p>}
+    </div>
     {failed ? <p aria-live="polite">Client downloads are unavailable. Contact your administrator for a published release.</p>
       : !manifest ? <p aria-live="polite">Loading client downloads…</p> : <><p>Client version {manifest.version}</p><div className="download-grid">{platforms.map(([platform, label]) => <article key={platform}>
         <h3>{label}</h3>{installers?.artifacts.filter(a => a.platform === platform).map(artifact => <div key={'installer-'+artifact.target}>
@@ -43,8 +68,9 @@ export function ClientDownloads() {
         </div>)}{manifest.artifacts.filter(a => a.platform === platform && platform !== 'WINDOWS').map(artifact => <div key={artifact.target}>
           <a href={`/api/public/v1/clients/${encodeURIComponent(artifact.filename)}`} download>{`Download ${label} ${artifact.target.startsWith('aarch64') ? 'ARM64' : 'x64'}`}</a>
           <details><summary>Verify SHA-256</summary><code>{artifact.sha256}</code></details>
-        </div>)}<p>{installers ? platform === 'LINUX' ? 'Mark the .run file executable, then open it. It requests administrator permission.' : platform === 'WINDOWS' ? 'Open the single EXE and approve administrator permission. This gateway is configured automatically. Existing installations offer repair/reinstall or uninstall. A tray icon shows client status.' : 'Open the installer, enter your HTTPS server address and approve administrator permission.' : platform === 'WINDOWS' ? 'Windows installers are unavailable. Contact your administrator for a published installer.' : 'Extract the archive and follow its installation guide.'}</p>
+        </div>)}<p>{installers ? platform === 'LINUX' ? 'Mark the .run file executable, then open it. It requests administrator permission.' : platform === 'WINDOWS' ? 'Open the single EXE and approve administrator permission. Keep the local Gateway URL or paste the address shown above. Existing installations offer repair/reinstall or uninstall. A tray icon shows client status.' : 'Open the installer, enter your HTTPS server address and approve administrator permission.' : platform === 'WINDOWS' ? 'Windows installers are unavailable. Contact your administrator for a published installer.' : 'Extract the archive and follow its installation guide.'}</p>
       </article>)}</div></>}
+    {installers?.artifacts.some(a=>a.platform==='WINDOWS')&&<p className="hint">Windows setup includes the Chrome extension files. Chrome approval is required separately; click Connect on Enroll Device for the Chrome setup steps before enrolling.</p>}
     <p className="hint">Protected operations require current Gateway authorization. If authorization is unavailable, the service blocks the operation.</p>
     {installers && <p className="hint">These development installers are unsigned. Windows SmartScreen and macOS Gatekeeper may show warnings. Signing is planned separately.</p>}
   </section>;

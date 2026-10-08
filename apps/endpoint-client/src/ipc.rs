@@ -391,9 +391,7 @@ async fn exchange(endpoint: &str, bytes: &[u8], max: usize) -> Result<Vec<u8>> {
     {
         use std::os::windows::io::AsRawHandle;
         // SAFETY: stream owns the live pipe handle throughout the synchronous query.
-        if unsafe { crate::platform::windows::server_sid(stream.as_raw_handle()) }? != "S-1-5-18" {
-            return Err(Failure::Unauthorized);
-        }
+        unsafe { crate::platform::windows::verify_service_pipe(stream.as_raw_handle()) }?;
     }
     write(&mut stream, bytes).await?;
     let size = stream.read_u32().await.map_err(|_| Failure::Unavailable)? as usize;

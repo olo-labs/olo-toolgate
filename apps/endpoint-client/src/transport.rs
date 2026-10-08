@@ -62,6 +62,7 @@ pub struct HttpsControl {
     config: Config,
     key: Arc<DeviceKey>,
     contracts: Arc<Contracts>,
+    packets: crate::diagnostics::PacketLog,
 }
 impl HttpsControl {
     pub fn new(config: Config, key: Arc<DeviceKey>, contracts: Arc<Contracts>) -> Result<Self> {
@@ -70,6 +71,7 @@ impl HttpsControl {
             .build()
             .map_err(|_| Failure::Unavailable)?;
         Ok(Self {
+            packets: crate::diagnostics::PacketLog::open(config.state_directory.clone())?,
             origin: crate::config::origin(&config.server_url)?,
             client,
             config,
@@ -106,6 +108,19 @@ impl HttpsControl {
     ) -> Result<T> {
         let url = format!("{}{path}", self.origin);
         let correlation = crate::identity::nonce()?;
+        let message = body
+            .as_ref()
+            .and_then(|bytes| serde_json::from_slice(bytes).ok())
+            .map(|value| crate::diagnostics::summary(&value))
+            .unwrap_or_else(|| serde_json::json!({}));
+        self.packets.record(
+            "SEND",
+            path,
+            &correlation,
+            (None, None),
+            body.as_ref().map_or(0, Vec::len),
+            message,
+        );
         let mut request = if body.is_some() {
             client.post(url)
         } else {
@@ -113,7 +128,7 @@ impl HttpsControl {
         };
         request = request
             .header("Accept", "application/json")
-            .header("X-Request-ID", correlation);
+            .header("X-Request-ID", &correlation);
         let mut response = if let Some(body) = body {
             request
                 .header("Content-Type", "application/json")
@@ -123,7 +138,34 @@ impl HttpsControl {
         }
         .send()
         .await
-        .map_err(|_| Failure::Unavailable)?;
+        .map_err(|_| {
+            self.packets.record(
+                "RECEIVE",
+                path,
+                &correlation,
+                (None, None),
+                0,
+                serde_json::json!({"code":"DEPENDENCY_UNAVAILABLE"}),
+            );
+            Failure::Unavailable
+        })?;
+        let status = response.status().as_u16();
+        let peer_id = response
+            .headers()
+            .get("x-request-id")
+            .and_then(|v| v.to_str().ok())
+            .filter(|v| v.len() <= 64 && v.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-'))
+            .map(str::to_owned);
+        if status != 200 {
+            self.packets.record(
+                "RECEIVE",
+                path,
+                &correlation,
+                (Some(status), peer_id.as_deref()),
+                0,
+                serde_json::json!({"code":"HTTP_REJECTED"}),
+            );
+        }
         match response.status().as_u16() {
             200 => {}
             401 | 403 => return Err(Failure::Revoked),
@@ -146,7 +188,23 @@ impl HttpsControl {
             }
             bytes.extend_from_slice(&chunk);
         }
-        self.contracts.decode(model, &bytes)
+        let decoded = self.contracts.decode(model, &bytes);
+        let message = if decoded.is_ok() {
+            serde_json::from_slice(&bytes)
+                .map(|value| crate::diagnostics::summary(&value))
+                .unwrap_or_default()
+        } else {
+            serde_json::json!({"code":"VALIDATION"})
+        };
+        self.packets.record(
+            "RECEIVE",
+            path,
+            &correlation,
+            (Some(status), peer_id.as_deref()),
+            bytes.len(),
+            message,
+        );
+        decoded
     }
 }
 impl ControlPort for HttpsControl {

@@ -3,6 +3,17 @@
   "protocolVersion": 2,
   "tools": [
     {
+      "toolId": "client.read_log_entry",
+      "action": "read",
+      "description": "Read exactly one latest redacted entry from this client's bounded packets.jsonl diagnostic log. No arbitrary file access.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "required": []
+      }
+    },
+    {
       "toolId": "hotfolder.list",
       "action": "list",
       "description": "List the bounded protected folder inventory.",

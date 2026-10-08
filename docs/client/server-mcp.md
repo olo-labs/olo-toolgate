@@ -75,3 +75,20 @@ revocation cancels jobs. Runtime provisioning and network calls may delay a poll
 requests that miss their deadline expire. The queue is bounded to sixteen pending
 requests per device and one thousand retained records per tenant. A client serves
 one remote tool request at a time.
+
+Client and Gateway transport diagnostics emit `protocol_packet` SEND/RECEIVE
+messages with request correlation, poll/configuration metadata and job state.
+Control emits matching messages for enrollment, check-ins and MCP relay APIs.
+Credentials, certificates, enrollment/lease codes, tool arguments and outputs
+are redacted. The client retains a bounded `packets.jsonl` in its protected state
+directory (100 entries, at most 64 KiB). `client.read_log_entry` returns exactly
+one latest entry after fresh device authorization; its default resource is
+`CUSTOM:hotfolder`, and the normal agent/user/device permission rules apply.
+It cannot read arbitrary files. The Windows tray offers a live packet viewer.
+
+Quickstart exposes the same stateless `/mcp` ingress on its direct HTTPS
+listener, forwarding MCP protocol headers and allowing time for the next client
+poll. Only its fixed runtime proxy routes delegate opaque bearer validation to
+Gateway; Control administrator JWT and client mTLS routes retain their existing
+authentication. See `debug/agent-mimic.bat` for a sequential discovery/write/log
+example and `debug/README.md` for local setup.

@@ -27,6 +27,33 @@ class SecurityTests(unittest.TestCase):
         with sqlite3.connect(quickstart.DATA/'state/control.sqlite') as db:
             for version in (1,2):db.executescript((ROOT/f'apps/control-plane/src/main/resources/db/quickstart/V{version}.sql').read_text())
     def tearDown(self):self.temp.cleanup()
+    def test_client_runtime_hashes_are_explicit_scoped_and_expire(self):
+        value={'tokenSha256':'a'*64,'tenantId':quickstart.TENANT,'userId':'admin','agentId':'debug-agent','deviceId':'device-123','expiresAtUnixMs':int(quickstart.time.time()*1000)+60000}
+        path=quickstart.DATA/'client-runtime-credentials.json'
+        path.write_text(json.dumps([value]))
+        path.chmod(0o600)
+        with patch.dict(os.environ,{},clear=True):self.assertEqual(quickstart.client_credentials(),[])
+        with patch.dict(os.environ,{'TOOLGATE_QUICKSTART_CLIENT_CREDENTIALS':'true'},clear=True):
+            self.assertEqual(quickstart.client_credentials(),[value])
+            path.write_text(json.dumps([{**value,'expiresAtUnixMs':0}]))
+            self.assertEqual(quickstart.client_credentials(),[])
+            path.write_text(json.dumps([{**value,'tenantId':'other'}]))
+            with self.assertRaises(ValueError):quickstart.client_credentials()
+            path.write_text(json.dumps([{**value,'rawToken':'never'}]))
+            with self.assertRaises(ValueError):quickstart.client_credentials()
+    def test_external_endpoint_urls_follow_the_published_port_mapping(self):
+        (quickstart.DATA/'run').mkdir(mode=0o700)
+        control='https://localhost:18450'
+        gateway='https://127.0.0.1:18450'
+        with patch.dict(os.environ,{'TOOLGATE_CONTROL_ENDPOINT_CONTROL_URL':control,
+                                    'TOOLGATE_CONTROL_ENDPOINT_GATEWAY_URL':gateway},clear=True):
+            settings,_=quickstart.configure()
+            self.assertEqual(settings['TOOLGATE_CONTROL_ENDPOINT_CONTROL_URL'],control)
+            self.assertEqual(settings['TOOLGATE_CONTROL_ENDPOINT_GATEWAY_URL'],gateway)
+        with patch.dict(os.environ,{},clear=True):
+            settings,_=quickstart.configure()
+            self.assertEqual(settings['TOOLGATE_CONTROL_ENDPOINT_CONTROL_URL'],'https://localhost:8443')
+            self.assertEqual(settings['TOOLGATE_CONTROL_ENDPOINT_GATEWAY_URL'],'https://localhost:8443')
     def test_fleet_keys_are_persistent_and_disjoint(self):
         quickstart.fleet_keys()
         organization = json.loads((quickstart.DATA/'keys/organization-keys.json').read_text())[0]

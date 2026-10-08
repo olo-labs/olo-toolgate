@@ -27,12 +27,8 @@ def check(target):
     installed=False
     try:
         if system=='Windows':
-            # Exercise the exact anonymous web download: one EXE, no URL argument or prompt.
-            hint='https://control.example.invalid'.encode().hex()
-            with tempfile.TemporaryDirectory(prefix='toolgate-configured-') as temporary:
-                configured=Path(temporary)/f'olo-toolgate-client-{target}--{hint}.setup.exe'
-                shutil.copyfile(installer,configured)
-                run([str(configured),'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'])
+            # A fresh install keeps the HTTPS default without Chrome or a console lookup.
+            run([str(installer),'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'])
             installed=True
         elif system=='Linux':
             run(['/bin/sh',str(installer),'--verify'])
@@ -63,8 +59,15 @@ def check(target):
         if system=='Windows':
             import winreg
             config=Path(r'C:\ProgramData\OLO\ToolGate\client.json')
+            if json.loads(config.read_text())['serverUrl']!='https://localhost:18450':raise ValueError('Installer HTTPS default was not stored')
             state=config.parent/'state'
             key=hashlib.sha256((state/'device-key').read_bytes()).hexdigest()
+            # Configured anonymous web downloads still work without a URL argument.
+            hint='https://control.example.invalid'.encode().hex()
+            with tempfile.TemporaryDirectory(prefix='toolgate-configured-') as temporary:
+                configured=Path(temporary)/f'olo-toolgate-client-{target}--{hint}.setup.exe'
+                shutil.copyfile(installer,configured)
+                run([str(configured),'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'])
             run([str(installer),'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'])
             if hashlib.sha256((state/'device-key').read_bytes()).hexdigest()!=key:raise ValueError('Repair changed the device key')
             run([str(binary),'configure','--server','https://second.example.invalid'])
@@ -72,6 +75,10 @@ def check(target):
             if hashlib.sha256((state/'device-key').read_bytes()).hexdigest()!=key:raise ValueError('Gateway switch changed the device key')
             with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,r'Software\Microsoft\Windows\CurrentVersion\Run',0,winreg.KEY_READ|winreg.KEY_WOW64_64KEY) as tray_key:
                 if 'toolgate-tray.ps1' not in winreg.QueryValueEx(tray_key,'OloToolGateTray')[0]:raise ValueError('Tray startup is missing')
+            powershell=str(Path(os.environ['SystemRoot'])/'System32/WindowsPowerShell/v1.0/powershell.exe')
+            tray_query="@(Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'powershell.exe' -and $_.ProcessId -ne $PID -and $_.CommandLine -like '*-File*toolgate-tray.ps1*' }).Count"
+            time.sleep(3)
+            if int(run([powershell,'-NoProfile','-NonInteractive','-Command',tray_query]).stdout.strip())<1:raise ValueError('Installed tray did not stay running')
             with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,r'Software\Google\Chrome\NativeMessagingHosts\io.ololabs.toolgate.connect',0,winreg.KEY_READ|winreg.KEY_WOW64_64KEY) as key:
                 registered=Path(winreg.QueryValue(key,None))
             host_manifest=json.loads(registered.read_text())

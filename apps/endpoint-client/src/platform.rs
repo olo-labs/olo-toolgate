@@ -62,7 +62,7 @@ pub mod windows {
     use windows_sys::Win32::{
         Foundation::*,
         Security::{Authorization::*, Cryptography::*, *},
-        System::{Pipes::*, Threading::*},
+        System::{Pipes::*, Services::*, Threading::*},
     };
     fn wide(value: &str) -> Vec<u16> {
         value.encode_utf16().chain(Some(0)).collect()
@@ -131,25 +131,85 @@ pub mod windows {
             token_sid(handle)
         }
     }
-    /// Authenticate the service process behind a local pipe before accepting its browser prompt.
+    /// Authenticate the fixed LocalSystem service behind a pipe through the SCM.
+    /// Normal accounts cannot inspect the token or process of a SYSTEM service.
     /// # Safety
     /// `pipe` must be a live named pipe handle for the duration of this call.
-    pub unsafe fn server_sid(pipe: HANDLE) -> Result<String> {
+    pub unsafe fn verify_service_pipe(pipe: HANDLE) -> Result<()> {
         unsafe {
             let mut pid = 0;
-            if GetNamedPipeServerProcessId(pipe, &mut pid) == 0 {
+            if GetNamedPipeServerProcessId(pipe, &mut pid) == 0 || pid == 0 {
                 return Err(Failure::Unauthorized);
             }
-            let process = Token(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid));
-            if process.0.is_null() {
+            struct ServiceHandle(SC_HANDLE);
+            impl Drop for ServiceHandle {
+                fn drop(&mut self) {
+                    unsafe { CloseServiceHandle(self.0) };
+                }
+            }
+            let manager =
+                ServiceHandle(OpenSCManagerW(ptr::null(), ptr::null(), SC_MANAGER_CONNECT));
+            if manager.0.is_null() {
                 return Err(Failure::Unauthorized);
             }
-            let mut token = ptr::null_mut();
-            if OpenProcessToken(process.0, TOKEN_QUERY, &mut token) == 0 {
+            let service = ServiceHandle(OpenServiceW(
+                manager.0,
+                wide("OloToolGateClient").as_ptr(),
+                SERVICE_QUERY_CONFIG | SERVICE_QUERY_STATUS,
+            ));
+            if service.0.is_null() {
                 return Err(Failure::Unauthorized);
             }
-            token_sid(token)
+            let mut status: SERVICE_STATUS_PROCESS = std::mem::zeroed();
+            let mut needed = 0;
+            if QueryServiceStatusEx(
+                service.0,
+                SC_STATUS_PROCESS_INFO,
+                (&mut status as *mut SERVICE_STATUS_PROCESS).cast(),
+                std::mem::size_of::<SERVICE_STATUS_PROCESS>() as u32,
+                &mut needed,
+            ) == 0
+                || status.dwCurrentState != SERVICE_RUNNING
+                || status.dwProcessId != pid
+                || status.dwServiceType != SERVICE_WIN32_OWN_PROCESS
+            {
+                return Err(Failure::Unauthorized);
+            }
+            QueryServiceConfigW(service.0, ptr::null_mut(), 0, &mut needed);
+            if needed == 0 || needed > 8192 {
+                return Err(Failure::Unauthorized);
+            }
+            let mut storage = vec![0_u64; (needed as usize).div_ceil(8)];
+            if QueryServiceConfigW(service.0, storage.as_mut_ptr().cast(), needed, &mut needed) == 0
+            {
+                return Err(Failure::Unauthorized);
+            }
+            let configuration = &*storage.as_ptr().cast::<QUERY_SERVICE_CONFIGW>();
+            let account = service_config_string(&storage, configuration.lpServiceStartName)?;
+            let command = service_config_string(&storage, configuration.lpBinaryPathName)?;
+            let expected = format!("\"{}\" service", crate::install::binary_path().display());
+            if !account.eq_ignore_ascii_case("LocalSystem")
+                || !command.eq_ignore_ascii_case(&expected)
+            {
+                return Err(Failure::Unauthorized);
+            }
+            Ok(())
         }
+    }
+    fn service_config_string(storage: &[u64], value: *const u16) -> Result<String> {
+        let start = value as usize;
+        let base = storage.as_ptr() as usize;
+        let end = base + std::mem::size_of_val(storage);
+        if start < base || start >= end || !start.is_multiple_of(2) {
+            return Err(Failure::Unauthorized);
+        }
+        // SAFETY: the pointer and bounded UTF-16 slice are inside the live SCM buffer.
+        let text = unsafe { std::slice::from_raw_parts(value, (end - start) / 2) };
+        let length = text
+            .iter()
+            .position(|unit| *unit == 0)
+            .ok_or(Failure::Unauthorized)?;
+        String::from_utf16(&text[..length]).map_err(|_| Failure::Unauthorized)
     }
     pub fn require_administrator() -> Result<()> {
         unsafe {

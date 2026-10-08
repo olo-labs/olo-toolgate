@@ -7,6 +7,7 @@ pub mod builtins;
 pub mod config;
 pub mod contracts;
 pub mod deployment;
+pub mod diagnostics;
 pub mod execution;
 pub mod hotfolder;
 pub mod identity;

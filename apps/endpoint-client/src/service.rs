@@ -102,10 +102,15 @@ impl ClientService {
         };
         let tools = if let Some(settings) = &config.tools {
             let contracts = Arc::new(crate::contracts::Contracts::new()?);
-            Some(crate::builtins::Executor::new(
-                settings,
-                Arc::new(crate::tool_gateway::HttpsGateway::new(settings, contracts)?),
-            )?)
+            Some(
+                crate::builtins::Executor::new(
+                    settings,
+                    Arc::new(crate::tool_gateway::HttpsGateway::new(settings, contracts)?),
+                )?
+                .with_packet_log(crate::diagnostics::PacketLog::open(
+                    config.state_directory.clone(),
+                )?),
+            )
         } else {
             None
         };

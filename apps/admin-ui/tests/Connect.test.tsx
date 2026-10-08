@@ -35,6 +35,18 @@ it('does not offer setup from a different client release',async()=>{
   expect(screen.queryByRole('link',{name:'Download extension package for Chrome approval'})).toBeNull();
   fireEvent.click(screen.getByRole('button',{name:'Cancel Connect'}));
 });
+it('offers the combined GNU debug installer and explicit Chrome enablement steps',async()=>{
+  chrome();bridge({protocol:1,chromeVersion:release.chromeVersion,version:release.version,phase:'available'});
+  const target='x86_64-pc-windows-gnu';
+  const gnuSetup={...setup,artifacts:[{...setup.artifacts[0],target,filename:`olo-toolgate-client-${release.version}-${target}.setup.exe`}]};
+  vi.stubGlobal('fetch',vi.fn().mockImplementation((url:string)=>Promise.resolve(new Response(JSON.stringify(url.endsWith('/installers')?gnuSetup:release)))));
+  render(<Connect onCode={vi.fn()}/>);fireEvent.click(screen.getByRole('button',{name:'Connect'}));
+  await screen.findByRole('link',{name:'Install Chrome extension and client'});
+  expect(screen.getByRole('link',{name:'Install Chrome extension and client'}).getAttribute('href')).toBe(`/api/public/v1/clients/setup/${target}`);
+  expect(screen.getByRole('heading',{name:'Enable the Chrome extension for this local build'})).toBeTruthy();
+  expect(screen.getByText('C:\\Program Files\\OLO\\ToolGateSetup\\chrome-extension')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button',{name:'Cancel Connect'}));
+});
 it('rejects a malicious release URL',async()=>{
   chrome();vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({...release,storeUrl:'https://evil.example'}))));
   render(<Connect onCode={vi.fn()}/>);fireEvent.click(screen.getByRole('button',{name:'Connect'}));await screen.findByText(/Invalid extension release/);

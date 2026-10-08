@@ -116,17 +116,44 @@ impl HttpRelay {
         {
             return Err(ErrorCode::DependencyUnavailable);
         }
+        let correlation = crate::digest(
+            format!(
+                "{}-{:?}",
+                crate::unix_ms().unwrap_or(0),
+                std::time::Instant::now()
+            )
+            .as_bytes(),
+        );
+        let correlation = &correlation[..32];
+        let body = serde_json::to_vec(request).map_err(|_| ErrorCode::Validation)?;
+        crate::diagnostics::packet(
+            "SEND",
+            path,
+            correlation,
+            None,
+            crate::diagnostics::summary(
+                &serde_json::from_slice(&body).map_err(|_| ErrorCode::Validation)?,
+            ),
+        );
         let mut response = self
             .client
             .post(format!("{}{}", self.config.url.trim_end_matches('/'), path))
             .bearer_auth(token)
             .header("Accept", "application/json")
             .header("Content-Type", "application/json")
-            .body(serde_json::to_vec(request).map_err(|_| ErrorCode::Validation)?)
+            .header("X-Request-ID", correlation)
+            .body(body)
             .send()
             .await
             .map_err(|_| ErrorCode::DependencyUnavailable)?;
         if response.status() != 200 {
+            crate::diagnostics::packet(
+                "RECEIVE",
+                path,
+                correlation,
+                Some(response.status().as_u16()),
+                serde_json::json!({"code":"HTTP_REJECTED"}),
+            );
             return Err(match response.status().as_u16() {
                 401 | 403 => ErrorCode::Forbidden,
                 409 => ErrorCode::Conflict,
@@ -157,6 +184,13 @@ impl HttpRelay {
         if !self.contracts.valid(model, &value) {
             return Err(ErrorCode::Validation);
         }
+        crate::diagnostics::packet(
+            "RECEIVE",
+            path,
+            correlation,
+            Some(200),
+            crate::diagnostics::summary(&value),
+        );
         serde_json::from_value(value).map_err(|_| ErrorCode::Validation)
     }
 }
