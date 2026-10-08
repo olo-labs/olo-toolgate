@@ -15,12 +15,14 @@ final readonly class EndpointManagedDevice implements \JsonSerializable {
         public ?EndpointEnrollmentReview $enrollment = null,
         public ?ControlUser $registeredUser = null,
         public ?SystemExecutorKind $systemExecutorKind = null,
-        public ?bool $systemAvailable = null
+        public ?bool $systemAvailable = null,
+        public ?string $systemName = null,
+        public ?string $ipAddress = null
     ) {}
 
     /** Decode a structural model; canonical schema validation is also required. */
     public static function fromArray(array $data): self {
-        if (array_diff(array_keys($data), ['deviceId', 'systemExecutor', 'directoryDevice', 'endpointDevice', 'enrollment', 'registeredUser', 'systemExecutorKind', 'systemAvailable']) || array_diff(['deviceId', 'systemExecutor'], array_keys($data))) {
+        if (array_diff(array_keys($data), ['deviceId', 'systemExecutor', 'directoryDevice', 'endpointDevice', 'enrollment', 'registeredUser', 'systemExecutorKind', 'systemAvailable', 'systemName', 'ipAddress']) || array_diff(['deviceId', 'systemExecutor'], array_keys($data))) {
             throw new \InvalidArgumentException('Unknown or missing contract fields');
         }
         return new self(
@@ -31,7 +33,9 @@ final readonly class EndpointManagedDevice implements \JsonSerializable {
             array_key_exists('enrollment', $data) ? EndpointEnrollmentReview::fromArray($data['enrollment']) : null,
             array_key_exists('registeredUser', $data) ? ControlUser::fromArray($data['registeredUser']) : null,
             array_key_exists('systemExecutorKind', $data) ? SystemExecutorKind::from($data['systemExecutorKind']) : null,
-            array_key_exists('systemAvailable', $data) ? $data['systemAvailable'] : null
+            array_key_exists('systemAvailable', $data) ? $data['systemAvailable'] : null,
+            array_key_exists('systemName', $data) ? $data['systemName'] : null,
+            array_key_exists('ipAddress', $data) ? $data['ipAddress'] : null
         );
     }
 

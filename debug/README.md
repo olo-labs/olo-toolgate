@@ -10,6 +10,45 @@ at http://127.0.0.1:18090/console/. `restart.bat` repeats the checks and build
 before replacing the container. `stop.bat` stops this stack and preserves data.
 Scripts work from any current directory and never commit or push.
 
+Run `create-devices.bat` from the repository root to create Linux Docker devices
+with the current endpoint client. It prompts for a Linux device count, defaulting
+to **1**; enter **0** to do nothing. Windows devices are deferred. The debug stack
+must already be running and healthy. No host Python or Rust installation is
+needed: Docker builds the client and its container image from the working tree.
+
+For a noninteractive run use `create-devices.bat -Count 1`. The helper also accepts
+`-LinuxCount`, `-DockerContext <name>` and `-ValidateOnly`. Validation checks the
+Linux engine, debug server and container ownership without building or deploying.
+The count is the number of numbered device slots to ensure, up to 32: existing
+`toolgate-device-linux-001`, `002`, etc. are reused; a smaller count leaves extra
+devices alone. Re-running does not revoke, approve, or replace existing identities.
+Existing containers keep their image; new slots use the latest source build.
+
+Open http://127.0.0.1:18090/console/#devices after deployment. Each new Linux client
+appears in **Clients** as **Needs approval**. Compare its enrollment code and key
+fingerprint with the script output, then approve it for the desired duration. The
+client connects automatically after approval; the script never makes approval or
+permission decisions. Pending requests expire after ten minutes and refresh
+automatically while the container stays running. Explicit denial stops that
+automatic refresh until the container is restarted. The server allows at most
+32 simultaneous pending requests across all clients.
+
+Each device has its own hostname, protected key and named config/state volumes.
+No device ports or Docker socket are exposed. Its loopback relay forwards bytes
+to Quickstart on the Docker network, preserving the advertised local HTTPS origin,
+certificate validation, mTLS and WebSockets. The real client installer obtains
+the CA itself. Docker supervises the foreground protected service; a narrowly
+scoped `systemctl` shim handles the installer's service registration commands.
+The installed client supports its normal fixed tools after the administrator
+configures their permissions; these containers do not provision an OCI tool
+execution engine.
+
+Inspect a device with `docker logs toolgate-device-linux-001` or
+`docker exec toolgate-device-linux-001 /usr/local/lib/olo-toolgate/olo-toolgate-client health`.
+Stop it with `docker stop toolgate-device-linux-001`; `create-devices.bat -Count 1`
+starts it again. `debug/stop.bat` stops the server stack only. Device identities
+survive container restarts and removal while their named volumes are retained.
+
 Requires Docker Desktop running Linux containers, Git, Node.js/npm, Python 3.11+
 and internet access for dependencies and base images. A Python environment is
 created under `.dev/debug/venv`. The matching Playwright Chromium browser is
@@ -63,37 +102,32 @@ Validate Docker/Compose configuration without building:
 Inspect failures with `docker compose -p toolgate-debug -f debug/compose.yaml logs`.
 No script deletes volumes; back up `/data` before testing migrations.
 
-For first-time Windows setup, run `setup-agent-mimic.bat` and approve the Windows
-administrator prompt. It exports this debug stack's public CA, repairs the native
-service, enrolls the device after matching its real key fingerprint, installs the
-two exact tool grants, waits for Gateway readiness, and runs the mimic requests.
-Only this local password-free debug stack supports the automatic approval helper.
-The repair waits for the installer process to finish. Retrying resumes an already
-completed repair when the installed binaries and Gateway CA match this build.
+Run `setup-agent-mimic.bat` or `agent-mimic.bat` to call an already configured,
+approved and connected client through `https://localhost:18450/mcp`. The setup
+filename is retained as an alias for the call-and-log command. Configure the
+device, agent credential and intended grants beforehand. The commands only
+send the two tool calls and record their responses. Denied or unavailable calls
+fail visibly.
 
-After setup, run `agent-mimic.bat` to mimic an agent through `https://localhost:18450/mcp`.
-Both setup and mimic commands also save their visible console output, including
-errors, in timestamped files under `.dev/debug/logs/`. Each run prints its log path.
-After a Gateway restart, setup waits for a new authenticated client check-in and
-prints progress; the client's outage retry interval can reach five minutes.
-It calls `server/discover`, then `tools/list`, then waits for each client tool to
-finish before sending the next call. `hotfolder.write_text` creates
+Both commands save visible console output and errors in timestamped files under
+`.dev/debug/logs/`; each run prints its log path. The **Client tool requests** page
+fills the parent canvas and logs progress. Use **View response** for the completed
+JSON output. Both wrappers accept `-Gateway`, `-TokenFile`, `-CaFile` and `-File`.
+It calls `hotfolder.write_text`, then waits for its response before calling
+`client.read_log_entry`. `hotfolder.write_text` creates
 `rahul-nigam.txt` containing exactly `My Name is Rahul Nigam` in the installed
 client's protected HotFolder. `client.read_log_entry` reads exactly one latest
-entry from that client's real `packets.jsonl` and prints it in the console.
-An empty catalog or failed write stops the script before the next effect.
+entry from that client's real `packets.jsonl`. Both complete tool responses are
+printed in the console. A denied or failed write stops the script before the
+second call.
 
-The local setup uses a device-bound agent bearer token in
+The calls use an existing device-bound agent bearer token in
 `.dev/debug/client-agent-token`, readable only by the current Windows account
 and SYSTEM. The server stores its hash in `/data/client-runtime-credentials.json`;
 `TOOLGATE_QUICKSTART_CLIENT_CREDENTIALS=true` enables those explicitly installed
-credentials for this debug stack. Credentials expire after 24 hours. Refresh with
-`.dev/debug/venv/Scripts/python.exe debug/enroll-mimic-client.py`; it preserves the
-existing enrollment using `.dev/debug/mimic-client.json`, installs only the exact
-file and diagnostic tool grants for `debug-mimic-agent`, publishes them, and
-restarts only this Compose project. This helper requires the debug stack's
-configured password-free administrator login. The mimic script itself uses the
-agent credential and never an administrator credential.
+credentials for this debug stack. Credentials expire after 24 hours. The mimic
+commands use the existing agent credential; enrollment, approval, permissions
+and credential administration belong to the deployment's configuration.
 
 Fresh client installation needs only the EXE downloaded from Enroll Device while
 this container is running. Setup obtains the public local CA, validates HTTPS,
@@ -101,8 +135,9 @@ stores the certificate in the client's protected configuration directory, instal
 the service/native bridge/tray, and starts enrollment. Approve the device in the
 console; Chrome is optional when enrolling from setup or the tray menu.
 `prepare-local-client.ps1` now invokes this same installer and does not export,
-copy or configure a CA. The mimic helper still saves a public CA for its own agent
-HTTPS connection; it does not supply client installation configuration.
+copy or configure a CA. The call scripts use the installed client's configured CA
+for the same gateway, an explicit `-CaFile`, or system TLS trust for their agent
+HTTPS connection.
 The Gateway default remains `https://localhost:18450`; the mimic PowerShell wrapper
 also accepts `-Gateway`, `-TokenFile`, `-CaFile`, and `-File` for an already configured
 deployment.

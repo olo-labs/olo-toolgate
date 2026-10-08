@@ -5,6 +5,7 @@ import argparse
 import base64
 import hashlib
 import importlib.util
+import ipaddress
 import json
 from pathlib import Path
 import re
@@ -111,6 +112,14 @@ def main():
             status,records=api('/api/control/v1/mcp/requests');assert status==200
             done=[record for record in records['items'] if record['deviceId']==device and record['agentId']==agent]
             assert len(done)==2 and all(record['state']=='DONE' and record['submittedAtUnixMs'] and record['responseAtUnixMs'] and record['completedAtUnixMs'] for record in done),done
+            for record in done:
+                status,inspection=api('/api/control/v1/mcp/requests/'+record['requestId']);assert status==200
+                assert inspection['record']['requestId']==record['requestId'] and isinstance(inspection['output'],dict)
+                assert 'leaseId' not in inspection and 'arguments' not in inspection
+            status,registry=api('/api/control/v1/endpoint/devices');assert status==200
+            registered=next(row for row in registry['items'] if row['deviceId']==device)
+            assert registered['systemName']==run(['docker','exec',client,'hostname'],capture_output=True,text=True).stdout.strip()
+            ipaddress.ip_address(registered['ipAddress'])
             server_logs=run(['docker','logs',server],capture_output=True,text=True)
             client_logs=run(['docker','logs',client],capture_output=True,text=True)
             for logs in (server_logs.stdout+server_logs.stderr,client_logs.stdout+client_logs.stderr):

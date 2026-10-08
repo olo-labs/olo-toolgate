@@ -192,15 +192,16 @@ impl Channel {
         state.attempt = Some(Instant::now());
         let connected = async {
             let key = generate_key();
-            let response = client
+            let mut request = client
                 .get(format!("{origin}{PATH}"))
                 .header("Connection", "Upgrade")
                 .header("Upgrade", "websocket")
                 .header("Sec-WebSocket-Version", "13")
-                .header("Sec-WebSocket-Key", &key)
-                .send()
-                .await
-                .map_err(|_| Failure::Unavailable)?;
+                .header("Sec-WebSocket-Key", &key);
+            if let Some(name) = crate::platform::system_name() {
+                request = request.header("X-ToolGate-System-Name", name);
+            }
+            let response = request.send().await.map_err(|_| Failure::Unavailable)?;
             if response.status().as_u16() != 101
                 || response
                     .headers()

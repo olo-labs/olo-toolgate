@@ -19,12 +19,14 @@ final readonly class EndpointDeviceRecord implements \JsonSerializable {
         public ?ClientReport $report = null,
         public ?int $connectionExpiresAtUnixMs = null,
         public ?bool $connectionApproved = null,
-        public ?int $approvalRevision = null
+        public ?int $approvalRevision = null,
+        public ?string $systemName = null,
+        public ?string $ipAddress = null
     ) {}
 
     /** Decode a structural model; canonical schema validation is also required. */
     public static function fromArray(array $data): self {
-        if (array_diff(array_keys($data), ['deviceId', 'tenantId', 'userId', 'keyFingerprint', 'state', 'revision', 'lastSeenUnixMs', 'reportSequence', 'report', 'connectionExpiresAtUnixMs', 'connectionApproved', 'approvalRevision']) || array_diff(['deviceId', 'tenantId', 'userId', 'keyFingerprint', 'state', 'revision', 'lastSeenUnixMs', 'reportSequence'], array_keys($data))) {
+        if (array_diff(array_keys($data), ['deviceId', 'tenantId', 'userId', 'keyFingerprint', 'state', 'revision', 'lastSeenUnixMs', 'reportSequence', 'report', 'connectionExpiresAtUnixMs', 'connectionApproved', 'approvalRevision', 'systemName', 'ipAddress']) || array_diff(['deviceId', 'tenantId', 'userId', 'keyFingerprint', 'state', 'revision', 'lastSeenUnixMs', 'reportSequence'], array_keys($data))) {
             throw new \InvalidArgumentException('Unknown or missing contract fields');
         }
         return new self(
@@ -39,7 +41,9 @@ final readonly class EndpointDeviceRecord implements \JsonSerializable {
             array_key_exists('report', $data) ? ClientReport::fromArray($data['report']) : null,
             array_key_exists('connectionExpiresAtUnixMs', $data) ? $data['connectionExpiresAtUnixMs'] : null,
             array_key_exists('connectionApproved', $data) ? $data['connectionApproved'] : null,
-            array_key_exists('approvalRevision', $data) ? $data['approvalRevision'] : null
+            array_key_exists('approvalRevision', $data) ? $data['approvalRevision'] : null,
+            array_key_exists('systemName', $data) ? $data['systemName'] : null,
+            array_key_exists('ipAddress', $data) ? $data['ipAddress'] : null
         );
     }
 

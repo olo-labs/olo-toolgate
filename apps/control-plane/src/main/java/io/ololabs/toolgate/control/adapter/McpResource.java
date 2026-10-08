@@ -36,4 +36,5 @@ public class McpResource {
     @POST @Path("authorize") @Consumes("application/json") public Response authorize(String value){return response(endpoints.relay().authorize(peer(),body(value)));}
     @POST @Path("results") @Consumes("application/json") public Response result(String value){return response(endpoints.relay().result(peer(),body(value),correlation.id()));}
     @GET @Path("requests") @RolesAllowed("toolgate-admin") public Response page(){return response(endpoints.relay().page(actor(),correlation.id()));}
+    @GET @Path("requests/{id}") @RolesAllowed("toolgate-admin") public Response inspect(@PathParam("id") String requestId){return response(endpoints.relay().inspect(actor(),requestId));}
 }

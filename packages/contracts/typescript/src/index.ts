@@ -587,6 +587,8 @@ export interface EndpointDeviceRecord {
   readonly connectionExpiresAtUnixMs?: number;
   readonly connectionApproved?: boolean;
   readonly approvalRevision?: number;
+  readonly systemName?: string;
+  readonly ipAddress?: string;
 }
 /** Toggle device directory activation, including a pending device. Zero expects no directory record yet. */
 export interface EndpointEnabledRequest {
@@ -663,6 +665,8 @@ export interface EndpointManagedDevice {
   readonly registeredUser?: ControlUser;
   readonly systemExecutorKind?: SystemExecutorKind;
   readonly systemAvailable?: boolean;
+  readonly systemName?: string;
+  readonly ipAddress?: string;
 }
 /** All directory devices plus pending requests within the existing directory and enrollment quotas. */
 export interface EndpointManagedDevicePage {
@@ -996,6 +1000,11 @@ export interface RemoteToolAuthorization {
 /** Fresh remote operation deadline, never a reusable grant. */
 export interface RemoteToolAuthorizationAck {
   readonly expiresAtUnixMs: number;
+}
+/** Same-tenant administrator inspection of one completed response; excludes arguments and private lease credentials. */
+export interface RemoteToolInspection {
+  readonly record: RemoteToolRecord;
+  readonly output?: Record<string, unknown>;
 }
 /** Bounded recent local-tool request progress. */
 export interface RemoteToolPage {

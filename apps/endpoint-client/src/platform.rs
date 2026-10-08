@@ -2,6 +2,26 @@
 // SPDX-License-Identifier: Apache-2.0
 //! OS custody/service abstractions. Privileged service and unprivileged browser/CLI stay separate.
 use crate::{Failure, Result};
+/// Informational hostname only; never used as device identity or an authorization input.
+pub fn system_name() -> Option<String> {
+    #[cfg(windows)]
+    let name = std::env::var("COMPUTERNAME").ok()?;
+    #[cfg(unix)]
+    let name = {
+        let mut buffer = [0u8; 256];
+        if unsafe { libc::gethostname(buffer.as_mut_ptr().cast(), buffer.len()) } != 0 {
+            return None;
+        }
+        let end = buffer.iter().position(|value| *value == 0)?;
+        String::from_utf8(buffer[..end].to_vec()).ok()?
+    };
+    (!name.is_empty()
+        && name.len() <= 255
+        && name
+            .bytes()
+            .all(|value| value.is_ascii_alphanumeric() || b"._-".contains(&value)))
+    .then_some(name)
+}
 pub fn current() -> olo_toolgate_contracts::ClientPlatform {
     #[cfg(target_os = "windows")]
     {

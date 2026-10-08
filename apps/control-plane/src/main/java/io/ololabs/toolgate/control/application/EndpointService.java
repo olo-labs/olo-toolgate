@@ -120,7 +120,7 @@ public final class EndpointService {
             if(approve){
                 if(tx.endpoint(review.deviceId())!=null||tx.endpointKey(review.keyFingerprint())!=null)throw Failure.conflict();
                 var identity=issuer.issue(row.csr(),review.deviceId(),tenant.value(),user,server,now,connectionExpires==null?Long.MAX_VALUE:connectionExpires);certificate=codec.json(identity);
-                var endpoint=new EndpointDeviceRecord(review.deviceId(),tenant.value(),user,review.keyFingerprint(),EndpointState.ACTIVE,1L,0L,0L,null,connectionExpires,true,1L);
+                var endpoint=new EndpointDeviceRecord(review.deviceId(),tenant.value(),user,review.keyFingerprint(),EndpointState.ACTIVE,1L,0L,0L,null,connectionExpires,true,1L,null,null);
                 tx.saveEndpoint(new Store.EndpointRecord(review.deviceId(),review.keyFingerprint(),codec.json(endpoint),row.csr(),"0".repeat(64),"{}"));
                 // Directory metadata cannot grant device credentials; enrollment creates the matching bounded record atomically.
                 var before=tx.load();var id=Ids.Kind.DEVICE.id(review.deviceId());var previous=before.entries().get(id);
@@ -171,7 +171,12 @@ public final class EndpointService {
         return new Store.Reply(reply.status(),codec.json(negotiated),reply.revision());
     }
     public Store.Reply checkIn(java.security.cert.X509Certificate peer,String body,String requestId,boolean milliseconds) {
+        return checkIn(peer,body,requestId,milliseconds,null,null);
+    }
+    public Store.Reply checkIn(java.security.cert.X509Certificate peer,String body,String requestId,boolean milliseconds,String systemName,String ipAddress) {
         available();
+        if(systemName!=null&&(systemName.length()>255||!systemName.matches("[a-zA-Z0-9._-]+")))throw Failure.validation();
+        if(ipAddress!=null&&(ipAddress.length()>45||!ipAddress.matches("[0-9a-fA-F:.]{2,45}")))throw Failure.validation();
         var check=codec.model(body,EndpointCheckIn.class);Ids.valid(requestId);var fingerprint=issuer.peerFingerprint(peer,clock.millis());
         var digest=DirectoryService.digest(codec.json(check));
         return transaction((tx,now)->{var row=tx.endpointKey(fingerprint);if(row==null)throw forbidden();
@@ -188,7 +193,7 @@ public final class EndpointService {
             var configuration=new EndpointPermissions(codec).poll(tx,device,server,check.configurationDigest(),check.localTools());
             var task=relay().poll(tx,device,now,requestId);
             var ack=new EndpointCheckInAck(device.deviceId(),check.sequence(),now,2L,null,renewed,configuration,task);
-            var updated=new EndpointDeviceRecord(device.deviceId(),tenant.value(),device.userId(),fingerprint,EndpointState.ACTIVE,device.revision()+1,now,check.sequence(),check.report(),device.connectionExpiresAtUnixMs(),device.connectionApproved(),device.approvalRevision());
+            var updated=new EndpointDeviceRecord(device.deviceId(),tenant.value(),device.userId(),fingerprint,EndpointState.ACTIVE,device.revision()+1,now,check.sequence(),check.report(),device.connectionExpiresAtUnixMs(),device.connectionApproved(),device.approvalRevision(),systemName==null?device.systemName():systemName,ipAddress==null?device.ipAddress():ipAddress);
             var response=reply(ack,updated.revision());tx.saveEndpoint(new Store.EndpointRecord(row.id(),row.fingerprint(),codec.json(updated),row.csr(),digest,response.body()));
             tx.audit(fingerprint,renewed==null?"DEVICE_CHECK_IN":"DEVICE_RENEW","endpoint:"+row.id(),updated.revision(),requestId,digest);return interval(response,milliseconds);
         });
@@ -224,12 +229,12 @@ public final class EndpointService {
                     case "local-builtins"->SystemExecutorKind.BUILTINS;case "local-hotfolder"->SystemExecutorKind.HOTFOLDER;case "local-rest-forwarding"->SystemExecutorKind.REST_FORWARDING;default->null;
                 }:null;
                 var owner=entries.get(Ids.Kind.USER.id(directory.ownerUserId()));
-                items.put(directory.id(),new EndpointManagedDevice(directory.id(),kind!=null,directory,row==null?null:codec.model(row.document(),EndpointDeviceRecord.class),null,owner==null?null:codec.model(owner.document(),ControlUser.class),kind,null));
+                items.put(directory.id(),new EndpointManagedDevice(directory.id(),kind!=null,directory,row==null?null:codec.model(row.document(),EndpointDeviceRecord.class),null,owner==null?null:codec.model(owner.document(),ControlUser.class),kind,null,row==null?null:codec.model(row.document(),EndpointDeviceRecord.class).systemName(),row==null?null:codec.model(row.document(),EndpointDeviceRecord.class).ipAddress()));
             }
             for(var row:tx.enrollments(now)){
                 var review=codec.model(row.document(),EndpointEnrollmentReview.class);if(review.state()!=EnrollmentState.PENDING||tx.endpoint(review.deviceId())!=null)continue;
                 var previous=items.get(review.deviceId());
-                items.put(review.deviceId(),new EndpointManagedDevice(review.deviceId(),false,previous==null?null:previous.directoryDevice(),null,review,previous==null?null:previous.registeredUser(),null,null));
+                items.put(review.deviceId(),new EndpointManagedDevice(review.deviceId(),false,previous==null?null:previous.directoryDevice(),null,review,previous==null?null:previous.registeredUser(),null,null,null,null));
             }
             return reply(new EndpointManagedDevicePage(List.copyOf(items.values())),0);
         });
@@ -244,7 +249,7 @@ public final class EndpointService {
             enabledUser(tx,device.userId());var entry=tx.load().entries().get(Ids.Kind.DEVICE.id(id));
             if(entry==null||!device.userId().equals(codec.model(entry.document(),ControlDevice.class).ownerUserId()))throw Failure.conflict();
             Long expires=request.approved()?connectionDeadline(request.connectionExpiresAtUnixMs(),request.unlimitedConnection(),now):device.connectionExpiresAtUnixMs();
-            var updated=new EndpointDeviceRecord(id,tenant.value(),device.userId(),device.keyFingerprint(),device.state(),device.revision()+1,device.lastSeenUnixMs(),device.reportSequence(),device.report(),expires,request.approved(),approvalRevision(device)+1);
+            var updated=new EndpointDeviceRecord(id,tenant.value(),device.userId(),device.keyFingerprint(),device.state(),device.revision()+1,device.lastSeenUnixMs(),device.reportSequence(),device.report(),expires,request.approved(),approvalRevision(device)+1,device.systemName(),device.ipAddress());
             tx.saveEndpoint(new Store.EndpointRecord(id,row.fingerprint(),codec.json(updated),row.csr(),row.reportDigest(),row.acknowledgment()));
             tx.audit(actor.id(),request.approved()?"DEVICE_APPROVE":"DEVICE_DEAPPROVE","endpoint:"+id,updated.revision(),requestId,digest);
             var result=reply(updated,updated.revision());tx.remember(actor.id(),key,digest,result);return result;
@@ -276,7 +281,7 @@ public final class EndpointService {
         return transaction((tx,now)->{var replay=tx.replay(actor.id(),key,digest);if(replay!=null)return replay;
             var row=tx.endpoint(id);if(row==null)throw Failure.conflict();var device=codec.model(row.document(),EndpointDeviceRecord.class);
             if(!request.expectedRevision().equals(device.revision())||device.state()==EndpointState.REVOKED)throw Failure.conflict();
-            var updated=new EndpointDeviceRecord(id,tenant.value(),device.userId(),row.fingerprint(),EndpointState.REVOKED,device.revision()+1,device.lastSeenUnixMs(),device.reportSequence(),device.report(),device.connectionExpiresAtUnixMs(),false,approvalRevision(device)+1);
+            var updated=new EndpointDeviceRecord(id,tenant.value(),device.userId(),row.fingerprint(),EndpointState.REVOKED,device.revision()+1,device.lastSeenUnixMs(),device.reportSequence(),device.report(),device.connectionExpiresAtUnixMs(),false,approvalRevision(device)+1,device.systemName(),device.ipAddress());
             tx.saveEndpoint(new Store.EndpointRecord(id,row.fingerprint(),codec.json(updated),row.csr(),row.reportDigest(),row.acknowledgment()));
             tx.audit(actor.id(),"DEVICE_REVOKE","endpoint:"+id,updated.revision(),requestId,digest);var result=reply(updated,updated.revision());tx.remember(actor.id(),key,digest,result);return result;
         });

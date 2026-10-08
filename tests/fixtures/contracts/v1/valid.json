@@ -981,7 +981,9 @@
   "SystemExecutorKind": "HOTFOLDER",
   "EndpointManagedDevice": {
     "deviceId": "device-1",
-    "systemExecutor": false
+    "systemExecutor": false,
+    "systemName": "test-machine",
+    "ipAddress": "2001:db8::1"
   },
   "EndpointManagedDevicePage": {
     "items": []
@@ -1041,7 +1043,9 @@
     "state": "UNENROLLED",
     "revision": 1,
     "lastSeenUnixMs": 1,
-    "reportSequence": 1
+    "reportSequence": 1,
+    "systemName": "test-machine",
+    "ipAddress": "192.0.2.10"
   },
   "EndpointRevokeRequest": {
     "expectedRevision": 1
@@ -2334,6 +2338,20 @@
       "sequence": 1,
       "serverTimeUnixMs": 1,
       "nextIntervalSeconds": 10
+    }
+  },
+  "RemoteToolInspection": {
+    "record": {
+      "requestId": "request",
+      "deviceId": "device",
+      "agentId": "agent",
+      "toolId": "tool",
+      "state": "WAITING_FOR_POLL",
+      "receivedAtUnixMs": 1700000000000,
+      "expiresAtUnixMs": 1700000030000
+    },
+    "output": {
+      "text": "hello"
     }
   }
 }

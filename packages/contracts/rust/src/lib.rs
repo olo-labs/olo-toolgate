@@ -936,6 +936,10 @@ pub struct EndpointDeviceRecord {
     pub connection_approved: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub approval_revision: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub system_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ip_address: Option<String>,
 }
 /// Toggle device directory activation, including a pending device. Zero expects no directory record yet.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1043,6 +1047,10 @@ pub struct EndpointManagedDevice {
     pub system_executor_kind: Option<SystemExecutorKind>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub system_available: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub system_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ip_address: Option<String>,
 }
 /// All directory devices plus pending requests within the existing directory and enrollment quotas.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1589,6 +1597,14 @@ pub struct RemoteToolAuthorization {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RemoteToolAuthorizationAck {
     pub expires_at_unix_ms: u64,
+}
+/// Same-tenant administrator inspection of one completed response; excludes arguments and private lease credentials.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteToolInspection {
+    pub record: RemoteToolRecord,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output: Option<std::collections::BTreeMap<String, serde_json::Value>>,
 }
 /// Bounded recent local-tool request progress.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

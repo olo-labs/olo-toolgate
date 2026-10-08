@@ -21,7 +21,7 @@ installation, health indicator or deployment assignment never grants tool access
    device code, CSR private key, runtime bearer token or certificate credentials.
 5. **Devices → Clients** combines registered devices and pending requests in one
    automatically refreshed table. Device name and registered user are visible
-   columns; each row has details available by hover, keyboard or the information
+   columns alongside **System name** and **IP address**; each row has details available by hover, keyboard or the information
    button. Names can be edited through the directory editor.
 
 Pending devices show **Awaiting registration** until an owner is established.
@@ -29,6 +29,15 @@ Installed clients show connected/offline state from authenticated check-ins;
 the console uses a two-minute freshness window and does not treat approval alone
 as a connection. The current client normally polls every 500 ms; older clients
 retain their seconds-based interval.
+
+System name is the protected client's reported OS hostname, separate from its
+editable device name. Current clients send a bounded `X-ToolGate-System-Name`
+header on authenticated HTTPS check-ins and WebSocket handshakes. Control records
+the actual transport peer IP, ignoring forwarded-IP headers. These are display
+metadata and never identity or authorization inputs. Missing metadata shows
+**Not reported**; older clients need the current client build to report their name.
+An observed IP may be a NAT/proxy address. Quickstart server-managed rows show
+the composition host/container name and address.
 
 ## Approval and enablement
 

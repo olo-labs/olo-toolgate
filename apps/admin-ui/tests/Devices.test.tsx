@@ -11,6 +11,12 @@ const pending:EndpointManagedDevice={deviceId:'device-2',systemExecutor:false,en
 const system:EndpointManagedDevice={deviceId:'local-builtins',systemExecutor:true,systemExecutorKind:'BUILTINS',systemAvailable:true,directoryDevice:{id:'local-builtins',name:'Quickstart fixed executor',ownerUserId:'local-tools',enabled:true,revision:1},registeredUser:{id:'local-tools',name:'Local tool requester',enabled:true,revision:1}};
 function setup(items:EndpointManagedDevice[],mutationStatus=200){const transport=vi.fn<typeof fetch>().mockImplementation(async(_path,options)=>new Response(JSON.stringify(options?.method==='POST'?{}:{items}),{status:options?.method==='POST'?mutationStatus:200}));render(<Devices client={new ControlClient('test-token',vi.fn(),transport)}/>);return transport;}
 describe('Device management',()=>{
+  it('shows reported system names and observed IPs, with honest missing metadata',async()=>{
+    setup([{...active,systemName:'trading-desktop',ipAddress:'192.0.2.15'},pending]);
+    expect(await screen.findByText('trading-desktop')).toBeTruthy();expect(screen.getByText('192.0.2.15')).toBeTruthy();
+    expect(screen.getByRole('columnheader',{name:'System name'})).toBeTruthy();expect(screen.getByRole('columnheader',{name:'IP address'})).toBeTruthy();
+    expect(screen.getAllByText('Not reported').length).toBe(2);
+  });
   it('lists approved, pending and system devices with names, users and accessible details',async()=>{
     setup([active,pending,system]);await screen.findByText('Trading workstation');
     expect(screen.getByRole('columnheader',{name:'Registered user'})).toBeTruthy();expect(screen.getByText('Alice Smith')).toBeTruthy();expect(screen.getByText('Awaiting registration')).toBeTruthy();

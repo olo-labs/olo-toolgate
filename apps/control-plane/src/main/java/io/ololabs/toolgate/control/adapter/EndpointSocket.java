@@ -34,7 +34,7 @@ public class EndpointSocket {
                 if(auth.failed()){connections.decrementAndGet();context.response().setStatusCode(auth.cause() instanceof Failure failure?failure.status():503).end();return;}
                 context.request().toWebSocket().onComplete(upgrade->{
                     if(upgrade.failed()){connections.decrementAndGet();return;}
-                    channel(context.vertx(),upgrade.result(),peer);
+                    channel(context.vertx(),upgrade.result(),peer,context.request().getHeader("X-ToolGate-System-Name"),context.request().remoteAddress().hostAddress().split("%",2)[0]);
                 });
             });
         });
@@ -44,7 +44,7 @@ public class EndpointSocket {
         var node=new com.fasterxml.jackson.databind.ObjectMapper().valueToTree(body);
         LOG.info(codec.json(java.util.Map.of("service","control","event","protocol_packet","transport","WEBSOCKET","direction",direction,"path",PATH,"requestId",id,"operation",operation,"status",status==null?0L:status,"message",PacketTelemetry.summary(node,0))));
     }
-    private void channel(io.vertx.core.Vertx vertx,ServerWebSocket socket,X509Certificate peer){
+    private void channel(io.vertx.core.Vertx vertx,ServerWebSocket socket,X509Certificate peer,String systemName,String ipAddress){
         event("CONNECTED");
         var closed=new AtomicBoolean();var busy=new AtomicBoolean();var checking=new AtomicBoolean();
         var pong=new AtomicLong(System.nanoTime());var lastJob=new AtomicLong(System.nanoTime());
@@ -73,7 +73,7 @@ public class EndpointSocket {
                     endpoints.verifySocketPeer(peer);
                     String body=codec.json(request.body());
                     reply=switch(request.operation()){
-                        case CHECK_IN -> endpoints.checkIn(peer,body,request.requestId(),true);
+                        case CHECK_IN -> endpoints.checkIn(peer,body,request.requestId(),true,systemName,ipAddress);
                         case AUTHORIZE -> endpoints.relay().authorize(peer,body);
                         case RESULT -> endpoints.relay().result(peer,body,request.requestId());
                         case BUILDER_POLL -> {if(request.body()!=null)throw Failure.validation();yield builder.poll(peer,request.requestId());}

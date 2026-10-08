@@ -13,6 +13,8 @@ package io.ololabs.toolgate.contracts;
  * @param registeredUser canonical registeredUser value
  * @param systemExecutorKind canonical systemExecutorKind value
  * @param systemAvailable canonical systemAvailable value
+ * @param systemName canonical systemName value
+ * @param ipAddress canonical ipAddress value
  */
 @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
 public record EndpointManagedDevice(
@@ -23,7 +25,9 @@ public record EndpointManagedDevice(
     @com.fasterxml.jackson.annotation.JsonProperty(value = "enrollment", required = false) EndpointEnrollmentReview enrollment,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "registeredUser", required = false) ControlUser registeredUser,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "systemExecutorKind", required = false) SystemExecutorKind systemExecutorKind,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "systemAvailable", required = false) Boolean systemAvailable
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "systemAvailable", required = false) Boolean systemAvailable,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "systemName", required = false) String systemName,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "ipAddress", required = false) String ipAddress
 ) {
     /** Reject absent required references and copy collections to retain value semantics.
      *
@@ -35,6 +39,8 @@ public record EndpointManagedDevice(
      * @param registeredUser canonical registeredUser value
      * @param systemExecutorKind canonical systemExecutorKind value
      * @param systemAvailable canonical systemAvailable value
+     * @param systemName canonical systemName value
+     * @param ipAddress canonical ipAddress value
      */
     public EndpointManagedDevice {
         java.util.Objects.requireNonNull(deviceId, "deviceId");

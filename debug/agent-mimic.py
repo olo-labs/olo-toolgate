@@ -1,6 +1,6 @@
 # Copyright 2026 OLO Labs
 # SPDX-License-Identifier: Apache-2.0
-"""Discover device-scoped MCP tools, write the client file, then read one client log entry."""
+"""Call the configured client file and log tools, and print their responses."""
 import argparse
 import json
 import os
@@ -16,22 +16,54 @@ ROOT = Path(__file__).resolve().parents[1]
 VERSION = '2026-07-28'
 TEXT = 'My Name is Rahul Nigam'
 
+def gateway_origin(gateway):
+    origin = urllib.parse.urlsplit(gateway)
+    if origin.scheme not in ('http', 'https') or not origin.hostname or origin.username or origin.password or origin.query or origin.fragment or origin.path not in ('', '/'):
+        raise ValueError('Gateway must be an HTTPS origin, or HTTP on localhost/127.0.0.1')
+    if origin.scheme == 'http' and origin.hostname not in ('localhost', '127.0.0.1'):
+        raise ValueError('HTTP is supported only on localhost/127.0.0.1; use HTTPS for other gateways')
+    return origin
+
+def installed_client_config():
+    if os.name == 'nt': return Path(os.environ.get('ProgramData', 'C:/ProgramData')) / 'OLO/ToolGate/client.json'
+    if sys.platform == 'darwin': return Path('/Library/Application Support/OLO/ToolGate/client.json')
+    return Path('/etc/olo-toolgate/client.json')
+
+def resolve_ca(gateway, explicit_ca=None):
+    if gateway_origin(gateway).scheme == 'http':
+        if explicit_ca is not None: raise ValueError('-CaFile applies only to HTTPS gateways')
+        return None
+    if explicit_ca is not None: return explicit_ca
+    config_path = installed_client_config()
+    if config_path.is_file():
+        try: config = json.loads(config_path.read_text(encoding='utf-8-sig'))
+        except (OSError, ValueError): raise ValueError('Cannot read installed client configuration; supply the existing trusted CA with -CaFile') from None
+        if isinstance(config, dict) and config.get('serverUrl', '').rstrip('/').casefold() == gateway.rstrip('/').casefold():
+            ca = config.get('caCertificatePath')
+            if ca:
+                if not isinstance(ca, str) or not Path(ca).is_absolute(): raise ValueError('Installed client CA path must be absolute; supply -CaFile')
+                return Path(ca)
+    return None
+
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
         return None
 
 class Agent:
     def __init__(self, gateway, token_file, ca_file=None):
-        origin = urllib.parse.urlsplit(gateway)
-        if origin.scheme != 'https' or not origin.hostname or origin.username or origin.password or origin.query or origin.fragment or origin.path not in ('', '/'):
-            raise ValueError('Gateway must be an HTTPS origin, for example https://localhost:18450')
-        token = Path(token_file).read_text(encoding='utf-8').strip()
+        origin = gateway_origin(gateway)
+        try: token = Path(token_file).read_text(encoding='utf-8').strip()
+        except OSError: raise ValueError('Cannot read agent token file; supply -TokenFile for an existing configured agent. Device approval does not create an agent credential') from None
         if not 32 <= len(token) <= 256 or any(c not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~' for c in token):
             raise ValueError('Invalid agent token file')
         self.token = token
         self.url = gateway.rstrip('/') + '/mcp'
-        context = ssl.create_default_context(cafile=str(ca_file) if ca_file else None)
-        self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect(), urllib.request.HTTPSHandler(context=context))
+        handlers = [urllib.request.ProxyHandler({}), NoRedirect()]
+        if origin.scheme == 'https':
+            try: context = ssl.create_default_context(cafile=str(ca_file) if ca_file else None)
+            except (OSError, ssl.SSLError): raise ValueError('Cannot load trusted CA; supply the current gateway CA with -CaFile') from None
+            handlers.append(urllib.request.HTTPSHandler(context=context))
+        self.opener = urllib.request.build_opener(*handlers)
         self.sequence = 0
         self.run_id = secrets.token_hex(12)
 
@@ -53,7 +85,13 @@ class Agent:
             # Print only the fixed code, never raw server/error bodies or headers.
             try: code = json.loads(response.read(131073)).get('code', 'MCP_REJECTED')
             except (ValueError, AttributeError): code = 'MCP_REJECTED'
+            if response.code == 401:
+                raise ValueError('MCP HTTP 401: agent token is invalid, expired or not configured on this gateway; supply its configured credential with -TokenFile. Device approval does not create an agent credential') from None
             raise ValueError(f'MCP HTTP {response.code}: {code}; check enrollment, agent binding and permissions') from None
+        except urllib.error.URLError as failure:
+            if isinstance(failure.reason, ssl.SSLCertVerificationError):
+                raise ValueError('TLS certificate verification failed; use the installed client trust for this gateway or supply its current CA with -CaFile. Local HTTP can use -Gateway http://127.0.0.1:18090 when enabled') from None
+            raise ValueError('Cannot connect to gateway; check that it is running and that -Gateway uses the correct scheme and port') from None
         if len(raw) > 131072: raise ValueError('MCP response exceeds the limit')
         reply = json.loads(raw)
         print(f'RECEIVE {method} id={rpc_id} serverRequestId={server_id}', flush=True)
@@ -67,23 +105,15 @@ class Agent:
         return result
 
 def mimic(agent, file_path):
-    discovery = agent.rpc('server/discover')
-    if VERSION not in discovery.get('supportedVersions', []): raise ValueError('Gateway MCP version mismatch')
-    catalog = agent.rpc('tools/list')
-    tools = catalog.get('tools', [])
-    names = [tool['name'] for tool in tools]
-    print('Available tools: ' + (', '.join(names) if names else '(none)'), flush=True)
-    for name in ('hotfolder.write_text', 'client.read_log_entry'):
-        if names.count(name) != 1:
-            raise ValueError(f'{name} unavailable: enroll the client, wait for its poll, and allow the tool for this agent/device')
     write = agent.rpc('tools/call', {'name': 'hotfolder.write_text', 'arguments': {'path': file_path, 'text': TEXT}})
+    print('Client file-write response:', flush=True)
+    print(json.dumps(write, ensure_ascii=True, indent=2), flush=True)
     if write.get('structuredContent', {}).get('success') is not True: raise ValueError('Client did not confirm file creation')
-    print(f'Created on client: {file_path}\n{TEXT}', flush=True)
     log = agent.rpc('tools/call', {'name': 'client.read_log_entry', 'arguments': {}})
+    print('Client log response:', flush=True)
+    print(json.dumps(log, ensure_ascii=True, indent=2), flush=True)
     content = log.get('structuredContent', {})
     if content.get('file') != 'packets.jsonl' or not isinstance(content.get('entry'), dict): raise ValueError('Client did not return one diagnostic log entry')
-    print('One entry from client packets.jsonl:', flush=True)
-    print(json.dumps(content['entry'], ensure_ascii=True, indent=2), flush=True)
     return content['entry']
 
 def main():
@@ -93,10 +123,7 @@ def main():
     parser.add_argument('--ca-file', type=Path)
     parser.add_argument('--file', default='rahul-nigam.txt')
     args = parser.parse_args()
-    ca = args.ca_file
-    local_ca = ROOT / '.dev/debug/toolgate-quickstart-ca.crt'
-    if ca is None and args.gateway.rstrip('/') == 'https://localhost:18450' and local_ca.is_file(): ca = local_ca
-    try: mimic(Agent(args.gateway, args.token_file, ca), args.file)
+    try: mimic(Agent(args.gateway, args.token_file, resolve_ca(args.gateway, args.ca_file)), args.file)
     except (OSError, ValueError, KeyError, TypeError) as failure:
         # Exceptions from OS/TLS can include private filenames; keep those generic.
         print('FAILED: ' + (str(failure) if isinstance(failure, ValueError) else 'Cannot connect or load the agent credential/CA; check configuration and Gateway health'), file=sys.stderr)

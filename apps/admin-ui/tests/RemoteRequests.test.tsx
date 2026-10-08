@@ -1,6 +1,6 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
-import {act,render,screen,cleanup} from '@testing-library/react';
+import {act,render,screen,cleanup,fireEvent} from '@testing-library/react';
 import {afterEach,expect,test,vi} from 'vitest';
 import {RemoteRequests} from '../src/RemoteRequests';
 import {ControlClient} from '../src/api';
@@ -16,4 +16,20 @@ test('polls progress and retains completed handoffs without request contents',as
   await act(async()=>{await vi.advanceTimersByTimeAsync(2000);});
   expect(poll).toHaveBeenCalledTimes(2);expect(screen.getByText('Request submitted to client')).toBeTruthy();expect(screen.getByText('Response received')).toBeTruthy();expect(screen.getAllByText('Done').length).toBeGreaterThan(0);
   cleanup();await act(async()=>{await vi.advanceTimersByTimeAsync(5000);});expect(poll).toHaveBeenCalledTimes(2);
+});
+test('inspects a completed response as text without rendering returned HTML',async()=>{
+  const completed={...request,state:'DONE' as const,completedAtUnixMs:4};
+  const transport=vi.fn<typeof fetch>().mockImplementation(async path=>new Response(JSON.stringify(String(path).endsWith('/request-one')?{record:completed,output:{text:'<script>do not execute</script>'}}:{items:[completed]})));
+  render(<RemoteRequests client={new ControlClient('test-token',vi.fn(),transport)}/>);
+  const region=screen.getByRole('region',{name:'Client tool requests'});expect(region.className).toBe('remote-requests');
+  fireEvent.click(await screen.findByRole('button',{name:'View response request-one'}));
+  expect(await screen.findByText(/<script>do not execute<\/script>/)).toBeTruthy();
+  expect(screen.getByRole('region',{name:'Client response'}).querySelector('script')).toBeNull();
+  expect(transport.mock.calls.some(call=>call[0]==='/api/control/v1/mcp/requests/request-one')).toBe(true);
+  fireEvent.click(screen.getByRole('button',{name:'Close response'}));expect(screen.queryByRole('region',{name:'Client response'})).toBeNull();
+});
+test('compact dashboard keeps its bounded card without response fetches',async()=>{
+  const inspect=vi.fn();render(<RemoteRequests compact client={{remoteRequests:vi.fn().mockResolvedValue({items:[request]}),remoteRequest:inspect} as unknown as ControlClient}/>);
+  await screen.findByText('Latest 10 client requests');expect(screen.getByRole('region',{name:'Client tool requests'}).className).toBe('guidance');
+  expect(screen.queryByRole('button',{name:/View response/})).toBeNull();expect(inspect).not.toHaveBeenCalled();
 });

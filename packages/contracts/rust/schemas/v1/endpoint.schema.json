@@ -322,10 +322,14 @@
         "items": {
           "type": "array",
           "maxItems": 32,
-          "items": { "$ref": "endpoint.schema.json#/$defs/EndpointEnrollmentReview" }
+          "items": {
+            "$ref": "endpoint.schema.json#/$defs/EndpointEnrollmentReview"
+          }
         }
       },
-      "required": ["items"]
+      "required": [
+        "items"
+      ]
     },
     "DeviceIdentity": {
       "type": "object",
@@ -515,6 +519,20 @@
           "minimum": 1,
           "maximum": 9007199254740991,
           "description": "Approval revision independent of heartbeat revisions. Absent legacy values mean 1."
+        },
+        "systemName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[a-zA-Z0-9._-]+$",
+          "description": "Reported machine hostname; informational metadata, never authentication."
+        },
+        "ipAddress": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 45,
+          "pattern": "^[0-9a-fA-F:.]+$",
+          "description": "Server-observed transport IP address; may represent NAT or a proxy."
         }
       },
       "required": [
@@ -528,53 +546,126 @@
         "reportSequence"
       ]
     },
-    "SystemExecutorKind": { "type": "string", "enum": ["BUILTINS", "HOTFOLDER", "REST_FORWARDING"] },
+    "SystemExecutorKind": {
+      "type": "string",
+      "enum": [
+        "BUILTINS",
+        "HOTFOLDER",
+        "REST_FORWARDING"
+      ]
+    },
     "EndpointManagedDevice": {
       "type": "object",
       "description": "Directory identity, enrolled approval and pending request combined for administrative management.",
       "additionalProperties": false,
       "properties": {
-        "deviceId": { "$ref": "identifiers.schema.json#/$defs/Identifier" },
-        "systemExecutor": { "type": "boolean" },
-        "directoryDevice": { "$ref": "control.schema.json#/$defs/ControlDevice" },
-        "endpointDevice": { "$ref": "endpoint.schema.json#/$defs/EndpointDeviceRecord" },
-        "enrollment": { "$ref": "endpoint.schema.json#/$defs/EndpointEnrollmentReview" },
-        "registeredUser": { "$ref": "control.schema.json#/$defs/ControlUser" },
-        "systemExecutorKind": { "$ref": "endpoint.schema.json#/$defs/SystemExecutorKind" },
-        "systemAvailable": { "type": "boolean", "description": "Composition readiness for a server executor; absent when availability is unknown." }
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "systemExecutor": {
+          "type": "boolean"
+        },
+        "directoryDevice": {
+          "$ref": "control.schema.json#/$defs/ControlDevice"
+        },
+        "endpointDevice": {
+          "$ref": "endpoint.schema.json#/$defs/EndpointDeviceRecord"
+        },
+        "enrollment": {
+          "$ref": "endpoint.schema.json#/$defs/EndpointEnrollmentReview"
+        },
+        "registeredUser": {
+          "$ref": "control.schema.json#/$defs/ControlUser"
+        },
+        "systemExecutorKind": {
+          "$ref": "endpoint.schema.json#/$defs/SystemExecutorKind"
+        },
+        "systemAvailable": {
+          "type": "boolean",
+          "description": "Composition readiness for a server executor; absent when availability is unknown."
+        },
+        "systemName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[a-zA-Z0-9._-]+$",
+          "description": "Reported machine hostname; informational metadata, never authentication."
+        },
+        "ipAddress": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 45,
+          "pattern": "^[0-9a-fA-F:.]+$",
+          "description": "Server-observed transport IP address; may represent NAT or a proxy."
+        }
       },
-      "required": ["deviceId", "systemExecutor"]
+      "required": [
+        "deviceId",
+        "systemExecutor"
+      ]
     },
     "EndpointManagedDevicePage": {
       "type": "object",
       "description": "All directory devices plus pending requests within the existing directory and enrollment quotas.",
       "additionalProperties": false,
       "properties": {
-        "items": { "type": "array", "maxItems": 544, "items": { "$ref": "endpoint.schema.json#/$defs/EndpointManagedDevice" } }
+        "items": {
+          "type": "array",
+          "maxItems": 544,
+          "items": {
+            "$ref": "endpoint.schema.json#/$defs/EndpointManagedDevice"
+          }
+        }
       },
-      "required": ["items"]
+      "required": [
+        "items"
+      ]
     },
     "EndpointApprovalRequest": {
       "type": "object",
       "description": "Reversible approval decision for an already enrolled key, preserving its owner and directory status.",
       "additionalProperties": false,
       "properties": {
-        "expectedApprovalRevision": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
-        "approved": { "type": "boolean" },
-        "connectionExpiresAtUnixMs": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
-        "unlimitedConnection": { "type": "boolean" }
+        "expectedApprovalRevision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "approved": {
+          "type": "boolean"
+        },
+        "connectionExpiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "unlimitedConnection": {
+          "type": "boolean"
+        }
       },
-      "required": ["expectedApprovalRevision", "approved"]
+      "required": [
+        "expectedApprovalRevision",
+        "approved"
+      ]
     },
     "EndpointEnabledRequest": {
       "type": "object",
       "description": "Toggle device directory activation, including a pending device. Zero expects no directory record yet.",
       "additionalProperties": false,
       "properties": {
-        "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
-        "enabled": { "type": "boolean" }
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "enabled": {
+          "type": "boolean"
+        }
       },
-      "required": ["expectedRevision", "enabled"]
+      "required": [
+        "expectedRevision",
+        "enabled"
+      ]
     },
     "EndpointRevokeRequest": {
       "type": "object",
@@ -1095,6 +1186,22 @@
         "body"
       ],
       "description": "Correlated status and response; body is validated again as the expected response contract."
+    },
+    "RemoteToolInspection": {
+      "type": "object",
+      "description": "Same-tenant administrator inspection of one completed response; excludes arguments and private lease credentials.",
+      "additionalProperties": false,
+      "properties": {
+        "record": {
+          "$ref": "endpoint.schema.json#/$defs/RemoteToolRecord"
+        },
+        "output": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "record"
+      ]
     }
   }
 }

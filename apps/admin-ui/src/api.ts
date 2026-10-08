@@ -4,7 +4,7 @@ import type { FleetReleasePage, FleetRolloutPage, FleetRolloutRequest, FleetRoll
 import { listOperations, getOperations, createOperations, updateOperations, deleteOperations, operations, type DirectoryKind, type DirectoryPages, type DirectoryRecords } from './operations.generated';
 import type { BuilderDraft, BuilderDraftPage, BuilderDraftRequest, BuilderTestPage, BuilderTestRequest, BuilderTestRecord, BuilderDefinition } from '@olo-labs/toolgate-contracts';
 import type { AdminSession, ControlAuditPage } from '@olo-labs/toolgate-contracts';
-import type {RemoteToolPage} from '@olo-labs/toolgate-contracts';
+import type {RemoteToolPage,RemoteToolInspection} from '@olo-labs/toolgate-contracts';
 
 /** Human-safe messages never render server text, exception bodies or credentials. */
 export class ApiError extends Error {
@@ -50,6 +50,7 @@ async function readBody(response: Response): Promise<unknown> {
  */
 export class ControlClient {
   remoteRequests(signal?:AbortSignal):Promise<RemoteToolPage>{return this.send(operations.listLocalMcpRequests,{signal});}
+  remoteRequest(id:string,signal?:AbortSignal):Promise<RemoteToolInspection>{return this.send(operations.inspectLocalMcpRequest,{id,signal});}
   private token: string;
   private readonly lifetime = new AbortController();
   constructor(token: string, private readonly onUnauthorized: () => void, private readonly transport: typeof fetch = (input, init) => fetch(input, init)) {

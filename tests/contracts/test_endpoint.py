@@ -11,6 +11,16 @@ from test_foundation import schemas_at, validators
 ROOT = Path(__file__).resolve().parents[2]
 
 class EndpointContractsTests(unittest.TestCase):
+    def test_response_inspection_excludes_private_lease_and_metadata_is_bounded(self):
+        models=validators(schemas_at(ROOT/'packages/contracts/schemas/v1'))
+        fixtures=json.loads((ROOT/'tests/fixtures/contracts/v1/valid.json').read_text())
+        inspection=copy.deepcopy(fixtures['RemoteToolInspection']);models['RemoteToolInspection'].validate(inspection)
+        inspection['leaseId']='private-lease'
+        with self.assertRaises(ValidationError): models['RemoteToolInspection'].validate(inspection)
+        for field,value in [('systemName','a'*256),('systemName','line\nbreak'),('ipAddress','example.test'),('ipAddress','1'*46)]:
+            device=copy.deepcopy(fixtures['EndpointManagedDevice']);device[field]=value
+            with self.assertRaises(ValidationError): models['EndpointManagedDevice'].validate(device)
+
     def test_management_snapshots_and_explicit_unlimited_approval_are_bounded(self):
         models = validators(schemas_at(ROOT/'packages/contracts/schemas/v1'))
         fixtures = json.loads((ROOT/'tests/fixtures/contracts/v1/valid.json').read_text())

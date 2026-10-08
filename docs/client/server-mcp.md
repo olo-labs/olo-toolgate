@@ -67,8 +67,15 @@ The Admin dashboard and **Client tool requests** page refresh every two seconds:
 4. Response received.
 5. Done, Failed or Expired.
 
-Progress records retain the handoff timestamps without displaying arguments or
-outputs. Retries reuse the same request and client lease. The protected client
+The full **Client tool requests** page fills the parent workspace canvas. Its
+progress list retains handoff timestamps without including arguments or outputs
+in every poll. **View response** loads one completed output as escaped JSON through
+`GET /api/control/v1/mcp/requests/{id}`, requiring an enabled same-tenant
+administrator. Pending records show progress only. Inspection never exposes the
+private client lease or incoming arguments and does not authorize execution.
+Packet telemetry and audit continue to redact tool outputs and credentials.
+
+Retries reuse the same request and client lease. The protected client
 `remote-journal.json` prevents an interrupted effect from running again after a
 restart; an uncertain outcome becomes a failure and completed results can be
 resent. Gateway changes clear old permissions, leases, enrollment and fleet state
@@ -94,8 +101,12 @@ Quickstart exposes the same stateless `/mcp` ingress on its direct HTTPS
 listener, forwarding MCP protocol headers and allowing time for the next client
 poll. Only its fixed runtime proxy routes delegate opaque bearer validation to
 Gateway; Control administrator JWT and client mTLS routes retain their existing
-authentication. See `debug/agent-mimic.bat` for a sequential discovery/write/log
-example and `debug/README.md` for local setup.
+authentication. See `debug/agent-mimic.bat` for a sequential write/log
+example and `debug/README.md` for existing-configuration usage. The compatibility
+entry point `debug/setup-agent-mimic.bat` runs the same two tool calls;
+it performs no installation, enrollment, approval, policy or credential setup.
+Both commands print responses and keep timestamped console logs under
+`.dev/debug/logs/`.
 
 Current clients request millisecond intervals with `X-ToolGate-Poll-Interval-Unit: milliseconds`. Control replies with `nextIntervalMs: 500`; that value takes precedence over the legacy `nextIntervalSeconds`. Older clients receive the original two-second response, and current clients fall back to seconds against an older server.
 

@@ -172,6 +172,11 @@ small,.hint {
 .workspace {
   flex:1;
   min-width:0}
+.workspace main.request-canvas { max-width:none; width:100%; margin:0; min-height:calc(100vh - 132px); }
+.remote-requests { width:100%; min-width:0; }
+.request-response { margin-top:24px; padding:24px; border:1px solid var(--border); border-radius:10px; background:var(--surface); }
+.request-response pre { max-height:55vh; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; }
+.remote-requests td,.remote-requests th { overflow-wrap:anywhere; }
 .topbar {
   height:72px;
   padding:0 40px;

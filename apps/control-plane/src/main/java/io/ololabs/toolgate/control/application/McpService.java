@@ -101,4 +101,14 @@ public final class McpService {
             if(record.state()==RemoteToolState.DONE)allowed(tx,task);
             return reply(new RemoteToolResponse(record,record.state()==RemoteToolState.DONE||record.state()==RemoteToolState.FAILED?row.result()==null?null:codec.model(row.result(),RemoteToolResult.class):null));});}
     public Store.Reply page(DirectoryService.Actor actor,String requestId){actor.requireAdmin();if(!actor.tenant().equals(tenant))throw forbidden();return store.transaction(tenant,true,tx->{long now=now(tx);var items=new ArrayList<RemoteToolRecord>();for(var row:tx.mcp().page(100)){var record=record(row);if((record.state()==RemoteToolState.WAITING_FOR_POLL||record.state()==RemoteToolState.SUBMITTED)&&row.expiresAt()<=now)record=transition(tx,row,RemoteToolState.EXPIRED,now,ErrorCode.TIMEOUT,null,requestId);items.add(record);}return reply(new RemoteToolPage(items));});}
+    /** Keep bounded response inspection separate from polling pages and private lease credentials. */
+    public Store.Reply inspect(DirectoryService.Actor actor,String requestId){
+        actor.requireAdmin();if(!actor.tenant().equals(tenant))throw forbidden();Ids.valid(requestId);
+        return store.transaction(tenant,false,tx->{
+            var row=tx.mcp().get(requestId);if(row==null)throw new Failure(ErrorCode.NOT_FOUND,404,"Request not found");
+            var progress=record(row);
+            var result=(progress.state()==RemoteToolState.DONE||progress.state()==RemoteToolState.FAILED)&&row.result()!=null?codec.model(row.result(),RemoteToolResult.class):null;
+            return reply(new RemoteToolInspection(progress,result==null?null:result.output()));
+        });
+    }
 }

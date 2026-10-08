@@ -92,6 +92,7 @@ export const operations = {
   queryLocalMcpCatalog: { method: 'POST', path: '/api/control/v1/mcp/catalog' },
   submitLocalMcpRequest: { method: 'POST', path: '/api/control/v1/mcp/requests' },
   listLocalMcpRequests: { method: 'GET', path: '/api/control/v1/mcp/requests' },
+  inspectLocalMcpRequest: { method: 'GET', path: '/api/control/v1/mcp/requests/{id}' },
   receiveLocalMcpResponse: { method: 'POST', path: '/api/control/v1/mcp/responses' },
   authorizeClientMcpRequest: { method: 'POST', path: '/api/control/v1/mcp/authorize' },
   submitClientMcpResult: { method: 'POST', path: '/api/control/v1/mcp/results' },

@@ -134,6 +134,9 @@ impl HttpsControl {
             .header("X-Request-ID", &correlation);
         if path == "/api/control/v1/endpoint/check-in" {
             request = request.header("X-ToolGate-Poll-Interval-Unit", "milliseconds");
+            if let Some(name) = crate::platform::system_name() {
+                request = request.header("X-ToolGate-System-Name", name);
+            }
         }
         let mut response = if let Some(body) = body {
             request

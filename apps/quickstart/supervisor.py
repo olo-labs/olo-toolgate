@@ -491,19 +491,30 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     db.execute('INSERT INTO control_audit(tenant_id,actor_id,operation,target,revision,request_id,request_digest) VALUES(?,?,?,?,?,?,?)',(TENANT,hashlib.sha256((ISSUER+'\nadmin').encode()).hexdigest(),'VAULT_PUT','vault:'+data['name'],1,secrets.token_hex(16),hashlib.sha256(data['name'].encode()).hexdigest()))
                     db.commit()
                 return self.reply(201, {'stored': True})
-            if path.startswith(('/console/', '/api/control/v1/', '/api/public/v1/clients', '/api/public/v1/installers')) or path in ('/','/console'):
+            # Opt-in for deployments whose public HTTP port is bound to loopback.
+            # Gateway still validates the opaque agent credential and every device scope.
+            mcp_http = path=='/mcp' and self.command=='POST' and os.environ.get('TOOLGATE_ALLOW_LOOPBACK_MCP_HTTP')=='true'
+            if mcp_http or path.startswith(('/console/', '/api/control/v1/', '/api/public/v1/clients', '/api/public/v1/installers')) or path in ('/','/console'):
                 # Direct TLS adapter is used for enrollment administration; device peers use :8443 itself.
                 secure = path.startswith(('/api/control/v1/endpoint/', '/api/control/v1/builder/', '/api/control/v1/fleet/'))
-                client = http.client.HTTPSConnection('127.0.0.1',8443,context=ssl.create_default_context(cafile=str(DATA/'keys/device-ca.crt')),timeout=10) if secure else http.client.HTTPConnection('127.0.0.1',8082,timeout=10)
-                headers = {k:v for k,v in self.headers.items() if k.lower() in ('authorization','content-type','idempotency-key','if-match','x-request-id','traceparent')}
+                client = http.client.HTTPSConnection('127.0.0.1',8443,context=ssl.create_default_context(cafile=str(DATA/'keys/device-ca.crt')),timeout=10) if secure else http.client.HTTPConnection('127.0.0.1',8081 if mcp_http else 8082,timeout=35 if mcp_http else 10)
+                forwarded = {'authorization','content-type','idempotency-key','if-match','x-request-id','traceparent'}
+                if mcp_http: forwarded.update(('accept','mcp-protocol-version','mcp-method','mcp-name'))
+                headers = {k:v for k,v in self.headers.items() if k.lower() in forwarded}
                 try:
                     client.request(self.command, self.path, raw or None, headers)
-                    response = client.getresponse(); body = response.read(64*1024*1024+1)
-                    if len(body)>64*1024*1024: raise ValueError()
+                    response = client.getresponse(); limit = 131072 if mcp_http else 64*1024*1024
+                    body = response.read(limit+1)
+                    if len(body)>limit: raise ValueError()
                     if path=='/api/control/v1/endpoint/devices' and self.command=='GET' and response.status==200:
                         page=strict(body)
                         for device in page['items']:
-                            if device.get('systemExecutor'): device['systemAvailable']=self.server.ready.is_set()
+                            if device.get('systemExecutor'):
+                                import socket
+                                device['systemAvailable']=self.server.ready.is_set()
+                                device['systemName']=socket.gethostname()
+                                try: device['ipAddress']=socket.gethostbyname(socket.gethostname())
+                                except OSError: pass
                         body=json.dumps(page).encode()
                     if path in ('/console/','/console/index.html') and response.status==200 and b'toolgate-mode' not in body:
                         body = body.replace(b'<head>', b'<head><meta name="toolgate-mode" content="quickstart">', 1)

@@ -345,6 +345,15 @@ paths:
         schema:
           type: string
           enum: [milliseconds]
+      - in: header
+        name: X-ToolGate-System-Name
+        required: false
+        description: Informational OS hostname from the authenticated protected client; never identity or authorization. The peer IP is observed from the transport and ignores forwarded-IP headers.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: '^[a-zA-Z0-9._-]+$'
       responses:
         '200':
           description: Success; no-store
@@ -3067,6 +3076,32 @@ paths:
         '401': *id014
         '403': *id015
         '409': *id016
+  /api/control/v1/mcp/requests/{id}:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        $ref: ../schemas/v1/identifiers.schema.json#/$defs/Identifier
+    get:
+      operationId: inspectLocalMcpRequest
+      description: Requires enabled same-tenant administrator authority. Returns one request's progress and completed output without arguments or private lease credentials. Pending responses contain progress only.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/endpoint.schema.json#/$defs/RemoteToolInspection
+        '400': *id013
+        '401': *id014
+        '403': *id015
+        '404':
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
   /api/control/v1/mcp/responses:
     post:
       operationId: receiveLocalMcpResponse

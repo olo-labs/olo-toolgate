@@ -1,7 +1,7 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Enrollment } from '../src/Enrollment';
 import { ControlClient } from '../src/api';
 afterEach(() => { cleanup();vi.useRealTimers();window.location.hash = ''; });
@@ -43,7 +43,8 @@ describe('Endpoint enrollment', () => {
     const decision=transport.mock.calls.find(call=>String(call[0]).endsWith('/decision'))!;
     expect(JSON.parse(String(decision[1]?.body))).toEqual({userCode:second.userCode,keyFingerprint:second.keyFingerprint,choice:'APPROVE',connectionExpiresAtUnixMs:new Date('2030-01-01T18:30').getTime()});
     expect(transport.mock.calls.some(call=>String(call[0]).endsWith(`review?code=${second.userCode}`))).toBe(true);
-    await screen.findByRole('button',{name:'Review device-1'});expect(screen.queryByRole('button',{name:'Review device-2'})).toBeNull();
+    await waitFor(()=>expect(screen.queryByRole('button',{name:'Review device-2'})).toBeNull());
+    expect(screen.getByRole('button',{name:'Review device-1'})).toBeTruthy();
   });
   it('blocks invalid or past deadlines while allowing denial without a deadline',async()=>{
     window.location.hash='#enroll?code=ABCDEF0123456789';

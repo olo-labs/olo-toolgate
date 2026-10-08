@@ -3,6 +3,22 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('request page fills its parent canvas and shows a completed response safely',async({page})=>{
+  test.skip(!process.env.QUICKSTART_PASSWORD,'Requires actual composed Quickstart fixture');
+  const record={requestId:'canvas-request',toolId:'client.read_log_entry',agentId:'test-agent',deviceId:'test-client',state:'DONE',receivedAtUnixMs:1,expiresAtUnixMs:30001,completedAtUnixMs:4};
+  await page.route('**/api/control/v1/mcp/requests',route=>route.fulfill({json:{items:[record]}}));
+  await page.route('**/api/control/v1/mcp/requests/canvas-request',route=>route.fulfill({json:{record,output:{text:'<script>display this as text</script>'}}}));
+  await page.goto('/console/');await page.getByLabel('Password',{exact:true}).fill(process.env.QUICKSTART_PASSWORD!);
+  await page.getByRole('button',{name:'Connect to workspace'}).click();await expect(page.getByRole('heading',{name:'Your organization, at a glance'})).toBeVisible();
+  await page.goto('/console/#requests');await expect(page.getByRole('heading',{name:'Client tool requests',exact:true})).toBeVisible();
+  await expect(page.locator('#main')).toHaveCSS('max-width','none');
+  const main=await page.locator('#main').boundingBox(),workspace=await page.locator('.workspace').boundingBox();expect(main!.width).toBeCloseTo(workspace!.width,0);
+  await page.getByRole('button',{name:'View response canvas-request'}).click();await expect(page.getByRole('region',{name:'Client response'})).toContainText('<script>display this as text</script>');
+  await expect(page.getByRole('region',{name:'Client response'}).locator('script')).toHaveCount(0);
+  expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
+  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
 test('real Quickstart password, non-HA status, protected compute and vault names',async({page,request})=>{
   test.skip(!process.env.QUICKSTART_PASSWORD,'Requires actual composed Quickstart fixture');
   await page.goto('/console/');await expect(page.getByRole('status')).toContainText('Non-HA');

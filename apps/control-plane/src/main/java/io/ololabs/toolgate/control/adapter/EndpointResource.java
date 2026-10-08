@@ -36,13 +36,14 @@ public class EndpointResource {
     }
     private String user(){Object user=jwt.getClaim("user_id");if(!(user instanceof String value))throw new Failure(ErrorCode.FORBIDDEN,403,"Enabled directory user required");return value;}
     private String body(String body){if(body==null||body.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>65536)throw Failure.validation();return body;}
+    private String ipAddress(){var address=routing.request().remoteAddress().hostAddress();return address==null?null:address.split("%",2)[0];}
     private Response response(Store.Reply reply,String operation){metrics.counter("toolgate_control_endpoint_operations_total","operation",operation).increment();return Response.status(reply.status()).header("Cache-Control","no-store").header("ETag","\""+reply.revision()+"\"").entity(reply.body()).build();}
     @POST @Path("enrollments") @Consumes("application/json") public Response start(String document){tls();return response(service.start(body(document),correlation.id()),"START");}
     @GET @Path("enrollments") @RolesAllowed("toolgate-enroller") public Response pending(){return response(service.pending(actor(),user()),"LIST");}
     @POST @Path("enrollments/poll") @Consumes("application/json") public Response poll(String document){tls();return response(service.poll(body(document),correlation.id()),"POLL");}
     @GET @Path("enrollments/review") @RolesAllowed("toolgate-enroller") public Response review(@QueryParam("code")String code){return response(service.review(actor(),user(),code),"REVIEW");}
     @POST @Path("enrollments/decision") @Consumes("application/json") @RolesAllowed("toolgate-enroller") public Response decide(@HeaderParam("Idempotency-Key")String key,String document){return response(service.decide(actor(),user(),body(document),key,correlation.id()),"DECIDE");}
-    @POST @Path("check-in") @Consumes("application/json") public Response checkIn(@HeaderParam("X-ToolGate-Poll-Interval-Unit")String unit,String document){return response(service.checkIn(peer(),body(document),correlation.id(),"milliseconds".equals(unit)),"CHECK_IN");}
+    @POST @Path("check-in") @Consumes("application/json") public Response checkIn(@HeaderParam("X-ToolGate-Poll-Interval-Unit")String unit,@HeaderParam("X-ToolGate-System-Name")String systemName,String document){return response(service.checkIn(peer(),body(document),correlation.id(),"milliseconds".equals(unit),systemName,ipAddress()),"CHECK_IN");}
     @GET @Path("devices/{id}") @RolesAllowed("toolgate-admin") public Response device(@PathParam("id")String id){return response(service.device(actor(),id),"DEVICE");}
     @GET @Path("devices") @RolesAllowed("toolgate-admin") public Response devices(){return response(service.devices(actor()),"DEVICES");}
     @POST @Path("devices/{id}/approval") @Consumes("application/json") @RolesAllowed("toolgate-admin") public Response approval(@PathParam("id")String id,@HeaderParam("Idempotency-Key")String key,String document){return response(service.approval(actor(),user(),id,body(document),key,correlation.id()),"APPROVAL");}
