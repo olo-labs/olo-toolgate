@@ -51,24 +51,30 @@ pub async fn connection<S: AsyncRead + AsyncWrite + Unpin>(
     peers: &[String],
     service: &Arc<tokio::sync::Mutex<ClientService>>,
     contracts: &Contracts,
+    activity: &Arc<crate::activity::Activity>,
 ) -> Result<()> {
     if !authorized(peer, peers) {
+        activity.event("Local IPC", "UNAUTHORIZED");
         return Err(Failure::Unauthorized);
     }
     let bytes = tokio::time::timeout(Duration::from_secs(5), read(stream))
         .await
         .map_err(|_| Failure::Unavailable)??;
-    handle(stream, peer, peers, service, contracts, &bytes).await
+    handle(stream, peer, peers, service, contracts, activity, &bytes).await
 }
+// Keep authenticated peer, bounded payload and independent diagnostic state explicit.
+#[allow(clippy::too_many_arguments)]
 async fn handle<S: AsyncWrite + Unpin>(
     stream: &mut S,
     peer: &str,
     peers: &[String],
     service: &Arc<tokio::sync::Mutex<ClientService>>,
     contracts: &Contracts,
+    activity: &Arc<crate::activity::Activity>,
     bytes: &[u8],
 ) -> Result<()> {
     if !authorized(peer, peers) {
+        activity.event("Local IPC", "UNAUTHORIZED");
         return Err(Failure::Unauthorized);
     }
     let envelope: serde_json::Value =
@@ -92,6 +98,14 @@ async fn handle<S: AsyncWrite + Unpin>(
                 .await;
             }
         };
+        let command = match &request.operation {
+            LocalRuntimeOperation::Prepare => Some(activity.begin("Prepare runtimes")),
+            LocalRuntimeOperation::Invoke => request
+                .invocation
+                .as_ref()
+                .map(|i| activity.begin(&i.tool_id)),
+            _ => None,
+        };
         let result = match request.operation {
             LocalRuntimeOperation::Status if request.invocation.is_none() => {
                 state.runtime_health().map(|h| response.health = Some(h))
@@ -113,6 +127,9 @@ async fn handle<S: AsyncWrite + Unpin>(
             },
             _ => Err(Failure::Unauthorized),
         };
+        if let Some(command) = command {
+            command.finish(result.is_ok());
+        }
         if let Err(e) = result {
             response.error = Some(code(e));
         }
@@ -137,6 +154,14 @@ async fn handle<S: AsyncWrite + Unpin>(
                 return write(stream, &contracts.encode("BuiltinIpcResponse", &response)?).await;
             }
         };
+        let command = if request.operation == BuiltinOperation::Call {
+            request
+                .invocation
+                .as_ref()
+                .map(|i| activity.begin(&i.tool_id))
+        } else {
+            None
+        };
         let result = match request.operation {
             BuiltinOperation::Catalog if request.invocation.is_none() => state
                 .tool_catalog(request.agent_id.as_deref())
@@ -155,6 +180,9 @@ async fn handle<S: AsyncWrite + Unpin>(
             },
             _ => Err(Failure::Validation),
         };
+        if let Some(command) = command {
+            command.finish(result.is_ok());
+        }
         if let Err(failure) = result {
             response.error = Some(code(failure));
             tracing::warn!(event="builtin_execution",result="rejected",error=?failure);
@@ -171,8 +199,13 @@ async fn handle<S: AsyncWrite + Unpin>(
         request_id: request.request_id,
         health: None,
         challenge: None,
+        activity: None,
         error: None,
     };
+    if request.operation == ClientIpcOperation::Activity {
+        response.activity = Some(activity.snapshot());
+        return write(stream, &contracts.encode("ClientIpcResponse", &response)?).await;
+    }
     // Health may wait briefly behind a poll. Listener permits bound waiting readers;
     // mutating commands still return immediate backpressure instead of queuing effects.
     let locked = if matches!(&request.operation, ClientIpcOperation::Health) {
@@ -189,7 +222,13 @@ async fn handle<S: AsyncWrite + Unpin>(
             return write(stream, &contracts.encode("ClientIpcResponse", &response)?).await;
         }
     };
+    let command = match request.operation {
+        ClientIpcOperation::Enroll => Some(activity.begin("Enroll device")),
+        ClientIpcOperation::CheckIn => Some(activity.begin("Check in")),
+        _ => None,
+    };
     let result = match request.operation {
+        ClientIpcOperation::Activity => unreachable!(),
         ClientIpcOperation::Health => {
             response.health = Some(state.health());
             Ok(())
@@ -203,6 +242,9 @@ async fn handle<S: AsyncWrite + Unpin>(
             .await
             .map(|_| response.health = Some(state.health())),
     };
+    if let Some(command) = command {
+        command.finish(result.is_ok());
+    }
     if let Err(failure) = result {
         response.error = Some(code(failure));
     }
@@ -220,6 +262,7 @@ pub async fn listen(
     contracts: Arc<Contracts>,
     mut shutdown: tokio::sync::watch::Receiver<bool>,
 ) -> Result<()> {
+    let activity = service.lock().await.activity.clone();
     use std::os::unix::fs::PermissionsExt;
     let path = std::path::Path::new(endpoint);
     crate::storage::check_parents(path)?;
@@ -243,8 +286,8 @@ pub async fn listen(
             incoming=listener.accept()=>{
                 let(mut stream,_)=incoming.map_err(|_|Failure::Unavailable)?;let permit=match limit.clone().try_acquire_owned(){Ok(p)=>p,Err(_)=>continue};
                 let peer=stream.peer_cred().map_err(|_|Failure::Unauthorized)?.uid().to_string();
-                let service=service.clone();let contracts=contracts.clone();let peers=peers.clone();
-                tasks.spawn(async move{let _permit=permit;let _=tokio::time::timeout(Duration::from_secs(230),connection(&mut stream,&peer,&peers,&service,&contracts)).await;});
+                let service=service.clone();let contracts=contracts.clone();let peers=peers.clone();let activity=activity.clone();
+                tasks.spawn(async move{let _permit=permit;let _=tokio::time::timeout(Duration::from_secs(230),connection(&mut stream,&peer,&peers,&service,&contracts,&activity)).await;});
             },
             Some(_)=tasks.join_next()=>{},
         }
@@ -262,6 +305,7 @@ pub async fn listen(
     contracts: Arc<Contracts>,
     mut shutdown: tokio::sync::watch::Receiver<bool>,
 ) -> Result<()> {
+    let activity = service.lock().await.activity.clone();
     use std::os::windows::io::AsRawHandle;
     use tokio::net::windows::named_pipe::ServerOptions;
     fn create(
@@ -294,12 +338,12 @@ pub async fn listen(
                 connected.map_err(|_|Failure::Unavailable)?;
                 let next=create(endpoint,&peers,false)?;
                 let mut stream=std::mem::replace(&mut pipe,next);let permit=match limit.clone().try_acquire_owned(){Ok(p)=>p,Err(_)=>continue};
-                let service=service.clone();let contracts=contracts.clone();let peers=peers.clone();
+                let service=service.clone();let contracts=contracts.clone();let peers=peers.clone();let activity=activity.clone();
                 tasks.spawn(async move{let _permit=permit;let _=tokio::time::timeout(Duration::from_secs(230),async{
                     // Impersonation authenticates the token associated with data actually read.
                     // SAFETY: stream owns the live connected server pipe during the query.
                     let bytes=read(&mut stream).await?;let peer=unsafe { crate::platform::windows::peer_sid(stream.as_raw_handle()) }?;
-                    handle(&mut stream,&peer,&peers,&service,&contracts,&bytes).await
+                    handle(&mut stream,&peer,&peers,&service,&contracts,&activity,&bytes).await
                 }).await;});
             },
             Some(_)=tasks.join_next()=>{},
@@ -317,7 +361,13 @@ pub async fn call(endpoint: &str, operation: ClientIpcOperation) -> Result<Clien
         operation,
     };
     let bytes = contracts.encode("ClientIpcRequest", &request)?;
-    let bytes = exchange(endpoint, &bytes, 16384).await?;
+    // A bounded activity history can exceed the smaller enrollment/health budget.
+    let limit = if request.operation == ClientIpcOperation::Activity {
+        131072
+    } else {
+        16384
+    };
+    let bytes = exchange(endpoint, &bytes, limit).await?;
     let response: ClientIpcResponse = contracts.decode("ClientIpcResponse", &bytes)?;
     if response.request_id != request.request_id {
         return Err(Failure::Unauthorized);

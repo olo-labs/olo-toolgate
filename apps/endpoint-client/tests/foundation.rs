@@ -51,6 +51,100 @@ impl Drop for Directory {
 }
 struct Offline;
 #[test]
+fn activity_is_durable_bounded_redacted_and_interruption_is_not_success() {
+    use olo_toolgate_client::activity::Activity;
+    let directory = Directory::new();
+    let activity = Activity::open(directory.0.clone()).unwrap();
+    let command = activity.begin("hotfolder.write_text");
+    assert_eq!(activity.snapshot().active.len(), 1);
+    assert!(activity.snapshot().active[0].progress_percent.is_none());
+    command.finish(true);
+    assert_eq!(
+        activity.snapshot().last_command.unwrap().state,
+        ClientCommandState::Succeeded
+    );
+    drop(activity.begin("hotfolder.read_text"));
+    assert_eq!(
+        activity.snapshot().last_command.unwrap().state,
+        ClientCommandState::Interrupted
+    );
+    activity.begin("calculator.evaluate").finish(false);
+    for _ in 0..110 {
+        activity.event("Connection", "ACTIVE");
+    }
+    activity.event(
+        "secret=https://private.example/token",
+        "password=do-not-log",
+    );
+    let snapshot = activity.snapshot();
+    assert_eq!(snapshot.events.len(), 100);
+    let bytes = directory.store().read("activity.json").unwrap().unwrap();
+    assert!(!String::from_utf8_lossy(&bytes).contains("private.example"));
+    assert!(!String::from_utf8_lossy(&bytes).contains("do-not-log"));
+    let interrupted = activity.begin("interrupted.command");
+    let reopened = Activity::open(directory.0.clone()).unwrap();
+    assert!(reopened.snapshot().active.is_empty());
+    assert_eq!(
+        reopened.snapshot().last_command.unwrap().state,
+        ClientCommandState::Interrupted
+    );
+    drop(interrupted);
+}
+#[tokio::test]
+async fn activity_ipc_remains_available_during_execution_and_checks_peer() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let directory = Directory::new();
+    let service = Arc::new(tokio::sync::Mutex::new(service(&directory)));
+    let activity = service.lock().await.activity.clone();
+    let command = activity.begin("calculator.evaluate");
+    let execution = service.lock().await;
+    let contracts = Contracts::new().unwrap();
+    let request = ClientIpcRequest {
+        protocol_version: 1,
+        request_id: "activity-while-busy".into(),
+        operation: ClientIpcOperation::Activity,
+    };
+    let bytes = contracts.encode("ClientIpcRequest", &request).unwrap();
+    let (mut stream, mut peer) = tokio::io::duplex(16384);
+    peer.write_u32(bytes.len() as u32).await.unwrap();
+    peer.write_all(&bytes).await.unwrap();
+    tokio::time::timeout(
+        std::time::Duration::from_millis(500),
+        ipc::connection(
+            &mut stream,
+            "authorized",
+            &["authorized".into()],
+            &service,
+            &contracts,
+            &activity,
+        ),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    let mut response = vec![0; peer.read_u32().await.unwrap() as usize];
+    peer.read_exact(&mut response).await.unwrap();
+    let response: ClientIpcResponse = contracts.decode("ClientIpcResponse", &response).unwrap();
+    assert_eq!(
+        response.activity.unwrap().active[0].name,
+        "calculator.evaluate"
+    );
+    assert_eq!(
+        ipc::connection(
+            &mut stream,
+            "untrusted",
+            &["authorized".into()],
+            &service,
+            &contracts,
+            &activity
+        )
+        .await,
+        Err(Failure::Unauthorized)
+    );
+    drop(execution);
+    command.finish(true);
+}
+#[test]
 fn composition_directory_gates_decode_closed_canonical_records() {
     let contracts = Contracts::new().unwrap();
     let fixture: serde_json::Value = serde_json::from_str(include_str!(
@@ -278,7 +372,8 @@ async fn unauthorized_ipc_rejected_before_reading_payload() {
             "untrusted",
             &["authorized".into()],
             &service,
-            &Contracts::new().unwrap()
+            &Contracts::new().unwrap(),
+            &service.lock().await.activity.clone(),
         )
         .await,
         Err(Failure::Unauthorized)
@@ -291,6 +386,7 @@ async fn health_waits_for_poll_but_enrollment_retains_immediate_backpressure() {
     for operation in [ClientIpcOperation::Health, ClientIpcOperation::Enroll] {
         let directory = Directory::new();
         let service = Arc::new(tokio::sync::Mutex::new(service(&directory)));
+        let activity = service.lock().await.activity.clone();
         let guard = service.lock().await;
         let contracts = Arc::new(Contracts::new().unwrap());
         let (mut stream, mut peer) = tokio::io::duplex(8192);
@@ -311,6 +407,7 @@ async fn health_waits_for_poll_but_enrollment_retains_immediate_backpressure() {
                 &["authorized".into()],
                 &state,
                 &schema,
+                &activity,
             )
             .await
         });

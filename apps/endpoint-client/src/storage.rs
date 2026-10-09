@@ -114,6 +114,7 @@ impl ProtectedStore {
             name,
             "device-key"
                 | "packets.jsonl"
+                | "activity.json"
                 | "journal.json"
                 | "adoption.json"
                 | "remote-journal.json"

@@ -27,6 +27,8 @@ def check(target):
     installed=False
     try:
         if system=='Windows':
+            run(['powershell.exe','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass',
+                 '-STA','-File',str(ROOT/'tools/client/tray_status_test.ps1')])
             # A fresh install keeps the HTTPS default without Chrome or a console lookup.
             run([str(installer),'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'])
             installed=True

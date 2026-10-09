@@ -36,6 +36,7 @@ struct RemoteJournal {
 
 /// One instance per machine, protected by OS lease and serialized command handling.
 pub struct ClientService {
+    pub activity: Arc<crate::activity::Activity>,
     remote_job: Option<crate::remote::Job>,
     remote_result: Option<RemoteToolResult>,
     adoption: Option<EndpointAdoption>,
@@ -135,6 +136,7 @@ impl ClientService {
             crate::deployment::State::default()
         };
         Ok(Self {
+            activity: crate::activity::Activity::open(config.state_directory.clone())?,
             remote_job: None,
             remote_result: None,
             adoption: match store.read("adoption.json")? {
@@ -552,6 +554,7 @@ impl ClientService {
             self.control.clone(),
             identity.clone(),
             task,
+            self.activity.clone(),
         ));
         Ok(())
     }
@@ -599,7 +602,11 @@ impl ClientService {
             .server_id
             .clone();
         let task = crate::builder::verify(&settings, &signed, identity, &server, self.clock()?)?;
-        self.builder_job = Some(crate::builder::Job::start(self.config.clone(), task));
+        self.builder_job = Some(crate::builder::Job::start(
+            self.config.clone(),
+            task,
+            self.activity.clone(),
+        ));
         Ok(())
     }
     pub fn health(&self) -> ClientHealth {
@@ -1223,6 +1230,7 @@ mod tests {
             gateway.clone(),
             identity.clone(),
             task.clone(),
+            service.activity.clone(),
         );
         let completed = async |job: &mut crate::remote::Job| {
             tokio::time::timeout(std::time::Duration::from_secs(90), async {
@@ -1253,6 +1261,7 @@ mod tests {
             gateway.clone(),
             identity,
             task.clone(),
+            service.activity.clone(),
         );
         assert_eq!(
             completed(&mut denied).await.error,
@@ -1274,6 +1283,7 @@ mod tests {
             gateway.clone(),
             serde_json::from_value(fixtures()["DeviceIdentity"].clone()).unwrap(),
             task.clone(),
+            service.activity.clone(),
         );
         assert!(completed(&mut large_write).await.output.is_some());
         task.request.tool_id = "hotfolder.read_text".into();
@@ -1286,6 +1296,7 @@ mod tests {
             gateway.clone(),
             serde_json::from_value(fixtures()["DeviceIdentity"].clone()).unwrap(),
             task,
+            service.activity.clone(),
         );
         let oversized = completed(&mut large_read).await;
         assert!(oversized.output.is_none());

@@ -733,7 +733,8 @@
       "enum": [
         "HEALTH",
         "ENROLL",
-        "CHECK_IN"
+        "CHECK_IN",
+        "ACTIVITY"
       ]
     },
     "ClientIpcRequest": {
@@ -774,6 +775,9 @@
         },
         "error": {
           "$ref": "error.schema.json#/$defs/ErrorCode"
+        },
+        "activity": {
+          "$ref": "endpoint.schema.json#/$defs/ClientActivity"
         }
       },
       "required": [
@@ -1169,6 +1173,116 @@
         "authorizationEpoch",
         "digest"
       ]
+    },
+    "ClientCommandActivity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "startedAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "finishedAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "state": {
+          "$ref": "endpoint.schema.json#/$defs/ClientCommandState"
+        },
+        "progressPercent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "startedAtUnixMs",
+        "state"
+      ],
+      "description": "Bounded redacted device activity for OS-authenticated local status inspection."
+    },
+    "ClientActivityEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "timestampUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "timestampUnixMs",
+        "name",
+        "state"
+      ],
+      "description": "Bounded redacted device activity for OS-authenticated local status inspection."
+    },
+    "ClientActivity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "$ref": "endpoint.schema.json#/$defs/ClientCommandActivity"
+          }
+        },
+        "lastCommand": {
+          "$ref": "endpoint.schema.json#/$defs/ClientCommandActivity"
+        },
+        "events": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "endpoint.schema.json#/$defs/ClientActivityEvent"
+          }
+        },
+        "logAvailable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "active",
+        "events",
+        "logAvailable"
+      ],
+      "description": "Bounded redacted device activity for OS-authenticated local status inspection."
+    },
+    "ClientCommandState": {
+      "type": "string",
+      "enum": [
+        "RUNNING",
+        "SUCCEEDED",
+        "FAILED",
+        "INTERRUPTED"
+      ],
+      "description": "Local command lifecycle; interruption does not establish an external effect outcome."
     }
   }
 }

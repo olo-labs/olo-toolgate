@@ -30,6 +30,23 @@ async fn command(arguments: Vec<String>) -> Result<()> {
         return Err(Failure::Validation);
     };
     match operation {
+        "activity" if arguments.len() == 1 => {
+            let response = tokio::time::timeout(
+                std::time::Duration::from_secs(5),
+                olo_toolgate_client::ipc::call(
+                    &olo_toolgate_client::install::ipc_endpoint(),
+                    ClientIpcOperation::Activity,
+                ),
+            )
+            .await
+            .map_err(|_| Failure::Unavailable)??;
+            println!(
+                "{}",
+                serde_json::to_string(&response.activity.ok_or(Failure::Unavailable)?)
+                    .map_err(|_| Failure::Validation)?
+            );
+            Ok(())
+        }
         "authorization-profiles" if arguments.len() == 1 => {
             println!(
                 "{}",

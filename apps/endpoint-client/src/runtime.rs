@@ -32,16 +32,28 @@ pub async fn run(config: Config, shutdown: tokio::sync::watch::Receiver<bool>) -
         key,
         control,
     )?));
+    let activity = service.lock().await.activity.clone();
+    let heartbeat_activity = activity.clone();
     let mut heartbeat_shutdown = shutdown.clone();
     let heartbeat_service = service.clone();
     let heartbeat = tokio::spawn(async move {
+        let mut last_health = None;
         let mut next = tokio::time::Instant::now();
         loop {
             tokio::select! {_=heartbeat_shutdown.changed()=>break,_=tokio::time::sleep_until(next)=>{}}
             let started = tokio::time::Instant::now();
             let delay = {
                 let mut state = heartbeat_service.lock().await;
-                let _ = state.tick().await;
+                let result = state.tick().await;
+                let health = state.health();
+                let current = format!("{:?}-{}", health.state, health.ready);
+                if last_health.as_ref() != Some(&current) {
+                    heartbeat_activity.event("Connection", &current);
+                    last_health = Some(current);
+                }
+                if let Err(failure) = result {
+                    heartbeat_activity.event("Check in", &format!("{:?}", failure));
+                }
                 state.next_delay_millis()
             };
             // Network time counts toward the cycle; never overlap or catch up missed requests.
@@ -75,6 +87,7 @@ pub async fn run(config: Config, shutdown: tokio::sync::watch::Receiver<bool>) -
     if let Err(failure) = cleanup {
         tracing::warn!(event="runtime_shutdown",error=?failure);
     }
+    activity.event("Service", "STOPPED");
     result.and(cleanup)
 }
 #[cfg(windows)]

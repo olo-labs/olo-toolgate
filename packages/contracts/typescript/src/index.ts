@@ -156,6 +156,29 @@ export interface BundlePublishRequest {
   readonly gracePolicyIds?: ReadonlyArray<string>;
   readonly rollbackOf?: number;
 }
+/** Bounded redacted device activity for OS-authenticated local status inspection. */
+export interface ClientActivity {
+  readonly active: ReadonlyArray<ClientCommandActivity>;
+  readonly lastCommand?: ClientCommandActivity;
+  readonly events: ReadonlyArray<ClientActivityEvent>;
+  readonly logAvailable: boolean;
+}
+/** Bounded redacted device activity for OS-authenticated local status inspection. */
+export interface ClientActivityEvent {
+  readonly timestampUnixMs: number;
+  readonly name: string;
+  readonly state: string;
+}
+/** Bounded redacted device activity for OS-authenticated local status inspection. */
+export interface ClientCommandActivity {
+  readonly id: string;
+  readonly name: string;
+  readonly startedAtUnixMs: number;
+  readonly finishedAtUnixMs?: number;
+  readonly state: ClientCommandState;
+  readonly progressPercent?: number;
+}
+export type ClientCommandState = "RUNNING" | "SUCCEEDED" | "FAILED" | "INTERRUPTED";
 /** Endpoint identity foundation wire model. */
 export interface ClientDiscovery {
   readonly protocolVersion: number;
@@ -212,7 +235,7 @@ export interface ClientInstallerManifest {
   readonly version: string;
   readonly artifacts: ReadonlyArray<ClientInstallerArtifact>;
 }
-export type ClientIpcOperation = "HEALTH" | "ENROLL" | "CHECK_IN";
+export type ClientIpcOperation = "HEALTH" | "ENROLL" | "CHECK_IN" | "ACTIVITY";
 /** Endpoint identity foundation wire model. */
 export interface ClientIpcRequest {
   readonly protocolVersion: number;
@@ -225,6 +248,7 @@ export interface ClientIpcResponse {
   readonly health?: ClientHealth;
   readonly challenge?: EndpointEnrollmentPrompt;
   readonly error?: ErrorCode;
+  readonly activity?: ClientActivity;
 }
 export type ClientPlatform = "WINDOWS" | "LINUX" | "MACOS";
 /** Batched report of device inventory and applied desired revision. */

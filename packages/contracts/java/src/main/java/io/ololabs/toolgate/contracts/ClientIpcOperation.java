@@ -10,5 +10,7 @@ public enum ClientIpcOperation {
     /** Canonical ENROLL value. */
     ENROLL,
     /** Canonical CHECK_IN value. */
-    CHECK_IN
+    CHECK_IN,
+    /** Canonical ACTIVITY value. */
+    ACTIVITY
 }

@@ -194,6 +194,7 @@ impl Job {
         control: Arc<dyn ControlPort>,
         identity: DeviceIdentity,
         task: RemoteToolTask,
+        activity: Arc<crate::activity::Activity>,
     ) -> Self {
         let (cancel, receiver) = tokio::sync::watch::channel(false);
         let auth = Arc::new(Authorization {
@@ -202,7 +203,12 @@ impl Job {
             task: task.clone(),
             consumed: tokio::sync::Mutex::new(false),
         });
-        let handle = tokio::spawn(execute(config, settings, auth, receiver));
+        let command = activity.begin(&task.request.tool_id);
+        let handle = tokio::spawn(async move {
+            let result = execute(config, settings, auth, receiver).await;
+            command.finish(result.is_ok());
+            result
+        });
         Self {
             task,
             handle: Some(handle),

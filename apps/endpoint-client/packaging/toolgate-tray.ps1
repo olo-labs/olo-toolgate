@@ -13,6 +13,15 @@ $script:trayProcess = $null
 $script:trayStarted = $null
 $script:trayDetail = 'Checking the ToolGate service...'
 $script:trayState = ''
+$script:statusWindow = $null
+$script:aboutWindow = $null
+$script:activityProcess = $null
+$script:activityOutput = $null
+$script:activityError = $null
+$script:activityStarted = $null
+$script:activitySnapshot = $null
+$script:activityAvailable = $false
+. (Join-Path $PSScriptRoot 'toolgate-status.ps1')
 . (Join-Path $PSScriptRoot 'toolgate-icons.ps1')
 $trayLogo = Join-Path $PSScriptRoot 'olo.png'
 $trayConnectedIcon = New-ToolGateStatusIcon -LogoPath $trayLogo -Connected $true
@@ -24,7 +33,12 @@ $trayIcon.Visible = $true
 $trayMenu = New-Object System.Windows.Forms.ContextMenuStrip
 $trayStatus = $trayMenu.Items.Add('Show status')
 $trayStatus.add_Click({
-    [System.Windows.Forms.MessageBox]::Show($script:trayDetail, 'OLO ToolGate') | Out-Null
+    if (-not $script:statusWindow -or $script:statusWindow.IsDisposed) {
+        $script:statusWindow = New-ToolGateStatusWindow -LogoPath $trayLogo
+    }
+    Update-ToolGateStatusWindow -Form $script:statusWindow -Detail $script:trayDetail -Activity $script:activitySnapshot -Available $script:activityAvailable
+    $script:statusWindow.Show()
+    $script:statusWindow.Activate()
 })
 $trayConsole = $trayMenu.Items.Add('Open ToolGate console')
 $trayEnroll = $trayMenu.Items.Add('Enroll this device')
@@ -51,6 +65,31 @@ $trayUninstall.add_Click({
     $trayUninstaller = Join-Path $trayRoot 'unins000.exe'
     try { Start-Process -FilePath $trayUninstaller -Verb RunAs }
     catch { $script:trayDetail = 'Uninstall was cancelled or could not start.' }
+})
+$trayAbout = $trayMenu.Items.Add('About OLO ToolGate')
+$trayAbout.add_Click({
+    if (-not $script:aboutWindow -or $script:aboutWindow.IsDisposed) {
+        $version = 'Unavailable'
+        $versionStart = New-Object System.Diagnostics.ProcessStartInfo
+        $versionStart.FileName = $trayClient
+        $versionStart.Arguments = 'version'
+        $versionStart.UseShellExecute = $false
+        $versionStart.CreateNoWindow = $true
+        $versionStart.RedirectStandardOutput = $true
+        $versionStart.RedirectStandardError = $true
+        $versionProcess = $null
+        try {
+            $versionProcess = [System.Diagnostics.Process]::Start($versionStart)
+            if ($versionProcess.WaitForExit(2000) -and $versionProcess.ExitCode -eq 0) {
+                $candidate = $versionProcess.StandardOutput.ReadToEnd().Trim()
+                if ($candidate -match '^[0-9]+\.[0-9]+\.[0-9]+[a-zA-Z0-9.+-]*$') { $version = $candidate }
+            } else { if (-not $versionProcess.HasExited) { $versionProcess.Kill() } }
+        } catch { $version = 'Unavailable' }
+        finally { if ($versionProcess) { $versionProcess.Dispose() } }
+        $script:aboutWindow = New-ToolGateAboutWindow -LogoPath $trayLogo -Version $version
+    }
+    $script:aboutWindow.Show()
+    $script:aboutWindow.Activate()
 })
 $trayExit = $trayMenu.Items.Add('Exit tray icon')
 $trayExit.add_Click({ [System.Windows.Forms.Application]::ExitThread() })
@@ -118,10 +157,57 @@ $trayTimer.add_Tick({
         $script:trayStarted = Get-Date
     } catch { $script:trayDetail = 'Could not contact the ToolGate service.'; $trayIcon.Icon = $trayOfflineIcon }
 })
+# Independent reader remains responsive while a protected command holds execution state.
+$activityTimer = New-Object System.Windows.Forms.Timer
+$activityTimer.Interval = 1000
+$activityTimer.add_Tick({
+    if ($script:activityProcess) {
+        if (-not $script:activityProcess.HasExited -and ((Get-Date) - $script:activityStarted).TotalSeconds -gt 6) {
+            $script:activityProcess.Kill()
+            $script:activityAvailable = $false
+        }
+        if ($script:activityProcess.HasExited -and $script:activityOutput.IsCompleted -and $script:activityError.IsCompleted) {
+            try {
+                if ($script:activityProcess.ExitCode -ne 0) { throw 'Activity unavailable' }
+                $script:activitySnapshot = $script:activityOutput.Result | ConvertFrom-Json
+                $script:activityAvailable = $true
+            } catch { $script:activityAvailable = $false }
+            finally { $script:activityProcess.Dispose(); $script:activityProcess = $null }
+        }
+    }
+    if ($script:statusWindow -and -not $script:statusWindow.IsDisposed) {
+        Update-ToolGateStatusWindow -Form $script:statusWindow -Detail $script:trayDetail -Activity $script:activitySnapshot -Available $script:activityAvailable
+        if (-not $script:activityProcess) {
+            $start = New-Object System.Diagnostics.ProcessStartInfo
+            $start.FileName = $trayClient
+            $start.Arguments = 'activity'
+            $start.UseShellExecute = $false
+            $start.CreateNoWindow = $true
+            $start.RedirectStandardOutput = $true
+            $start.RedirectStandardError = $true
+            try {
+                $script:activityProcess = [System.Diagnostics.Process]::Start($start)
+                $script:activityStarted = Get-Date
+                # Drain both pipes immediately; a full log must never block the child.
+                $script:activityOutput = $script:activityProcess.StandardOutput.ReadToEndAsync()
+                $script:activityError = $script:activityProcess.StandardError.ReadToEndAsync()
+            } catch { $script:activityAvailable = $false }
+        }
+    }
+})
 try {
+    $activityTimer.Start()
     $trayTimer.Start()
     [System.Windows.Forms.Application]::Run()
 } finally {
+    $activityTimer.Stop()
+    $activityTimer.Dispose()
+    if ($script:activityProcess) {
+        if (-not $script:activityProcess.HasExited) { $script:activityProcess.Kill() }
+        $script:activityProcess.Dispose()
+    }
+    if ($script:statusWindow) { $script:statusWindow.Dispose() }
+    if ($script:aboutWindow) { $script:aboutWindow.Dispose() }
     $trayTimer.Stop()
     $trayTimer.Dispose()
     if ($script:trayProcess) {

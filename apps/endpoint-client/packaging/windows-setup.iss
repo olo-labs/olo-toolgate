@@ -5,6 +5,7 @@ AppId=OLO.ToolGate.Client
 AppName=OLO ToolGate Client
 AppVersion={#ProductVersion}
 AppPublisher=OLO Labs
+LicenseFile={#PayloadDirectory}\LICENSE
 DefaultDirName={autopf}\OLO\ToolGateSetup
 DisableDirPage=yes
 DisableProgramGroupPage=yes

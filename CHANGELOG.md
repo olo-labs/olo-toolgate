@@ -6,6 +6,10 @@ The project follows semantic versioning once stable versioning begins.
 
 ## 0.10.0-dev
 
+- Add a live branded Windows tray status window, command activity/progress,
+  protected bounded device history and an About/version menu. Require license
+  acceptance in the interactive Windows installer.
+
 - Consolidate enterprise completion into sequential source, native, browser,
   Gateway, PostgreSQL, restore, deployment, SDK and image checks. Trace all 96
   acceptance scenarios to named evidence, retaining missing or skipped gates.

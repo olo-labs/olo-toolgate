@@ -1166,6 +1166,23 @@
     "lifetimeMs": 60000,
     "graceMs": 0
   },
+  "ClientActivity": {
+    "active": [],
+    "events": [],
+    "logAvailable": false
+  },
+  "ClientActivityEvent": {
+    "timestampUnixMs": 0,
+    "name": "example",
+    "state": "example"
+  },
+  "ClientCommandActivity": {
+    "id": "example",
+    "name": "example",
+    "startedAtUnixMs": 0,
+    "state": "RUNNING"
+  },
+  "ClientCommandState": "RUNNING",
   "ClientDiscovery": {
     "protocolVersion": 1,
     "serverId": "device-1",

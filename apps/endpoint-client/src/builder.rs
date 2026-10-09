@@ -115,11 +115,19 @@ impl Job {
             cancel,
         }
     }
-    pub fn start(config: Config, task: BuilderTestTask) -> Self {
+    pub fn start(
+        config: Config,
+        task: BuilderTestTask,
+        activity: std::sync::Arc<crate::activity::Activity>,
+    ) -> Self {
         let (cancel, receiver) = tokio::sync::watch::channel(false);
         let running = task.clone();
-        let handle =
-            tokio::spawn(async move { run_cancellable(&config, &running, receiver).await });
+        let command = activity.begin(&format!("Test {}", task.definition.tool.tool_id));
+        let handle = tokio::spawn(async move {
+            let result = run_cancellable(&config, &running, receiver).await;
+            command.finish(result.is_ok());
+            result
+        });
         Self {
             task,
             handle: Some(handle),

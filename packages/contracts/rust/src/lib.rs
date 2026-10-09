@@ -243,6 +243,49 @@ pub struct BundlePublishRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rollback_of: Option<u64>,
 }
+/// Bounded redacted device activity for OS-authenticated local status inspection.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ClientActivity {
+    pub active: Vec<ClientCommandActivity>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_command: Option<ClientCommandActivity>,
+    pub events: Vec<ClientActivityEvent>,
+    pub log_available: bool,
+}
+/// Bounded redacted device activity for OS-authenticated local status inspection.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ClientActivityEvent {
+    pub timestamp_unix_ms: u64,
+    pub name: String,
+    pub state: String,
+}
+/// Bounded redacted device activity for OS-authenticated local status inspection.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ClientCommandActivity {
+    pub id: String,
+    pub name: String,
+    pub started_at_unix_ms: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub finished_at_unix_ms: Option<u64>,
+    pub state: ClientCommandState,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub progress_percent: Option<u64>,
+}
+/// Canonical ClientCommandState wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ClientCommandState {
+    #[serde(rename = "RUNNING")]
+    Running,
+    #[serde(rename = "SUCCEEDED")]
+    Succeeded,
+    #[serde(rename = "FAILED")]
+    Failed,
+    #[serde(rename = "INTERRUPTED")]
+    Interrupted,
+}
 /// Endpoint identity foundation wire model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -323,6 +366,8 @@ pub enum ClientIpcOperation {
     Enroll,
     #[serde(rename = "CHECK_IN")]
     CheckIn,
+    #[serde(rename = "ACTIVITY")]
+    Activity,
 }
 /// Endpoint identity foundation wire model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -343,6 +388,8 @@ pub struct ClientIpcResponse {
     pub challenge: Option<EndpointEnrollmentPrompt>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<ErrorCode>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub activity: Option<ClientActivity>,
 }
 /// Canonical ClientPlatform wire values.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
