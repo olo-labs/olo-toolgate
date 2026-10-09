@@ -64,7 +64,7 @@ begin
   MaintenancePage.SelectedValueIndex := 0;
   GatewayPage := CreateInputQueryPage(MaintenancePage.ID, 'Gateway connection',
     'Choose the gateway for this computer',
-    'Copy the Gateway URL shown on Enroll Device, or keep https://localhost:18450 for a local gateway. No credentials are required.');
+    'Copy the Gateway URL shown on Enroll Device. For a local gateway, enter its console address (for example http://127.0.0.1:18091) so setup can trust its certificate. No credentials are required.');
   GatewayPage.Add('&Gateway URL (optional):', False);
   GatewayPage.Values[0] := ConfiguredServer;
 end;

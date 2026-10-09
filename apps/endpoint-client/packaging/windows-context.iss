@@ -54,5 +54,6 @@ begin
     Result := Result + Chr(N);
     I := I + 2;
   end;
-  if not ValidServer(Result) then Result := '';
+  // A local gateway's download names its loopback console, which also publishes the gateway CA.
+  if not ValidSetupServer(Result) then Result := '';
 end;

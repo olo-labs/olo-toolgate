@@ -48,7 +48,9 @@ def docker_script(script, stdin=None):
 
 
 class Configuration:
-    def __init__(self, local_fixture_reviewers=False):
+    def __init__(self, local_fixture_reviewers=False, origin=ORIGIN, credential_directory=None):
+        self.origin = origin.rstrip('/')
+        self.credential_directory = credential_directory or ROOT/'.dev/debug'
         self.tokens = {}
         self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         self.username = os.environ.get('TOOLGATE_ADMIN_USERNAME','admin')
@@ -56,13 +58,13 @@ class Configuration:
         for index in (1,2):
             user = os.environ.get(f'TOOLGATE_REVIEWER{index}_USERNAME',f'reviewer-{index}')
             password = os.environ.get(f'TOOLGATE_REVIEWER{index}_PASSWORD')
-            if password is not None: self.login('reviewer-'+str(index),user,password)
+            if password: self.login('reviewer-'+str(index),user,password)
             elif local_fixture_reviewers: self.fixture_login(user,'reviewer-'+str(index))
 
     def login(self, key, username, password, replacement=None):
         body = dict(username=username,password=password)
         if replacement is not None: body['newPassword']=replacement
-        request = urllib.request.Request(ORIGIN+'/api/quickstart/v1/login',json.dumps(body).encode(),
+        request = urllib.request.Request(self.origin+'/api/quickstart/v1/login',json.dumps(body).encode(),
             {'Content-Type':'application/json'},method='POST')
         try:
             with self.opener.open(request,timeout=30) as response: self.tokens[key]=json.load(response)['accessToken']
@@ -73,7 +75,7 @@ class Configuration:
         # Explicit local fixture mode uses password authentication, never signing keys or stored verifiers.
         if user not in ('reviewer-1','reviewer-2','test-readonly','test-readwrite','test-admin'):
             raise ValueError('Unknown local fixture identity')
-        path = ROOT/'.dev/debug/local-test-credentials.json'
+        path = self.credential_directory/'local-test-credentials.json'
         private_file(path)
         saved = json.loads(path.read_text() or '{}')
         initial = docker_script("from pathlib import Path;p=Path('/data/bootstrap-password-"+user+"');print(p.read_text().strip() if p.exists() else '')")
@@ -90,7 +92,7 @@ class Configuration:
                    'Content-Type': 'application/json', 'X-Request-ID': secrets.token_hex(16)}
         if body is not None or method=='DELETE': headers['Idempotency-Key'] = secrets.token_hex(16)
         if revision is not None: headers['If-Match'] = '"'+str(revision)+'"'
-        request = urllib.request.Request(ORIGIN+path,
+        request = urllib.request.Request(self.origin+path,
             json.dumps(body).encode() if body is not None else None, headers,
             method=method or ('POST' if body is not None else 'GET'))
         try:
@@ -128,7 +130,7 @@ class Configuration:
         if all(user in self.tokens for user in reviewers):
             for user in reviewers: change = transition('APPROVE', user)
         else:
-            print('Independent review required: '+ORIGIN+'/console/#configuration?id='+change['id'],flush=True)
+            print('Independent review required: '+self.origin+'/console/#configuration?id='+change['id'],flush=True)
             deadline=time.monotonic()+600
             while change['state']=='PENDING' and time.monotonic()<deadline:
                 time.sleep(2);change=self.api('/api/control/v1/configuration-changes/'+change['id'])

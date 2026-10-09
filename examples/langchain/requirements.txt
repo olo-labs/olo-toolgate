@@ -1,0 +1,4 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+langchain==1.4.4
+langchain-openai==1.7.0

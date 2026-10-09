@@ -16,7 +16,11 @@ import time
 import urllib.request
 
 CLIENT = '/usr/local/lib/olo-toolgate/olo-toolgate-client'
+UNIT = Path('/etc/systemd/system/olo-toolgate-client.service')
 JOURNAL = Path('/var/lib/olo-toolgate/journal.json')
+# Gateway-scoped enrollment state. The device key and HotFolder files are kept.
+GATEWAY_STATE = ('journal.json', 'permissions.json', 'remote-journal.json', 'effect-journal.json',
+                 'adoption.json', 'fleet-intent.json', 'fleet-active.json')
 STATUS = Path('/run/olo-toolgate/device-status.json')
 STOP = threading.Event()
 
@@ -90,11 +94,44 @@ def publish(health, prompt):
     temporary.replace(STATUS)
 
 
-def main():
+def certificate_body(pem):
+    return ''.join(line.strip() for line in pem.strip().splitlines() if not line.startswith('-----'))
+
+
+def gateway_recreated(settings, http_port):
+    """True when the Quickstart now publishes a CA other than the one this device trusts."""
+    try:
+        with urllib.request.urlopen(f'http://127.0.0.1:{http_port}/api/public/v1/clients/local-trust',
+                                    timeout=5) as response:
+            trust = json.loads(response.read(20001))
+    except (OSError, ValueError):
+        # Never discard enrollment because of a transient console failure.
+        return False
+    if trust.get('serverUrl') != settings['serverUrl']:
+        return False
+    installed = settings.get('caCertificatePath')
+    if not installed or not Path(installed).is_file():
+        return True
+    return certificate_body(Path(installed).read_text()) != certificate_body(trust['caCertificatePem'])
+
+
+def reset_gateway(config, settings):
+    """A recreated gateway issues new identities; the old enrollment can never check in again."""
+    state = Path(settings['stateDirectory'])
+    for name in GATEWAY_STATE:
+        (state / name).unlink(missing_ok=True)
+    for path in (config, Path(CLIENT), UNIT):
+        path.unlink(missing_ok=True)
+
+
+def main(configure=None):
     signal.signal(signal.SIGTERM, lambda *_: STOP.set())
     signal.signal(signal.SIGINT, lambda *_: STOP.set())
     upstream = os.environ['TOOLGATE_DEVICE_UPSTREAM']
-    relays = [Relay(18090, upstream, 8080), Relay(18450, upstream, 8443)]
+    http_port = int(os.environ.get('TOOLGATE_DEVICE_HTTP_PORT', '18090'))
+    tls_port = int(os.environ.get('TOOLGATE_DEVICE_TLS_PORT', '18450'))
+    server_url = f'https://localhost:{tls_port}'
+    relays = [Relay(http_port, upstream, 8080), Relay(tls_port, upstream, 8443)]
     for relay in relays:
         threading.Thread(target=relay.serve_forever, daemon=True).start()
     service = None
@@ -102,7 +139,7 @@ def main():
         deadline = time.monotonic() + 90
         while not STOP.is_set():
             try:
-                with urllib.request.urlopen('http://127.0.0.1:18090/health/ready', timeout=3) as response:
+                with urllib.request.urlopen(f'http://127.0.0.1:{http_port}/health/ready', timeout=3) as response:
                     if response.status == 200:
                         break
             except OSError:
@@ -113,17 +150,29 @@ def main():
         if STOP.is_set():
             return
         config = Path('/etc/olo-toolgate/client.json')
+        if config.exists():
+            settings = json.loads(config.read_text())
+            if settings['serverUrl'] != server_url:
+                raise RuntimeError('Existing device belongs to a different gateway.')
+            if gateway_recreated(settings, http_port):
+                print('Gateway certificate changed (recreated Quickstart); re-enrolling this device.',
+                      flush=True)
+                reset_gateway(config, settings)
         if not config.exists():
             print('Installing client and verifying gateway certificate trust.', flush=True)
-            subprocess.run(['/opt/toolgate/client', 'install', '--server', 'https://localhost:18450'],
+            # Resolve loopback console metadata and verify the advertised HTTPS CA.
+            # Supplying the console also supports non-default TLS ports securely.
+            subprocess.run(['/opt/toolgate/client', 'install', '--server',
+                            f'http://127.0.0.1:{http_port}'],
                            check=True, timeout=60)
+            if json.loads(config.read_text())['serverUrl'] != server_url:
+                raise RuntimeError('Installed device resolved a different gateway.')
         else:
-            settings = json.loads(config.read_text())
-            if settings['serverUrl'] != 'https://localhost:18450':
-                raise RuntimeError('Existing device belongs to a different gateway.')
             # A recreated container gets the current executable and retains its protected identity.
             shutil.copyfile('/opt/toolgate/client', CLIENT)
             os.chmod(CLIENT, 0o755)
+        if configure is not None:
+            configure(config)
         STATUS.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
         service = subprocess.Popen([CLIENT, 'service'])
         deadline = time.monotonic() + 60

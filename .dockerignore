@@ -3,6 +3,7 @@
 .git
 .dev
 .data
+examples/langchain/.state
 .gradle
 target
 **/build

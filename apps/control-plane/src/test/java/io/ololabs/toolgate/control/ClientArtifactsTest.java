@@ -59,6 +59,12 @@ final class ClientArtifactsTest {
         var windows=assets.installers().artifacts().stream().filter(a->a.platform()==io.ololabs.toolgate.contracts.ClientPlatform.WINDOWS).findFirst().orElseThrow();
         assertArrayEquals(Files.readAllBytes(directory.resolve(windows.filename())),configuredBytes.toByteArray());
         assertThrows(Failure.class,()->assets.configuredWindowsInstaller("x86_64-pc-windows-msvc","https://evil.example\"\r\n"));
+        // A local Quickstart download names its loopback console, which publishes the gateway CA.
+        var local=assets.configuredWindowsInstaller("x86_64-pc-windows-msvc","http://127.0.0.1:18091");
+        assertTrue(local.getHeaderString("Content-Disposition").contains("--"+java.util.HexFormat.of().formatHex("http://127.0.0.1:18091".getBytes(java.nio.charset.StandardCharsets.US_ASCII))+".setup.exe"));
+        ((jakarta.ws.rs.core.StreamingOutput)local.getEntity()).write(java.io.OutputStream.nullOutputStream());
+        for(var remote:java.util.List.of("http://gate.example","http://127.0.0.1:18091/console","http://localhost.evil.example:18091"))
+            assertThrows(Failure.class,()->assets.configuredWindowsInstaller("x86_64-pc-windows-msvc",remote));
         var installer=assets.installers().artifacts().getFirst();var response=assets.download(installer.filename());
         ((jakarta.ws.rs.core.StreamingOutput)response.getEntity()).write(java.io.OutputStream.nullOutputStream());
         var suffix=switch(installer.platform()){case WINDOWS->"setup.exe";case MACOS->"dmg";case LINUX->"run";};

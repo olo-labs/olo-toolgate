@@ -20,6 +20,9 @@ pub struct Config {
     pub authorized_peers: Vec<String>,
     pub ca_certificate_path: Option<PathBuf>,
     pub request_timeout_seconds: u64,
+    /// Loopback console that published a local gateway's CA, kept for operator-initiated repair.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub local_console_url: Option<String>,
 }
 impl Config {
     pub fn validate(&self) -> Result<()> {
@@ -41,6 +44,11 @@ impl Config {
             tools.validate()?;
         }
         origin(&self.server_url)?;
+        if let Some(console) = &self.local_console_url {
+            if local_console(console)? != *console || !loopback(&self.server_url) {
+                return Err(Failure::Validation);
+            }
+        }
         if !self.state_directory.is_absolute()
             || self.authorized_peers.is_empty()
             || self.authorized_peers.len() > 32
@@ -103,6 +111,28 @@ pub fn origin(value: &str) -> Result<String> {
         || host == "metadata.google.internal"
         || host == "0.0.0.0"
         || host == "::"
+    {
+        return Err(Failure::Validation);
+    }
+    Ok(url.as_str().trim_end_matches('/').to_owned())
+}
+/// True for a gateway served from this machine, whose CA comes from its loopback console.
+pub fn loopback(server: &str) -> bool {
+    reqwest::Url::parse(server)
+        .is_ok_and(|url| matches!(url.host_str(), Some("localhost" | "127.0.0.1")))
+}
+/// Exact loopback HTTP console origin, e.g. `http://127.0.0.1:18091`.
+pub fn local_console(value: &str) -> Result<String> {
+    let url = reqwest::Url::parse(value).map_err(|_| Failure::Validation)?;
+    if value.len() > 2048
+        || url.scheme() != "http"
+        || !matches!(url.host_str(), Some("localhost" | "127.0.0.1"))
+        || url.port().is_none()
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.path() != "/"
+        || url.query().is_some()
+        || url.fragment().is_some()
     {
         return Err(Failure::Validation);
     }

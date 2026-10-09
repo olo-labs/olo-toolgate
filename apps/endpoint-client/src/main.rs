@@ -174,12 +174,13 @@ async fn command(arguments: Vec<String>) -> Result<()> {
             let installation = olo_toolgate_client::browser::installation(&arguments[2]).await?;
             let server = &installation.server_url;
             let ca = installation.ca_certificate_pem.as_deref();
+            let console = installation.console_url.as_deref();
             if operation == "configure" {
-                olo_toolgate_client::install::configure_with_ca(server, peer, ca)
+                olo_toolgate_client::install::configure_with_ca(server, peer, ca, console)
             } else if operation == "reinstall" {
-                olo_toolgate_client::install::reinstall_with_ca(server, peer, ca)
+                olo_toolgate_client::install::reinstall_with_ca(server, peer, ca, console)
             } else {
-                olo_toolgate_client::install::install_for_peer_with_ca(server, peer, ca)
+                olo_toolgate_client::install::install_for_peer_with_ca(server, peer, ca, console)
             }
         }
         "uninstall" if arguments.len() == 1 || arguments == ["uninstall", "--purge"] => {
@@ -237,8 +238,22 @@ async fn command(arguments: Vec<String>) -> Result<()> {
                     "{}?code={}",
                     challenge.verification_uri, challenge.user_code
                 );
-                if let Some(route) = url.strip_prefix("https://localhost:18450/") {
-                    url = format!("http://127.0.0.1:18090/{route}");
+                // A local gateway's approval page is served by its loopback console.
+                let local = olo_toolgate_client::config::Config::load(
+                    &olo_toolgate_client::install::config_path(),
+                )
+                .ok()
+                .and_then(|config| Some((config.server_url, config.local_console_url?)))
+                .or_else(|| {
+                    Some((
+                        "https://localhost:18450".to_owned(),
+                        "http://127.0.0.1:18090".to_owned(),
+                    ))
+                });
+                if let Some((server, console)) = local {
+                    if let Some(route) = url.strip_prefix(&format!("{server}/")) {
+                        url = format!("{console}/{route}");
+                    }
                 }
                 println!(
                     "Open {url} to confirm this device. Enrollment expires at {}.",

@@ -1,0 +1,10 @@
+{
+  "dataset": "Fictional service events, not this machine's real system logs",
+  "events": [
+    {"time": "09:00", "service": "checkout", "event": "deployment", "version": "demo-2"},
+    {"time": "09:05", "service": "checkout", "event": "payment timeouts", "count": 42},
+    {"time": "09:08", "service": "checkout", "event": "rollback", "version": "demo-1"},
+    {"time": "09:12", "service": "checkout", "event": "payment success recovered", "count": 130},
+    {"time": "09:15", "service": "search", "event": "healthy", "count": 220}
+  ]
+}

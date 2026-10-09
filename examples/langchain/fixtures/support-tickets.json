@@ -1,0 +1,9 @@
+{
+  "dataset": "Fictional support queue for the LangChain example",
+  "tickets": [
+    {"id": "DEMO-101", "service": "checkout", "impact": "All customers cannot pay", "status": "open", "ageHours": 2},
+    {"id": "DEMO-102", "service": "email", "impact": "Weekly digest arrives late", "status": "open", "ageHours": 18},
+    {"id": "DEMO-103", "service": "search", "impact": "One customer's filters reset", "status": "open", "ageHours": 4},
+    {"id": "DEMO-104", "service": "checkout", "impact": "Receipt formatting issue", "status": "resolved", "ageHours": 1}
+  ]
+}

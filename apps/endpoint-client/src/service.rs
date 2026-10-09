@@ -1106,6 +1106,7 @@ mod tests {
             }],
             ca_certificate_path: None,
             request_timeout_seconds: 5,
+            local_console_url: None,
         };
         let gateway = Arc::new(Gateway {
             polls: AtomicU64::new(0),

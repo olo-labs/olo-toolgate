@@ -34,7 +34,12 @@ public class ClientDownloadResource {
         return Response.ok(java.util.Map.of("serverUrl",serverUrl(),"caCertificatePem",endpoints.issuerCertificate())).header("Cache-Control","no-store").build();
     }
     @GET @Path("api/public/v1/clients/setup/{target}")
-    public Response configuredSetup(@PathParam("target")String target){return artifacts.configuredWindowsInstaller(target,serverUrl());}
+    public Response configuredSetup(@PathParam("target")String target){return artifacts.configuredWindowsInstaller(target,setupSource());}
+    /** A local Quickstart console also publishes its gateway CA, so its setup names that console. */
+    private String setupSource(){
+        if(!config.getOptionalValue("toolgate.quickstart.enabled",Boolean.class).orElse(false))return serverUrl();
+        return config.getOptionalValue("toolgate.control.endpoint.console-url",String.class).map(value->value.endsWith("/")?value.substring(0,value.length()-1):value).orElseGet(this::serverUrl);
+    }
     @GET @Path("api/public/v1/clients/{filename}")
     public Response download(@PathParam("filename")String filename){return artifacts.download(filename);}
 }

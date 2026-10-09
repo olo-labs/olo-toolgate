@@ -1,0 +1,5 @@
+asset,environment,owner_team,patch_age_days,backup_status
+demo-web-01,production,web,4,success
+demo-db-01,production,data,48,failed
+demo-worker-01,staging,platform,12,success
+demo-cache-01,production,platform,31,unknown

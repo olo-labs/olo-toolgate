@@ -63,6 +63,9 @@ class Agent:
         if origin.scheme == 'https':
             try: context = ssl.create_default_context(cafile=str(ca_file) if ca_file else None)
             except (OSError, ssl.SSLError): raise ValueError('Cannot load trusted CA; supply the current gateway CA with -CaFile') from None
+            # Python 3.13+ adds VERIFY_X509_STRICT, which rejects Quickstart certificates issued
+            # without key identifier extensions. Chain, expiry and hostname checks remain enforced.
+            context.verify_flags &= ~getattr(ssl, 'VERIFY_X509_STRICT', 0)
             handlers.append(urllib.request.HTTPSHandler(context=context))
         self.opener = urllib.request.build_opener(*handlers)
         self.sequence = 0

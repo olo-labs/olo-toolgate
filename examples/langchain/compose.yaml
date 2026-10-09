@@ -1,0 +1,90 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+name: toolgate-langchain
+services:
+  quickstart:
+    image: ${TOOLGATE_QUICKSTART_IMAGE:-ololab/olo-toolgate-quickstart:dev-f6b503f4a378-37978665914-1}
+    platform: linux/amd64
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 1536m
+    cpus: 2
+    stop_grace_period: 35s
+    environment:
+      TOOLGATE_DISABLE_ADMIN_PASSWORD: 'false'
+      TOOLGATE_QUICKSTART_DATABASE_MODE: sqlite
+      TOOLGATE_QUICKSTART_CLIENT_CREDENTIALS: 'true'
+      TOOLGATE_CONTROL_ENDPOINT_CONTROL_URL: https://localhost:${TOOLGATE_TLS_PORT:-18451}
+      TOOLGATE_CONTROL_ENDPOINT_GATEWAY_URL: https://localhost:${TOOLGATE_TLS_PORT:-18451}
+      # Setup downloads name this console so Windows clients can trust the local CA.
+      TOOLGATE_CONTROL_ENDPOINT_CONSOLE_URL: http://127.0.0.1:${TOOLGATE_HTTP_PORT:-18091}
+    ports:
+      - "127.0.0.1:${TOOLGATE_HTTP_PORT:-18091}:8080"
+      - "127.0.0.1:${TOOLGATE_TLS_PORT:-18451}:8443"
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m,uid=65532,gid=65532
+    volumes:
+      - quickstart-data:/data
+  linux-device:
+    build:
+      context: ../..
+      dockerfile: examples/langchain/device.Dockerfile
+      args:
+        QUICKSTART_IMAGE: ${TOOLGATE_QUICKSTART_IMAGE:-ololab/olo-toolgate-quickstart:dev-f6b503f4a378-37978665914-1}
+    platform: linux/amd64
+    hostname: langchain-linux-device
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 256m
+    cpus: 1
+    stop_grace_period: 30s
+    depends_on:
+      quickstart:
+        condition: service_healthy
+    environment:
+      TOOLGATE_DEVICE_UPSTREAM: quickstart
+      TOOLGATE_DEVICE_HTTP_PORT: ${TOOLGATE_HTTP_PORT:-18091}
+      TOOLGATE_DEVICE_TLS_PORT: ${TOOLGATE_TLS_PORT:-18451}
+    tmpfs:
+      - /run:rw,nosuid,size=8m,mode=755
+    volumes:
+      - device-config:/etc/olo-toolgate
+      - device-state:/var/lib/olo-toolgate
+    healthcheck:
+      test: [CMD, python, -c, "import json; d=json.load(open('/run/olo-toolgate/device-status.json')); assert d.get('deviceId')"]
+      interval: 5s
+      timeout: 3s
+      start_period: 30s
+      retries: 24
+  agent:
+    profiles: [ai]
+    build:
+      context: ../..
+      dockerfile: examples/langchain/agent.Dockerfile
+    # Reuse the device's byte-preserving loopback TLS relay. No device state is mounted.
+    network_mode: service:linux-device
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    depends_on:
+      linux-device:
+        condition: service_healthy
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      TOOLGATE_CREDENTIAL_DIRECTORY: /run/toolgate-agents
+      PYTHONDONTWRITEBYTECODE: '1'
+    volumes:
+      - ./.state/agents:/run/toolgate-agents:ro
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+volumes:
+  quickstart-data:
+  device-config:
+  device-state:

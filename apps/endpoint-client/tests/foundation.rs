@@ -221,6 +221,7 @@ fn config(directory: &Directory) -> Config {
         }],
         ca_certificate_path: None,
         request_timeout_seconds: 5,
+        local_console_url: None,
     }
 }
 fn service(directory: &Directory) -> ClientService {

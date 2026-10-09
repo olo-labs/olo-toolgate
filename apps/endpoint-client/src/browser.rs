@@ -19,27 +19,36 @@ struct LocalTrust {
 pub struct Installation {
     pub server_url: String,
     pub ca_certificate_pem: Option<String>,
+    /// Loopback console that published `ca_certificate_pem`.
+    pub console_url: Option<String>,
 }
 /// Bootstrap local quickstart trust through loopback only, then verify HTTPS before installation.
 pub async fn installation(value: &str) -> Result<Installation> {
     let server_url = installation_server(value).await?;
     let input = value.trim();
-    let console = if matches!(
-        server_url.as_str(),
-        "https://localhost:18450" | "https://127.0.0.1:18450"
-    ) {
-        Some("http://127.0.0.1:18090".to_owned())
-    } else if input.starts_with("http://localhost:") || input.starts_with("http://127.0.0.1:") {
-        Some(input.trim_end_matches('/').to_owned())
-    } else if input.starts_with("localhost:") || input.starts_with("127.0.0.1:") {
-        Some(format!("http://{}", input.trim_end_matches('/')))
-    } else {
-        None
-    };
+    let console =
+        if input.starts_with("http://localhost:") || input.starts_with("http://127.0.0.1:") {
+            Some(crate::config::local_console(input)?)
+        } else if input.starts_with("localhost:") || input.starts_with("127.0.0.1:") {
+            Some(crate::config::local_console(&format!("http://{input}"))?)
+        } else if crate::config::loopback(&server_url) {
+            // A local gateway URL alone does not name its console; use the one recorded when
+            // this gateway was first set up, then the default Quickstart console.
+            crate::install::remembered_console(&server_url).or_else(|| {
+                matches!(
+                    server_url.as_str(),
+                    "https://localhost:18450" | "https://127.0.0.1:18450"
+                )
+                .then(|| "http://127.0.0.1:18090".to_owned())
+            })
+        } else {
+            None
+        };
     let Some(console) = console else {
         return Ok(Installation {
             server_url,
             ca_certificate_pem: None,
+            console_url: None,
         });
     };
     let _ = rustls::crypto::ring::default_provider().install_default();
@@ -87,6 +96,7 @@ pub async fn installation(value: &str) -> Result<Installation> {
     Ok(Installation {
         server_url,
         ca_certificate_pem: Some(trust.ca_certificate_pem),
+        console_url: Some(console),
     })
 }
 pub fn console_origin(value: &str) -> Result<String> {
@@ -127,7 +137,13 @@ async fn fetch(client: &reqwest::Client, url: &str, limit: u64) -> Result<Vec<u8
 pub async fn connect(console_url: &str) -> Result<String> {
     let origin = console_origin(console_url)?;
     let server = site_server(&origin).await?;
-    configure_client(server).await
+    // A local console also publishes its gateway's CA, so any local stack connects in one click.
+    let source = if origin.starts_with("http://") {
+        origin
+    } else {
+        server.clone()
+    };
+    configure_client(server, source).await
 }
 /// Setup can use the local console address while service traffic remains HTTPS.
 pub async fn installation_server(value: &str) -> Result<String> {
@@ -174,8 +190,11 @@ async fn site_server(origin: &str) -> Result<String> {
         serde_json::from_slice(&document).map_err(|_| Failure::Validation)?;
     crate::config::origin(&config.server_url)
 }
-async fn configure_client(server: String) -> Result<String> {
-    let installation = installation(&server).await?;
+async fn configure_client(server: String, source: String) -> Result<String> {
+    let installation = installation(&source).await?;
+    if installation.server_url != server {
+        return Err(Failure::Validation);
+    }
     let executable = std::env::current_exe().map_err(|_| Failure::Unavailable)?;
     let cli = executable
         .parent()
@@ -226,7 +245,7 @@ async fn configure_client(server: String) -> Result<String> {
     } else {
         "install"
     };
-    let parameters = format!("{operation} --server \"{server}\" --peer \"{peer}\"");
+    let parameters = format!("{operation} --server \"{source}\" --peer \"{peer}\"");
     elevate(&cli, &parameters)?;
     Ok(server)
 }

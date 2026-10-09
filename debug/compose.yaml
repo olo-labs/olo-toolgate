@@ -17,6 +17,8 @@ services:
       TOOLGATE_ALLOW_LOOPBACK_MCP_HTTP: 'true'
       TOOLGATE_CONTROL_ENDPOINT_CONTROL_URL: https://localhost:18450
       TOOLGATE_CONTROL_ENDPOINT_GATEWAY_URL: https://localhost:18450
+      # Setup downloads name this console so Windows clients can trust the local CA.
+      TOOLGATE_CONTROL_ENDPOINT_CONSOLE_URL: http://127.0.0.1:18090
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=128m,uid=65532,gid=65532
     ports:

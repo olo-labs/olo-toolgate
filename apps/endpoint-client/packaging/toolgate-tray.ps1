@@ -21,6 +21,72 @@ $script:activityError = $null
 $script:activityStarted = $null
 $script:activitySnapshot = $null
 $script:activityAvailable = $false
+$trayIndex = 'C:\ProgramData\OLO\ToolGate\gateways.json'
+$trayEnrollScript = Join-Path $PSScriptRoot 'toolgate-enroll.ps1'
+$script:trustChanged = $false
+$script:trustNotified = $false
+$script:trustTask = $null
+$script:trustClient = $null
+$script:trustChecked = [DateTime]::MinValue
+$script:enrollAfterSwitch = $null
+function Test-ToolGateGatewayAddress([string]$Address) {
+    return ($Address -match '^https://[a-zA-Z0-9.\[\]:-]+$') -or ($Address -match '^http://(127\.0\.0\.1|localhost):[0-9]{1,5}$')
+}
+function Get-ToolGateGatewaySettings {
+    try { return [IO.File]::ReadAllText($trayConfig) | ConvertFrom-Json } catch { return $null }
+}
+function Get-ToolGateKnownGateways {
+    try { $known = [IO.File]::ReadAllText($trayIndex) | ConvertFrom-Json } catch { return @() }
+    return @($known | Where-Object { $_.serverUrl -and (Test-ToolGateGatewayAddress ([string]$_.serverUrl)) })
+}
+# The protected client verifies the gateway and its certificate; the tray only asks for elevation.
+function Invoke-ToolGateConfigure([string]$Target) {
+    if (-not (Test-ToolGateGatewayAddress $Target)) {
+        $script:trayDetail = 'Use an https:// gateway URL or a local console address such as http://127.0.0.1:18091.'
+        return
+    }
+    $peer = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    try {
+        Start-Process -FilePath $trayClient -Verb RunAs -WindowStyle Hidden -ArgumentList "configure --server `"$Target`" --peer `"$peer`""
+        $script:trustChanged = $false
+        $script:trustNotified = $false
+        $script:enrollAfterSwitch = Get-Date
+        $script:trayDetail = "Connecting to $Target..."
+    } catch { $script:trayDetail = 'Gateway change was cancelled or could not start.' }
+}
+function Invoke-ToolGateRepair {
+    $settings = Get-ToolGateGatewaySettings
+    if (-not $settings) { return }
+    Invoke-ToolGateConfigure $(if ($settings.localConsoleUrl) { [string]$settings.localConsoleUrl } else { [string]$settings.serverUrl })
+}
+# A local gateway recreated with a fresh volume publishes a new CA on its console; offer repair.
+function Update-ToolGateTrustCheck([bool]$Ready) {
+    if ($Ready) { $script:trustChanged = $false; $script:trustNotified = $false; return }
+    if ($script:trustTask) {
+        if (-not $script:trustTask.IsCompleted) { return }
+        try {
+            $settings = Get-ToolGateGatewaySettings
+            $trust = $script:trustTask.Result | ConvertFrom-Json
+            if ($settings -and $settings.caCertificatePath -and $trust.serverUrl -eq $settings.serverUrl) {
+                $published = New-Object Security.Cryptography.X509Certificates.X509Certificate2(,[Text.Encoding]::ASCII.GetBytes([string]$trust.caCertificatePem))
+                $installed = New-Object Security.Cryptography.X509Certificates.X509Certificate2([string]$settings.caCertificatePath)
+                $script:trustChanged = $published.Thumbprint -ne $installed.Thumbprint
+            }
+        } catch { }
+        finally { $script:trustClient.Dispose(); $script:trustClient = $null; $script:trustTask = $null }
+        if ($script:trustChanged -and -not $script:trustNotified) {
+            $script:trustNotified = $true
+            $trayIcon.ShowBalloonTip(10000, 'ToolGate gateway was recreated', 'Its certificate changed. Click here to reconnect this device.', [System.Windows.Forms.ToolTipIcon]::Warning)
+        }
+        return
+    }
+    if (((Get-Date) - $script:trustChecked).TotalSeconds -lt 30) { return }
+    $script:trustChecked = Get-Date
+    $settings = Get-ToolGateGatewaySettings
+    if (-not $settings -or -not ([string]$settings.localConsoleUrl -match '^http://(127\.0\.0\.1|localhost):[0-9]{1,5}$')) { return }
+    $script:trustClient = New-Object Net.WebClient
+    $script:trustTask = $script:trustClient.DownloadStringTaskAsync(([string]$settings.localConsoleUrl) + '/api/public/v1/clients/local-trust')
+}
 . (Join-Path $PSScriptRoot 'toolgate-status.ps1')
 . (Join-Path $PSScriptRoot 'toolgate-icons.ps1')
 $trayLogo = Join-Path $PSScriptRoot 'olo.png'
@@ -47,12 +113,43 @@ $trayEnroll.add_Click({
 })
 $trayConsole.add_Click({
     $trayServer = (Get-ItemProperty -LiteralPath 'HKLM:\Software\OLO\ToolGate' -ErrorAction SilentlyContinue).ServerUrl
-    if ($trayServer -match '^https://[a-zA-Z0-9.\[\]:/-]+$') {
-        if ($trayServer -eq 'https://localhost:18450') { $trayServer = 'http://127.0.0.1:18090' }
+    $trayLocal = Get-ToolGateGatewaySettings
+    if ($trayLocal -and $trayLocal.serverUrl -eq $trayServer -and $trayLocal.localConsoleUrl) { $trayServer = $trayLocal.localConsoleUrl }
+    elseif ($trayServer -eq 'https://localhost:18450') { $trayServer = 'http://127.0.0.1:18090' }
+    if (Test-ToolGateGatewayAddress $trayServer) {
         $trayRoute = if ($script:trayState -in @('UNENROLLED', 'PENDING')) { '/console/#enroll' } else { '/console/' }
         Start-Process ($trayServer.TrimEnd('/') + $trayRoute)
     }
 })
+# Switching parks the current enrollment; switching back resumes it without a new approval.
+$traySwitch = New-Object System.Windows.Forms.ToolStripMenuItem('Switch gateway')
+[void]$trayMenu.Items.Insert(2, $traySwitch)
+$trayRepair = New-Object System.Windows.Forms.ToolStripMenuItem('Repair gateway connection')
+$trayRepair.add_Click({ Invoke-ToolGateRepair })
+[void]$trayMenu.Items.Insert(3, $trayRepair)
+$trayMenu.add_Opening({
+    $traySwitch.DropDownItems.Clear()
+    $trayCurrent = Get-ToolGateGatewaySettings
+    foreach ($trayGateway in @(Get-ToolGateKnownGateways)) {
+        $trayTarget = if ($trayGateway.consoleUrl) { [string]$trayGateway.consoleUrl } else { [string]$trayGateway.serverUrl }
+        $trayLabel = [string]$trayGateway.serverUrl
+        if ($trayGateway.consoleUrl) { $trayLabel += "  (console $($trayGateway.consoleUrl))" }
+        $trayItem = New-Object System.Windows.Forms.ToolStripMenuItem($trayLabel)
+        $trayItem.Tag = $trayTarget
+        $trayItem.Checked = $trayCurrent -and $trayCurrent.serverUrl -eq $trayGateway.serverUrl
+        $trayItem.add_Click({ param($sender) Invoke-ToolGateConfigure ([string]$sender.Tag) })
+        [void]$traySwitch.DropDownItems.Add($trayItem)
+    }
+    $trayOther = New-Object System.Windows.Forms.ToolStripMenuItem('Other gateway...')
+    $trayOther.add_Click({
+        Add-Type -AssemblyName Microsoft.VisualBasic
+        $trayTyped = [Microsoft.VisualBasic.Interaction]::InputBox('Gateway URL, or a local console address such as http://127.0.0.1:18091', 'Switch ToolGate gateway', '')
+        if ($trayTyped) { Invoke-ToolGateConfigure $trayTyped.Trim().TrimEnd('/') }
+    })
+    [void]$traySwitch.DropDownItems.Add($trayOther)
+    $trayRepair.Font = if ($script:trustChanged) { New-Object System.Drawing.Font($trayMenu.Font, [System.Drawing.FontStyle]::Bold) } else { $trayMenu.Font }
+})
+$trayIcon.add_BalloonTipClicked({ if ($script:trustChanged) { Invoke-ToolGateRepair } })
 $trayPackets = $trayMenu.Items.Add('View messages sent / received')
 $trayPackets.add_Click({
     $trayPacketScript = Join-Path $PSScriptRoot 'toolgate-packets.ps1'
@@ -125,6 +222,18 @@ $trayTimer.add_Tick({
                 'PENDING' { 'Approve the enrollment code and fingerprint on Enroll Device.' }
                 'REVOKED' { 'Contact your administrator to enroll this device again.' }
                 default { if ($trayHealth.ready) { 'Protected tools are ready.' } else { 'Protected tools will be ready after enrollment and a successful gateway check-in.' } }
+            }
+            Update-ToolGateTrustCheck ($trayHealth.ready -and $trayState -eq 'ACTIVE')
+            if ($script:trustChanged) { $trayGuidance = 'The local gateway was recreated with a new certificate. Choose Repair gateway connection.' }
+            if ($script:enrollAfterSwitch) {
+                # Start enrollment once the new gateway configuration is active, never against the old one.
+                $traySwitched = (Get-Item -LiteralPath $trayConfig).LastWriteTime -gt $script:enrollAfterSwitch
+                if ($traySwitched -and $trayState -eq 'UNENROLLED') {
+                    $script:enrollAfterSwitch = $null
+                    Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList @('-NoProfile', '-STA', '-ExecutionPolicy', 'RemoteSigned', '-WindowStyle', 'Hidden', '-File', "`"$trayEnrollScript`"") -WindowStyle Hidden
+                } elseif (($traySwitched -and $trayState -ne 'OFFLINE') -or ((Get-Date) - $script:enrollAfterSwitch).TotalSeconds -gt 180) {
+                    $script:enrollAfterSwitch = $null
+                }
             }
             $script:trayDetail = "Service running`r`nStatus: $trayStatusText`r`n$trayGuidance`r`nSuccessful check-ins: $($trayHealth.successfulCheckIns)`r`nFailed check-ins: $($trayHealth.failedCheckIns)"
             $trayIcon.Text = 'ToolGate: ' + $trayStatusText
