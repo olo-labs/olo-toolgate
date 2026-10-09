@@ -8,6 +8,11 @@ approve configuration and operation requests. See [implementation evidence and
 remaining acceptance work](docs/enterprise-access-control/implementation-status.md)
 and [migration/recovery operations](docs/enterprise-access-control/operations.md).
 
+Run `python tools/enterprise/finish.py` for sequential completion checks, or
+`--only NAME` to rerun a failing gate. The runner preserves logs, distinguishes
+partial runs and generates the 96-case acceptance evidence; it uses isolated
+fixtures and preserves existing debug data.
+
 
 The current Clients table combines registered devices and pending requests, with device names, registered users and detail tooltips. Enable/Disable and Approve/Deapprove are independent; approval may be timed or explicitly unlimited. Quickstart separately registers the fixed executor, HotFolder and REST forwarding.
 

@@ -9,6 +9,7 @@ from quickstart.check import build_images,smoke
 
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--image',default='olo-toolgate-gateway:module05');p.add_argument('--helper-image',default='olo-toolgate-quickstart:enterprise-validation');p.add_argument('--no-build',action='store_true');args=p.parse_args()
+    (ROOT/'build/gateway/container-smoke.json').unlink(missing_ok=True)
     if not args.no_build:
         build_images(args.helper_image)
         run(['docker','build','-f','apps/gateway/Dockerfile','--build-arg','VERSION='+(ROOT/'VERSION').read_text().strip(),

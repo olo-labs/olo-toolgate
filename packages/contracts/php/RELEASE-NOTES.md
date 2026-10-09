@@ -13,6 +13,12 @@ The project follows semantic versioning once stable versioning begins.
 
 ## 0.10.0-dev
 
+- Consolidate enterprise completion into sequential source, native, browser,
+  Gateway, PostgreSQL, restore, deployment, SDK and image checks. Trace all 96
+  acceptance scenarios to named evidence, retaining missing or skipped gates.
+  Make Linux custody, PostgreSQL runtime and reviewed restore mandatory in CI;
+  keep Quickstart alive through dependency health-check outages.
+
 - Enterprise intermediary checkpoint: replace individual ACLs and local ALLOW with
   complete group grants, live Control authority, single-use bound effect permits,
   durable budgets and outcomes, scoped runtime secret delivery, independent

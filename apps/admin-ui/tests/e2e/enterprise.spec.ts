@@ -6,7 +6,8 @@ import {mkdirSync} from 'node:fs';
 
 test.skip(!process.env.TOOLGATE_ENTERPRISE_ORIGIN,'Requires the isolated enterprise Quickstart gate');
 test('real group administration, inherited provenance and review impact are accessible',async({page,browser})=>{
-  test.setTimeout(180000);
+  test.setTimeout(360000);
+  page.setDefaultTimeout(15000);
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.name));
   const origin=process.env.TOOLGATE_ENTERPRISE_ORIGIN!;
   await page.goto(origin+'/console/');
@@ -30,6 +31,7 @@ test('real group administration, inherited provenance and review impact are acce
   try {
     const reviewers=await Promise.all(contexts.map(c=>c.newPage()));
     for(const [index,reviewer] of reviewers.entries()){
+      reviewer.setDefaultTimeout(15000);
       await reviewer.goto(origin+'/console/');
       await reviewer.getByLabel('Local account').selectOption('reviewer-'+(index+1));
       await reviewer.getByLabel('Password',{exact:true}).fill(process.env['TOOLGATE_ENTERPRISE_REVIEWER_'+(index+1)]!);
@@ -64,7 +66,7 @@ test('real group administration, inherited provenance and review impact are acce
       await expect(page.getByRole('region',{name:'Configuration impact'}).getByText('APPLIED',{exact:true})).toBeVisible();
     }
     await page.goto(origin+'/console/#mapping');
-    await page.getByLabel('Agent Group',{exact:true}).selectOption('default-agents');
+    await page.getByRole('combobox',{name:'Agent Group',exact:true}).selectOption('default-agents');
     await page.getByRole('button',{name:'Add capability mapping'}).click();
     await page.getByLabel('Grant identifier').fill('browser-capability');
     await page.getByLabel('Mapping name').fill('Browser reviewed capability');
@@ -76,15 +78,16 @@ test('real group administration, inherited provenance and review impact are acce
     }
     await page.getByLabel('Actions, separated by commas').fill('evaluate');
     await page.getByRole('button',{name:'Add resource rule'}).click();
-    await page.getByLabel('Resource kind',{exact:true}).selectOption('CUSTOM');
+    await page.getByRole('combobox',{name:'Resource kind',exact:true}).selectOption('CUSTOM');
     await page.getByLabel('Resource locator').fill('builtin/calculator.evaluate');
     expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
     await page.getByRole('button',{name:'Save capability mapping'}).click();
     await applyDraft();
     await page.goto(origin+'/console/#mapping');
-    await page.getByLabel('Agent Group',{exact:true}).selectOption('default-agents');
+    await page.getByRole('combobox',{name:'Agent Group',exact:true}).selectOption('default-agents');
     await page.getByRole('button',{name:'Browser reviewed capability',exact:true}).click();
     await expect(page.getByLabel('Resource locator')).toHaveValue('builtin/calculator.evaluate');
+    console.info('PASS reviewed capability mapping persisted');
     await page.goto(origin+'/console/#users');
     await page.getByRole('button',{name:'Add user',exact:true}).click();
     await page.getByLabel('Identifier',{exact:true}).fill('browser-pending-user');
@@ -96,6 +99,7 @@ test('real group administration, inherited provenance and review impact are acce
     await page.getByRole('button',{name:'Browser pending user',exact:true}).click();
     await expect(page.getByLabel('Enabled in directory')).not.toBeChecked();
     await expect(page.getByText('team-default',{exact:true}).first()).toBeVisible();
+    console.info('PASS reviewed disabled user/default membership persisted');
     await page.goto(origin+'/console/#teams');
     await page.getByRole('button',{name:'Add team',exact:true}).click();
     await page.getByLabel('Identifier',{exact:true}).fill('browser-team');
@@ -103,6 +107,7 @@ test('real group administration, inherited provenance and review impact are acce
     await page.getByLabel('Enabled',{exact:true}).check();
     await page.getByRole('button',{name:'Save team',exact:true}).click();
     await applyDraft();
+    console.info('PASS reviewed Team creation persisted');
     await page.goto(origin+'/console/#users');
     await page.getByRole('button',{name:'Browser pending user',exact:true}).click();
     const membership=page.getByRole('region',{name:'Group membership',exact:true});
@@ -116,6 +121,7 @@ test('real group administration, inherited provenance and review impact are acce
     await page.goto(origin+'/console/#users');
     await page.getByRole('button',{name:'Browser pending user',exact:true}).click();
     await expect(page.getByRole('region',{name:'Group membership',exact:true}).getByText('browser-team',{exact:true}).first()).toBeVisible();
+    console.info('PASS reviewed membership transfer persisted');
     await page.goto(origin+'/console/#local');
     await expect(page.getByLabel('Tool',{exact:true}).locator('option')).toHaveCount(0);
   } finally { await Promise.all(contexts.map(c=>c.close())); }

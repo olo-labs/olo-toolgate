@@ -39,3 +39,28 @@ For PostgreSQL, capture a consistent custom-format `pg_dump` archive and a layou
 Built-in filesystem operations use containment, restricted portable paths, bounded files, exclusive/atomic writes and symlink/hardlink protection. Web search checks public addresses, resolves once, pins sockets and TLS host names, and forbids proxies/redirects and private destinations. Group-scoped Vault delivery requires a consumed certificate-bound effect, current complete secret-use grants and the declared exact secret reference; values are never exposed in management lists or logs.
 
 Managed OCI tools use pinned image/source/manifest digests, fixed argv, bounded JSON protocols, unprivileged read-only sandboxes, no host mount and no network. Arbitrary host shell, raw SQL, host filesystem mounts, unreviewed egress and generic secret-environment injection are not supported. Such requests fail closed. Introduce a structured provider/extractor and independently tested confinement before supporting a new protected effect kind. Nested/dynamic groups and offline execution are likewise unsupported; no inferred membership or offline lease is manufactured.
+
+## Sequential implementation acceptance
+
+Run `python tools/enterprise/finish.py` from the repository root with pinned Python
+tooling, Java 21, Node, Docker and the repository's Rust/Helm tooling available.
+Windows can use `TOOLGATE_DOCKER_TOOLS=1`. The runner executes source/contract checks,
+Java conformance, actual Linux custody, fresh SQLite/browser/native effects,
+production Gateway, fresh PostgreSQL runtime, production Control replicas,
+reviewed PostgreSQL restore, deployment rendering, local SDK publication, source
+scans, exact-image vulnerability scans/SBOMs and acceptance reporting in that order.
+It stops on the first failure. Use `--only NAME` to repair and rerun a single gate;
+partial success is explicitly recorded as a partial run.
+
+Logs and pass/fail reports live under `build/enterprise/finish`. Fixtures create
+their own uniquely named containers and volumes; they do not reset the debug
+installation. `acceptance.py --write` maps all 96 scenarios to exact named JUnit
+cases and required runtime evidence. Missing, failed or skipped tests remain open.
+An automated case count is distinct from a passing integrated run, image review,
+operator configuration and enterprise capacity qualification. The latency report
+documents the actual small fixture and its CPU/memory/sample limits.
+
+Trusted identity synchronization uses stable tenant/issuer/subject facts and the
+reviewed canonical configuration import. It cannot merge identities by email,
+silently activate a new User, invent nested membership or assign individual ACLs.
+An identity-provider-specific SCIM connector is not supplied by this implementation.

@@ -74,6 +74,7 @@ jobs:
           python tools/quality.py
           python -m unittest discover -s tests/contracts -v
           python tools/control/check.py
+          python tools/enterprise/custody.py
           python tools/ui/package.py
           python tools/check.py --scans
           python tools/control/helm.py
@@ -84,12 +85,17 @@ jobs:
       - name: Build, smoke and scan production image
         run: |
           python tools/quickstart/check.py --build --client-assets deploy/client-assets/release
+          python tools/quickstart/check.py --postgresql --no-browser
           python tools/control/container.py --client-assets deploy/client-assets/release
+          docker tag olo-toolgate-control:module05 olo-toolgate-control:enterprise-production
+          python tools/enterprise/restore_check.py
           python tools/client/downloads.py --image olo-toolgate-control:module05
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.61.1 image --no-progress --exit-code 1 --severity HIGH,CRITICAL olo-toolgate-control:module05
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/build/control:/evidence" aquasec/trivy:0.61.1 image --no-progress --format cyclonedx --output /evidence/control-sbom.cdx.json olo-toolgate-control:module05
           python tools/ui/merge_sbom.py
           python tools/enterprise/helm.py
+          cp -r build/enterprise build/control/enterprise-evidence
+          cp -r build/quickstart build/control/quickstart-evidence
           docker save olo-toolgate-control:module05 -o build/control/image.tar
           cp -r build/ui build/control/ui-evidence
           cp CHANGELOG.md docs/control-plane/upgrades.md build/control/

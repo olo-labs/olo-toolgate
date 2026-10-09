@@ -72,6 +72,9 @@ def smoke(image, browser, database_options=None, gateway_image=None):
     """Fresh group-only installation through real JWT, TLS, device and reviewed HTTP APIs."""
     name='toolgate-enterprise-test-'+secrets.token_hex(6)
     volume=name+'-data'; containers=[]; report={'image':image,'storage':'PostgreSQL' if database_options else 'SQLite','gates':[]}
+    output=ROOT/'build/quickstart';output.mkdir(parents=True,exist_ok=True)
+    (output/('smoke-postgresql.json' if database_options else 'smoke.json')).unlink(missing_ok=True)
+    if browser:(output/'browser-smoke.json').unlink(missing_ok=True)
     def mark(gate):
         report['gates'].append(gate);print('PASS '+gate,flush=True)
     def exec_text(*args):
@@ -102,7 +105,7 @@ def smoke(image, browser, database_options=None, gateway_image=None):
                 "c['managementListen']='0.0.0.0:9094';s.atomic(s.DATA/'run/external-gateway.json',json.dumps(c))")
             exec_text('/opt/quickstart-python/bin/python','-c',
                 "import sys;sys.path.insert(0,'/opt/quickstart');import supervisor as s;import json,time;"
-                "db=s.State();identities=[json.loads(r[0]) for r in db.execute(\"SELECT document FROM control_records WHERE kind='IDENTITY_BINDING'\").fetchall()];db.connection.close();"
+                "db=s.Database();identities=[json.loads(r[0]) if isinstance(r[0],str) else r[0] for r in db.execute(\"SELECT document FROM control_records WHERE kind='IDENTITY_BINDING'\").fetchall()];db.connection.close();"
                 "i=next(i for i in identities if i['subject']=='admin');values=json.loads((s.DATA/'run/credentials.json').read_text());"
                 "c={**values[0]['context'],'mode':'DELEGATED','workloadBindingId':'workload-delegated','userId':i['userId'],'sessionEpoch':i['sessionEpoch'],'credentialSha256':"+repr(delegated_digest)+"};"
                 "values.append(dict(tokenSha256="+repr(delegated_digest)+",context=c,expiresAtUnixMs=int(time.time()*1000)+3600000));"
@@ -427,6 +430,7 @@ def smoke(image, browser, database_options=None, gateway_image=None):
             mark('real accessible enterprise administration browser')
         output=ROOT/'build/quickstart';output.mkdir(parents=True,exist_ok=True)
         (output/('smoke-postgresql.json' if database_options else 'smoke.json')).write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
+        if browser:(output/'browser-smoke.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
         print('Fresh enterprise runtime gates passed')
     except Exception:
         output=ROOT/'build/quickstart';output.mkdir(parents=True,exist_ok=True)

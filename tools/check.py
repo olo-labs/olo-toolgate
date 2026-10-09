@@ -154,6 +154,7 @@ def main():
             run(['gradle','projects','javaCheck','build'])
             publication_proof()
             run(['gradle',':control-plane:enterpriseTest'])
+            python('tools/enterprise/custody.py')
         finally:
             for name,value in old.items():
                 if value is None: os.environ.pop(name,None)
