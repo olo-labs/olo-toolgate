@@ -2,6 +2,50 @@
 # SPDX-License-Identifier: Apache-2.0
 # Development releases from main
 
+## One manual trigger, build and publish only
+
+Open **Actions → Manual development release (build and publish only) → Run
+workflow**, select **main**, and run it. No inputs or `RC:` comment are required.
+The direct link is
+[manual development release](https://github.com/olo-labs/olo-toolgate/actions/workflows/manual-development-release.yml).
+The CLI equivalent is `gh workflow run manual-development-release.yml --ref main`.
+
+This explicit manual workflow works while automatic CI is paused. It builds fresh
+artifacts from the selected main commit without test suites, CI admission/preflight,
+format/lint checks, security scans, smoke tests, signing or waiting for CI evidence.
+Compilation and packaging still need to succeed. Existing packaging tools retain
+their payload format and dependency-download integrity checks.
+
+One run publishes:
+
+- Control, Gateway and Quickstart containers to the configured Docker Hub namespace,
+  with unique `dev-<12-character-commit>-<run-id>-<attempt>` tags, the commit's
+  `dev-<12-character-commit>` alias, and `dev` if that commit is still current main.
+- Java main/source/Javadoc JARs and POM to Maven, and the TypeScript library to GitHub
+  npm Packages with the `dev` distribution tag. Registry versions include the run ID,
+  attempt and commit, so a rerun gets fresh coordinates.
+- The Helm chart to GitHub OCI, and a GitHub prerelease containing raw contracts,
+  Rust `.crate`, PHP distribution, TypeScript tarball, Java artifacts, six native
+  clients/installers, checksums, licenses and release metadata. Windows ZIPs remain
+  internal build inputs; public Windows installation uses the combined installer.
+
+The packaged chart points to this run's Docker Hub namespace and unique development
+image tag. Kubernetes deployment credentials and enablement remain installation settings.
+
+The source product/wire version stays unchanged; Rust crate/native binary versions
+retain their source version. Release metadata identifies the commit and states
+`verification: not-run` and `tests: not-run`. Production `latest` is unchanged.
+
+Use the existing `development-release` environment/repository secrets:
+`DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`, and optional `DOCKERHUB_NAMESPACE` variable.
+Maven defaults to GitHub Packages using `GITHUB_TOKEN`; a custom Maven URL requires
+`MAVEN_REPOSITORY_URL`, `MAVEN_USERNAME` and `MAVEN_PASSWORD`. GitHub npm/Helm use the
+workflow's Packages write permission. Any configured GitHub environment approval
+still applies. Registry publication is not atomic; inspect a failed run before
+rerunning it. This workflow has no automatic push/tag/schedule trigger.
+
+## Existing CI-backed development releases
+
 The development-release workflow runs after Control CI completes successfully on
 main. It waits up to 30 minutes for Control, Gateway, Quickstart, Foundation and
 Endpoint Client CI to pass for the same commit. Failed, cancelled or missing gates

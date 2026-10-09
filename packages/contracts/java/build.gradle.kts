@@ -7,7 +7,8 @@ plugins {
 
 description = "Shared protocol and data contracts for OLO ToolGate"
 base { archivesName.set("toolgate-contracts") }
-version = rootProject.file("packages/contracts/VERSION").readText().trim()
+version = providers.gradleProperty("contractsPublicationVersion")
+    .getOrElse(rootProject.file("packages/contracts/VERSION").readText().trim())
 
 dependencies {
     api(libs.jackson.annotations)

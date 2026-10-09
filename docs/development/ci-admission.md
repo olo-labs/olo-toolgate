@@ -1,5 +1,10 @@
 # CI pause and RC admission
 
+The explicitly dispatched **Manual development release (build and publish only)**
+is the sole exception. It runs only on `main`, does not require `RC:` or enable
+automatic CI, and builds/publishes without tests or CI verification. See
+[the manual trigger](development-releases.md#one-manual-trigger-build-and-publish-only).
+
 Automatic build and release work is paused. The shared admission workflow has
 no runner allocation unless the repository variable `TOOLGATE_CI_ENABLED` is
 exactly `true` and the event has an RC candidate. Leave the variable absent or
