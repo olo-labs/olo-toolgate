@@ -38,6 +38,54 @@ pub fn client(ca: Option<&Path>) -> Result<reqwest::Client> {
     }
     builder.build().map_err(|_| Failure::Unavailable)
 }
+pub(crate) fn public_address(address: std::net::IpAddr) -> bool {
+    match address {
+        std::net::IpAddr::V4(ip) => {
+            let [a, b, c, _] = ip.octets();
+            !(!(1..224).contains(&a)
+                || ip.is_private()
+                || ip.is_loopback()
+                || ip.is_link_local()
+                || a == 100 && (64..128).contains(&b)
+                || a == 192 && (b == 0 || b == 88 && c == 99)
+                || a == 198 && (b == 18 || b == 19 || b == 51 && c == 100)
+                || a == 203 && b == 0 && c == 113)
+        }
+        std::net::IpAddr::V6(ip) => {
+            let words = ip.segments();
+            words[0] & 0xe000 == 0x2000
+                && !(words[0] == 0x2001 && (words[1] < 0x200 || words[1] == 0xdb8))
+                && words[0] != 0x2002
+        }
+    }
+}
+/// Resolve once for this request, reject every non-public answer, then pin sockets while retaining TLS hostname verification.
+pub(crate) async fn public_client(host: &str) -> Result<reqwest::Client> {
+    let addresses: Vec<_> =
+        tokio::time::timeout(Duration::from_secs(3), tokio::net::lookup_host((host, 443)))
+            .await
+            .map_err(|_| Failure::Unavailable)?
+            .map_err(|_| Failure::Unavailable)?
+            .collect();
+    if addresses.is_empty()
+        || addresses.len() > 32
+        || addresses.iter().any(|a| !public_address(a.ip()))
+    {
+        return Err(Failure::Unauthorized);
+    }
+    reqwest::Client::builder()
+        .https_only(true)
+        .no_proxy()
+        .redirect(reqwest::redirect::Policy::none())
+        .referer(false)
+        .tls_sslkeylogfile(false)
+        .retry(reqwest::retry::never())
+        .timeout(Duration::from_secs(5))
+        .connect_timeout(Duration::from_secs(3))
+        .resolve_to_addrs(host, &addresses)
+        .build()
+        .map_err(|_| Failure::Unavailable)
+}
 pub async fn body(mut response: reqwest::Response) -> Result<Vec<u8>> {
     if response.status() != 200 {
         return Err(if matches!(response.status().as_u16(), 401 | 403) {
@@ -189,6 +237,24 @@ impl HttpsGateway {
     }
 }
 impl AuthorizationPort for HttpsGateway {
+    fn secret(&self, name: String) -> Call<'_, String> {
+        Box::pin(async move {
+            use crate::transport::ControlPort;
+            let executing = self.executing.lock().await;
+            let invocation = executing.as_ref().ok_or(Failure::Unauthorized)?;
+            let (identity, control, _store) = self.device()?;
+            Ok(control
+                .deliver_secret(
+                    identity,
+                    EnterpriseSecretDeliveryRequest {
+                        invocation_id: invocation.id.clone(),
+                        name,
+                    },
+                )
+                .await?
+                .value)
+        })
+    }
     fn authorize(&self, request: AuthorizationRequest) -> Call<'_, ()> {
         Box::pin(async move { self.authorize_bound(request).await.map(|_| ()) })
     }
@@ -205,9 +271,20 @@ impl AuthorizationPort for HttpsGateway {
                     self.contracts.decode("EnterpriseInvocation", &bytes)?;
                 if matches!(
                     previous.state,
-                    EnterpriseInvocationState::Reserved | EnterpriseInvocationState::Executing
+                    EnterpriseInvocationState::Reserved
+                        | EnterpriseInvocationState::Executing
+                        | EnterpriseInvocationState::OutcomeUnknown
                 ) {
-                    return Err(Failure::Conflict);
+                    let recovered = control
+                        .effect_outcome(identity.clone(), previous.id.clone())
+                        .await?;
+                    if !recoverable_outcome(&previous, &recovered) {
+                        return Err(Failure::Conflict);
+                    }
+                    store.write(
+                        "effect-journal.json",
+                        &self.contracts.encode("EnterpriseInvocation", &recovered)?,
+                    )?;
                 }
             }
             let installed = self.installed(&request)?;
@@ -321,5 +398,74 @@ impl AuthorizationPort for HttpsGateway {
             *executing = None;
             Ok(())
         })
+    }
+}
+
+fn recoverable_outcome(previous: &EnterpriseInvocation, current: &EnterpriseInvocation) -> bool {
+    current.id == previous.id
+        && current.evaluation == previous.evaluation
+        && current.request_digest == previous.request_digest
+        && current.authorization_epoch == previous.authorization_epoch
+        && current.revision >= previous.revision
+        && matches!(
+            current.state,
+            EnterpriseInvocationState::Succeeded
+                | EnterpriseInvocationState::Failed
+                | EnterpriseInvocationState::Partial
+                | EnterpriseInvocationState::Expired
+                | EnterpriseInvocationState::Cancelled
+        )
+}
+
+#[cfg(test)]
+mod address_tests {
+    use super::public_address;
+    #[test]
+    fn destinations_exclude_local_shared_reserved_and_transition_ranges() {
+        for blocked in [
+            "0.0.0.0",
+            "10.1.2.3",
+            "127.0.0.1",
+            "169.254.169.254",
+            "100.64.0.1",
+            "100.127.255.254",
+            "192.0.2.1",
+            "198.18.0.1",
+            "198.51.100.1",
+            "203.0.113.1",
+            "224.0.0.1",
+            "255.255.255.255",
+            "::1",
+            "::ffff:8.8.8.8",
+            "fe80::1",
+            "fc00::1",
+            "2001:db8::1",
+            "2002:0808:0808::1",
+        ] {
+            assert!(!public_address(blocked.parse().unwrap()), "{blocked}");
+        }
+        for allowed in ["8.8.8.8", "1.1.1.1", "2606:4700:4700::1111"] {
+            assert!(public_address(allowed.parse().unwrap()), "{allowed}");
+        }
+    }
+    #[test]
+    fn own_exact_terminal_outcome_can_release_a_fence_but_unknown_or_substituted_outcomes_cannot() {
+        let mut previous: olo_toolgate_contracts::EnterpriseInvocation = serde_json::from_value(
+            serde_json::from_str::<serde_json::Value>(include_str!(
+                "../../../tests/fixtures/contracts/v1/valid.json"
+            ))
+            .unwrap()["EnterpriseInvocation"]
+                .clone(),
+        )
+        .unwrap();
+        previous.state = olo_toolgate_contracts::EnterpriseInvocationState::Executing;
+        let mut current = previous.clone();
+        current.revision += 1;
+        current.state = olo_toolgate_contracts::EnterpriseInvocationState::OutcomeUnknown;
+        assert!(!super::recoverable_outcome(&previous, &current));
+        current.state = olo_toolgate_contracts::EnterpriseInvocationState::Succeeded;
+        assert!(super::recoverable_outcome(&previous, &current));
+        current.evaluation.context.device_id = "other-device".into();
+        assert!(!super::recoverable_outcome(&previous, &current));
     }
 }

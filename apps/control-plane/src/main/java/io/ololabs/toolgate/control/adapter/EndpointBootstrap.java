@@ -23,7 +23,7 @@ public class EndpointBootstrap {
     void start(@Observes StartupEvent ignored){if(service==null)service=load();}
     private String setting(String name){return config.getValue("toolgate.control.endpoint."+name,String.class);}
     private String pem(String name)throws java.io.IOException{
-        try(var input=Files.newInputStream(Path.of(setting(name)))){byte[] bytes=input.readNBytes(16385);if(bytes.length>16384)throw new IllegalArgumentException();return new String(bytes,java.nio.charset.StandardCharsets.US_ASCII);}
+        try(var input=new java.io.ByteArrayInputStream(name.endsWith("private-key-path")?ProtectedCustody.privateKey(Path.of(setting(name)),16384):ProtectedCustody.read(Path.of(setting(name)),16384))){byte[] bytes=input.readNBytes(16385);if(bytes.length>16384)throw new IllegalArgumentException();return new String(bytes,java.nio.charset.StandardCharsets.US_ASCII);}
     }
     private EndpointService load(){
         boolean enabled=config.getValue("toolgate.control.endpoint.enabled",Boolean.class);DeviceIssuer issuer=null;
@@ -38,11 +38,11 @@ public class EndpointBootstrap {
             var caKey=(java.security.interfaces.RSAPublicKey)ca.getPublicKey();
             var jwtLocation=config.getValue("mp.jwt.verify.publickey.location",String.class);
             var jwtPath=jwtLocation.startsWith("file:")?Path.of(java.net.URI.create(jwtLocation)):Path.of(jwtLocation);
-            String jwtPem=Files.readString(jwtPath);var keyFactory=java.security.KeyFactory.getInstance("RSA");
+            String jwtPem=ProtectedCustody.text(jwtPath,16384);var keyFactory=java.security.KeyFactory.getInstance("RSA");
             var idp=(java.security.interfaces.RSAPublicKey)keyFactory.generatePublic(new java.security.spec.X509EncodedKeySpec(java.util.Base64.getDecoder().decode(jwtPem.replace("-----BEGIN PUBLIC KEY-----","").replace("-----END PUBLIC KEY-----","").replaceAll("\\s",""))));
             if(caKey.getModulus().equals(idp.getModulus()))throw new IllegalArgumentException();
             if(config.getValue("toolgate.control.bundle.enabled",Boolean.class)){
-                String policyPem=Files.readString(Path.of(config.getValue("toolgate.control.bundle.private-key-path",String.class)));
+                String policyPem=ProtectedCustody.privateText(Path.of(config.getValue("toolgate.control.bundle.private-key-path",String.class)),16384);
                 var policy=(java.security.interfaces.RSAPrivateCrtKey)keyFactory.generatePrivate(new java.security.spec.PKCS8EncodedKeySpec(java.util.Base64.getDecoder().decode(policyPem.replace("-----BEGIN "+"PRIVATE KEY-----","").replace("-----END "+"PRIVATE KEY-----","").replaceAll("\\s",""))));
                 if(caKey.getModulus().equals(policy.getModulus()))throw new IllegalArgumentException();
             }

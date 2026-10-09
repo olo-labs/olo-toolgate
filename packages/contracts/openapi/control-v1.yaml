@@ -6921,6 +6921,31 @@ paths:
         '403':
           description: Simulation privilege required
   /api/control/v1/access/invocations:
+    get:
+      operationId: listEnterpriseInvocations
+      responses:
+        '200':
+          description: Current scoped enterprise authority
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/enterprise.schema.json#/$defs/EnterpriseInvocationPage
+        '403':
+          description: Current authority denied
+        '409':
+          description: Exact revision or immutable evidence conflicts
+      parameters:
+      - name: after
+        in: query
+        schema:
+          type: string
+          maxLength: 128
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
     post:
       operationId: submitEnterpriseInvocation
       security:
@@ -7036,6 +7061,28 @@ paths:
           application/json:
             schema:
               $ref: ../schemas/v1/enterprise.schema.json#/$defs/EnterprisePermitConsumption
+  /api/control/v1/access/invocations/{id}/device-outcome:
+    get:
+      operationId: getDeviceEnterpriseOutcome
+      description: Own-device outcome metadata for journal recovery; never creates an execution permit.
+      security:
+      - deviceCertificate: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+      responses:
+        '200':
+          description: Authoritative outcome for the authenticated target device
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/enterprise.schema.json#/$defs/EnterpriseInvocation
+        '403':
+          description: Another target device or inactive certificate
   /api/control/v1/access/effects/report:
     post:
       operationId: reportEnterpriseEffect
@@ -7320,6 +7367,130 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/v1/enterprise.schema.json#/$defs/EnterpriseAuthorityStatus
+  /api/control/v1/access/invocations/{id}/reconciliation:
+    post:
+      operationId: proposeOutcomeReconciliation
+      responses:
+        '200':
+          description: Current scoped enterprise authority
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/enterprise.schema.json#/$defs/EnterpriseReconciliation
+        '403':
+          description: Current authority denied
+        '409':
+          description: Exact revision or immutable evidence conflicts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/enterprise.schema.json#/$defs/EnterpriseReconciliationRequest
+      parameters:
+      - &id229
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+  /api/control/v1/access/reconciliations/{id}:
+    get:
+      operationId: getOutcomeReconciliation
+      responses:
+        '200':
+          description: Current scoped enterprise authority
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/enterprise.schema.json#/$defs/EnterpriseReconciliation
+        '403':
+          description: Current authority denied
+        '409':
+          description: Exact revision or immutable evidence conflicts
+      parameters:
+      - *id229
+  /api/control/v1/access/reconciliations/{id}/decision:
+    post:
+      operationId: decideOutcomeReconciliation
+      responses:
+        '200':
+          description: Current scoped enterprise authority
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/enterprise.schema.json#/$defs/EnterpriseReconciliation
+        '403':
+          description: Current authority denied
+        '409':
+          description: Exact revision or immutable evidence conflicts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/enterprise.schema.json#/$defs/EnterpriseReconciliationDecision
+      parameters:
+      - *id229
+  /api/control/v1/access/shadow:
+    post:
+      operationId: shadowEnterpriseAccess
+      responses:
+        '200':
+          description: Current scoped enterprise authority
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/enterprise.schema.json#/$defs/EnterpriseShadowResult
+        '403':
+          description: Current authority denied
+        '409':
+          description: Exact revision or immutable evidence conflicts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/enterprise.schema.json#/$defs/EnterpriseShadowRequest
+  /api/control/v1/access/secrets/deliver:
+    post:
+      operationId: deliverRuntimeSecret
+      responses:
+        '200':
+          description: Current scoped enterprise authority
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/enterprise.schema.json#/$defs/EnterpriseSecretDelivery
+        '403':
+          description: Current authority denied
+        '409':
+          description: Exact revision or immutable evidence conflicts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/enterprise.schema.json#/$defs/EnterpriseSecretDeliveryRequest
+      security:
+      - deviceCertificate: []
+  /api/control/v1/access/operations:
+    get:
+      operationId: enterpriseOperationalStatus
+      responses:
+        '200':
+          description: Operational backlog and hard fail-closed bounds
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/enterprise.schema.json#/$defs/EnterpriseOperationalStatus
 components:
   securitySchemes:
     adminAccessToken:

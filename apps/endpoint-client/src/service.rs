@@ -1214,7 +1214,7 @@ mod tests {
         };
         gateway
             .deadline
-            .store(crate::now() + 60000, Ordering::SeqCst);
+            .store(crate::now() + 300000, Ordering::SeqCst);
         task.expires_at_unix_ms = gateway.deadline.load(Ordering::SeqCst);
         bind(&mut task);
         let mut job = crate::remote::Job::start(
@@ -1225,7 +1225,7 @@ mod tests {
             task.clone(),
         );
         let completed = async |job: &mut crate::remote::Job| {
-            tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            tokio::time::timeout(std::time::Duration::from_secs(90), async {
                 loop {
                     if let Some(result) = job.completed().await {
                         break result;

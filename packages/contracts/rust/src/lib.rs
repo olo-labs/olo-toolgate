@@ -9,134 +9,6 @@ use serde::{Deserialize, Serialize};
 pub struct AdminSession {
     pub role: UserRole,
 }
-/// Signed format 2 envelope; compilation adds ASK; old readers reject safely.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ApprovalBundlePayload {
-    pub format_version: u64,
-    pub issuer: String,
-    pub audience: String,
-    pub tenant_id: String,
-    pub sequence: u64,
-    pub version: String,
-    pub directory_revision: u64,
-    pub issued_at_unix_ms: u64,
-    pub expires_at_unix_ms: u64,
-    pub grace_ms: u64,
-    pub policy_sha256: String,
-    pub policy: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub rollback_of: Option<u64>,
-}
-/// Format 2 exact rule; BLOCK > ASK > ALLOW. ASK never uses grace.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ApprovalBundleRule {
-    pub policy_id: String,
-    pub user_ids: Vec<String>,
-    pub agent_ids: Vec<String>,
-    pub device_ids: Vec<String>,
-    pub tool_id: String,
-    pub action: String,
-    pub resource: ResourceDescriptor,
-    pub grace_allowed: bool,
-    pub effect: Decision,
-}
-/// Canonical ApprovalChoice wire values.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ApprovalChoice {
-    #[serde(rename = "APPROVE_ONCE")]
-    ApproveOnce,
-    #[serde(rename = "APPROVE_TEMPORARY")]
-    ApproveTemporary,
-    #[serde(rename = "DENY")]
-    Deny,
-}
-/// Format 2 adds human approval without weakening default deny.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ApprovalCompiledPolicy {
-    pub format_version: u64,
-    pub rules: Vec<ApprovalBundleRule>,
-}
-/// Optimistic human decision; duration is required only for temporary approval.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ApprovalDecisionRequest {
-    pub decision: ApprovalChoice,
-    pub expected_revision: u64,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub duration_ms: Option<u64>,
-}
-/// Bounded tenant-scoped approval page.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ApprovalPage {
-    pub items: Vec<ApprovalRecord>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub next_cursor: Option<String>,
-}
-/// Gateway-only atomic lease consumption; repeat use never grants again.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ApprovalPermitUse {
-    pub approval_id: String,
-    pub permit_id: String,
-    pub input: PolicyInput,
-    pub policy_version: String,
-}
-/// Durable tenant approval status; identity/resource and digest only, never raw arguments.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ApprovalRecord {
-    pub id: String,
-    pub revision: u64,
-    pub state: ApprovalState,
-    pub input: PolicyInput,
-    pub policy_version: String,
-    pub created_at_unix_ms: u64,
-    pub expires_at_unix_ms: u64,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub decided_by: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub decided_at_unix_ms: Option<u64>,
-}
-/// Authenticated Control result for this exact Gateway attempt; lease fields occur only on a successful grant.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ApprovalResolution {
-    pub approval_id: String,
-    pub state: ApprovalState,
-    pub input: PolicyInput,
-    pub policy_version: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub permit_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub permit_expires_at_unix_ms: Option<u64>,
-}
-/// Canonical ApprovalState wire values.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ApprovalState {
-    #[serde(rename = "PENDING")]
-    Pending,
-    #[serde(rename = "APPROVED_ONCE")]
-    ApprovedOnce,
-    #[serde(rename = "APPROVED_TEMPORARY")]
-    ApprovedTemporary,
-    #[serde(rename = "DENIED")]
-    Denied,
-    #[serde(rename = "EXPIRED")]
-    Expired,
-    #[serde(rename = "CONSUMED")]
-    Consumed,
-}
-/// Gateway-only normalized ASK request. No raw arguments or credentials.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ApprovalSubmission {
-    pub input: PolicyInput,
-    pub policy_version: String,
-}
 /// Immutable artifact identity; digest must be verified by consumers.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -144,16 +16,6 @@ pub struct ArtifactDescriptor {
     pub uri: String,
     pub sha256: String,
     pub size_bytes: u64,
-}
-/// V2 ASK outcome; pending ASK grants no execution; ALLOW for approved ASK requires a signed permit.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct AuthorizationOutcome {
-    pub decision: PolicyDecision,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub approval_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub permit: Option<SignedExecutionPermit>,
 }
 /// Runtime request; principal context and resource identity are derived by the gateway, never asserted by the caller.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -360,14 +222,6 @@ pub struct BuiltinToolInfo {
     pub tool_digest: String,
     pub package_digest: String,
 }
-/// Canonical BundleEffect wire values.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum BundleEffect {
-    #[serde(rename = "ALLOW")]
-    Allow,
-    #[serde(rename = "BLOCK")]
-    Block,
-}
 /// Strict JWS protected header; no remote or embedded keys and no algorithm negotiation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -375,25 +229,6 @@ pub struct BundleHeader {
     pub alg: String,
     pub typ: String,
     pub kid: String,
-}
-/// Signed version, trust domain, immutable policy bytes and bounded freshness claims.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct BundlePayload {
-    pub format_version: u64,
-    pub issuer: String,
-    pub audience: String,
-    pub tenant_id: String,
-    pub sequence: u64,
-    pub version: String,
-    pub directory_revision: u64,
-    pub issued_at_unix_ms: u64,
-    pub expires_at_unix_ms: u64,
-    pub grace_ms: u64,
-    pub policy_sha256: String,
-    pub policy: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub rollback_of: Option<u64>,
 }
 /// Publish a consistent directory snapshot or roll back into a new sequence. Requires Idempotency-Key.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -407,20 +242,6 @@ pub struct BundlePublishRequest {
     pub grace_policy_ids: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rollback_of: Option<u64>,
-}
-/// Exact tenant-scoped compiled policy; empty identity dimensions are unrestricted. BLOCK has precedence.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct BundleRule {
-    pub policy_id: String,
-    pub user_ids: Vec<String>,
-    pub agent_ids: Vec<String>,
-    pub device_ids: Vec<String>,
-    pub tool_id: String,
-    pub action: String,
-    pub resource: ResourceDescriptor,
-    pub grace_allowed: bool,
-    pub effect: BundleEffect,
 }
 /// Endpoint identity foundation wire model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -572,13 +393,6 @@ pub struct ClientSocketRequest {
     pub operation: ClientSocketOperation,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub body: Option<std::collections::BTreeMap<String, serde_json::Value>>,
-}
-/// Version 1 deterministic exact-match rules, with unconditional default deny.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct CompiledPolicy {
-    pub format_version: u64,
-    pub rules: Vec<BundleRule>,
 }
 /// Identifies the shared contract set, independently of product versions.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1107,20 +921,6 @@ pub enum Decision {
     Ask,
     #[serde(rename = "BLOCK")]
     Block,
-}
-/// Canonical DecisionReason wire values.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum DecisionReason {
-    #[serde(rename = "MATCHED")]
-    Matched,
-    #[serde(rename = "NO_MATCH")]
-    NoMatch,
-    #[serde(rename = "POLICY_UNAVAILABLE")]
-    PolicyUnavailable,
-    #[serde(rename = "INVALID_INPUT")]
-    InvalidInput,
-    #[serde(rename = "APPROVAL_REQUIRED")]
-    ApprovalRequired,
 }
 /// Organization assignment with independent Marketplace evidence; grants no runtime permission.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1840,6 +1640,14 @@ pub struct EnterpriseInvocation {
     pub result_digest: Option<String>,
     pub diagnostic_id: String,
 }
+/// Scoped durable effect states. A cursor does not disclose hidden rows.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseInvocationPage {
+    pub items: Vec<EnterpriseInvocation>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
 /// Exact authenticated invocation with original arguments and installed code digests.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -1899,6 +1707,19 @@ pub enum EnterpriseMemberType {
     #[serde(rename = "DEVICE")]
     Device,
 }
+/// Scoped operational health and configured hard bounds. Snapshot lag never authorizes a cached effect.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseOperationalStatus {
+    pub pending_snapshot_events: u64,
+    pub oldest_unpublished_unix_ms: u64,
+    pub unknown_outcomes: u64,
+    pub expired_running_effects: u64,
+    pub permit_lifetime_ms: u64,
+    pub clock_skew_ms: u64,
+    pub authority_cache_grace_ms: u64,
+    pub ready_probe_freshness_ms: u64,
+}
 /// Short-lived audience-bound permit for one exact invocation and target.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -1937,6 +1758,58 @@ pub struct EnterprisePermitHeader {
     pub alg: String,
     pub typ: String,
     pub kid: String,
+}
+/// Canonical EnterpriseReconciledState wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnterpriseReconciledState {
+    #[serde(rename = "SUCCEEDED")]
+    Succeeded,
+    #[serde(rename = "FAILED")]
+    Failed,
+    #[serde(rename = "PARTIAL")]
+    Partial,
+}
+/// Maker and independent eligible checker resolve an unknown effect; evidence stays external.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseReconciliation {
+    pub id: String,
+    pub invocation_id: String,
+    pub requester_user_id: String,
+    pub request: EnterpriseReconciliationRequest,
+    pub request_digest: String,
+    pub revision: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reviewer_user_id: Option<String>,
+    pub state: EnterpriseReconciliationState,
+}
+/// Independent eligible checker decision against the exact durable reconciliation revision.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseReconciliationDecision {
+    pub expected_revision: u64,
+    pub approve: bool,
+}
+/// Immutable independently reviewed downstream evidence. Never creates a new permit.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseReconciliationRequest {
+    pub expected_revision: u64,
+    pub state: EnterpriseReconciledState,
+    pub completed_resources: Vec<ResourceDescriptor>,
+    pub evidence_digest: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_digest: Option<String>,
+}
+/// Canonical EnterpriseReconciliationState wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnterpriseReconciliationState {
+    #[serde(rename = "PENDING")]
+    Pending,
+    #[serde(rename = "APPLIED")]
+    Applied,
+    #[serde(rename = "DENIED")]
+    Denied,
 }
 /// Protected operator review for group-only bootstrap or bounded recovery.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -2036,6 +1909,38 @@ pub struct EnterpriseScope {
     pub all_actions: bool,
     pub resources: Vec<EnterpriseResourceRule>,
     pub conditions: EnterpriseConditions,
+}
+/// Runtime-only secret value; never returned by management, export, result or diagnostic routes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseSecretDelivery {
+    pub value: String,
+}
+/// Certificate-bound secret delivery to an executing invocation. Original reviewed resource set must contain this exact secret.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseSecretDeliveryRequest {
+    pub invocation_id: String,
+    pub name: String,
+}
+/// Read-only comparison to a captured immutable legacy result; never a second runtime authority.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseShadowRequest {
+    pub snapshot: ControlSnapshot,
+    pub evaluation: EnterpriseEvaluation,
+    pub observed_legacy_decision: Decision,
+    pub legacy_evidence_digest: String,
+}
+/// No grant is applied and no approval, quota or permit is consumed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseShadowResult {
+    pub decision: EnterpriseDecision,
+    pub observed_legacy_decision: Decision,
+    pub legacy_evidence_digest: String,
+    pub proposed_snapshot_digest: String,
+    pub access_expansion: bool,
 }
 /// Signed enterprise effect permit; claims are bound and consumption is durably atomic.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -2149,44 +2054,6 @@ pub struct ErrorEnvelope {
     pub code: ErrorCode,
     pub request_id: String,
     pub retryable: bool,
-}
-/// Exact-operation capability; maximum ten seconds; authoritative consume boundary enforces replay.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ExecutionPermitClaims {
-    pub permit_version: u64,
-    pub issuer: String,
-    pub audience: String,
-    pub tenant_id: String,
-    pub user_id: String,
-    pub agent_id: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub device_id: Option<String>,
-    pub tool_id: String,
-    pub action: String,
-    pub resource: ResourceDescriptor,
-    pub arguments_digest: String,
-    pub request_id: String,
-    pub policy_version: String,
-    pub approval_id: String,
-    pub jti: String,
-    pub issued_at_unix_ms: u64,
-    pub expires_at_unix_ms: u64,
-}
-/// Dedicated runtime permit trust domain; no key negotiation or remote keys.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ExecutionPermitHeader {
-    pub alg: String,
-    pub typ: String,
-    pub kid: String,
-}
-/// Authenticated runtime request to verify and atomically consume one exact-bound permit.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ExecutionPermitUseRequest {
-    pub permit: SignedExecutionPermit,
-    pub request: AuthorizationRequest,
 }
 /// Reviewed JSON pointer to resources, including every batch member or source/destination.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -2596,27 +2463,6 @@ pub enum PackageState {
     #[serde(rename = "REVOKED")]
     Revoked,
 }
-/// Explicit wire decision, with no implicit ALLOW default. ASK requires approval.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct PolicyDecision {
-    pub decision: Decision,
-    pub reason: DecisionReason,
-    pub policy_version: String,
-    pub request_id: String,
-}
-/// Exact request identity and argument digest supplied to authorization.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct PolicyInput {
-    pub context: RequestContext,
-    pub tool_id: String,
-    pub action: String,
-    pub resource: ResourceDescriptor,
-    pub arguments_digest: String,
-    pub tool_digest: String,
-    pub package_digest: String,
-}
 /// A leased client rechecks the exact pending operation online before execution.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -2775,31 +2621,12 @@ pub enum ResourceKind {
     #[serde(rename = "CUSTOM")]
     Custom,
 }
-/// Sanitized authorization evaluation event; hashes replace raw arguments and resource locators. A decision is not execution success.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct RuntimeAuditEvent {
-    pub timestamp_unix_ms: u64,
-    pub context: RequestContext,
-    pub tool_id: String,
-    pub action: String,
-    pub resource_digest: String,
-    pub arguments_digest: String,
-    pub decision: PolicyDecision,
-    pub trace_id: String,
-}
 /// Endpoint identity foundation wire model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct SignedClientDiscovery {
     pub payload: String,
     pub signature: String,
-}
-/// RS256 compact JWS; structural validation alone does not establish trust.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct SignedExecutionPermit {
-    pub jws: String,
 }
 /// RFC 7515 compact JWS; payload and hash must both verify before adoption.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -2856,10 +2683,6 @@ impl ContractSet {
 }
 /// Embedded canonical schemas for offline boundary validation.
 pub const CANONICAL_SCHEMAS: &[(&str, &str)] = &[
-    (
-        "https://schemas.ololabs.io/toolgate/v1/approval.schema.json",
-        include_str!("../schemas/v1/approval.schema.json"),
-    ),
     (
         "https://schemas.ololabs.io/toolgate/v1/builder.schema.json",
         include_str!("../schemas/v1/builder.schema.json"),

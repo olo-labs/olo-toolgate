@@ -1,7 +1,0 @@
-# Copyright 2026 OLO Labs
-# SPDX-License-Identifier: Apache-2.0
-services:
-  control:
-    ports: ["127.0.0.1:${CONTROL_HTTP_PORT:-9082}:8082"]
-  gateway:
-    ports: ["127.0.0.1:${GATEWAY_HTTP_PORT:-9081}:8081"]

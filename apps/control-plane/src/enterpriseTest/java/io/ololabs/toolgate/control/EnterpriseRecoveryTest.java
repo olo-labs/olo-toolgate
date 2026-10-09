@@ -53,4 +53,13 @@ class EnterpriseRecoveryTest {
         var packet=graph.codec.json(signed(expanded));assertThrows(Failure.class,()->service(EnterpriseConformanceTest.NOW).apply(packet,trust));
         assertEquals(7L,store.<Long>transaction(EnterpriseConformanceTest.TENANT,false,tx->tx.load().revision()).longValue());
     }
+    @Test void pythonInstallationPacketInitializesOnlyAnEmptyTenant()throws Exception{
+        String packet=new String(getClass().getResourceAsStream("/installation-review.json").readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);
+        var value=graph.codec.model(packet,EnterpriseReviewedRecovery.class);
+        var node=(com.fasterxml.jackson.databind.JsonNode)graph.codec.value(new String(getClass().getResourceAsStream("/installation-trust.json").readAllBytes(),java.nio.charset.StandardCharsets.UTF_8));
+        var pins=new ArrayList<FleetTrustKey>();for(var key:node.path("keys"))pins.add(graph.codec.model(graph.codec.json(key),FleetTrustKey.class));
+        var fresh=new PostgresStore(SqliteState.open(temp.resolve("fresh.sqlite")),graph.codec);
+        new ReviewedRecovery(fresh,graph.codec,Clock.fixed(Instant.ofEpochMilli(value.authorization().issuedAtUnixMs()+1),ZoneOffset.UTC)).apply(packet,pins);
+        fresh.transaction(new Ids.TenantId(value.authorization().tenantId()),false,tx->{assertEquals(1L,tx.load().revision());assertTrue(tx.load().entries().values().stream().noneMatch(e->e.id().kind()==Ids.Kind.GRANT));return null;});
+    }
 }

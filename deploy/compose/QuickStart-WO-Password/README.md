@@ -1,47 +1,9 @@
-# Password-free local Quickstart
+# Local group-only Quickstart
 
-This variant has its own `toolgate-quickstart-wo-password` project and data volume.
-Its `.env.example` defaults `TOOLGATE_DISABLE_ADMIN_PASSWORD=true`, embedded cache
-and SQLite. It requires the updated image implementing these options; startup
-rejects an older image that silently ignores the password flag.
+Run `manage.ps1 deploy` on Windows or `sh manage.sh deploy` on Linux/macOS. The scripts retain the data volume, validate database/login/online authority options and use a local image without pulling when its name has no registry prefix. `undeploy` stops the stack and retains state.
 
-Windows:
+Set `QUICKSTART_IMAGE` and ports in `.env`. The default backend is SQLite. To use an existing PostgreSQL database, set `TOOLGATE_QUICKSTART_DATABASE_MODE=postgresql` and supply `env/.env.db` using the example in QuickStart/env. Runtime and migration roles must differ. Production requires verified database TLS; local loopback evaluation is explicitly marked development mode. Authorization always requires current Control; there is no Redis or offline ALLOW cache.
 
-```bat
-manage.bat deploy
-```
+The first installation creates protected defaults and three independent local management identities. Retrieve each private bootstrap password locally and rotate it at login. Tool and Agent definitions start disabled with zero runtime grants. Review the native device enrollment, then create complete group grants through independent configuration review. Password-free mode changes local login only; it creates no runtime grants.
 
-Linux/macOS:
-
-```sh
-sh manage.sh deploy
-```
-
-Open **http://localhost:8089/console/**; the console enters automatically without a
-user/password form. TLS enrollment is **https://localhost:8449**. These ports can be
-changed in the default `.env` copied at first deploy. Use the same scripts with
-`update`, `undeploy`, `status` and `logs`. Undeploy retains data.
-
-This is an explicit local demo mode. Anyone able to reach the console can administer
-it, so ports bind only to loopback. Signed runtime identity, Gateway policy and ASK
-approval remain enforced. The generated password identity is retained internally;
-setting `TOOLGATE_DISABLE_ADMIN_PASSWORD=false` and redeploying restores normal login.
-
-External Redis and PostgreSQL options work as in
-[QuickStart](../QuickStart/README.md): copy its DB/cache example files into this
-folder's `env/`, configure `.env` modes, and use a fresh data volume for a backend
-change. The cache is non-authoritative and external PostgreSQL is still non-HA.
-
-## Local image overrides
-
-Published images such as `ololab/olo-toolgate-quickstart:dev` are pulled on deploy
-and update. A local-only override such as `olo-toolgate-quickstart:cache-options`
-is used from Docker's local image store, without a registry pull. If it is missing,
-the script stops with instructions to build it or change `QUICKSTART_IMAGE` in
-`.env` to the published image. Local-only updates require rebuilding the image.
-
-The generated `.env` is retained across script runs; updating `.env.example` does
-not replace existing overrides. `-SkipPull` (Windows) or `--no-pull` (shell) also
-permits explicit use of an already downloaded image. Password-free mode requires
-a build supporting `TOOLGATE_DISABLE_ADMIN_PASSWORD`; older published builds are
-rejected by the startup option check.
+See [the complete deployment, enrollment and recovery guide](../../../docs/deployment/quickstart.md). Keep existing data and custody through updates; use signed restore quarantine rather than copying an old database over current state.

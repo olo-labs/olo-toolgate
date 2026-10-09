@@ -7,3 +7,4 @@ pip-audit==2.10.0
 license-expression==30.4.4
 packaging==26.3
 cryptography==50.0.1
+psycopg[binary]==3.3.6

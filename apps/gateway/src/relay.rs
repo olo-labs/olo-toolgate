@@ -91,6 +91,7 @@ pub struct HttpRelay {
 impl HttpRelay {
     pub fn new(config: RelayConfig) -> Result<Self, &'static str> {
         config.validate()?;
+        let _ = rustls::crypto::ring::default_provider().install_default();
         let client = reqwest::Client::builder()
             .no_proxy()
             .redirect(reqwest::redirect::Policy::none())
@@ -107,12 +108,7 @@ impl HttpRelay {
             last_success: AtomicU64::new(0),
         })
     }
-    async fn post<T: Serialize, R: serde::de::DeserializeOwned>(
-        &self,
-        path: &str,
-        request: &T,
-        model: &str,
-    ) -> Result<R, ErrorCode> {
+    async fn token(&self) -> Result<String, ErrorCode> {
         let file = tokio::fs::File::open(&self.config.token_path)
             .await
             .map_err(|_| ErrorCode::DependencyUnavailable)?;
@@ -132,6 +128,15 @@ impl HttpRelay {
         {
             return Err(ErrorCode::DependencyUnavailable);
         }
+        Ok(token.to_owned())
+    }
+    async fn post<T: Serialize, R: serde::de::DeserializeOwned>(
+        &self,
+        path: &str,
+        request: &T,
+        model: &str,
+    ) -> Result<R, ErrorCode> {
+        let token = self.token().await?;
         let correlation = crate::digest(
             format!(
                 "{}-{:?}",
@@ -244,7 +249,11 @@ impl RelayPort for HttpRelay {
         Box::pin(async move {
             let response = self
                 .client
-                .get(format!("{}q/health/ready", self.config.url))
+                .get(format!(
+                    "{}/api/control/v1/access/health",
+                    self.config.url.trim_end_matches('/')
+                ))
+                .bearer_auth(self.token().await?)
                 .send()
                 .await
                 .map_err(|_| ErrorCode::DependencyUnavailable)?;

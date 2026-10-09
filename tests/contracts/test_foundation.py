@@ -79,7 +79,7 @@ class FoundationTests(unittest.TestCase):
 
     def test_all_schemas_and_every_definition_have_valid_fixtures(self):
         self.assertEqual(set(self.validators), set(self.fixtures))
-        self.assertEqual(19, len(self.schemas))
+        self.assertEqual(18, len(self.schemas))
         for name, fixture in self.fixtures.items():
             with self.subTest(model=name):
                 self.validators[name].validate(fixture)
@@ -103,13 +103,13 @@ class FoundationTests(unittest.TestCase):
         for name, bad in [('Identifier','../escape'),('Identifier',''),('Sha256','A'*64),('SemanticVersion','01.0.0'),('SecretReference','plaintext-token'),('Decision','UNKNOWN')]:
             with self.subTest(model=name), self.assertRaises(ValidationError):
                 self.validators[name].validate(bad)
-        for name, field, value in [('PackageManifest','credentialReferences',['literal-secret']),('PolicyDecision','decision',None),('DesiredState','revision',-1),('ErrorEnvelope','stackTrace','private exception')]:
+        for name, field, value in [('PackageManifest','credentialReferences',['literal-secret']),('EnterpriseDecision','decision',None),('DesiredState','revision',-1),('ErrorEnvelope','stackTrace','private exception')]:
             bad = dict(self.fixtures[name], **{field:value})
             with self.subTest(model=name), self.assertRaises(ValidationError):
                 self.validators[name].validate(bad)
 
     def test_trust_domains_are_not_interchangeable(self):
-        for source, target in [('MarketplaceRelease','DeploymentAssignment'),('DeploymentAssignment','PolicyDecision'),('PolicyDecision','MarketplaceRelease')]:
+        for source, target in [('MarketplaceRelease','DeploymentAssignment'),('DeploymentAssignment','EnterpriseDecision'),('EnterpriseDecision','MarketplaceRelease')]:
             with self.assertRaises(ValidationError):
                 self.validators[target].validate(self.fixtures[source])
 
@@ -123,19 +123,19 @@ class FoundationTests(unittest.TestCase):
         with self.assertRaises(ValidationError):self.validators['RequestContext'].validate(corpus['fixtures']['RequestContext'])
         with self.assertRaises(ValueError):compatible(baseline['common.schema.json'],self.schemas['common.schema.json'])
         for name,schema in baseline.items():
-            if name not in ('common.schema.json','policy.schema.json'):
+            if name not in ('common.schema.json','policy.schema.json','runtime.schema.json'):
                 compatible(schema,self.schemas[name],name)
 
     def test_compatibility_checker_detects_breaks(self):
-        old = self.schemas['policy.schema.json']
+        old = {'$defs':{'Decision':self.schemas['policy.schema.json']['$defs']['Decision'],'EnterpriseDecision':self.schemas['enterprise.schema.json']['$defs']['EnterpriseDecision']}}
         for change in ('enum','enum-added','enum-removed','required','removed','bound','added'):
             new = copy.deepcopy(old)
-            model = new['$defs']['PolicyDecision']
+            model = new['$defs']['EnterpriseDecision']
             if change == 'enum': new['$defs']['Decision']['enum'].remove('BLOCK')
             if change == 'enum-added': new['$defs']['Decision']['enum'].append('DEFER')
             if change == 'enum-removed': del new['$defs']['Decision']['enum']
             if change == 'required': model['required'].append('newField')
-            if change == 'removed': del model['properties']['requestId']
+            if change == 'removed': del model['properties']['diagnosticId']
             if change == 'bound': model['properties']['newField'] = {'type':'string','maxLength':1}
             if change == 'added': model['properties']['newField'] = {'type':'string'}
             with self.subTest(change=change), self.assertRaises(ValueError): compatible(old, new)

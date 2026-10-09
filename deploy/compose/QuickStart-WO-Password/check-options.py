@@ -8,8 +8,8 @@ import urllib.request
 with urllib.request.urlopen('http://127.0.0.1:8080/api/quickstart/v1/status', timeout=5) as response:
     status = json.load(response)
 expected = {'database':os.environ.get('TOOLGATE_QUICKSTART_DATABASE_MODE','sqlite'),
-            'cache':os.environ.get('TOOLGATE_CACHE_MODE','embedded'),
+            'authority':'online',
             'passwordRequired':os.environ.get('TOOLGATE_DISABLE_ADMIN_PASSWORD','false') != 'true'}
 if any(status.get(name) != value for name,value in expected.items()):
-    raise SystemExit('Image does not implement selected database/cache/login options. Use the updated Quickstart build/release.')
-print('Database/cache/login options verified.')
+    raise SystemExit('Image does not implement selected database/online authority/login options. Use the updated Quickstart build/release.')
+print('Database/online authority/login options verified.')

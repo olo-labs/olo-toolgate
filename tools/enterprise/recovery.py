@@ -90,9 +90,11 @@ def main():
         write(args.output, dict(keyId=args.key_id, signature=base64.urlsafe_b64encode(proof).rstrip(b'=').decode()))
     else:
         proofs = [read(path, 4096) for path in args.proofs]
-        if not 2 <= len(proofs) <= 4 or len({proof['keyId'] for proof in proofs}) != len(proofs):
+        authorization = read(args.authorization)
+        minimum = 1 if authorization['expectedRevision'] == 0 and authorization['snapshot']['revision'] == 0 else 2
+        if not minimum <= len(proofs) <= 4 or len({proof['keyId'] for proof in proofs}) != len(proofs):
             raise ValueError('Two to four distinct independent review proofs required')
-        write(args.output, dict(authorization=read(args.authorization), proofs=proofs))
+        write(args.output, dict(authorization=authorization, proofs=proofs))
     print('Protected review artifact written; Control still verifies signatures and current authority.')
 
 

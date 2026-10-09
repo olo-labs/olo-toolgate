@@ -24,14 +24,14 @@ foreach ($fixtures as $name => $fixture) {
     }
     $count++;
 }
-if ($count !== 153) { throw new RuntimeException('Incomplete fixture coverage'); }
+if ($count !== 245) { throw new RuntimeException('Incomplete fixture coverage'); }
 foreach ([['decision' => 'UNKNOWN'], ['bypass' => true], ['decision' => null]] as $change) {
     try {
-        $bad = array_replace($fixtures['PolicyDecision'], $change);
-        \OloLabs\ToolGate\Contracts\PolicyDecision::fromArray($bad);
+        $bad = array_replace($fixtures['EnterpriseDecision'], $change);
+        \OloLabs\ToolGate\Contracts\EnterpriseDecision::fromArray($bad);
     } catch (\ValueError | \TypeError | \InvalidArgumentException $expected) {
         continue;
     }
     throw new RuntimeException('Invalid policy accepted');
 }
-echo "PHP: 153 model round trips and security negatives passed\n";
+echo "PHP: {$count} model round trips and security negatives passed\n";

@@ -2,8 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.ololabs.io/toolgate/v1/policy.schema.json",
   "$comment": "Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0",
-  "title": "PolicyDecision",
-  "$ref": "#/$defs/PolicyDecision",
+  "title": "Decision",
+  "$ref": "#/$defs/Decision",
   "$defs": {
     "Decision": {
       "type": "string",
@@ -11,78 +11,6 @@
         "ALLOW",
         "ASK",
         "BLOCK"
-      ]
-    },
-    "DecisionReason": {
-      "type": "string",
-      "enum": [
-        "MATCHED",
-        "NO_MATCH",
-        "POLICY_UNAVAILABLE",
-        "INVALID_INPUT",
-        "APPROVAL_REQUIRED"
-      ]
-    },
-    "PolicyInput": {
-      "type": "object",
-      "description": "Exact request identity and argument digest supplied to authorization.",
-      "additionalProperties": false,
-      "properties": {
-        "context": {
-          "$ref": "common.schema.json#/$defs/RequestContext"
-        },
-        "toolId": {
-          "$ref": "identifiers.schema.json#/$defs/Identifier"
-        },
-        "action": {
-          "$ref": "identifiers.schema.json#/$defs/Identifier"
-        },
-        "resource": {
-          "$ref": "resource.schema.json#/$defs/ResourceDescriptor"
-        },
-        "argumentsDigest": {
-          "$ref": "identifiers.schema.json#/$defs/Sha256"
-        },
-        "toolDigest": {
-          "$ref": "identifiers.schema.json#/$defs/Sha256"
-        },
-        "packageDigest": {
-          "$ref": "identifiers.schema.json#/$defs/Sha256"
-        }
-      },
-      "required": [
-        "context",
-        "toolId",
-        "action",
-        "resource",
-        "argumentsDigest",
-        "toolDigest",
-        "packageDigest"
-      ]
-    },
-    "PolicyDecision": {
-      "type": "object",
-      "description": "Explicit wire decision, with no implicit ALLOW default. ASK requires approval.",
-      "additionalProperties": false,
-      "properties": {
-        "decision": {
-          "$ref": "policy.schema.json#/$defs/Decision"
-        },
-        "reason": {
-          "$ref": "policy.schema.json#/$defs/DecisionReason"
-        },
-        "policyVersion": {
-          "$ref": "identifiers.schema.json#/$defs/SemanticVersion"
-        },
-        "requestId": {
-          "$ref": "identifiers.schema.json#/$defs/Identifier"
-        }
-      },
-      "required": [
-        "decision",
-        "reason",
-        "policyVersion",
-        "requestId"
       ]
     }
   }

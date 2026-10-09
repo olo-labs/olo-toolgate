@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ololabs.io/toolgate/v1/common.schema.json",
+  "$comment": "Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0",
+  "title": "ContractSet",
+  "$ref": "#/$defs/ContractSet",
+  "$defs": {
+    "ContractSet": {
+      "type": "object",
+      "description": "Identifies the shared contract set, independently of product versions.",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "const": "olo-toolgate-contracts"
+        },
+        "version": {
+          "$ref": "identifiers.schema.json#/$defs/SemanticVersion"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ]
+    },
+    "RequestContext": {
+      "type": "object",
+      "description": "Authenticated Gateway runtime context. All mode, chain, session, workload, binding and target fields are explicit. Legacy contexts are rejected.",
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "tenantId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "mode": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseRequestMode"
+        },
+        "userId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "agentId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "workloadBindingId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "chain": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/EnterpriseActorHop"
+          },
+          "maxItems": 8,
+          "uniqueItems": true
+        },
+        "sessionEpoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "credentialEpoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "bindingId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "credentialSha256": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        }
+      },
+      "required": [
+        "requestId",
+        "tenantId",
+        "mode",
+        "chain",
+        "bindingId",
+        "deviceId"
+      ]
+    }
+  }
+}

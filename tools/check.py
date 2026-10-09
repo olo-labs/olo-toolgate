@@ -75,7 +75,7 @@ def publication_proof():
     if pom.findtext('m:version', namespaces=namespace) != version: raise SystemExit('Incorrect Maven version')
     if not pom.findall('m:dependencies/m:dependency',namespace): raise SystemExit('Transitive serializer dependencies missing from POM')
     with zipfile.ZipFile(artifact/f'toolgate-contracts-{version}.jar') as jar:
-        if 'io/ololabs/toolgate/contracts/PolicyDecision.class' not in jar.namelist(): raise SystemExit('Published generated models missing')
+        if 'io/ololabs/toolgate/contracts/EnterpriseDecision.class' not in jar.namelist(): raise SystemExit('Published generated models missing')
         if 'META-INF/LICENSE' not in jar.namelist(): raise SystemExit('Published license missing')
     tasks = [f':{service}:build' for service in ('control-plane','marketplace-api','marketplace-worker')]
     updates = ['--write-locks'] if os.environ.get('TOOLGATE_UPDATE_LOCKS') == '1' else []
@@ -145,14 +145,14 @@ def main():
     python('tools/ui/generate.py','--check')
     python('tools/quality.py')
     python('-m','unittest','discover','-s','tests/contracts','-v')
-    from control.check import database, smoke
+    from control.check import database
     with database() as db:
         old = {name:os.environ.get(name) for name in ('CONTROL_TEST_URL','CONTROL_TEST_PASSWORD')}
         os.environ.update({name:db[name] for name in old})
         try:
             run(['gradle','projects','javaCheck','build'])
             publication_proof()
-            smoke(db)
+            run(['gradle',':control-plane:enterpriseTest'])
         finally:
             for name,value in old.items():
                 if value is None: os.environ.pop(name,None)
@@ -166,7 +166,7 @@ def main():
     run(['npm','--workspace','@olo-labs/toolgate-contracts','test'])
     run(['npm','run','ui:check'])
     run(['npm','--workspace','@olo-labs/toolgate-admin-ui','test'])
-    if not args.contracts_only: python('tools/ui/check.py','--no-build')
+    if not args.contracts_only: python('tools/quickstart/check.py','--build')
     python('tools/ui/package.py')
     run(['php','packages/contracts/php/tests/roundtrip.php'])
     for source in sorted((ROOT/'packages/contracts/php/src').glob('*.php')):

@@ -1,0 +1,41 @@
+# Enterprise operation, migration and recovery
+
+## Authority and incident response
+
+Control is the current authorization authority. Inspect `GET /api/control/v1/access/status` for directory revision, epoch, published graph sequence and actual device acknowledgements; inspect `/access/operations` for unpublished outbox events, unknown effects and expired execution records. These endpoints require current management scope. An acknowledgement describes metadata adoption and supplies no permit.
+
+Alert on unavailable current authority, repeated watchdog failures, growing unpublished snapshot events and nonzero unknown outcomes. Core metrics include `toolgate_control_unknown_outcomes`, `toolgate_control_unpublished_snapshot_events`, `toolgate_control_expired_effects_total` and `toolgate_control_watchdog_sweeps_total`. Keep management endpoints on restricted networks; metrics contain no resource, token or individual identity labels. Configure the protected audit/telemetry collector for retention.
+
+Disable or revoke the relevant group, grant, identity or binding through reviewed configuration. Online dispatch, checkpoint, secret use and response checks observe current authority. Default groups remain enabled and carry no implicit grants. Immediate revocation blocks new effects; already completed external effects are preserved as evidence. A long-running operation must stop at the next protected checkpoint where safe and report the completed subset.
+
+Effect permits last at most ten seconds with zero skew/grace. Gateway readiness observes Core within a five-second poll interval; every effect still requires current Core authority. Outages deny new effects. Synchronize clocks. No offline ALLOW or exactly-once external-effect guarantee is provided.
+
+## Unknown outcomes
+
+A durable reservation is single-use. A consumed effect that expires without reliable completion becomes `OUTCOME_UNKNOWN`. Preserve the runtime journal and downstream evidence; do not blindly resend destructive work.
+
+Use Effect outcomes to propose an exact terminal state with the expected invocation revision, every confirmed resource, evidence digest and result digest. A different currently authorized checker reviews the exact proposal revision. Reconciliation changes durable outcome metadata, never issues a new effect permit or redispatches work. The certificate-bound native client may recover its local fence only from the exact authoritative terminal outcome. Current grants remain necessary for any subsequent new operation.
+
+## Reviewed configuration and migration
+
+Directory writes create drafts with a digest, graph revision/epoch, changed records, affected groups and individuals. Submit, obtain the required independent current reviewers, then apply. Self-review, stale reviews, revoked reviewers and conflicting retries reject. Import and high-risk expansion require two reviewers. Reviews expire within thirty minutes.
+
+Before cutover, stop obsolete producers and capture immutable configuration/audit evidence. Ordered PostgreSQL/SQLite migrations archive retired individual permissions and disable old runtime authority. They do not translate empty fields to wildcard grants or create an ALLOW fallback. Preserve stable identities, identifiers, credential history and audit.
+
+Use `tools/enterprise/migration.py prepare` with the exact post-cutover baseline and explicit operator-authored group mappings. Its output records archive, proposal and reason digests and preserved identifiers. Run `shadow` against captured requests with trusted identity and evidence; inspect each access expansion. Shadow evaluation has no effects, quota charge, approval consumption or secret disclosure. Apply the exact reviewed snapshot through configuration import with two independent reviewers. Compare current decisions and adoption before reopening traffic. Rollback is a new monotonic reviewed configuration, never restoration of old individual ACLs.
+
+## Backup and recovery
+
+Use consistent database and custody backups with protected external storage. Keep public trust pins and observed live revision/epoch/sequence/session/credential floors outside the backup. Keep post-backup retired identifiers and credential digests in the external retirement ledger. An archive cannot select its own recovery authority.
+
+For SQLite, `tools/enterprise/restore.py prepare`, separate `sign` invocations and `assemble` create a fifteen-minute two-reviewer authorization bound to the exact manifest and external floors/retirements. Mount the review and public trust separately and run the stopped supervisor's reviewed restore command into an empty independent destination. The restore verifies inventory/hash/path safety, advances authority, disables runtime grants/definitions/devices/workloads/custom groups/roles, clears management assignments, invalidates sessions and credentials, retains consumed nonces/audit/history and records uncertain executions. Post-backup retired identities and their dependent facts cannot be resurrected. The source backup is unchanged.
+
+For PostgreSQL, capture a consistent custom-format `pg_dump` archive and a layout-2 manifest containing its SHA-256. Use the same external `restore.py prepare/sign/assemble` review workflow. Run `tools/enterprise/postgresql_restore.py --archive BACKUP --manifest MANIFEST --review REVIEW --trust TRUST --connection PRIVATE_TARGET_JSON` with psycopg 3 and matching PostgreSQL client tools. The target must be a different empty database owned by the restore operator. Connection configuration requires `verify-full` TLS; trust/credentials must be mounted independently of the backup. The utility revokes runtime CONNECT before restoration and applies the same quarantine in one exclusive transaction. Runtime connectivity remains revoked on success and failure. Verify the recovery packet and rotate external signing/device/Agent custody before granting the runtime role CONNECT and starting Core. The test-only loopback flag does not permit remote unverified database transport.
+
+`tools/enterprise/recovery.py` prepares a separate management-only recovery packet. Each independent reviewer signs with their own protected RSA key; Control uses separately mounted trust. Existing-tenant recovery requires two distinct key holders, an exact live revision and a time window of at most one hour. It cannot restore runtime grants, rebind stable identity facts or enable a disabled account. Fresh empty-tenant installation is a separately pinned one-time initialization. Reapplying an accepted packet cannot reseed old authority.
+
+## Supported execution boundaries
+
+Built-in filesystem operations use containment, restricted portable paths, bounded files, exclusive/atomic writes and symlink/hardlink protection. Web search checks public addresses, resolves once, pins sockets and TLS host names, and forbids proxies/redirects and private destinations. Group-scoped Vault delivery requires a consumed certificate-bound effect, current complete secret-use grants and the declared exact secret reference; values are never exposed in management lists or logs.
+
+Managed OCI tools use pinned image/source/manifest digests, fixed argv, bounded JSON protocols, unprivileged read-only sandboxes, no host mount and no network. Arbitrary host shell, raw SQL, host filesystem mounts, unreviewed egress and generic secret-environment injection are not supported. Such requests fail closed. Introduce a structured provider/extractor and independently tested confinement before supporting a new protected effect kind. Nested/dynamic groups and offline execution are likewise unsupported; no inferred membership or offline lease is manufactured.

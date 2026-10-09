@@ -34,6 +34,7 @@ public class VerifiedActors {
     public DirectoryService.Actor human() {
         if(human!=null)return human;
         var principal=principal();Object user=jwt.getClaim("user_id"),epoch=jwt.getClaim("session_epoch");
+        epoch=integerClaim(epoch);
         if(user!=null&&!(user instanceof String)||epoch!=null&&(!(epoch instanceof Number n)||!Double.isFinite(n.doubleValue())||n.doubleValue()!=n.longValue()||n.longValue()<1||n.longValue()>9007199254740991L))throw unauthorized();
         var identity=new IdentityIntake(store,codec).observe(principal.tenant(),jwt.getIssuer(),jwt.getSubject(),
             user instanceof String id?id:null,epoch instanceof Number n?n.longValue():null,
@@ -55,4 +56,12 @@ public class VerifiedActors {
         return security.hasRole("toolgate-bundle-reader")?service("toolgate-bundle-reader"):management();
     }
     private static Failure unauthorized() {return new Failure(ErrorCode.UNAUTHORIZED,401,"Invalid verified identity");}
+    /** MicroProfile custom numeric claims can arrive as JSON-P values. */
+    static Object integerClaim(Object value) {
+        if(value instanceof jakarta.json.JsonNumber number) {
+            if(!number.isIntegral())throw unauthorized();
+            try {return number.longValueExact();}catch(ArithmeticException invalid){throw unauthorized();}
+        }
+        return value;
+    }
 }

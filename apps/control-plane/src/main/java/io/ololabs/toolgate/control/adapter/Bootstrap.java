@@ -10,7 +10,6 @@ import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.Config;
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 /** Refuse incomplete authentication and overprivileged database configuration at startup. */
@@ -44,7 +43,7 @@ public class Bootstrap {
         try {
             var location = config.getValue("mp.jwt.verify.publickey.location", String.class);
             var path = location.startsWith("file:") ? Path.of(java.net.URI.create(location)) : Path.of(location);
-            var pem = Files.readString(path);
+            var pem = ProtectedCustody.text(path,16384);
             var encoded = pem.replace("-----BEGIN PUBLIC KEY-----", "").replace("-----END PUBLIC KEY-----", "").replaceAll("\\s", "");
             var key = java.security.KeyFactory.getInstance("RSA").generatePublic(new java.security.spec.X509EncodedKeySpec(java.util.Base64.getDecoder().decode(encoded)));
             if (((java.security.interfaces.RSAPublicKey) key).getModulus().bitLength() < 2048) throw new IllegalStateException("Weak verification key");

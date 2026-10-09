@@ -14,7 +14,7 @@ TARGET = ROOT/'apps/admin-ui/src/operations.generated.ts'
 
 
 def output():
-    spec = yaml.safe_load((ROOT/'packages/contracts/openapi/control-v1.yaml').read_text())
+    spec = yaml.safe_load((ROOT/'packages/contracts/openapi/control-v1.yaml').read_text(encoding='utf-8'))
     operations = []
     records = {}
     for path, methods in spec['paths'].items():
@@ -31,7 +31,7 @@ def output():
     models = sorted([name for model in records.values() for name in (model,model+'Page')])
     return '\n'.join([
         '// Copyright 2026 OLO Labs', '// SPDX-License-Identifier: Apache-2.0',
-        '// GENERATED FILE â€” DO NOT EDIT; python tools/ui/generate.py',
+        '// GENERATED FILE — DO NOT EDIT; python tools/ui/generate.py',
         "import type { " + ', '.join(models) + " } from '@olo-labs/toolgate-contracts';",
         'export const operations = {', *operations, '} as const;',
         'export interface DirectoryRecords {', *[f'  {kind}: {model};' for kind,model in sorted(records.items())], '}',

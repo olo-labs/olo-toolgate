@@ -22,4 +22,12 @@ class EnterpriseConfigurationTest {
     @Test void concurrentGraphChangeInvalidatesReview(){var c=transition(requester,propose(),"SUBMIT");fixture.directory.mutate(requester,Ids.Kind.USER,"other","CREATE",fixture.graph.codec.json(new ControlUser("other","Other",false,1L)),0,"other-key","request");assertEquals(409,assertThrows(Failure.class,()->transition(checker,c,"APPROVE")).status());}
     @Test void revokedReviewerCannotApplyOrReplay(){var c=transition(checker,transition(requester,propose(),"SUBMIT"),"APPROVE");fixture.store.transaction(requester.tenant(),true,tx->{var before=tx.load();var entries=new HashMap<>(before.entries());entries.put(Ids.Kind.TEAM.id("recovery-team"),fixture.graph.codec.entry(Ids.Kind.TEAM,fixture.graph.codec.json(new ControlTeam("recovery-team","Reviewers",true,3L,List.of("admin"),List.of("recovery-role")))));tx.save(before,new Directory(before.revision()+1,entries));return null;});assertThrows(Failure.class,()->transition(requester,c,"APPLY"));}
     @Test void cancellationNeverMutatesDirectory(){var c=transition(requester,propose(),"CANCEL");assertEquals(EnterpriseConfigurationState.CANCELLED,c.state());assertThrows(Failure.class,()->transition(requester,c,"SUBMIT"));}
+    @Test void completeExportCanEnterReviewedImportWithoutRotatingUnchangedCredentials(){
+        var codec=fixture.graph.codec;
+        var snapshot=fixture.directory.export(requester,false);
+        var document=codec.json(java.util.Map.of("snapshot",codec.value(snapshot.body().replace("Reviewers","Reviewed operators")),"mode","REPLACE","dryRun",false));
+        var command=new EnterpriseConfigurationCommand(EnterpriseConfigurationOperation.IMPORT,ControlEntityKind.USER,"configuration-import",document,snapshot.revision());
+        var change=codec.model(changes.create(requester,command,"import-key","request").body(),EnterpriseConfigurationChange.class);
+        assertEquals(2L,change.requiredReviews());assertFalse(change.impact().isEmpty());
+    }
 }

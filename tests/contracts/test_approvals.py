@@ -18,7 +18,7 @@ ROOT=Path(__file__).resolve().parents[2]
 class ApprovalContractTests(unittest.TestCase):
     def test_public_format_two_vectors_have_genuine_signatures_and_hashes(self):
         corpus=json.loads((ROOT/'tests/fixtures/approval/signed-v2.json').read_text())
-        models=validators(schemas_at(ROOT/'packages/contracts/schemas/v1'))
+        models=validators(schemas_at(ROOT/'tests/fixtures/contracts/pre-enterprise'))
         key=corpus['keyring']['keys'][0]
         decode=lambda value:base64.urlsafe_b64decode(value+'==')
         public=rsa.RSAPublicNumbers(65537,int.from_bytes(decode(key['modulus']),'big')).public_key()
@@ -33,14 +33,14 @@ class ApprovalContractTests(unittest.TestCase):
     def test_new_types_preserve_frozen_wire_contracts(self):
         current=schemas_at(ROOT/'packages/contracts/schemas/v1')
         with self.assertRaises(ValueError):compatible(schemas_at(ROOT/'tests/fixtures/contracts/v1/schemas')['common.schema.json'],current['common.schema.json'])
-        models=validators(current);fixtures=json.loads((ROOT/'tests/fixtures/contracts/v1/valid.json').read_text())
+        models=validators(schemas_at(ROOT/'tests/fixtures/contracts/pre-enterprise'));fixtures=json.loads((ROOT/'tests/fixtures/contracts/pre-enterprise/valid.json').read_text())
         self.assertEqual('ASK',fixtures['ApprovalBundleRule']['effect'])
         models['ApprovalCompiledPolicy'].validate(fixtures['ApprovalCompiledPolicy'])
         with self.assertRaises(ValidationError):models['CompiledPolicy'].validate(fixtures['ApprovalCompiledPolicy'])
         with self.assertRaises(ValidationError):models['BundlePayload'].validate(fixtures['ApprovalBundlePayload'])
     def test_permit_and_policy_trust_are_not_interchangeable(self):
-        models=validators(schemas_at(ROOT/'packages/contracts/schemas/v1'))
-        fixtures=json.loads((ROOT/'tests/fixtures/contracts/v1/valid.json').read_text())
+        models=validators(schemas_at(ROOT/'tests/fixtures/contracts/pre-enterprise'))
+        fixtures=json.loads((ROOT/'tests/fixtures/contracts/pre-enterprise/valid.json').read_text())
         for name,wrong in [('ExecutionPermitHeader','BundleHeader'),('BundleHeader','ExecutionPermitHeader'),
                            ('ExecutionPermitClaims','DeploymentAssignment'),('ApprovalSubmission','RequestContext')]:
             with self.assertRaises(ValidationError):models[name].validate(fixtures[wrong])
@@ -64,8 +64,8 @@ class ApprovalContractTests(unittest.TestCase):
         gateway=yaml.safe_load((ROOT/'packages/contracts/openapi/gateway-v1.yaml').read_text())
         self.assertTrue(gateway['paths']['/access/invocations']['post']['responses']['200']['content']['application/json']['schema']['$ref'].endswith('/EnterpriseAuthorizationOutcome'))
         workflow=yaml.safe_load((ROOT/'.github/workflows/policy.yml').read_text())
-        steps=workflow['jobs']['policy-compatibility']['steps']
-        self.assertTrue(any('tools/approval/check.py --build' in step.get('run','') for step in steps))
+        steps=workflow['jobs']['enterprise-access']['steps']
+        self.assertTrue(any('tools/enterprise/check.py' in step.get('run','') for step in steps))
 
 
 if __name__=='__main__':unittest.main()

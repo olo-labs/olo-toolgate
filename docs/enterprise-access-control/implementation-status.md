@@ -4,6 +4,42 @@
 
 Track the mandatory attached implementation specification against source changes and executable evidence. The group-only model replaces the prior individual ACL model. No legacy ALLOW path may run beside the new evaluator. Data conversion is an explicit reviewed operation, not a runtime authorization fallback.
 
+## Intermediary working version - 2026-10-09
+
+This is an explicitly requested intermediary checkpoint, not a declaration that
+all 96 acceptance cases have end-to-end evidence. The detailed acceptance rows
+below remain gates until their specific evidence is mapped and reviewed.
+
+Verified at this checkpoint:
+
+- Shared Java contracts, 77 enterprise cases and 40 ordinary Control cases pass
+  (one POSIX custody case is skipped on Windows and must run in the Linux gate).
+  The new import regression covers unchanged credential/timestamp comparisons;
+  certificate-bound Builder/Fleet tests cover revoked creator authority at queued
+  dispatch, result submission and artifact access.
+- A fresh SQLite image passes actual native enrollment/mTLS, independently reviewed
+  configuration, disabled verified-user intake, HUMAN/SERVICE/ASK effects, exact
+  retries, discovery/execution/result revocation, reviewed import and read-only
+  shadow, restart and real accessible desktop/mobile administration.
+- Two actual production Control replicas pass shared PostgreSQL review/idempotency
+  races, restart, non-root/read-only custody, separate management, log redaction
+  and graceful shutdown at 768 MiB per replica.
+- Rust workspace tests and Clippy pass. TypeScript and 121 console tests passed
+  before the small mobile inherited-table layout repair, which passes the actual
+  browser gate. The debug launcher reruns TypeScript/console checks.
+- Four SQLite restore tests and an actual PostgreSQL dump/restore verify external
+  signatures/floors, quarantine, retirement history and revoked runtime CONNECT.
+
+Evidence is generated under `build/enterprise`, `build/quickstart`, `build/control`
+and `build/ui`. Private fixture credentials stay in ignored temporary state. The
+production Gateway outage gate, PostgreSQL runtime after the import fix, final
+SDK artifact/publication checks, Linux projected-custody test, deployment scans
+and the complete per-case acceptance evidence review remain follow-up gates.
+
+The active legacy evaluator/contracts/producers are removed. Archived fixtures
+retain old data only to test the cutover. Production data conversion is explicit,
+reviewed and deny-by-default; no compatibility ALLOW fallback exists.
+
 ## Inspection and architecture decisions
 
 - Existing stack: generated JSON Schema/OpenAPI contracts, Quarkus/Java Control, Rust Gateway and managed client, React console, PostgreSQL/SQLite, signed distribution and existing Docker/Helm packaging.
@@ -19,7 +55,7 @@ Track the mandatory attached implementation specification against source changes
 
 This is an implementation checkpoint, not an enterprise-ready release. Current source implements the group graph, live evaluator, disabled identity intake, typed complete grants and delegations, exact installed profiles, durable approvals and effect permits, reviewed configuration changes, scoped management, native device adoption, and group administration screens. The attached specification remains the acceptance target.
 
-Passing verification for this checkpoint: 118 console tests and TypeScript check; 36 ordinary Java tests and 69 enterprise tests; the Rust Gateway/client suite; 81 contract tests; enterprise Helm installation/upgrade rendering and nine negative configuration checks. Generated bindings were verified and Rust source formatted. Identity metadata, inherited provenance and encrypted vault tests are included in the enterprise suite. Full fresh-container, HTTP/mTLS, browser, deployment, migration-shadow and performance gates are still required.
+Passing verification for this checkpoint: 121 console tests and TypeScript check; 36 ordinary Java tests and 69 enterprise tests; the Rust Gateway/client suite; 81 contract tests; enterprise Helm installation/upgrade rendering and nine negative configuration checks. Generated bindings were verified and Rust source formatted. Identity metadata, inherited provenance and encrypted vault tests are included in the enterprise suite. Full fresh-container, HTTP/mTLS, browser, deployment, migration-shadow and performance gates are still required.
 
 Remaining work:
 
@@ -39,7 +75,7 @@ Remaining work:
 | S4 | Resource sets and every protected effect | ResourceExtraction, InstalledProfiles, current MCP relay, native checkpoints and dedicated effect journal | In progress | Resource and operation conformance; client execution tests; full runtime integration pending |
 | S5 | Bound approvals, signed permits, durable reservations and outcomes | EnterpriseOperations, ConfigurationChanges, ReviewedRecovery and purpose-specific Control signer | Core implemented; integration pending | Independent approval, revision/epoch, signature, nonce-race and configuration tests |
 | S6 | Epochs, outbox, freshness, adoption and operations | Transactional epoch/outbox, explicit publication, authenticated device acknowledgement, online Gateway freshness | In progress | Storage monotonicity and Rust freshness tests; full adoption/operations gates pending |
-| S7 | Complete group-only administration workflows | Separate Agents menu, group mapping, membership, typed scope editors, configuration reviews, inherited provenance and activation status | In progress | 118 console tests and TypeScript check; new workflow/browser validation pending |
+| S7 | Complete group-only administration workflows | Separate Agents menu, group mapping, membership, typed scope editors, configuration reviews, inherited provenance and activation status | In progress | 121 console tests and TypeScript check; new workflow/browser validation pending |
 | S8 | Reviewed data conversion and one recorded cutover | Immutable legacy archive, deny-by-default cutover and independently reviewed recovery utility | In progress | Migration storage tests; conversion review/shadow report pending |
 
 ## Use-case traceability

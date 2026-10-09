@@ -2,12 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import type {EnterpriseManagementRule} from '@olo-labs/toolgate-contracts';
 import {ControlClient} from './api';
-import {EnterpriseScopeEditor,GroupSelector,emptyScope,emptyConditions} from './EnterpriseScopeEditor';
+import {EnterpriseScopeEditor,GroupSelector,emptyScope,emptyConditions,groupShape,conditionsShape} from './EnterpriseScopeEditor';
 
 const groupKinds={TEAM:'teams',AGENT_GROUP:'agentGroups',TOOL_GROUP:'toolGroups',DEVICE_GROUP:'deviceGroups'} as const;
+const arrayShape=(value:unknown):boolean=>Array.isArray(value);
 /** This edits the exact canonical role rules used by the server, including grantable ceilings. */
 export function ManagementRulesEditor({client,value,change,disabled}:{client:ControlClient;value:readonly EnterpriseManagementRule[];change:(value:readonly EnterpriseManagementRule[])=>void;disabled:boolean}) {
- if(!value.every(rule=>rule&&Array.isArray(rule.actions)&&rule.groupType in groupKinds&&rule.groups&&Array.isArray(rule.groups.ids)&&Array.isArray(rule.grantableScopes)&&rule.conditions))return <p role="alert">Complete the management rules in advanced JSON.</p>;
+ if(!arrayShape(value)||!value.every(rule=>rule&&arrayShape(rule.actions)&&rule.actions.every(a=>typeof a==='string')&&rule.groupType in groupKinds&&groupShape(rule.groups)&&arrayShape(rule.grantableScopes)&&conditionsShape(rule.conditions)))return <p role="alert">Complete the management rules in advanced JSON.</p>;
  const update=(index:number,patch:Partial<EnterpriseManagementRule>)=>change(value.map((rule,i)=>i===index?{...rule,...patch}:rule));
  return <fieldset disabled={disabled}><legend>Scoped management permissions</legend>{value.map((rule,index)=><fieldset key={index}><legend>Management rule {index+1}</legend>
   <label>Managed group type<select value={rule.groupType} onChange={e=>update(index,{groupType:e.target.value as EnterpriseManagementRule['groupType'],groups:{ids:[],all:false}})}>{Object.keys(groupKinds).map(kind=><option key={kind}>{kind}</option>)}</select></label>

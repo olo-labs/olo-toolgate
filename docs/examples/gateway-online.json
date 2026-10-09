@@ -1,0 +1,11 @@
+{
+  "listen": "0.0.0.0:8081",
+  "managementListen": "0.0.0.0:9091",
+  "trustedTlsProxy": true,
+  "allowedOrigins": [],
+  "control": {
+    "url": "https://control.example.com",
+    "tokenPath": "/run/secrets/gateway-service-token",
+    "developmentLoopbackHttp": false
+  }
+}

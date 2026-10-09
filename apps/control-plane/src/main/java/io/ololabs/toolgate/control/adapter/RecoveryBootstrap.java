@@ -17,11 +17,7 @@ import java.util.*;
 public class RecoveryBootstrap {
     @Inject Config config;@Inject PostgresStore store;@Inject ContractCodec codec;
     private String read(String path,int limit)throws java.io.IOException{
-        var file=Path.of(path);if(!file.isAbsolute()||!Files.isRegularFile(file))throw new IllegalArgumentException();
-        var resolved=file.toRealPath();if(!resolved.startsWith(file.getParent().toRealPath()))throw new IllegalArgumentException();
-        // Kubernetes projects Secret keys through read-only symlinks. Check the resolved custody, not its spelling.
-        if(Files.getFileAttributeView(resolved,java.nio.file.attribute.PosixFileAttributeView.class)!=null){var attributes=Files.readAttributes(resolved,java.nio.file.attribute.PosixFileAttributes.class);if(attributes.permissions().contains(java.nio.file.attribute.PosixFilePermission.GROUP_WRITE)||attributes.permissions().contains(java.nio.file.attribute.PosixFilePermission.OTHERS_WRITE))throw new IllegalArgumentException();var owner=attributes.owner().getName();if(!owner.equals("root")&&!owner.equals(System.getProperty("user.name")))throw new IllegalArgumentException();}
-        try(var input=Files.newInputStream(file)){var bytes=input.readNBytes(limit+1);if(bytes.length>limit)throw new IllegalArgumentException();return new String(bytes,java.nio.charset.StandardCharsets.UTF_8);}
+        return new String(ProtectedCustody.read(Path.of(path),limit),java.nio.charset.StandardCharsets.UTF_8);
     }
     void start(@Observes @jakarta.annotation.Priority(10) StartupEvent event){
         var path=config.getOptionalValue("toolgate.control.recovery.packet-path",String.class);if(path.isEmpty())return;
@@ -30,6 +26,6 @@ public class RecoveryBootstrap {
             if(!trust.isObject()||trust.size()!=1||!trust.path("keys").isArray()||trust.path("keys").size()<1||trust.path("keys").size()>4)throw new IllegalArgumentException();
             var keys=new ArrayList<FleetTrustKey>();for(var key:trust.path("keys"))keys.add(codec.model(codec.json(key),FleetTrustKey.class));
             new ReviewedRecovery(store,codec,java.time.Clock.systemUTC()).apply(read(path.get(),2097152),keys);
-        }catch(Exception invalid){throw new IllegalStateException("Reviewed recovery packet or pinned review authority rejected");}
+        }catch(Exception invalid){throw new IllegalStateException("Reviewed recovery packet or pinned review authority rejected ("+invalid.getClass().getSimpleName()+")");}
     }
 }

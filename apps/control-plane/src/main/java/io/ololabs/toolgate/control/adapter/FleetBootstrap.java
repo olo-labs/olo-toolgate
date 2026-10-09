@@ -22,7 +22,7 @@ public class FleetBootstrap {
     @Inject Config config; @Inject ContractCodec codec; @Inject PostgresStore store; @Inject EndpointService endpoints;
     private FleetService service; private ArtifactStore artifacts; private BuilderService builder;
     private String setting(String name){return config.getValue("toolgate.control.fleet."+name,String.class);}
-    private byte[] read(Path path,int max)throws java.io.IOException{try(var input=Files.newInputStream(path)){var bytes=input.readNBytes(max+1);if(bytes.length>max)throw new IllegalArgumentException();return bytes;}}
+    private byte[] read(Path path,int max)throws java.io.IOException{return ProtectedCustody.read(path,max);}
     private String pem(Path path)throws java.io.IOException{return new String(read(path,16384),java.nio.charset.StandardCharsets.US_ASCII);}
     private static byte[] der(String pem,String label){return Base64.getDecoder().decode(pem.replace("-----BEGIN "+label+"-----","").replace("-----END "+label+"-----","").replaceAll("\\s",""));}
     private List<FleetTrustKey> keys(String name)throws java.io.IOException{
@@ -37,7 +37,7 @@ public class FleetBootstrap {
         if(enabled)try{
             if(!config.getValue("toolgate.control.endpoint.enabled",Boolean.class))throw new IllegalArgumentException();
             var factory=KeyFactory.getInstance("RSA");
-            var signer=(RSAPrivateCrtKey)factory.generatePrivate(new PKCS8EncodedKeySpec(der(pem(Path.of(setting("private-key-path"))),"PRIVATE "+"KEY")));
+            var signer=(RSAPrivateCrtKey)factory.generatePrivate(new PKCS8EncodedKeySpec(der(ProtectedCustody.privateText(Path.of(setting("private-key-path")),16384),"PRIVATE "+"KEY")));
             var forbidden=new ArrayList<java.math.BigInteger>();
             var jwt=config.getValue("mp.jwt.verify.publickey.location",String.class);
             var idp=(RSAPublicKey)factory.generatePublic(new X509EncodedKeySpec(der(pem(jwt.startsWith("file:")?Path.of(java.net.URI.create(jwt)):Path.of(jwt)),"PUBLIC KEY")));forbidden.add(idp.getModulus());
@@ -55,7 +55,7 @@ public class FleetBootstrap {
                 var trusted=KeyStore.getInstance(KeyStore.getDefaultType());trusted.load(null,null);int i=0;for(var certificate:certificates)trusted.setCertificateEntry("mirror-"+(i++),certificate);
                 var trust=javax.net.ssl.TrustManagerFactory.getInstance(javax.net.ssl.TrustManagerFactory.getDefaultAlgorithm());trust.init(trusted);tls=javax.net.ssl.SSLContext.getInstance("TLS");tls.init(null,trust.getTrustManagers(),null);
             }
-            String token=null;var tokenPath=config.getOptionalValue("toolgate.control.fleet.artifact-token-path",String.class);if(tokenPath.isPresent())token=new String(read(Path.of(tokenPath.get()),4096),java.nio.charset.StandardCharsets.UTF_8).strip();
+            String token=null;var tokenPath=config.getOptionalValue("toolgate.control.fleet.artifact-token-path",String.class);if(tokenPath.isPresent())token=new String(ProtectedCustody.privateKey(Path.of(tokenPath.get()),4096),java.nio.charset.StandardCharsets.UTF_8).strip();
             artifacts=config.getOptionalValue("toolgate.quickstart.enabled",Boolean.class).orElse(false)
                 && config.getOptionalValue("toolgate.control.fleet.artifact-origin",String.class).orElse("").equals("https://localhost:8443/artifacts")
                 ? new LocalArtifactStore(Path.of(config.getValue("toolgate.quickstart.artifact-directory",String.class)))

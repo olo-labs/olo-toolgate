@@ -50,6 +50,10 @@ async function readBody(response: Response): Promise<unknown> {
  */
 export class ConfigurationPending extends Error {constructor(readonly changeId:string){super('Draft created. Review its impact, submit it for independent approval, then apply the reviewed change.');}}
 export class ControlClient {
+  invocations(after?:string,signal?:AbortSignal):Promise<import('@olo-labs/toolgate-contracts').EnterpriseInvocationPage>{const query=new URLSearchParams({limit:'50'});if(after)query.set('after',after);return this.send(operations.listEnterpriseInvocations,{query,signal});}
+  proposeOutcome(id:string,body:import('@olo-labs/toolgate-contracts').EnterpriseReconciliationRequest,key:string):Promise<import('@olo-labs/toolgate-contracts').EnterpriseReconciliation>{return this.send(operations.proposeOutcomeReconciliation,{id,body,key});}
+  outcomeReconciliation(id:string):Promise<import('@olo-labs/toolgate-contracts').EnterpriseReconciliation>{return this.send(operations.getOutcomeReconciliation,{id});}
+  decideOutcome(id:string,body:import('@olo-labs/toolgate-contracts').EnterpriseReconciliationDecision,key?:string):Promise<import('@olo-labs/toolgate-contracts').EnterpriseReconciliation>{return this.send(operations.decideOutcomeReconciliation,{id,body,key});}
   authorityStatus(signal?:AbortSignal):Promise<import('@olo-labs/toolgate-contracts').EnterpriseAuthorityStatus>{return this.send(operations.accessAuthorityStatus,{signal});}
   effectiveAccess(entity:'users'|'agents'|'tools'|'devices',id:string,signal?:AbortSignal):Promise<import('@olo-labs/toolgate-contracts').EnterpriseEffectiveAccess>{const op={users:operations.effectiveUsers,agents:operations.effectiveAgents,tools:operations.effectiveTools,devices:operations.effectiveDevices}[entity];return this.send(op,{id,signal});}
   humanToolResult(id:string):Promise<import('@olo-labs/toolgate-contracts').RemoteToolResponse>{return this.send(operations.humanToolResult,{id});}

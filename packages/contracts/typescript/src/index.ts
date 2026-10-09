@@ -5,96 +5,11 @@
 export interface AdminSession {
   readonly role: UserRole;
 }
-/** Signed format 2 envelope; compilation adds ASK; old readers reject safely. */
-export interface ApprovalBundlePayload {
-  readonly formatVersion: number;
-  readonly issuer: string;
-  readonly audience: string;
-  readonly tenantId: string;
-  readonly sequence: number;
-  readonly version: string;
-  readonly directoryRevision: number;
-  readonly issuedAtUnixMs: number;
-  readonly expiresAtUnixMs: number;
-  readonly graceMs: number;
-  readonly policySha256: string;
-  readonly policy: string;
-  readonly rollbackOf?: number;
-}
-/** Format 2 exact rule; BLOCK > ASK > ALLOW. ASK never uses grace. */
-export interface ApprovalBundleRule {
-  readonly policyId: string;
-  readonly userIds: ReadonlyArray<string>;
-  readonly agentIds: ReadonlyArray<string>;
-  readonly deviceIds: ReadonlyArray<string>;
-  readonly toolId: string;
-  readonly action: string;
-  readonly resource: ResourceDescriptor;
-  readonly graceAllowed: boolean;
-  readonly effect: Decision;
-}
-export type ApprovalChoice = "APPROVE_ONCE" | "APPROVE_TEMPORARY" | "DENY";
-/** Format 2 adds human approval without weakening default deny. */
-export interface ApprovalCompiledPolicy {
-  readonly formatVersion: number;
-  readonly rules: ReadonlyArray<ApprovalBundleRule>;
-}
-/** Optimistic human decision; duration is required only for temporary approval. */
-export interface ApprovalDecisionRequest {
-  readonly decision: ApprovalChoice;
-  readonly expectedRevision: number;
-  readonly durationMs?: number;
-}
-/** Bounded tenant-scoped approval page. */
-export interface ApprovalPage {
-  readonly items: ReadonlyArray<ApprovalRecord>;
-  readonly nextCursor?: string;
-}
-/** Gateway-only atomic lease consumption; repeat use never grants again. */
-export interface ApprovalPermitUse {
-  readonly approvalId: string;
-  readonly permitId: string;
-  readonly input: PolicyInput;
-  readonly policyVersion: string;
-}
-/** Durable tenant approval status; identity/resource and digest only, never raw arguments. */
-export interface ApprovalRecord {
-  readonly id: string;
-  readonly revision: number;
-  readonly state: ApprovalState;
-  readonly input: PolicyInput;
-  readonly policyVersion: string;
-  readonly createdAtUnixMs: number;
-  readonly expiresAtUnixMs: number;
-  readonly decidedBy?: string;
-  readonly decidedAtUnixMs?: number;
-}
-/** Authenticated Control result for this exact Gateway attempt; lease fields occur only on a successful grant. */
-export interface ApprovalResolution {
-  readonly approvalId: string;
-  readonly state: ApprovalState;
-  readonly input: PolicyInput;
-  readonly policyVersion: string;
-  readonly permitId?: string;
-  readonly permitExpiresAtUnixMs?: number;
-}
-export type ApprovalState = "PENDING" | "APPROVED_ONCE" | "APPROVED_TEMPORARY" | "DENIED" | "EXPIRED" | "CONSUMED";
-/** Gateway-only normalized ASK request. No raw arguments or credentials. */
-export interface ApprovalSubmission {
-  readonly input: PolicyInput;
-  readonly policyVersion: string;
-}
 /** Immutable artifact identity; digest must be verified by consumers. */
 export interface ArtifactDescriptor {
   readonly uri: string;
   readonly sha256: string;
   readonly sizeBytes: number;
-}
-/** V2 ASK outcome; pending ASK grants no execution; ALLOW for approved ASK requires a signed permit. */
-export interface AuthorizationOutcome {
-  readonly decision: PolicyDecision;
-  readonly approvalId?: string;
-  readonly permit?: SignedExecutionPermit;
 }
 /** Runtime request; principal context and resource identity are derived by the gateway, never asserted by the caller. */
 export interface AuthorizationRequest {
@@ -226,28 +141,11 @@ export interface BuiltinToolInfo {
   readonly toolDigest: string;
   readonly packageDigest: string;
 }
-export type BundleEffect = "ALLOW" | "BLOCK";
 /** Strict JWS protected header; no remote or embedded keys and no algorithm negotiation. */
 export interface BundleHeader {
   readonly alg: string;
   readonly typ: string;
   readonly kid: string;
-}
-/** Signed version, trust domain, immutable policy bytes and bounded freshness claims. */
-export interface BundlePayload {
-  readonly formatVersion: number;
-  readonly issuer: string;
-  readonly audience: string;
-  readonly tenantId: string;
-  readonly sequence: number;
-  readonly version: string;
-  readonly directoryRevision: number;
-  readonly issuedAtUnixMs: number;
-  readonly expiresAtUnixMs: number;
-  readonly graceMs: number;
-  readonly policySha256: string;
-  readonly policy: string;
-  readonly rollbackOf?: number;
 }
 /** Publish a consistent directory snapshot or roll back into a new sequence. Requires Idempotency-Key. */
 export interface BundlePublishRequest {
@@ -257,18 +155,6 @@ export interface BundlePublishRequest {
   readonly graceMs: number;
   readonly gracePolicyIds?: ReadonlyArray<string>;
   readonly rollbackOf?: number;
-}
-/** Exact tenant-scoped compiled policy; empty identity dimensions are unrestricted. BLOCK has precedence. */
-export interface BundleRule {
-  readonly policyId: string;
-  readonly userIds: ReadonlyArray<string>;
-  readonly agentIds: ReadonlyArray<string>;
-  readonly deviceIds: ReadonlyArray<string>;
-  readonly toolId: string;
-  readonly action: string;
-  readonly resource: ResourceDescriptor;
-  readonly graceAllowed: boolean;
-  readonly effect: BundleEffect;
 }
 /** Endpoint identity foundation wire model. */
 export interface ClientDiscovery {
@@ -360,11 +246,6 @@ export interface ClientSocketRequest {
   readonly requestId: string;
   readonly operation: ClientSocketOperation;
   readonly body?: Record<string, unknown>;
-}
-/** Version 1 deterministic exact-match rules, with unconditional default deny. */
-export interface CompiledPolicy {
-  readonly formatVersion: number;
-  readonly rules: ReadonlyArray<BundleRule>;
 }
 /** Identifies the shared contract set, independently of product versions. */
 export interface ContractSet {
@@ -720,7 +601,6 @@ export interface ControlWorkloadBindingPage {
   readonly nextCursor?: string;
 }
 export type Decision = "ALLOW" | "ASK" | "BLOCK";
-export type DecisionReason = "MATCHED" | "NO_MATCH" | "POLICY_UNAVAILABLE" | "INVALID_INPUT" | "APPROVAL_REQUIRED";
 /** Organization assignment with independent Marketplace evidence; grants no runtime permission. */
 export interface DeploymentAssignment {
   readonly assignmentId: string;
@@ -1118,6 +998,11 @@ export interface EnterpriseInvocation {
   readonly resultDigest?: string;
   readonly diagnosticId: string;
 }
+/** Scoped durable effect states. A cursor does not disclose hidden rows. */
+export interface EnterpriseInvocationPage {
+  readonly items: ReadonlyArray<EnterpriseInvocation>;
+  readonly nextCursor?: string;
+}
 /** Exact authenticated invocation with original arguments and installed code digests. */
 export interface EnterpriseInvocationRequest {
   readonly context: RequestContext;
@@ -1136,6 +1021,17 @@ export interface EnterpriseManagementRule {
   readonly conditions: EnterpriseConditions;
 }
 export type EnterpriseMemberType = "USER" | "AGENT" | "TOOL" | "DEVICE";
+/** Scoped operational health and configured hard bounds. Snapshot lag never authorizes a cached effect. */
+export interface EnterpriseOperationalStatus {
+  readonly pendingSnapshotEvents: number;
+  readonly oldestUnpublishedUnixMs: number;
+  readonly unknownOutcomes: number;
+  readonly expiredRunningEffects: number;
+  readonly permitLifetimeMs: number;
+  readonly clockSkewMs: number;
+  readonly authorityCacheGraceMs: number;
+  readonly readyProbeFreshnessMs: number;
+}
 /** Short-lived audience-bound permit for one exact invocation and target. */
 export interface EnterprisePermitClaims {
   readonly issuer: string;
@@ -1169,6 +1065,32 @@ export interface EnterprisePermitHeader {
   readonly typ: string;
   readonly kid: string;
 }
+export type EnterpriseReconciledState = "SUCCEEDED" | "FAILED" | "PARTIAL";
+/** Maker and independent eligible checker resolve an unknown effect; evidence stays external. */
+export interface EnterpriseReconciliation {
+  readonly id: string;
+  readonly invocationId: string;
+  readonly requesterUserId: string;
+  readonly request: EnterpriseReconciliationRequest;
+  readonly requestDigest: string;
+  readonly revision: number;
+  readonly reviewerUserId?: string;
+  readonly state: EnterpriseReconciliationState;
+}
+/** Independent eligible checker decision against the exact durable reconciliation revision. */
+export interface EnterpriseReconciliationDecision {
+  readonly expectedRevision: number;
+  readonly approve: boolean;
+}
+/** Immutable independently reviewed downstream evidence. Never creates a new permit. */
+export interface EnterpriseReconciliationRequest {
+  readonly expectedRevision: number;
+  readonly state: EnterpriseReconciledState;
+  readonly completedResources: ReadonlyArray<ResourceDescriptor>;
+  readonly evidenceDigest: string;
+  readonly resultDigest?: string;
+}
+export type EnterpriseReconciliationState = "PENDING" | "APPLIED" | "DENIED";
 /** Protected operator review for group-only bootstrap or bounded recovery. */
 export interface EnterpriseRecoveryAuthorization {
   readonly formatVersion: number;
@@ -1217,6 +1139,30 @@ export interface EnterpriseScope {
   readonly allActions: boolean;
   readonly resources: ReadonlyArray<EnterpriseResourceRule>;
   readonly conditions: EnterpriseConditions;
+}
+/** Runtime-only secret value; never returned by management, export, result or diagnostic routes. */
+export interface EnterpriseSecretDelivery {
+  readonly value: string;
+}
+/** Certificate-bound secret delivery to an executing invocation. Original reviewed resource set must contain this exact secret. */
+export interface EnterpriseSecretDeliveryRequest {
+  readonly invocationId: string;
+  readonly name: string;
+}
+/** Read-only comparison to a captured immutable legacy result; never a second runtime authority. */
+export interface EnterpriseShadowRequest {
+  readonly snapshot: ControlSnapshot;
+  readonly evaluation: EnterpriseEvaluation;
+  readonly observedLegacyDecision: Decision;
+  readonly legacyEvidenceDigest: string;
+}
+/** No grant is applied and no approval, quota or permit is consumed. */
+export interface EnterpriseShadowResult {
+  readonly decision: EnterpriseDecision;
+  readonly observedLegacyDecision: Decision;
+  readonly legacyEvidenceDigest: string;
+  readonly proposedSnapshotDigest: string;
+  readonly accessExpansion: boolean;
 }
 /** Signed enterprise effect permit; claims are bound and consumption is durably atomic. */
 export interface EnterpriseSignedPermit {
@@ -1277,37 +1223,6 @@ export interface ErrorEnvelope {
   readonly code: ErrorCode;
   readonly requestId: string;
   readonly retryable: boolean;
-}
-/** Exact-operation capability; maximum ten seconds; authoritative consume boundary enforces replay. */
-export interface ExecutionPermitClaims {
-  readonly permitVersion: number;
-  readonly issuer: string;
-  readonly audience: string;
-  readonly tenantId: string;
-  readonly userId: string;
-  readonly agentId: string;
-  readonly deviceId?: string;
-  readonly toolId: string;
-  readonly action: string;
-  readonly resource: ResourceDescriptor;
-  readonly argumentsDigest: string;
-  readonly requestId: string;
-  readonly policyVersion: string;
-  readonly approvalId: string;
-  readonly jti: string;
-  readonly issuedAtUnixMs: number;
-  readonly expiresAtUnixMs: number;
-}
-/** Dedicated runtime permit trust domain; no key negotiation or remote keys. */
-export interface ExecutionPermitHeader {
-  readonly alg: string;
-  readonly typ: string;
-  readonly kid: string;
-}
-/** Authenticated runtime request to verify and atomically consume one exact-bound permit. */
-export interface ExecutionPermitUseRequest {
-  readonly permit: SignedExecutionPermit;
-  readonly request: AuthorizationRequest;
 }
 /** Reviewed JSON pointer to resources, including every batch member or source/destination. */
 export interface ExtractorField {
@@ -1575,23 +1490,6 @@ export interface PackageManifest {
   readonly compatibility: PackageCompatibility;
 }
 export type PackageState = "ABSENT" | "STAGING" | "READY" | "FAILED" | "REVOKED";
-/** Explicit wire decision, with no implicit ALLOW default. ASK requires approval. */
-export interface PolicyDecision {
-  readonly decision: Decision;
-  readonly reason: DecisionReason;
-  readonly policyVersion: string;
-  readonly requestId: string;
-}
-/** Exact request identity and argument digest supplied to authorization. */
-export interface PolicyInput {
-  readonly context: RequestContext;
-  readonly toolId: string;
-  readonly action: string;
-  readonly resource: ResourceDescriptor;
-  readonly argumentsDigest: string;
-  readonly toolDigest: string;
-  readonly packageDigest: string;
-}
 /** A leased client rechecks the exact pending operation online before execution. */
 export interface RemoteToolAuthorization {
   readonly requestId: string;
@@ -1681,17 +1579,6 @@ export interface ResourceDescriptor {
   readonly locator: string;
 }
 export type ResourceKind = "FILE" | "URL" | "DATABASE" | "DEVICE" | "CUSTOM";
-/** Sanitized authorization evaluation event; hashes replace raw arguments and resource locators. A decision is not execution success. */
-export interface RuntimeAuditEvent {
-  readonly timestampUnixMs: number;
-  readonly context: RequestContext;
-  readonly toolId: string;
-  readonly action: string;
-  readonly resourceDigest: string;
-  readonly argumentsDigest: string;
-  readonly decision: PolicyDecision;
-  readonly traceId: string;
-}
 export type SecretReference = string;
 export type SemanticVersion = string;
 export type Sha256 = string;
@@ -1699,10 +1586,6 @@ export type Sha256 = string;
 export interface SignedClientDiscovery {
   readonly payload: string;
   readonly signature: string;
-}
-/** RS256 compact JWS; structural validation alone does not establish trust. */
-export interface SignedExecutionPermit {
-  readonly jws: string;
 }
 /** RFC 7515 compact JWS; payload and hash must both verify before adoption. */
 export interface SignedPolicyBundle {

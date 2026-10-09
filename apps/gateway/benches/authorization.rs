@@ -12,7 +12,7 @@ fn main() {
         assert!(contracts.valid("AuthorizationRequest", &value));
     }
     println!(
-        "ingress_validation_iterations=10000 elapsed_us={}",
+        "{{\"benchmark\":\"ingress-validation\",\"iterations\":10000,\"elapsedMicros\":{}}}",
         start.elapsed().as_micros()
     );
 }

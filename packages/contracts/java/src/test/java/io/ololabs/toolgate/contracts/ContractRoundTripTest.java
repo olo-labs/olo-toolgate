@@ -30,15 +30,15 @@ final class ContractRoundTripTest {
             assertEquals(fixture.getValue(), mapper.readTree(mapper.writeValueAsString(model)), fixture.getKey());
             checked++;
         }
-        assertEquals(153, checked);
+        assertEquals(245, checked);
         assertEquals(ContractSet.NAME, ContractSet.current().name());
         assertEquals(System.getProperty("toolgate.contractsVersion"), ContractSet.current().version());
     }
 
     @Test void invalidSecuritySemanticsNeverBecomeAllow() {
         assertThrows(Exception.class, () -> mapper.readValue("\"UNKNOWN\"", Decision.class));
-        assertThrows(Exception.class, () -> mapper.readValue("{\"reason\":\"NO_MATCH\",\"policyVersion\":\"0.1.0-dev\",\"requestId\":\"r\"}", PolicyDecision.class));
-        assertThrows(Exception.class, () -> mapper.readValue("{\"decision\":\"BLOCK\",\"reason\":\"NO_MATCH\",\"policyVersion\":\"0.1.0-dev\",\"requestId\":\"r\",\"bypass\":true}", PolicyDecision.class));
+        assertThrows(Exception.class, () -> mapper.readValue("{\"reason\":\"NO_GRANT\",\"policyVersion\":\"0.1.0-dev\",\"requestId\":\"r\"}", EnterpriseDecision.class));
+        assertThrows(Exception.class, () -> mapper.readValue("{\"decision\":\"BLOCK\",\"reason\":\"NO_GRANT\",\"policyVersion\":\"0.1.0-dev\",\"requestId\":\"r\",\"bypass\":true}", EnterpriseDecision.class));
         assertThrows(Exception.class, () -> mapper.readValue("{\"code\":\"INTERNAL\",\"requestId\":\"r\",\"retryable\":null}", ErrorEnvelope.class));
     }
 }

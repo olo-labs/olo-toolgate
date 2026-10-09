@@ -40,8 +40,8 @@ class GatewayAssetsTests(unittest.TestCase):
         for required in ['USER 65532:65532','STOPSIGNAL SIGTERM','--locked','org.opencontainers.image.version']: self.assertIn(required,docker)
         workflow=yaml.load((ROOT/'.github/workflows/gateway.yml').read_text(),Loader=yaml.BaseLoader)
         self.assertEqual('read',workflow['permissions']['contents'])
-        commands='\n'.join(s.get('run','') for s in workflow['jobs']['container-and-cluster']['steps'])
-        for required in ['cargo test --workspace --locked','tools/gateway/container.py','tools/gateway/cluster.py','--severity HIGH,CRITICAL','--format cyclonedx','sha256sum']: self.assertIn(required,commands)
+        commands='\n'.join(s.get('run','') for s in workflow['jobs']['container-and-replicas']['steps'])
+        for required in ['cargo test --workspace --locked','tools/gateway/container.py','tools/enterprise/helm.py','--severity HIGH,CRITICAL','--format cyclonedx','sha256sum']: self.assertIn(required,commands)
         self.assertEqual('gateway-release',workflow['jobs']['publish']['environment'])
         self.assertNotIn('secrets.MAVEN',json.dumps(workflow))
 

@@ -27,9 +27,7 @@ public class BundleBootstrap {
             Ids.valid(config.getValue("toolgate.control.bundle.issuer", String.class));
             Ids.valid(config.getValue("toolgate.control.bundle.audience", String.class));
             var path = Path.of(config.getValue("toolgate.control.bundle.private-key-path", String.class));
-            byte[] raw;
-            try (var input = Files.newInputStream(path)) { raw = input.readNBytes(16385); }
-            if (raw.length > 16384) throw new IllegalArgumentException();
+            byte[] raw=ProtectedCustody.privateKey(path,16384);
             var pem = new String(raw, java.nio.charset.StandardCharsets.US_ASCII);
             var begin = "-----BEGIN " + "PRIVATE KEY-----";
             var end = "-----END " + "PRIVATE KEY-----";
@@ -38,7 +36,7 @@ public class BundleBootstrap {
             var factory = java.security.KeyFactory.getInstance("RSA");
             var key = (java.security.interfaces.RSAPrivateCrtKey) factory.generatePrivate(new java.security.spec.PKCS8EncodedKeySpec(der));
             var jwtPath = config.getValue("mp.jwt.verify.publickey.location", String.class);
-            var identityPem = Files.readString(jwtPath.startsWith("file:") ? Path.of(java.net.URI.create(jwtPath)) : Path.of(jwtPath));
+            var identityPem = ProtectedCustody.text(jwtPath.startsWith("file:") ? Path.of(java.net.URI.create(jwtPath)) : Path.of(jwtPath),16384);
             var identity = (java.security.interfaces.RSAPublicKey) factory.generatePublic(new java.security.spec.X509EncodedKeySpec(
                 java.util.Base64.getDecoder().decode(identityPem.replace("-----BEGIN PUBLIC KEY-----", "").replace("-----END PUBLIC KEY-----", "").replaceAll("\\s", ""))));
             if (key.getModulus().equals(identity.getModulus())) throw new IllegalArgumentException();

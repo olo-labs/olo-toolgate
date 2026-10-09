@@ -36,6 +36,24 @@ struct Authorization {
     consumed: tokio::sync::Mutex<bool>,
 }
 impl AuthorizationPort for Authorization {
+    fn secret(&self, name: String) -> Call<'_, String> {
+        Box::pin(async move {
+            if !*self.consumed.lock().await {
+                return Err(Failure::Unauthorized);
+            }
+            Ok(self
+                .control
+                .deliver_secret(
+                    self.identity.clone(),
+                    EnterpriseSecretDeliveryRequest {
+                        invocation_id: self.task.invocation.id.clone(),
+                        name,
+                    },
+                )
+                .await?
+                .value)
+        })
+    }
     fn authorize(&self, request: AuthorizationRequest) -> Call<'_, ()> {
         Box::pin(async move { self.authorize_bound(request).await.map(|_| ()) })
     }

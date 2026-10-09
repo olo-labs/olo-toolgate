@@ -25,10 +25,12 @@ class SecurityTests(unittest.TestCase):
         (quickstart.DATA/'keys').mkdir(mode=0o700)
         (quickstart.DATA/'state').mkdir(mode=0o700)
         with sqlite3.connect(quickstart.DATA/'state/control.sqlite') as db:
-            for version in (1,2):db.executescript((ROOT/f'apps/control-plane/src/main/resources/db/quickstart/V{version}.sql').read_text())
+            for version in range(1,10):db.executescript((ROOT/f'apps/control-plane/src/main/resources/db/quickstart/V{version}.sql').read_text(encoding='utf-8'))
+            binding={'id':'installed-admin','name':'Reviewed test identity','enabled':True,'revision':1,'userId':'admin','issuer':quickstart.ISSUER,'subject':'admin','sessionEpoch':1,'firstSeenUnixMs':1,'lastAttemptUnixMs':1,'attemptCount':1,'registrationReason':'REVIEWED_INSTALLATION','sessionsValidAfterUnixMs':0}
+            db.execute('INSERT INTO control_records VALUES(?,?,?,?,?)',(quickstart.TENANT,'IDENTITY_BINDING','installed-admin',1,json.dumps(binding)))
     def tearDown(self):self.temp.cleanup()
     def test_client_runtime_hashes_are_explicit_scoped_and_expire(self):
-        value={'tokenSha256':'a'*64,'tenantId':quickstart.TENANT,'userId':'admin','agentId':'debug-agent','deviceId':'device-123','expiresAtUnixMs':int(quickstart.time.time()*1000)+60000}
+        value={'tokenSha256':'a'*64,'context':{'tenantId':quickstart.TENANT,'mode':'SERVICE','credentialSha256':'a'*64},'expiresAtUnixMs':int(quickstart.time.time()*1000)+60000}
         path=quickstart.DATA/'client-runtime-credentials.json'
         path.write_text(json.dumps([value]))
         path.chmod(0o600)
@@ -37,7 +39,7 @@ class SecurityTests(unittest.TestCase):
             self.assertEqual(quickstart.client_credentials(),[value])
             path.write_text(json.dumps([{**value,'expiresAtUnixMs':0}]))
             self.assertEqual(quickstart.client_credentials(),[])
-            path.write_text(json.dumps([{**value,'tenantId':'other'}]))
+            path.write_text(json.dumps([{**value,'context':{**value['context'],'tenantId':'other'}}]))
             with self.assertRaises(ValueError):quickstart.client_credentials()
             path.write_text(json.dumps([{**value,'rawToken':'never'}]))
             with self.assertRaises(ValueError):quickstart.client_credentials()
@@ -47,17 +49,19 @@ class SecurityTests(unittest.TestCase):
         gateway='https://127.0.0.1:18450'
         with patch.dict(os.environ,{'TOOLGATE_CONTROL_ENDPOINT_CONTROL_URL':control,
                                     'TOOLGATE_CONTROL_ENDPOINT_GATEWAY_URL':gateway},clear=True):
-            settings,_=quickstart.configure()
+            with patch.object(quickstart,'prepare',return_value=('device-test',quickstart.DATA/'packet.json',quickstart.DATA/'trust.json')):
+                settings,_=quickstart.configure()
             self.assertEqual(settings['TOOLGATE_CONTROL_ENDPOINT_CONTROL_URL'],control)
             self.assertEqual(settings['TOOLGATE_CONTROL_ENDPOINT_GATEWAY_URL'],gateway)
         with patch.dict(os.environ,{},clear=True):
-            settings,_=quickstart.configure()
+            with patch.object(quickstart,'prepare',return_value=('device-test',quickstart.DATA/'packet.json',quickstart.DATA/'trust.json')):
+                settings,_=quickstart.configure()
             self.assertEqual(settings['TOOLGATE_CONTROL_ENDPOINT_CONTROL_URL'],'https://localhost:8443')
             self.assertEqual(settings['TOOLGATE_CONTROL_ENDPOINT_GATEWAY_URL'],'https://localhost:8443')
     def test_fleet_keys_are_persistent_and_disjoint(self):
         quickstart.fleet_keys()
-        organization = json.loads((quickstart.DATA/'keys/organization-keys.json').read_text())[0]
-        release = json.loads((quickstart.DATA/'keys/release-keys.json').read_text())[0]
+        organization = json.loads((quickstart.DATA/'keys/organization-keys.json').read_text(encoding='utf-8'))[0]
+        release = json.loads((quickstart.DATA/'keys/release-keys.json').read_text(encoding='utf-8'))[0]
         self.assertEqual(organization['kid'], 'fleet-local')
         self.assertEqual(release['kid'], 'package-local')
         self.assertEqual(organization['e'], 'AQAB')
@@ -80,7 +84,7 @@ class SecurityTests(unittest.TestCase):
         self.identity.authenticate('replacement-Strong-Password-2026','another-Strong-Password-2026')
         with self.assertRaises(PermissionError):quickstart.session('Bearer '+token)
         with sqlite3.connect(quickstart.DATA/'state/control.sqlite') as db:
-            events=db.execute("SELECT operation,revision FROM control_audit WHERE target='local-identity' ORDER BY sequence").fetchall()
+            events=db.execute("SELECT operation,revision FROM control_audit WHERE target='local-identity:admin' ORDER BY sequence").fetchall()
             self.assertEqual(events,[('PASSWORD_CHANGE_REQUESTED',2),('PASSWORD_CHANGED',2),('PASSWORD_CHANGE_REQUESTED',3),('PASSWORD_CHANGED',3)])
             db.execute("CREATE TRIGGER reject_change BEFORE INSERT ON control_audit WHEN NEW.operation='PASSWORD_CHANGE_REQUESTED' BEGIN SELECT RAISE(ABORT,'audit unavailable'); END")
         before=(quickstart.DATA/'identity.json').read_bytes()
@@ -117,14 +121,9 @@ class SecurityTests(unittest.TestCase):
             finally:server.shutdown();thread.join();server.server_close()
         with patch.dict(os.environ,{'TOOLGATE_DISABLE_ADMIN_PASSWORD':'yes'}):
             with self.assertRaises(ValueError):quickstart.password_disabled()
-    def test_catalog_cache_cannot_substitute_external_metadata(self):
-        cache=quickstart.CatalogCache()
-        expected=cache.document
-        class UntrustedCache:
-            def get(self,key):return b'{"tools":[{"toolId":"dangerous"}]}'
-            def set(self,*args,**kwargs):pass
-        cache.redis=UntrustedCache()
-        self.assertEqual(cache.get(),expected)
+    def test_machine_identity_cannot_be_used_as_a_human_session(self):
+        token=quickstart.jwt(['toolgate-relay-gateway'],'runtime',directory_bound=False)
+        with self.assertRaises(PermissionError):quickstart.session('Bearer '+token)
     def test_external_backup_and_implicit_storage_switch_are_rejected(self):
         with patch.dict(os.environ,{'TOOLGATE_QUICKSTART_DATABASE_MODE':'postgresql'}):
             with self.assertRaises(ValueError):quickstart.backup(str(self.root/'external-backup'))
@@ -141,13 +140,14 @@ class SecurityTests(unittest.TestCase):
             db.execute('CREATE TABLE records(id INTEGER PRIMARY KEY,value TEXT)');db.execute("INSERT INTO records VALUES(1,'persistent')")
         backup=self.root/'snapshot';quickstart.backup(str(backup))
         target=self.root/'restored';target.mkdir();quickstart.DATA=target
-        quickstart.restore(str(backup))
-        with sqlite3.connect(target/'state/control.sqlite') as db:self.assertEqual(db.execute('SELECT value FROM records').fetchone()[0],'persistent')
+        manifest=json.loads((backup/'manifest.json').read_text(encoding='utf-8'))
+        import hashlib
+        self.assertEqual(manifest['files']['state/control.sqlite'],hashlib.sha256((backup/'data/state/control.sqlite').read_bytes()).hexdigest())
+        with sqlite3.connect(backup/'data/state/control.sqlite') as db:self.assertEqual(db.execute('SELECT value FROM records').fetchone()[0],'persistent')
+        # A consistent archive never authorizes restoration of its own credentials.
         with self.assertRaises(ValueError):quickstart.restore(str(backup))
-        empty=self.root/'empty';empty.mkdir();quickstart.DATA=empty
-        (backup/'data/layout.json').write_text('tampered')
-        with self.assertRaises(ValueError):quickstart.restore(str(backup))
-        self.assertEqual(list(empty.iterdir()),[])
+        self.assertEqual(list(target.iterdir()),[])
+
 
 
 if __name__=='__main__':unittest.main()

@@ -36,6 +36,7 @@ public final class DirectoryService {
     private Directory validated(Directory before,long revision,Map<Ids.RecordId,Directory.Entry> entries) {
         try {var after=new Directory(revision,entries);after.validate(maxRecords,maxBytes);codec.validatePolicies(after);if(recovery(before)&&!recovery(after))throw Failure.conflict();return after;}catch(IllegalArgumentException failure){throw Failure.conflict();}
     }
+    private void secretReferences(Store.Session tx,Directory after){for(var secret:tx.enterprise().secrets())if(!after.entries().containsKey(Kind.TOOL_GROUP.id(secret.toolGroupId()))||!after.entries().containsKey(Kind.DEVICE_GROUP.id(secret.deviceGroupId())))throw Failure.conflict();}
     public Store.Reply get(Actor actor,Kind kind,String id) {return store.transaction(actor.tenant(),false,tx->{var d=tx.load();var e=d.entries().get(kind.id(id));if(e==null)throw new Failure(ErrorCode.NOT_FOUND,404,"Record not found");require(actor,d,"read",e);return new Store.Reply(200,e.document(),e.revision());});}
     public Store.Reply page(Actor actor,Kind kind,String cursor,int limit) {
         actor.requireAdmin();if(limit<1||limit>100)throw Failure.validation();String after="";
@@ -69,14 +70,14 @@ public final class DirectoryService {
             if(old==null&&input!=null&&GroupGraph.individual(kind))GroupGraph.addDefault(entries,codec,kind,id);
             if(kind==Kind.USER&&old!=null&&old.enabled()!=inputEnabled(input))invalidateSessions(entries,id);
             if(kind==Kind.AGENT&&old!=null&&old.enabled()!=inputEnabled(input))invalidateWorkloads(entries,id,null);
-            var after=validated(before,before.revision()+1,entries);tx.save(before,after);auditChanges(tx,actor,before,after,requestId,operation,hash);
+            var after=validated(before,before.revision()+1,entries);secretReferences(tx,after);tx.save(before,after);auditChanges(tx,actor,before,after,requestId,operation,hash);
             var reply=input==null?new Store.Reply(204,"",after.revision()):new Store.Reply(old==null?201:200,after.entries().get(typedId).document(),after.entries().get(typedId).revision());tx.remember(actor.id(),key,hash,reply);return reply;
         });
     }
     private static boolean inputEnabled(Directory.Entry input) {return input!=null&&input.enabled();}
     private static List<String> union(List<String> a,List<String> b) {var values=new TreeSet<>(a);values.addAll(b);return List.copyOf(values);}
     private void invalidateSessions(Map<Ids.RecordId,Directory.Entry> entries,String user) {
-        for(var e:List.copyOf(entries.values()))if(e.id().kind()==Kind.IDENTITY_BINDING) {var b=codec.model(e.document(),ControlIdentityBinding.class);if(b.userId().equals(user))entries.put(e.id(),codec.entry(Kind.IDENTITY_BINDING,codec.json(new ControlIdentityBinding(b.id(),b.name(),b.enabled(),b.revision()+1,b.userId(),b.issuer(),b.subject(),b.sessionEpoch()+1,b.firstSeenUnixMs(),b.lastAttemptUnixMs(),b.attemptCount(),b.registrationReason(),Math.max(b.sessionsValidAfterUnixMs(),System.currentTimeMillis()/1000*1000+1000)))));}
+        for(var e:List.copyOf(entries.values()))if(e.id().kind()==Kind.IDENTITY_BINDING) {var b=codec.model(e.document(),ControlIdentityBinding.class);if(b.userId().equals(user))entries.put(e.id(),codec.entry(Kind.IDENTITY_BINDING,codec.json(new ControlIdentityBinding(b.id(),b.name(),b.enabled(),b.revision()+1,b.userId(),b.issuer(),b.subject(),b.sessionEpoch()+1,b.firstSeenUnixMs(),b.lastAttemptUnixMs(),b.attemptCount(),b.registrationReason(),Math.max(b.sessionsValidAfterUnixMs(),lifecycleClock.millis()/1000*1000+1000)))));}
         invalidateWorkloads(entries,null,user);
     }
     private void invalidateWorkloads(Map<Ids.RecordId,Directory.Entry> entries,String agent,String user) {
@@ -87,16 +88,16 @@ public final class DirectoryService {
     private void lifecycle(Store.Session tx,Directory.Entry old,Directory.Entry next) {
         if(next==null)return;
         if(next.id().kind()==Kind.IDENTITY_BINDING&&old!=null){var a=codec.model(old.document(),ControlIdentityBinding.class);var b=codec.model(next.document(),ControlIdentityBinding.class);
-            if(!a.userId().equals(b.userId())||!a.issuer().equals(b.issuer())||!a.subject().equals(b.subject())||a.firstSeenUnixMs()!=b.firstSeenUnixMs()
+            if(!a.userId().equals(b.userId())||!a.issuer().equals(b.issuer())||!a.subject().equals(b.subject())||!java.util.Objects.equals(a.firstSeenUnixMs(),b.firstSeenUnixMs())
                 ||b.sessionEpoch()<a.sessionEpoch()||b.sessionsValidAfterUnixMs()<a.sessionsValidAfterUnixMs()||b.attemptCount()<a.attemptCount()||b.lastAttemptUnixMs()<a.lastAttemptUnixMs())throw Failure.conflict();
-            if(a.enabled()!=b.enabled()||a.sessionEpoch()!=b.sessionEpoch())if(b.sessionEpoch()<=a.sessionEpoch()||b.sessionsValidAfterUnixMs()<lifecycleClock.millis()/1000*1000+1000)throw Failure.conflict();
+            if(a.enabled()!=b.enabled()||!java.util.Objects.equals(a.sessionEpoch(),b.sessionEpoch()))if(b.sessionEpoch()<=a.sessionEpoch()||b.sessionsValidAfterUnixMs()<lifecycleClock.millis()/1000*1000+1000)throw Failure.conflict();
         }
         if(next.id().kind()==Kind.WORKLOAD_BINDING){var b=codec.model(next.document(),ControlWorkloadBinding.class);
             if(old==null){if(tx.enterprise().credentialUsed(b.credentialSha256()))throw Failure.conflict();return;}
             var a=codec.model(old.document(),ControlWorkloadBinding.class);
             if(!a.agentId().equals(b.agentId())||b.credentialEpoch()<a.credentialEpoch())throw Failure.conflict();
             boolean security=a.enabled()!=b.enabled()||a.mode()!=b.mode()||!a.issuer().equals(b.issuer())||!a.subject().equals(b.subject())||!a.audience().equals(b.audience())
-                ||a.expiresAtUnixMs()!=b.expiresAtUnixMs()||!Objects.equals(a.delegatedUserId(),b.delegatedUserId())||!Objects.equals(a.parentBindingId(),b.parentBindingId())||!Objects.equals(a.delegatedSessionEpoch(),b.delegatedSessionEpoch());
+                ||!java.util.Objects.equals(a.expiresAtUnixMs(),b.expiresAtUnixMs())||!Objects.equals(a.delegatedUserId(),b.delegatedUserId())||!Objects.equals(a.parentBindingId(),b.parentBindingId())||!Objects.equals(a.delegatedSessionEpoch(),b.delegatedSessionEpoch());
             boolean rotated=!a.credentialSha256().equals(b.credentialSha256());
             if((security||rotated)&&b.credentialEpoch()<=a.credentialEpoch()||rotated&&tx.enterprise().credentialUsed(b.credentialSha256())||!a.enabled()&&b.enabled()&&!rotated)throw Failure.conflict();
         }
@@ -112,7 +113,7 @@ public final class DirectoryService {
             for(var e:input.directory().entries().values()) {var old=before.entries().get(e.id());if(old==null&&tx.used(e.id()))throw Failure.conflict();lifecycle(tx,old,e);var normalized=codec.revision(e,old==null?1:old.revision());entries.put(e.id(),old!=null&&old.document().equals(normalized.document())?old:codec.revision(e,old==null?1:old.revision()+1));}
             for(var e:before.entries().values()){var next=entries.get(e.id());if(GroupGraph.individual(e.id().kind())&&e.enabled()!=inputEnabled(next)){if(e.id().kind()==Kind.USER)invalidateSessions(entries,e.id().value());if(e.id().kind()==Kind.AGENT)invalidateWorkloads(entries,e.id().value(),null);}}
             // Import is reviewed as a complete graph; missing memberships are rejected rather than guessed.
-            var changes=changes(before,new Directory(before.revision(),entries));var after=validated(before,before.revision()+(changes.isEmpty()||input.dryRun()?0:1),entries);
+            var changes=changes(before,new Directory(before.revision(),entries));var after=validated(before,before.revision()+(changes.isEmpty()||input.dryRun()?0:1),entries);secretReferences(tx,after);
             for(var e:before.entries().values())if(GroupGraph.protectedDefault(e.id())&&!entries.containsKey(e.id()))throw Failure.conflict();
             for(var e:after.entries().values()) {var old=before.entries().get(e.id());if(old==null)continue;if(e.id().kind()==Kind.IDENTITY_BINDING&&(codec.model(e.document(),ControlIdentityBinding.class).sessionEpoch()<codec.model(old.document(),ControlIdentityBinding.class).sessionEpoch()||codec.model(e.document(),ControlIdentityBinding.class).sessionsValidAfterUnixMs()<codec.model(old.document(),ControlIdentityBinding.class).sessionsValidAfterUnixMs())||e.id().kind()==Kind.WORKLOAD_BINDING&&codec.model(e.document(),ControlWorkloadBinding.class).credentialEpoch()<codec.model(old.document(),ControlWorkloadBinding.class).credentialEpoch())throw Failure.conflict();}
             var reply=new Store.Reply(200,codec.result(!input.dryRun(),after.revision(),changes),after.revision());if(!input.dryRun()){tx.save(before,after);auditChanges(tx,actor,before,after,requestId,"IMPORT",hash);tx.remember(actor.id(),key,hash,reply);}return reply;
@@ -132,6 +133,11 @@ public final class DirectoryService {
         return store.transaction(actor.tenant(),true,tx->{var before=tx.load();var entity=before.entries().get(kind.id(id));if(entity==null)throw missingFailure();require(actor,before,"update",entity);for(var group:input.groupIds())management.require(before,actor.userId(),"update",GroupGraph.groupKind(kind),group,System.currentTimeMillis());var replay=tx.replay(actor.id(),key,hash);if(replay!=null)return replay;if(before.revision()!=expected)throw Failure.conflict();var entries=new HashMap<>(before.entries());GroupGraph.setMemberships(entries,codec,kind,id,input.groupIds());var after=validated(before,before.revision()+1,entries);tx.save(before,after);auditChanges(tx,actor,before,after,requestId,"MEMBERSHIP_UPDATE",hash);var reply=membership(after,kind,id);tx.remember(actor.id(),key,hash,reply);return reply;});
     }
     public Store.Reply simulate(Actor actor,String document) {actor.requireAdmin();var input=codec.model(document,EnterpriseEvaluation.class);return store.transaction(actor.tenant(),false,tx->{management.requireAll(tx.load(),actor.userId(),"simulate",System.currentTimeMillis());var decision=new EnterpriseEvaluator(codec).evaluate(actor.tenant(),tx.load(),input);return new Store.Reply(200,codec.json(decision),tx.load().revision());});}
+    public Store.Reply shadow(Actor actor,String document){actor.requireAdmin();var request=codec.model(document,EnterpriseShadowRequest.class);return store.transaction(actor.tenant(),false,tx->{management.requireAll(tx.load(),actor.userId(),"simulate",lifecycleClock.millis());
+        var proposed=codec.input(codec.json(Map.of("snapshot",request.snapshot(),"mode","REPLACE","dryRun",true)),false,actor.tenant()).directory();proposed.validate(maxRecords,maxBytes);codec.validatePolicies(proposed);
+        var decision=new EnterpriseEvaluator(codec).evaluateWithQuotas(actor.tenant(),proposed,request.evaluation(),budget->tx.enterprise().budgetUsage(budget,Math.max(0,request.evaluation().nowUnixMs()-60000),null));
+        boolean expansion=request.observedLegacyDecision()==Decision.BLOCK&&decision.decision()!=Decision.BLOCK||request.observedLegacyDecision()==Decision.ASK&&decision.decision()==Decision.ALLOW;
+        return new Store.Reply(200,codec.json(new EnterpriseShadowResult(decision,request.observedLegacyDecision(),request.legacyEvidenceDigest(),digest(codec.json(request.snapshot())),expansion)),tx.load().revision());});}
     public static String digest(String value) {return digest(value.getBytes(StandardCharsets.UTF_8));}
     public static String digest(byte[] value) {try {return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value));}catch(java.security.NoSuchAlgorithmException e){throw new IllegalStateException(e);}}
 }

@@ -175,7 +175,7 @@ def jwt(groups, subject='admin', generation=None, directory_bound=True):
     if not directory_bound: claims.pop('user_id')
     elif subject in LOCAL_USERS:
         with Database() as db:
-            row=db.execute('SELECT document FROM control_records WHERE tenant_id=? AND kind=? AND record_id=?',
+            row=db.execute('SELECT CAST(document AS TEXT) FROM control_records WHERE tenant_id=? AND kind=? AND record_id=?',
                            (TENANT,'IDENTITY_BINDING','installed-'+subject)).fetchone()
         if not row: raise PermissionError()
         claims['session_epoch']=strict(row[0])['sessionEpoch']
@@ -281,11 +281,11 @@ def client_credentials():
 def configure():
     profiles = strict(subprocess.run(['/usr/local/bin/quickstart-tools','--authorization-profiles'],
                      check=True,capture_output=True,timeout=20).stdout)
-    device, packet, trust = prepare(DATA,TENANT,ISSUER,key,atomic,profiles)
     runtime_path=DATA/'run/runtime-token'
     if not runtime_path.exists(): atomic(runtime_path,secrets.token_urlsafe(48))
     runtime=runtime_path.read_text()
     digest=hashlib.sha256(runtime.encode()).hexdigest()
+    device, packet, trust = prepare(DATA,TENANT,ISSUER,key,atomic,profiles)
     # This disabled workload is an authentication identity only. Installation creates no workload grants.
     context=dict(requestId='local-workload',tenantId=TENANT,mode='SERVICE',agentId='agent-local',
                  workloadBindingId='workload-local',chain=[],credentialEpoch=1,bindingId='binding-default',
@@ -331,14 +331,14 @@ def configure():
                 'TOOLGATE_CONTROL_EFFECT_KEY_ID':'effect-local','TOOLGATE_CONTROL_EFFECT_ISSUER':'control',
                 'TOOLGATE_CONTROL_EFFECT_AUDIENCE':'toolgate-client',
                 'TOOLGATE_CONTROL_VAULT_KEY_PATH':'/data/keys/vault.key',
-                'TOOLGATE_CONTROL_RECOVERY_PACKET_PATH':str(packet),'TOOLGATE_CONTROL_RECOVERY_TRUST_PATH':str(trust),
+                'TOOLGATE_CONTROL_RECOVERY_PACKET_PATH':env.get('TOOLGATE_CONTROL_RECOVERY_PACKET_PATH',str(packet)),'TOOLGATE_CONTROL_RECOVERY_TRUST_PATH':env.get('TOOLGATE_CONTROL_RECOVERY_TRUST_PATH',str(trust)),
                 'TOOLGATE_CONTROL_ENDPOINT_ENABLED': 'true',
                 'TOOLGATE_CONTROL_ENDPOINT_PRIVATE_KEY_PATH': '/data/keys/device-ca.pem', 'TOOLGATE_CONTROL_ENDPOINT_CA_CERTIFICATE_PATH': '/data/keys/device-ca.crt',
                 'TOOLGATE_CONTROL_ENDPOINT_TENANT_ID': TENANT, 'TOOLGATE_CONTROL_ENDPOINT_SERVER_ID': 'quickstart-server',
                 'TOOLGATE_CONTROL_ENDPOINT_ORGANIZATION': 'Quickstart',
                 'TOOLGATE_CONTROL_ENDPOINT_CONTROL_URL': env.get('TOOLGATE_CONTROL_ENDPOINT_CONTROL_URL', 'https://localhost:8443'),
                 'TOOLGATE_CONTROL_ENDPOINT_GATEWAY_URL': env.get('TOOLGATE_CONTROL_ENDPOINT_GATEWAY_URL', 'https://localhost:8443'),
-                'TOOLGATE_CLIENT_DOWNLOADS_DIRECTORY': '/opt/toolgate/client-downloads'}
+                'TOOLGATE_CLIENT_DOWNLOADS_DIRECTORY': env.get('TOOLGATE_CLIENT_DOWNLOADS_DIRECTORY','/opt/toolgate/client-downloads')}
     if database_mode() == 'postgresql':
         for name in ('QUARKUS_DATASOURCE_JDBC_URL','QUARKUS_DATASOURCE_USERNAME','QUARKUS_DATASOURCE_PASSWORD','QUARKUS_FLYWAY_USERNAME','QUARKUS_FLYWAY_PASSWORD'):
             if not env.get(name): raise ValueError('External database settings required')
@@ -456,7 +456,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if len(raw)!=length: raise ValueError()
             path = urllib.parse.urlsplit(self.path).path
             if path=='/api/quickstart/v1/status' and self.command=='GET':
-                return self.reply(200, {'mode': 'Quickstart', 'nonHa': True, 'ready': self.server.ready.is_set(), 'version': Path('/opt/quickstart/VERSION').read_text().strip(), 'passwordRequired': not password_disabled(), 'database': database_mode(), 'cache': os.environ.get('TOOLGATE_CACHE_MODE','embedded')})
+                return self.reply(200, {'mode': 'Quickstart', 'nonHa': True, 'ready': self.server.ready.is_set(), 'version': Path('/opt/quickstart/VERSION').read_text().strip(), 'passwordRequired': not password_disabled(), 'database': database_mode(), 'authority': 'online'})
             if path=='/health/ready' and self.command=='GET': return self.reply(200 if self.server.ready.is_set() else 503, {'ready': self.server.ready.is_set()})
             if path=='/api/quickstart/v1/login' and self.command=='POST':
                 with self.server.login_lock:
@@ -557,31 +557,21 @@ def backup(destination):
     atomic(destination/'manifest.json', json.dumps({'layoutVersion':1, 'files': {p.relative_to(destination/'data').as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in (destination/'data').rglob('*') if p.is_file()}}))
 
 
-def restore(source):
-    import shutil
-    if any(p.name!='service.lock' for p in DATA.iterdir()): raise ValueError('Restore requires empty /data')
-    source = Path(source); manifest = strict((source/'manifest.json').read_bytes())
-    if manifest['layoutVersion']!=1: raise ValueError()
-    for name, digest in manifest['files'].items():
-        if not name or '..' in Path(name).parts or Path(name).is_absolute(): raise ValueError()
-        path = source/'data'/name
-        if path.is_symlink() or hashlib.sha256(path.read_bytes()).hexdigest()!=digest: raise ValueError('Backup integrity failure')
-    if any(p.is_symlink() for p in (source/'data').rglob('*')): raise ValueError('Unsafe backup entry')
-    actual = {p.relative_to(source/'data').as_posix() for p in (source/'data').rglob('*') if p.is_file()}
-    if actual != set(manifest['files']): raise ValueError('Unexpected backup file')
-    shutil.copytree(source/'data',DATA,dirs_exist_ok=True)
-    for path in DATA.rglob('*'): path.chmod(0o700 if path.is_dir() else 0o600)
+def restore(source,review=None,trust=None):
+    if not review or not trust:raise ValueError('Signed external restore review and pinned trust required')
+    import enterprise_restore
+    enterprise_restore.restore(source,DATA,review,trust)
 
 
 def main():
-    parser = argparse.ArgumentParser(); parser.add_argument('--backup'); parser.add_argument('--restore'); parser.add_argument('--health',action='store_true'); args = parser.parse_args()
+    parser = argparse.ArgumentParser(); parser.add_argument('--backup'); parser.add_argument('--restore'); parser.add_argument('--restore-review'); parser.add_argument('--restore-trust'); parser.add_argument('--health',action='store_true'); args = parser.parse_args()
     if args.health:
         with urllib.request.urlopen('http://127.0.0.1:8080/health/ready',timeout=3) as reply: return 0 if reply.status==200 else 1
     os.umask(0o077); DATA.mkdir(exist_ok=True)
     with (DATA/'service.lock').open('a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         if args.backup: backup(args.backup); return
-        if args.restore: restore(args.restore); return
+        if args.restore: restore(args.restore,args.restore_review,args.restore_trust); return
         initialize(); env, _ = configure(); children = []; stop=threading.Event(); ready_state=threading.Event()
         signal.signal(signal.SIGTERM, lambda *_: stop.set()); signal.signal(signal.SIGINT, lambda *_: stop.set())
         server = None; bridges=[]

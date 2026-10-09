@@ -29,7 +29,7 @@ public final class ReviewedRecovery {
         }}catch(GeneralSecurityException|IllegalArgumentException invalid){throw ManagementAccess.denied();}
         store.transaction(tenant,true,tx->{if(tx.enterprise().recoveryApplied(digest))return null;
             long now=clock.millis();if(authorization.issuedAtUnixMs()>now||authorization.expiresAtUnixMs()<=now||authorization.expiresAtUnixMs()-authorization.issuedAtUnixMs()>3600000)throw ManagementAccess.denied();
-            var before=tx.load();boolean initial=before.revision()==0&&before.entries().isEmpty()&&tx.enterprise().authorizationEpoch()==0;if(reviewers.size()<(initial?1:2))throw ManagementAccess.denied();if(before.revision()!=authorization.expectedRevision()||!authorization.snapshot().tenantId().equals(tenant.value())||authorization.snapshot().revision()!=before.revision())throw Failure.conflict();
+            var before=tx.load();boolean initial=before.revision()==0&&before.entries().isEmpty()&&tx.enterprise().authorizationEpoch()==0;if(reviewers.size()<(initial?1:2))throw ManagementAccess.denied();if(!java.util.Objects.equals(before.revision(),authorization.expectedRevision())||!authorization.snapshot().tenantId().equals(tenant.value())||authorization.snapshot().revision()!=before.revision())throw Failure.conflict();
             var input=codec.input(codec.json(Map.of("snapshot",authorization.snapshot(),"mode","REPLACE","dryRun",false)),false,tenant).directory();
             var entries=new HashMap<>(before.entries());
             for(var e:input.entries().values()){

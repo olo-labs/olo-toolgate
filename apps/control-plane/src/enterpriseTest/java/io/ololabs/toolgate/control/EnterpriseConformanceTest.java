@@ -73,7 +73,13 @@ class EnterpriseConformanceTest {
     @Test void blockOverridesEveryGrant() {policy("block",Decision.BLOCK);policy("allow",Decision.ALLOW);assertEquals(EnterpriseDecisionReason.BLOCKED,decide(context(EnterpriseRequestMode.DELEGATED,"binding-a")).reason());}
     @Test void askObligationsAccumulateAcrossAllowPaths() {policy("ask-a",Decision.ASK);policy("ask-b",Decision.ASK);policy("allow",Decision.ALLOW);var d=decide(context(EnterpriseRequestMode.DELEGATED,"binding-a"));assertEquals(Decision.ASK,d.decision());assertEquals(List.of("ask-a","ask-b"),d.obligations());}
     @Test void disabledIdentityCannotBeApproved() {policy("ask",Decision.ASK);add(Kind.USER,new ControlUser("alice","Alice",false,2L));assertEquals(EnterpriseDecisionReason.IDENTITY_DISABLED,decide(context(EnterpriseRequestMode.DELEGATED,"binding-a")).reason());}
-    @Test void missingTrustEvidenceDeniesEvenUnconditionalGrants() {remove(Kind.DEVICE_EVIDENCE,"evidence");assertEquals(EnterpriseDecisionReason.DEVICE_UNTRUSTED,decide(context(EnterpriseRequestMode.HUMAN,"binding-a")).reason());}
+    @Test void missingRequiredTrustEvidenceDeniesButUnconditionalGrantNeedsNoUnusedAttestation() {
+        remove(Kind.DEVICE_EVIDENCE,"evidence");assertEquals(Decision.ALLOW,decide(context(EnterpriseRequestMode.HUMAN,"binding-a")).decision());
+        var ordinary=scope("tools-a","devices-a");
+        var required=new EnterpriseConditions(0L,0L,List.of(),List.of("managed"),List.of(),List.of(),true,false,null,null);
+        grant("human","team-a",EnterpriseSourceType.TEAM,EnterpriseGrantPurpose.HUMAN,new EnterpriseScope(ordinary.toolGroups(),ordinary.deviceGroups(),ordinary.actions(),ordinary.allActions(),ordinary.resources(),required));
+        assertEquals(EnterpriseDecisionReason.DEVICE_UNTRUSTED,decide(context(EnterpriseRequestMode.HUMAN,"binding-a")).reason());
+    }
     @Test void serviceModeNeedsExplicitServiceGrantAndCapability() {workload("workload","agent",EnterpriseRequestMode.SERVICE,null,null);assertEquals(Decision.BLOCK,decide(context(EnterpriseRequestMode.SERVICE,"binding-a")).decision());grant("service","group-a",EnterpriseSourceType.AGENT_GROUP,EnterpriseGrantPurpose.SERVICE,scope("tools-a","devices-a"));assertEquals(Decision.ALLOW,decide(context(EnterpriseRequestMode.SERVICE,"binding-a")).decision());remove(Kind.GRANT,"capability");assertEquals(Decision.BLOCK,decide(context(EnterpriseRequestMode.SERVICE,"binding-a")).decision());}
     @Test void serviceIdentityCannotReuseDelegatedCredential() {assertEquals(EnterpriseDecisionReason.INVALID_CONTEXT,decide(context(EnterpriseRequestMode.SERVICE,"binding-a")).reason());}
     @Test void revokedSessionDenies() {var c=context(EnterpriseRequestMode.HUMAN,"binding-a");c=new EnterpriseContext(c.requestId(),c.tenantId(),c.mode(),c.userId(),null,null,List.of(),2L,null,c.bindingId(),c.deviceId());assertEquals(EnterpriseDecisionReason.IDENTITY_DISABLED,decide(c).reason());}

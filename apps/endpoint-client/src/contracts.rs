@@ -43,9 +43,12 @@ impl Contracts {
                     definitions.push((name.clone(), uri.to_string()));
                 }
             }
-            registry = registry.add(*uri, value).map_err(|_| Failure::Validation)?;
+            registry = registry.add(*uri, value).map_err(|error| {tracing::error!(event="contract_initialization",stage="registry",schema=%uri,error=%error);Failure::Validation})?;
         }
-        let registry = registry.prepare().map_err(|_| Failure::Validation)?;
+        let registry = registry.prepare().map_err(|error| {
+            tracing::error!(event="contract_initialization",stage="references",error=%error);
+            Failure::Validation
+        })?;
         let mut validators = BTreeMap::new();
         for (name, uri) in definitions {
             let schema = serde_json::json!({"$schema":"https://json-schema.org/draft/2020-12/schema","$ref":format!("{uri}#/$defs/{name}")});
@@ -81,5 +84,14 @@ impl Contracts {
         let bytes = serde_json::to_vec(model).map_err(|_| Failure::Validation)?;
         let _: serde_json::Value = self.decode(name, &bytes)?;
         Ok(bytes)
+    }
+}
+
+#[cfg(test)]
+mod validation_tests {
+    #[test]
+    fn all_runtime_contracts_compile_without_external_references() {
+        let _ = tracing_subscriber::fmt().with_test_writer().try_init();
+        super::Contracts::new().unwrap();
     }
 }

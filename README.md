@@ -1,5 +1,14 @@
 # OLO ToolGate
 
+The enterprise intermediary version uses group-only grants and current Control
+checks for discovery, protected effects and saved results. Unknown verified Users
+start disabled in the default Team; default groups grant no access. Agents have a
+separate menu and inherit capabilities through Agent Groups. Independent reviewers
+approve configuration and operation requests. See [implementation evidence and
+remaining acceptance work](docs/enterprise-access-control/implementation-status.md)
+and [migration/recovery operations](docs/enterprise-access-control/operations.md).
+
+
 The current Clients table combines registered devices and pending requests, with device names, registered users and detail tooltips. Enable/Disable and Approve/Deapprove are independent; approval may be timed or explicitly unlimited. Quickstart separately registers the fixed executor, HotFolder and REST forwarding.
 
 See [Device registry and tool-call controls](docs/control-plane/device-registry.md).

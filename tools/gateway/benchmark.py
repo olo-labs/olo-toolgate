@@ -1,6 +1,6 @@
 # Copyright 2026 OLO Labs
 # SPDX-License-Identifier: Apache-2.0
-"""Record the measured core baseline and its execution context."""
+"""Record the measured ingress validation microbenchmark and its execution context."""
 import json
 import platform
 import sys
@@ -18,10 +18,8 @@ def main():
         if not line.startswith('{'):continue
         sample=json.loads(line)
         sample.update(host=platform.platform(),hostCpu=platform.processor(),toolchain='Rust 1.94.1',execution='Docker rust:1.94-bookworm' if DOCKER else 'native',networkIncluded=False,collectorIoIncluded=False)
-        if sample['benchmark'] in ('signed-policy-evaluation', 'signed-ask-policy-evaluation'):
-            sample['monotonicClock']='fixed for reproducible full-scan samples; production Instant sampling cost excluded'
-        name={'authorization-core':'benchmark.json','signed-policy-evaluation':'bundle-benchmark.json',
-              'signed-ask-policy-evaluation':'approval-benchmark.json'}[sample['benchmark']]
+        if sample['benchmark']!='ingress-validation':raise ValueError('Unexpected benchmark; this gate measures parsing only')
+        sample['microsPerRequest']=sample['elapsedMicros']/sample['iterations'];name='benchmark.json'
         (folder/name).write_text(json.dumps(sample,indent=2)+'\n',encoding='utf-8',newline='\n')
         print(json.dumps(sample,indent=2))
 

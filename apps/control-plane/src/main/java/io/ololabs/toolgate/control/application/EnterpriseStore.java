@@ -8,7 +8,12 @@ import java.util.List;
 /** All methods run inside the tenant transaction which also commits audit and directory state. */
 public interface EnterpriseStore {
     long authorizationEpoch();
+    EnterpriseOperationalStatus operationalStatus(long now);
     EnterpriseInvocation invocation(String id);
+    List<EnterpriseInvocation> invocations(String after,int limit);
+    List<EnterpriseInvocation> expiredInvocations(long now,int limit);
+    EnterpriseReconciliation reconciliation(String id);
+    void saveReconciliation(EnterpriseReconciliation value,long expectedRevision);
     void saveInvocation(EnterpriseInvocation invocation,long createdAt,long expectedRevision);
     long invocationsSince(long since);
     EnterpriseApproval approval(String id);
@@ -30,6 +35,10 @@ public interface EnterpriseStore {
     void acknowledge(EnterpriseAdoptionStatus status);
     List<EnterpriseAdoptionStatus> adoptions();
     void published(long revision,long now);
+    String creator(String kind,String id);
+    void rememberCreator(String kind,String id,String user);
+    long budgetUsage(String budget,long since,String excludingInvocation);
+    void reserveBudget(String budget,String invocation,long now);
     record Secret(String name,String toolGroupId,String deviceGroupId,String cipher) {}
     record Nonce(String id,String invocationId,String evaluationDigest,long authorizationEpoch,long expiresAt,Long consumedAt) {}
 }

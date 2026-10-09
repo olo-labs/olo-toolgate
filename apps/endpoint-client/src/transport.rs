@@ -6,6 +6,20 @@ use olo_toolgate_contracts::*;
 use std::{future::Future, pin::Pin, sync::Arc, time::Duration};
 pub type Call<'a, T> = Pin<Box<dyn Future<Output = Result<T>> + Send + 'a>>;
 pub trait ControlPort: Send + Sync {
+    fn effect_outcome(
+        &self,
+        _identity: DeviceIdentity,
+        _id: String,
+    ) -> Call<'_, EnterpriseInvocation> {
+        Box::pin(async { Err(Failure::Unsupported) })
+    }
+    fn deliver_secret(
+        &self,
+        _identity: DeviceIdentity,
+        _request: EnterpriseSecretDeliveryRequest,
+    ) -> Call<'_, EnterpriseSecretDelivery> {
+        Box::pin(async { Err(Failure::Unsupported) })
+    }
     fn consume_effect(
         &self,
         _identity: DeviceIdentity,
@@ -231,6 +245,47 @@ impl HttpsControl {
     }
 }
 impl ControlPort for HttpsControl {
+    fn effect_outcome(
+        &self,
+        identity: DeviceIdentity,
+        id: String,
+    ) -> Call<'_, EnterpriseInvocation> {
+        Box::pin(async move {
+            let client = Self::builder(&self.config)?
+                .identity(self.key.tls_identity(&identity)?)
+                .build()
+                .map_err(|_| Failure::Unavailable)?;
+            self.request(
+                &client,
+                &format!("/api/control/v1/access/invocations/{id}/device-outcome"),
+                None,
+                "EnterpriseInvocation",
+            )
+            .await
+        })
+    }
+    fn deliver_secret(
+        &self,
+        identity: DeviceIdentity,
+        request: EnterpriseSecretDeliveryRequest,
+    ) -> Call<'_, EnterpriseSecretDelivery> {
+        Box::pin(async move {
+            let client = Self::builder(&self.config)?
+                .identity(self.key.tls_identity(&identity)?)
+                .build()
+                .map_err(|_| Failure::Unavailable)?;
+            self.request(
+                &client,
+                "/api/control/v1/access/secrets/deliver",
+                Some(
+                    self.contracts
+                        .encode("EnterpriseSecretDeliveryRequest", &request)?,
+                ),
+                "EnterpriseSecretDelivery",
+            )
+            .await
+        })
+    }
     fn consume_effect(
         &self,
         identity: DeviceIdentity,

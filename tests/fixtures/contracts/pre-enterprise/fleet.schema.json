@@ -1,0 +1,630 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ololabs.io/toolgate/v1/fleet.schema.json",
+  "$comment": "Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0",
+  "title": "FleetDesiredDocument",
+  "$ref": "#/$defs/FleetDesiredDocument",
+  "$defs": {
+    "FleetArchitecture": {
+      "type": "string",
+      "enum": [
+        "x86_64",
+        "aarch64"
+      ]
+    },
+    "FleetSignatureHeader": {
+      "type": "object",
+      "description": "Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.",
+      "additionalProperties": false,
+      "properties": {
+        "alg": {
+          "type": "string",
+          "const": "RS256"
+        },
+        "typ": {
+          "type": "string",
+          "pattern": "^toolgate-(package-release|fleet-desired|fleet-artifact|builder-test)\\+jws$",
+          "maxLength": 64
+        },
+        "kid": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "alg",
+        "typ",
+        "kid"
+      ]
+    },
+    "FleetSignedDocument": {
+      "type": "object",
+      "description": "Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.",
+      "additionalProperties": false,
+      "properties": {
+        "jws": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072,
+          "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+        }
+      },
+      "required": [
+        "jws"
+      ]
+    },
+    "FleetSelfTest": {
+      "type": "object",
+      "description": "Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.",
+      "additionalProperties": false,
+      "properties": {
+        "toolId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "arguments": {
+          "type": "object",
+          "maxProperties": 32
+        },
+        "expectedOutput": {
+          "type": "object",
+          "maxProperties": 32
+        }
+      },
+      "required": [
+        "toolId",
+        "arguments",
+        "expectedOutput"
+      ]
+    },
+    "FleetPackageDocument": {
+      "type": "object",
+      "description": "Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.",
+      "additionalProperties": false,
+      "properties": {
+        "formatVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "packageId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "version": {
+          "$ref": "identifiers.schema.json#/$defs/SemanticVersion"
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "$ref": "endpoint.schema.json#/$defs/ClientPlatform"
+          },
+          "minItems": 1,
+          "maxItems": 3
+        },
+        "architectures": {
+          "type": "array",
+          "items": {
+            "$ref": "fleet.schema.json#/$defs/FleetArchitecture"
+          },
+          "minItems": 1,
+          "maxItems": 2
+        },
+        "minimumClientVersion": {
+          "$ref": "identifiers.schema.json#/$defs/SemanticVersion"
+        },
+        "runtimes": {
+          "type": "array",
+          "items": {
+            "$ref": "execution.schema.json#/$defs/ManagedRuntime"
+          },
+          "minItems": 1,
+          "maxItems": 8
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "$ref": "execution.schema.json#/$defs/LocalToolRegistration"
+          },
+          "minItems": 1,
+          "maxItems": 16
+        },
+        "selfTests": {
+          "type": "array",
+          "items": {
+            "$ref": "fleet.schema.json#/$defs/FleetSelfTest"
+          },
+          "minItems": 1,
+          "maxItems": 16
+        }
+      },
+      "required": [
+        "formatVersion",
+        "packageId",
+        "version",
+        "platforms",
+        "architectures",
+        "minimumClientVersion",
+        "runtimes",
+        "tools",
+        "selfTests"
+      ]
+    },
+    "FleetPackageRelease": {
+      "type": "object",
+      "description": "Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.",
+      "additionalProperties": false,
+      "properties": {
+        "packageId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "version": {
+          "$ref": "identifiers.schema.json#/$defs/SemanticVersion"
+        },
+        "manifestDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32768
+        },
+        "release": {
+          "$ref": "fleet.schema.json#/$defs/FleetSignedDocument"
+        }
+      },
+      "required": [
+        "packageId",
+        "version",
+        "manifestDigest",
+        "sizeBytes",
+        "release"
+      ]
+    },
+    "FleetAssignment": {
+      "type": "object",
+      "description": "Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.",
+      "additionalProperties": false,
+      "properties": {
+        "release": {
+          "$ref": "fleet.schema.json#/$defs/FleetPackageRelease"
+        },
+        "desiredPresence": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "release",
+        "desiredPresence"
+      ]
+    },
+    "FleetDesiredSnapshot": {
+      "type": "object",
+      "description": "Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.",
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "assignments": {
+          "type": "array",
+          "items": {
+            "$ref": "fleet.schema.json#/$defs/FleetAssignment"
+          },
+          "minItems": 0,
+          "maxItems": 16
+        }
+      },
+      "required": [
+        "deviceId",
+        "generation",
+        "assignments"
+      ]
+    },
+    "FleetDesiredDocument": {
+      "type": "object",
+      "description": "Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.",
+      "additionalProperties": false,
+      "properties": {
+        "formatVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "tenantId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "serverId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "issuedAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "assignments": {
+          "type": "array",
+          "items": {
+            "$ref": "fleet.schema.json#/$defs/FleetAssignment"
+          },
+          "minItems": 0,
+          "maxItems": 16
+        }
+      },
+      "required": [
+        "formatVersion",
+        "tenantId",
+        "serverId",
+        "deviceId",
+        "generation",
+        "issuedAtUnixMs",
+        "expiresAtUnixMs",
+        "assignments"
+      ]
+    },
+    "FleetArtifactGrantRequest": {
+      "type": "object",
+      "description": "Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.",
+      "additionalProperties": false,
+      "properties": {
+        "generation": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "manifestDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        }
+      },
+      "required": [
+        "generation",
+        "manifestDigest"
+      ]
+    },
+    "FleetArtifactGrantClaims": {
+      "type": "object",
+      "description": "Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.",
+      "additionalProperties": false,
+      "properties": {
+        "tenantId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "serverId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "manifestDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32768
+        },
+        "grantId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "issuedAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "tenantId",
+        "serverId",
+        "deviceId",
+        "generation",
+        "manifestDigest",
+        "sizeBytes",
+        "grantId",
+        "issuedAtUnixMs",
+        "expiresAtUnixMs"
+      ]
+    },
+    "FleetRolloutRequest": {
+      "type": "object",
+      "description": "Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "packageId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "version": {
+          "$ref": "identifiers.schema.json#/$defs/SemanticVersion"
+        },
+        "deviceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "minItems": 1,
+          "maxItems": 256
+        },
+        "desiredPresence": {
+          "type": "boolean"
+        },
+        "percentage": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "id",
+        "packageId",
+        "version",
+        "deviceIds",
+        "desiredPresence",
+        "percentage"
+      ]
+    },
+    "FleetRolloutAdvance": {
+      "type": "object",
+      "description": "Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.",
+      "additionalProperties": false,
+      "properties": {
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "percentage": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "expectedRevision",
+        "percentage"
+      ]
+    },
+    "FleetRolloutMember": {
+      "type": "object",
+      "description": "Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.",
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "deviceId",
+        "generation"
+      ]
+    },
+    "FleetRolloutRecord": {
+      "type": "object",
+      "description": "Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "packageId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "version": {
+          "$ref": "identifiers.schema.json#/$defs/SemanticVersion"
+        },
+        "desiredPresence": {
+          "type": "boolean"
+        },
+        "percentage": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "createdAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "fleet.schema.json#/$defs/FleetRolloutMember"
+          },
+          "minItems": 1,
+          "maxItems": 256
+        }
+      },
+      "required": [
+        "id",
+        "packageId",
+        "version",
+        "desiredPresence",
+        "percentage",
+        "revision",
+        "createdAtUnixMs",
+        "members"
+      ]
+    },
+    "FleetRolloutStatus": {
+      "type": "object",
+      "description": "Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.",
+      "additionalProperties": false,
+      "properties": {
+        "rollout": {
+          "$ref": "fleet.schema.json#/$defs/FleetRolloutRecord"
+        },
+        "ready": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "offline": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "waiting": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "pending": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "superseded": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        }
+      },
+      "required": [
+        "rollout",
+        "ready",
+        "failed",
+        "offline",
+        "waiting",
+        "pending",
+        "superseded"
+      ]
+    },
+    "FleetRolloutPage": {
+      "type": "object",
+      "description": "Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "fleet.schema.json#/$defs/FleetRolloutStatus"
+          },
+          "minItems": 0,
+          "maxItems": 32
+        },
+        "nextCursor": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "items"
+      ]
+    },
+    "FleetReleasePage": {
+      "type": "object",
+      "description": "Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "fleet.schema.json#/$defs/FleetPackageRelease"
+          },
+          "minItems": 0,
+          "maxItems": 32
+        },
+        "nextCursor": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "items"
+      ]
+    },
+    "FleetClientStatus": {
+      "type": "object",
+      "description": "Signed fleet lifecycle contract; organization deployment trust never grants runtime permission.",
+      "additionalProperties": false,
+      "properties": {
+        "generation": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "ready": {
+          "type": "boolean"
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "$ref": "client.schema.json#/$defs/ReportedPackage"
+          },
+          "minItems": 0,
+          "maxItems": 16
+        },
+        "error": {
+          "$ref": "error.schema.json#/$defs/ErrorCode"
+        }
+      },
+      "required": [
+        "generation",
+        "ready",
+        "packages"
+      ]
+    },
+    "FleetTrustKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kid": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "n": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "minLength": 342,
+          "maxLength": 683
+        },
+        "e": {
+          "type": "string",
+          "const": "AQAB"
+        }
+      },
+      "required": [
+        "kid",
+        "n",
+        "e"
+      ],
+      "description": "Explicit RSA public trust key; no private material or implicit domain sharing."
+    }
+  }
+}

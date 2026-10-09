@@ -125,41 +125,17 @@ cap. Do not delete records or reset generations in SQL to reclaim capacity.
 
 ## Debug environment and production troubleshooting
 
-Build/check with make check (Windows: Python tools/check.py with
-TOOLGATE_DOCKER_TOOLS=1), tools/control/check.py, and `python tools/deployment/check.py --control-image
-olo-toolgate-control:module09 --binary PATH_TO_LINUX_CLIENT`. On Windows pass
-`--docker-cli PATH_TO_REAL_LINUX_DOCKER_CLI`. Build the Control production image
-from apps/control-plane/Dockerfile and the client release before this gate. Use disposable databases,
-ephemeral dedicated keys and nonce-owned containers; test fixture keys are public
-verification vectors, never deployment credentials. The integration harness's
-static policy is valid test authorization, not a production bypass.
+Run `python tools/enterprise/check.py` for durable Fleet/Builder, tenant isolation,
+certificate-bound dispatch and current creator group authority, and
+`python tools/quickstart/check.py --build` for actual Gateway/native effects.
+Use nonce-owned disposable fixtures and dedicated ephemeral test keys.
 
-Use the console/API to inspect rollout counts and endpoint report.appliedRevision
-and report.packages. Compare desired generation to applied revision; READY requires
-exact generation, version and intended presence. Check structured fleet_reconcile
-logs by generation/result; no tool arguments, credentials or raw stderr are logged.
-Control exposes toolgate_control_fleet_operations_total with bounded operation
-labels, existing HTTP latency/error metrics, OTLP correlation and mutation audit.
-Client `health`, `runtimes status`, `runtimes prepare`, `run TOOL JSON` and OS service
-logs distinguish device readiness, runtime health and Gateway permission. Inspect
-protected journal metadata only as an authorized system administrator; never
-export device-key/private keys while debugging.
+Deployments and artifact grants do not authorize ordinary tool execution.
+Assignments require current group-derived deploy authority; downloads recheck that
+creator and exact target/generation/digest before returning bytes. Ordinary effects
+require the current complete group path, installed profile, independent ASK approval
+where applicable and a short-lived consumed Control permit.
 
-| Symptom | Check/action |
-|---|---|
-| Publish rejected | Exact bytes/hash/size, release kid, closed schema and one self-test/tool |
-| Rollout conflict | Fresh revision, existing release, active enrolled targets, caps, superseded canary |
-| Offline | Service boot/lifetime, mTLS certificate/revocation, pinned Control/TLS origin |
-| FAILED download | Fixed mirror CA/token/egress, immutable DIGEST.json bytes, redirects, 5s deadline |
-| FAILED compatibility | OS/arch/min client; reviewed engine and supported runtime/image version |
-| FAILED health | Confined JSON probe output/schema/timeout/memory; use isolated debug image |
-| Staging after interruption | Leave journals intact; reconnect and allow a fresh signed generation/health retry |
-| READY tool blocked | Desired expiry, device heartbeat, Gateway policy/ASK permit, tool resource binding |
-| Wrong generation/report | Do not edit journals; restore server state or assign a new higher generation |
-
-Back up PostgreSQL, mirror descriptors, trust-key history and managed engine cache.
-Never restore client generation/identity independently of the fleet authority.
-Upgrade older clients first; 0.8 clients accept only empty package reports and
-cannot consume fleet assignments. 0.9 Control leaves fleet disabled until external
-trust/store configuration validates. Remote image/chart/client release, signing,
-SBOM and provenance use existing protected CI workflows.
+Use [online authority and recovery operations](../enterprise-access-control/operations.md)
+and the current client confinement guide. Do not use archived individual ACL or
+Gateway policy/bundle settings to restore old permissions.

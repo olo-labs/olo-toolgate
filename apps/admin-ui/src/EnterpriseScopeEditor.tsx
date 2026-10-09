@@ -8,7 +8,14 @@ import type {DirectoryKind} from './operations.generated';
 export const emptyConditions={notBeforeUnixMs:0,expiresAtUnixMs:0,networkCidrs:[],devicePosture:[],regions:[],hoursUtc:[],requireOnline:true,highRisk:false} as const;
 export const emptyScope:EnterpriseScope={toolGroups:{ids:[],all:false},deviceGroups:{ids:[],all:false},actions:[],allActions:false,resources:[],conditions:emptyConditions};
 
+const object=(v:unknown):v is Record<string,unknown>=>Boolean(v)&&typeof v==='object'&&!Array.isArray(v);
+const strings=(v:unknown)=>Array.isArray(v)&&v.every(s=>typeof s==='string');
+export const groupShape=(v:unknown)=>object(v)&&typeof v.all==='boolean'&&strings(v.ids);
+export const conditionsShape=(v:unknown)=>object(v)&&typeof v.notBeforeUnixMs==='number'&&typeof v.expiresAtUnixMs==='number'&&typeof v.requireOnline==='boolean'&&typeof v.highRisk==='boolean'&&['networkCidrs','devicePosture','regions'].every(k=>strings(v[k]))&&Array.isArray(v.hoursUtc)&&v.hoursUtc.every(h=>object(h)&&['dayOfWeek','startMinute','endMinute'].every(k=>typeof h[k]==='number'));
+export const scopeShape=(v:unknown)=>object(v)&&groupShape(v.toolGroups)&&groupShape(v.deviceGroups)&&strings(v.actions)&&typeof v.allActions==='boolean'&&conditionsShape(v.conditions)&&Array.isArray(v.resources)&&v.resources.every(r=>object(r)&&['FILE','URL','DATABASE','CUSTOM'].includes(String(r.kind))&&typeof r.locator==='string'&&['ANY','EXACT','PREFIX'].includes(String(r.match)));
+
 export function GroupSelector({client,kind,label,value,change,disabled=false}:{client:ControlClient;kind:DirectoryKind;label:string;value:GroupSelection;change:(value:GroupSelection)=>void;disabled?:boolean}) {
+  if(!groupShape(value))return <p role="alert">Complete the group selection in advanced JSON.</p>;
   return <fieldset disabled={disabled}><legend>{label}</legend><label className="checkbox"><input type="checkbox" checked={value.all} onChange={e=>change({all:e.target.checked,ids:[]})}/>Explicitly select all groups</label>
     {!value.all&&<ScopePicker client={client} kind={kind} label={label} value={value.ids} onChange={ids=>change({ids,all:false})} disabled={disabled}/>}
     <p className="hint">{value.all?'Includes future groups. Control requires a grantable wildcard ceiling.':value.ids.length?'Only these groups are selected.':'No groups selected; this scope grants nothing.'}</p></fieldset>;
@@ -16,6 +23,7 @@ export function GroupSelector({client,kind,label,value,change,disabled=false}:{c
 
 /** Guided and advanced editors persist the same complete canonical scope. */
 export function EnterpriseScopeEditor({client,value,change,disabled=false}:{client:ControlClient;value:EnterpriseScope;change:(value:EnterpriseScope)=>void;disabled?:boolean}) {
+  if(!scopeShape(value))return <p role="alert">Complete the permission scope in advanced JSON.</p>;
   const update=(field:keyof EnterpriseScope,next:unknown)=>change({...value,[field]:next});
   const resource=(index:number,next:EnterpriseResourceRule)=>update('resources',value.resources.map((v,i)=>i===index?next:v));
   return <fieldset disabled={disabled} className="enterprise-scope"><legend>Complete permission scope</legend>

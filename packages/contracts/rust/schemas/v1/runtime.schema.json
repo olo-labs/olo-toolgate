@@ -26,49 +26,6 @@
         "action",
         "arguments"
       ]
-    },
-    "RuntimeAuditEvent": {
-      "type": "object",
-      "description": "Sanitized authorization evaluation event; hashes replace raw arguments and resource locators. A decision is not execution success.",
-      "additionalProperties": false,
-      "properties": {
-        "timestampUnixMs": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "context": {
-          "$ref": "common.schema.json#/$defs/RequestContext"
-        },
-        "toolId": {
-          "$ref": "identifiers.schema.json#/$defs/Identifier"
-        },
-        "action": {
-          "$ref": "identifiers.schema.json#/$defs/Identifier"
-        },
-        "resourceDigest": {
-          "$ref": "identifiers.schema.json#/$defs/Sha256"
-        },
-        "argumentsDigest": {
-          "$ref": "identifiers.schema.json#/$defs/Sha256"
-        },
-        "decision": {
-          "$ref": "policy.schema.json#/$defs/PolicyDecision"
-        },
-        "traceId": {
-          "type": "string",
-          "pattern": "^[a-f0-9]{32}$"
-        }
-      },
-      "required": [
-        "timestampUnixMs",
-        "context",
-        "toolId",
-        "action",
-        "resourceDigest",
-        "argumentsDigest",
-        "decision",
-        "traceId"
-      ]
     }
   }
 }

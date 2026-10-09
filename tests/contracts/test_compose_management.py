@@ -53,7 +53,7 @@ class ComposeManagementTests(unittest.TestCase):
             with self.subTest(folder=folder):
                 result, calls = self.deploy(folder, 'ololab/olo-toolgate-quickstart:dev')
                 self.assertEqual(0, result.returncode, result.stdout+result.stderr)
-                self.assertIn(' pull', calls)
+                self.assertTrue(any(line.startswith('pull ') and 'ololab/' in line for line in calls.splitlines()), calls)
                 self.assertNotIn('image inspect', calls)
 
     def test_missing_local_image_stops_with_actionable_configuration(self):

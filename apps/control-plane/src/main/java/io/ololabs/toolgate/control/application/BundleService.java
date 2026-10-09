@@ -42,7 +42,7 @@ public final class BundleService {
             if (replay != null) return replay;
             if(request.graceMs()!=0 || request.gracePolicyIds()!=null&&!request.gracePolicyIds().isEmpty())throw Failure.validation();
             long previous = tx.bundleSequence();
-            if (directory.revision() != request.directoryRevision() || previous != request.expectedSequence()
+            if (!java.util.Objects.equals(directory.revision(),request.directoryRevision()) || previous != request.expectedSequence()
                     || previous >= 9007199254740991L) throw Failure.conflict();
             String policy;
             long sourceRevision = directory.revision();
@@ -53,7 +53,7 @@ public final class BundleService {
                 var old = tx.bundle(request.rollbackOf());
                 if (old == null) throw new Failure(ErrorCode.NOT_FOUND, 404, "Bundle not found");
                 // A rollback is a reviewed newer directory revision. Old graphs cannot revive credentials or grants.
-                if(old.directoryRevision()!=directory.revision())throw Failure.conflict();
+                if(!java.util.Objects.equals(old.directoryRevision(),directory.revision()))throw Failure.conflict();
                 policy=compiler.compile(actor.tenant(),directory);
             }
             long sequence = previous + 1;

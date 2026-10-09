@@ -75,4 +75,10 @@ class EnterpriseAdministrationTest {
     @Test void identifiersRemainRetiredAfterDeletion() {
         var group=new ControlToolGroup("empty-group","Empty group",true,1L,List.of());directory.mutate(administrator,Kind.TOOL_GROUP,group.id(),"CREATE",graph.codec.json(group),0,"create-empty","request");directory.mutate(administrator,Kind.TOOL_GROUP,group.id(),"DELETE",null,1,"delete-empty","request");assertThrows(Failure.class,()->directory.mutate(administrator,Kind.TOOL_GROUP,group.id(),"CREATE",graph.codec.json(group),0,"recreate-empty","request"));
     }
+    @Test void shadowComparesCapturedLegacyDecisionWithoutApplyingGrantsOrConsumingAuthority(){
+        var proposed=graph.codec.model(graph.codec.snapshot(administrator.tenant(),graph.directory(),false),ControlSnapshot.class);var evaluation=graph.input(graph.context(EnterpriseRequestMode.HUMAN,"binding-a"),List.of(new ResourceDescriptor(ResourceKind.FILE,"data/report.txt")));
+        var before=store.transaction(administrator.tenant(),false,tx->List.of(tx.load().revision(),tx.enterprise().authorizationEpoch(),tx.enterprise().invocationsSince(0)));
+        var result=graph.codec.model(directory.shadow(administrator,graph.codec.json(new EnterpriseShadowRequest(proposed,evaluation,Decision.BLOCK,EnterpriseConformanceTest.DIGEST))).body(),EnterpriseShadowResult.class);assertEquals(Decision.ALLOW,result.decision().decision());assertTrue(result.accessExpansion());assertEquals(before,store.transaction(administrator.tenant(),false,tx->List.of(tx.load().revision(),tx.enterprise().authorizationEpoch(),tx.enterprise().invocationsSince(0))));
+    }
+
 }

@@ -27,7 +27,6 @@ public class ControlResource {
     @Inject MeterRegistry metrics;
     @Inject VerifiedActors actors;
     @Inject PostgresStore store;@Inject ContractCodec codec;
-    @GET @Path("access/status") public Response authorityStatus(){var a=actor();return response(store.transaction(a.tenant(),false,tx->{new io.ololabs.toolgate.control.application.ManagementAccess(codec).requireAll(tx.load(),a.userId(),"read",System.currentTimeMillis());long seq=tx.bundleSequence();var bundle=seq==0?null:tx.bundle(seq);var value=new io.ololabs.toolgate.contracts.EnterpriseAuthorityStatus(tx.load().revision(),tx.enterprise().authorizationEpoch(),seq,bundle==null?null:bundle.directoryRevision(),tx.enterprise().adoptions());return new Store.Reply(200,codec.json(value),tx.load().revision());}),"READ","authority-status");}
     private DirectoryService.Actor actor() { return actors.management(); }
     private Response response(Store.Reply reply, String operation, String kind) {
         metrics.counter("toolgate_control_operations_total", "operation", operation, "kind", kind).increment();
@@ -85,8 +84,6 @@ public class ControlResource {
     public Response memberships(@PathParam("entity") String entity,@PathParam("id") String id,@HeaderParam("If-Match") String etag,@HeaderParam("Idempotency-Key") String key,String document) {
         return response(changes.create(actor(),command(Kind.path(entity),id,"MEMBERSHIPS",document,expected(etag)),key,correlation.id()),"UPDATE","memberships");
     }
-    @POST @Path("access/simulate") @Consumes("application/json")
-    public Response simulate(String document) { return response(service.simulate(actor(),document),"SIMULATE","access"); }
     @GET @Path("openapi")
     public String openapi() { actor(); return codec.openapi(); }
     @PUT @Path(COLLECTION + "/{id:.+}") @Consumes("application/json") @io.quarkus.security.Authenticated

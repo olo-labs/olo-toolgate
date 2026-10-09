@@ -53,6 +53,13 @@ async fn invoke(
 }
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt()
+        .json()
+        .with_target(false)
+        .with_current_span(false)
+        .with_span_list(false)
+        .try_init()
+        .ok();
     if std::env::args().nth(1).as_deref() == Some("--authorization-profiles") {
         println!(
             "{}",
@@ -97,7 +104,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let heartbeat = tools.clone();
     tokio::spawn(async move {
         loop {
-            let _ = heartbeat.service.lock().await.tick().await;
+            let mut service = heartbeat.service.lock().await;
+            if service.health().state == olo_toolgate_contracts::EndpointState::Unenrolled {
+                let _ = service.enroll().await;
+            }
+            let _ = service.tick().await;
+            drop(service);
             tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         }
     });

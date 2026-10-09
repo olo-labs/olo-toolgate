@@ -75,10 +75,10 @@ jobs:
           ./gradlew --no-daemon :control-plane:test --tests io.ololabs.toolgate.control.SqliteTest
       - name: Build and test the actual composed image
         run: |
-          python tools/quickstart/check.py --build
+          python tools/quickstart/check.py --build --image olo-toolgate-quickstart:module11 --client-assets deploy/client-assets/release
           python tools/ui/package.py
-          docker run --rm --entrypoint /opt/quickstart-python/bin/python -v "$PWD:/work:ro" -w /work olo-toolgate-quickstart:module11 -m unittest discover -s tests/quickstart -v
-          python tools/quickstart/compose_smoke.py --browser
+          docker run --rm -e PYTHONPATH=/opt/quickstart --entrypoint /opt/quickstart-python/bin/python -v "$PWD:/work:ro" -w /work olo-toolgate-quickstart:module11 -m unittest discover -s tests/quickstart -v
+          python tools/quickstart/check.py --image olo-toolgate-quickstart:module11 --postgresql --no-browser
           python tools/check.py --scans
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.61.1 image --no-progress --exit-code 1 --severity HIGH,CRITICAL olo-toolgate-quickstart:module11
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/build/quickstart:/evidence" aquasec/trivy:0.61.1 image --no-progress --format cyclonedx --output /evidence/quickstart-sbom.cdx.json olo-toolgate-quickstart:module11

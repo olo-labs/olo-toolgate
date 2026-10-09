@@ -9,18 +9,14 @@ services:
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    mem_limit: 1g
+    mem_limit: 1536m
     cpus: 2
     stop_grace_period: 35s
     environment:
       TOOLGATE_DISABLE_ADMIN_PASSWORD: ${TOOLGATE_DISABLE_ADMIN_PASSWORD:-false}
       TOOLGATE_QUICKSTART_DATABASE_MODE: ${TOOLGATE_QUICKSTART_DATABASE_MODE:-sqlite}
-      TOOLGATE_CACHE_MODE: ${TOOLGATE_CACHE_MODE:-embedded}
     env_file:
       - path: ./env/.env.db
-        required: false
-        format: raw
-      - path: ./env/.env.cache
         required: false
         format: raw
     extra_hosts: ["host.docker.internal:host-gateway"]

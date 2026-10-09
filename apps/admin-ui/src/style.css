@@ -631,3 +631,6 @@ fieldset:disabled { opacity:.65; }
 .scope-option { display: flex; align-items: flex-start; gap: .75rem; padding: .65rem; border-bottom: 1px solid var(--border); }
 .scope-option input { width: auto; margin-top: .25rem; }
 .scope-option small { display: block; overflow-wrap: anywhere; opacity: .75; }
+
+/* Preserve readable complete scopes on narrow screens; the region scrolls by keyboard. */
+.inherited-scopes table { min-width: 42rem; }

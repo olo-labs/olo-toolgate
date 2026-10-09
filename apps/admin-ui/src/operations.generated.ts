@@ -1,6 +1,6 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
-// GENERATED FILE â€” DO NOT EDIT; python tools/ui/generate.py
+// GENERATED FILE — DO NOT EDIT; python tools/ui/generate.py
 import type { ControlAccessGrant, ControlAccessGrantPage, ControlAgent, ControlAgentDelegation, ControlAgentDelegationPage, ControlAgentGroup, ControlAgentGroupPage, ControlAgentPage, ControlDelegation, ControlDelegationPage, ControlDevice, ControlDeviceEvidence, ControlDeviceEvidencePage, ControlDeviceGroup, ControlDeviceGroupPage, ControlDevicePage, ControlExecutionBinding, ControlExecutionBindingPage, ControlIdentityBinding, ControlIdentityBindingPage, ControlPolicy, ControlPolicyPage, ControlResourceExtractor, ControlResourceExtractorPage, ControlRole, ControlRolePage, ControlTeam, ControlTeamPage, ControlTool, ControlToolGroup, ControlToolGroupPage, ControlToolPage, ControlUser, ControlUserPage, ControlWorkloadBinding, ControlWorkloadBindingPage } from '@olo-labs/toolgate-contracts';
 export const operations = {
   getAdminSession: { method: 'GET', path: '/api/control/v1/admin-session' },
@@ -158,11 +158,13 @@ export const operations = {
   getDeviceGroupMembership: { method: 'GET', path: '/api/control/v1/devices/{id}/groups' },
   updateDeviceGroupMembership: { method: 'PUT', path: '/api/control/v1/devices/{id}/groups' },
   simulateEnterpriseAccess: { method: 'POST', path: '/api/control/v1/access/simulate' },
+  listEnterpriseInvocations: { method: 'GET', path: '/api/control/v1/access/invocations' },
   submitEnterpriseInvocation: { method: 'POST', path: '/api/control/v1/access/invocations' },
   reserveEnterprisePermit: { method: 'POST', path: '/api/control/v1/access/invocations/reserve' },
   getEnterpriseInvocation: { method: 'GET', path: '/api/control/v1/access/invocations/{id}' },
   cancelEnterpriseInvocation: { method: 'POST', path: '/api/control/v1/access/invocations/{id}/cancel' },
   consumeEnterprisePermit: { method: 'POST', path: '/api/control/v1/access/permits/consume' },
+  getDeviceEnterpriseOutcome: { method: 'GET', path: '/api/control/v1/access/invocations/{id}/device-outcome' },
   reportEnterpriseEffect: { method: 'POST', path: '/api/control/v1/access/effects/report' },
   listConfigurationChanges: { method: 'GET', path: '/api/control/v1/configuration-changes' },
   getConfigurationChange: { method: 'GET', path: '/api/control/v1/configuration-changes/{id}' },
@@ -177,6 +179,12 @@ export const operations = {
   effectiveTools: { method: 'GET', path: '/api/control/v1/tools/{id}/effective-access' },
   effectiveDevices: { method: 'GET', path: '/api/control/v1/devices/{id}/effective-access' },
   accessAuthorityStatus: { method: 'GET', path: '/api/control/v1/access/status' },
+  proposeOutcomeReconciliation: { method: 'POST', path: '/api/control/v1/access/invocations/{id}/reconciliation' },
+  getOutcomeReconciliation: { method: 'GET', path: '/api/control/v1/access/reconciliations/{id}' },
+  decideOutcomeReconciliation: { method: 'POST', path: '/api/control/v1/access/reconciliations/{id}/decision' },
+  shadowEnterpriseAccess: { method: 'POST', path: '/api/control/v1/access/shadow' },
+  deliverRuntimeSecret: { method: 'POST', path: '/api/control/v1/access/secrets/deliver' },
+  enterpriseOperationalStatus: { method: 'GET', path: '/api/control/v1/access/operations' },
 } as const;
 export interface DirectoryRecords {
   agentDelegations: ControlAgentDelegation;

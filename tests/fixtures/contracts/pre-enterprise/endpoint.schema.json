@@ -1,0 +1,1174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ololabs.io/toolgate/v1/endpoint.schema.json",
+  "$comment": "Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0",
+  "title": "Endpoint identity foundation",
+  "$ref": "#/$defs/ClientHealth",
+  "$defs": {
+    "ClientPlatform": {
+      "type": "string",
+      "enum": [
+        "WINDOWS",
+        "LINUX",
+        "MACOS"
+      ]
+    },
+    "EnrollmentState": {
+      "type": "string",
+      "enum": [
+        "PENDING",
+        "APPROVED",
+        "DENIED",
+        "EXPIRED",
+        "CONSUMED"
+      ]
+    },
+    "EndpointState": {
+      "type": "string",
+      "enum": [
+        "UNENROLLED",
+        "PENDING",
+        "ACTIVE",
+        "OFFLINE",
+        "REVOKED"
+      ]
+    },
+    "EnrollmentChoice": {
+      "type": "string",
+      "enum": [
+        "APPROVE",
+        "DENY"
+      ]
+    },
+    "ClientDiscovery": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "protocolVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "serverId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "organization": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "tenantId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "controlUrl": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 2048,
+          "pattern": "^https://[^\\s]+$"
+        },
+        "gatewayUrl": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 2048,
+          "pattern": "^https://[^\\s]+$"
+        },
+        "verificationUri": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 2048,
+          "pattern": "^https://[^\\s]+$"
+        },
+        "minimumClientVersion": {
+          "$ref": "identifiers.schema.json#/$defs/SemanticVersion"
+        },
+        "issuedAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "issuerCertificatePem": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        }
+      },
+      "required": [
+        "protocolVersion",
+        "serverId",
+        "organization",
+        "tenantId",
+        "controlUrl",
+        "gatewayUrl",
+        "verificationUri",
+        "minimumClientVersion",
+        "issuedAtUnixMs",
+        "expiresAtUnixMs",
+        "issuerCertificatePem"
+      ]
+    },
+    "SignedClientDiscovery": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "payload": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32768,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "signature": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      },
+      "required": [
+        "payload",
+        "signature"
+      ]
+    },
+    "EndpointEnrollmentStart": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "clientVersion": {
+          "$ref": "identifiers.schema.json#/$defs/SemanticVersion"
+        },
+        "platform": {
+          "$ref": "endpoint.schema.json#/$defs/ClientPlatform"
+        },
+        "csrPem": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "capabilities": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          }
+        }
+      },
+      "required": [
+        "deviceId",
+        "clientVersion",
+        "platform",
+        "csrPem",
+        "capabilities"
+      ]
+    },
+    "EndpointEnrollmentChallenge": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "enrollmentId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "deviceCode": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "userCode": {
+          "type": "string",
+          "pattern": "^[A-F0-9]{16}$"
+        },
+        "verificationUri": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 2048,
+          "pattern": "^https://[^\\s]+$"
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "pollIntervalSeconds": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 30
+        }
+      },
+      "required": [
+        "enrollmentId",
+        "deviceCode",
+        "userCode",
+        "verificationUri",
+        "expiresAtUnixMs",
+        "pollIntervalSeconds"
+      ]
+    },
+    "EndpointEnrollmentPoll": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "enrollmentId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "deviceCode": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "enrollmentId",
+        "deviceCode"
+      ]
+    },
+    "EndpointEnrollmentReview": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "enrollmentId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "userCode": {
+          "type": "string",
+          "pattern": "^[A-F0-9]{16}$"
+        },
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "platform": {
+          "$ref": "endpoint.schema.json#/$defs/ClientPlatform"
+        },
+        "keyFingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "state": {
+          "$ref": "endpoint.schema.json#/$defs/EnrollmentState"
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "connectionExpiresAtUnixMs": {
+          "description": "Approved connection deadline; absent before approval or for legacy records.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "unlimitedConnection": {
+          "type": "boolean",
+          "description": "Approval has no connection deadline. Certificates still expire and renew."
+        }
+      },
+      "required": [
+        "enrollmentId",
+        "userCode",
+        "deviceId",
+        "platform",
+        "keyFingerprint",
+        "state",
+        "expiresAtUnixMs"
+      ]
+    },
+    "EndpointEnrollmentDecision": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "userCode": {
+          "type": "string",
+          "pattern": "^[A-F0-9]{16}$"
+        },
+        "keyFingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "choice": {
+          "$ref": "endpoint.schema.json#/$defs/EnrollmentChoice"
+        },
+        "connectionExpiresAtUnixMs": {
+          "description": "Future connection deadline for APPROVE. Omission defaults to 24 hours unless unlimitedConnection is true; ignored for DENY.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "unlimitedConnection": {
+          "type": "boolean",
+          "description": "Explicitly approve without a connection deadline; cannot be combined with a deadline."
+        }
+      },
+      "required": [
+        "userCode",
+        "keyFingerprint",
+        "choice"
+      ]
+    },
+    "EndpointEnrollmentPage": {
+      "type": "object",
+      "description": "All unexpired pending requests in the authenticated tenant; enrollment quota is 32.",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "endpoint.schema.json#/$defs/EndpointEnrollmentReview"
+          }
+        }
+      },
+      "required": [
+        "items"
+      ]
+    },
+    "DeviceIdentity": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "tenantId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "userId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "serverId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "certificatePem": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "issuerCertificatePem": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "deviceId",
+        "tenantId",
+        "userId",
+        "serverId",
+        "certificatePem",
+        "issuerCertificatePem",
+        "expiresAtUnixMs"
+      ]
+    },
+    "EndpointEnrollmentResult": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "$ref": "endpoint.schema.json#/$defs/EnrollmentState"
+        },
+        "identity": {
+          "$ref": "endpoint.schema.json#/$defs/DeviceIdentity"
+        }
+      },
+      "required": [
+        "state"
+      ]
+    },
+    "EndpointCheckIn": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "report": {
+          "$ref": "client.schema.json#/$defs/ClientReport"
+        },
+        "adoptionDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "localTools": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "builtins.schema.json#/$defs/BuiltinToolInfo"
+          }
+        }
+      },
+      "required": [
+        "sequence",
+        "report"
+      ]
+    },
+    "EndpointCheckInAck": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "serverTimeUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "nextIntervalSeconds": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 3600
+        },
+        "nextIntervalMs": {
+          "type": "integer",
+          "minimum": 500,
+          "maximum": 3600000,
+          "description": "Negotiated check-in interval for clients requesting milliseconds; takes precedence over nextIntervalSeconds."
+        },
+        "identity": {
+          "$ref": "endpoint.schema.json#/$defs/DeviceIdentity"
+        },
+        "adoption": {
+          "$ref": "endpoint.schema.json#/$defs/EndpointAdoption"
+        },
+        "task": {
+          "$ref": "endpoint.schema.json#/$defs/RemoteToolTask"
+        }
+      },
+      "required": [
+        "deviceId",
+        "sequence",
+        "serverTimeUnixMs",
+        "nextIntervalSeconds"
+      ]
+    },
+    "EndpointDeviceRecord": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "tenantId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "userId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "keyFingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "state": {
+          "$ref": "endpoint.schema.json#/$defs/EndpointState"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "lastSeenUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "reportSequence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "report": {
+          "$ref": "client.schema.json#/$defs/ClientReport"
+        },
+        "connectionExpiresAtUnixMs": {
+          "description": "Server-enforced connection deadline; absent for devices approved before deadline support.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "connectionApproved": {
+          "type": "boolean",
+          "description": "Reversible approval gate, independent of directory enabled state. Absent legacy values mean true."
+        },
+        "approvalRevision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991,
+          "description": "Approval revision independent of heartbeat revisions. Absent legacy values mean 1."
+        },
+        "systemName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[a-zA-Z0-9._-]+$",
+          "description": "Reported machine hostname; informational metadata, never authentication."
+        },
+        "ipAddress": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 45,
+          "pattern": "^[0-9a-fA-F:.]+$",
+          "description": "Server-observed transport IP address; may represent NAT or a proxy."
+        }
+      },
+      "required": [
+        "deviceId",
+        "tenantId",
+        "userId",
+        "keyFingerprint",
+        "state",
+        "revision",
+        "lastSeenUnixMs",
+        "reportSequence"
+      ]
+    },
+    "SystemExecutorKind": {
+      "type": "string",
+      "enum": [
+        "BUILTINS",
+        "HOTFOLDER",
+        "REST_FORWARDING"
+      ]
+    },
+    "EndpointManagedDevice": {
+      "type": "object",
+      "description": "Directory identity, enrolled approval and pending request combined for administrative management.",
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "systemExecutor": {
+          "type": "boolean"
+        },
+        "directoryDevice": {
+          "$ref": "control.schema.json#/$defs/ControlDevice"
+        },
+        "endpointDevice": {
+          "$ref": "endpoint.schema.json#/$defs/EndpointDeviceRecord"
+        },
+        "enrollment": {
+          "$ref": "endpoint.schema.json#/$defs/EndpointEnrollmentReview"
+        },
+        "registeredUser": {
+          "$ref": "control.schema.json#/$defs/ControlUser"
+        },
+        "systemExecutorKind": {
+          "$ref": "endpoint.schema.json#/$defs/SystemExecutorKind"
+        },
+        "systemAvailable": {
+          "type": "boolean",
+          "description": "Composition readiness for a server executor; absent when availability is unknown."
+        },
+        "systemName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[a-zA-Z0-9._-]+$",
+          "description": "Reported machine hostname; informational metadata, never authentication."
+        },
+        "ipAddress": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 45,
+          "pattern": "^[0-9a-fA-F:.]+$",
+          "description": "Server-observed transport IP address; may represent NAT or a proxy."
+        }
+      },
+      "required": [
+        "deviceId",
+        "systemExecutor"
+      ]
+    },
+    "EndpointManagedDevicePage": {
+      "type": "object",
+      "description": "All directory devices plus pending requests within the existing directory and enrollment quotas.",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 544,
+          "items": {
+            "$ref": "endpoint.schema.json#/$defs/EndpointManagedDevice"
+          }
+        }
+      },
+      "required": [
+        "items"
+      ]
+    },
+    "EndpointApprovalRequest": {
+      "type": "object",
+      "description": "Reversible approval decision for an already enrolled key, preserving its owner and directory status.",
+      "additionalProperties": false,
+      "properties": {
+        "expectedApprovalRevision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "approved": {
+          "type": "boolean"
+        },
+        "connectionExpiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "unlimitedConnection": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "expectedApprovalRevision",
+        "approved"
+      ]
+    },
+    "EndpointEnabledRequest": {
+      "type": "object",
+      "description": "Toggle device directory activation, including a pending device. Zero expects no directory record yet.",
+      "additionalProperties": false,
+      "properties": {
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "expectedRevision",
+        "enabled"
+      ]
+    },
+    "EndpointRevokeRequest": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "expectedRevision"
+      ]
+    },
+    "ClientHealth": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "$ref": "endpoint.schema.json#/$defs/EndpointState"
+        },
+        "ready": {
+          "type": "boolean"
+        },
+        "uptimeSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "successfulCheckIns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "failedCheckIns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "reportSequence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "lastSuccessUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "state",
+        "ready",
+        "uptimeSeconds",
+        "successfulCheckIns",
+        "failedCheckIns",
+        "reportSequence"
+      ]
+    },
+    "ClientIpcOperation": {
+      "type": "string",
+      "enum": [
+        "HEALTH",
+        "ENROLL",
+        "CHECK_IN"
+      ]
+    },
+    "ClientIpcRequest": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "protocolVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "requestId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "operation": {
+          "$ref": "endpoint.schema.json#/$defs/ClientIpcOperation"
+        }
+      },
+      "required": [
+        "protocolVersion",
+        "requestId",
+        "operation"
+      ]
+    },
+    "ClientIpcResponse": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "health": {
+          "$ref": "endpoint.schema.json#/$defs/ClientHealth"
+        },
+        "challenge": {
+          "$ref": "endpoint.schema.json#/$defs/EndpointEnrollmentPrompt"
+        },
+        "error": {
+          "$ref": "error.schema.json#/$defs/ErrorCode"
+        }
+      },
+      "required": [
+        "requestId"
+      ]
+    },
+    "EndpointEnrollmentPrompt": {
+      "type": "object",
+      "description": "Endpoint identity foundation wire model.",
+      "additionalProperties": false,
+      "properties": {
+        "enrollmentId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "userCode": {
+          "type": "string",
+          "pattern": "^[A-F0-9]{16}$"
+        },
+        "verificationUri": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 2048,
+          "pattern": "^https://[^\\s]+$"
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "pollIntervalSeconds": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 30
+        },
+        "keyFingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "enrollmentId",
+        "userCode",
+        "verificationUri",
+        "expiresAtUnixMs",
+        "pollIntervalSeconds",
+        "keyFingerprint"
+      ]
+    },
+    "RemoteToolState": {
+      "type": "string",
+      "enum": [
+        "RECEIVED",
+        "WAITING_FOR_POLL",
+        "SUBMITTED",
+        "RESPONSE_RECEIVED",
+        "DONE",
+        "FAILED",
+        "EXPIRED"
+      ]
+    },
+    "RemoteToolSubmission": {
+      "type": "object",
+      "description": "Dedicated Gateway-authenticated request for one device-local tool.",
+      "additionalProperties": false,
+      "properties": {
+        "request": {
+          "$ref": "runtime.schema.json#/$defs/AuthorizationRequest"
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "context": {
+          "$ref": "common.schema.json#/$defs/RequestContext"
+        },
+        "invocationId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "context",
+        "invocationId",
+        "request",
+        "expiresAtUnixMs"
+      ]
+    },
+    "RemoteToolTask": {
+      "type": "object",
+      "description": "Bounded lease delivered only over device-authenticated polling; executable definitions are never accepted from an agent.",
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "leaseId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "request": {
+          "$ref": "runtime.schema.json#/$defs/AuthorizationRequest"
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "invocation": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseInvocation"
+        },
+        "permit": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseSignedPermit"
+        }
+      },
+      "required": [
+        "requestId",
+        "leaseId",
+        "invocation",
+        "permit",
+        "request",
+        "expiresAtUnixMs"
+      ]
+    },
+    "RemoteToolResult": {
+      "type": "object",
+      "description": "Exact leased execution response. Failed execution carries a sanitized error code.",
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "leaseId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "output": {
+          "type": "object"
+        },
+        "error": {
+          "$ref": "error.schema.json#/$defs/ErrorCode"
+        }
+      },
+      "required": [
+        "requestId",
+        "leaseId"
+      ]
+    },
+    "RemoteToolRecord": {
+      "type": "object",
+      "description": "Request progress visible to an administrator without arguments or results.",
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "agentId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "toolId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "state": {
+          "$ref": "endpoint.schema.json#/$defs/RemoteToolState"
+        },
+        "receivedAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "submittedAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "responseAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "completedAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "error": {
+          "$ref": "error.schema.json#/$defs/ErrorCode"
+        }
+      },
+      "required": [
+        "requestId",
+        "deviceId",
+        "toolId",
+        "state",
+        "receivedAtUnixMs",
+        "expiresAtUnixMs"
+      ]
+    },
+    "RemoteToolPage": {
+      "type": "object",
+      "description": "Bounded recent local-tool request progress.",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "endpoint.schema.json#/$defs/RemoteToolRecord"
+          }
+        }
+      },
+      "required": [
+        "items"
+      ]
+    },
+    "RemoteToolResponse": {
+      "type": "object",
+      "description": "Gateway-private queued request/result response.",
+      "additionalProperties": false,
+      "properties": {
+        "record": {
+          "$ref": "endpoint.schema.json#/$defs/RemoteToolRecord"
+        },
+        "result": {
+          "$ref": "endpoint.schema.json#/$defs/RemoteToolResult"
+        }
+      },
+      "required": [
+        "record"
+      ]
+    },
+    "RemoteToolAuthorization": {
+      "type": "object",
+      "description": "A leased client rechecks the exact pending operation online before execution.",
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "leaseId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "request": {
+          "$ref": "runtime.schema.json#/$defs/AuthorizationRequest"
+        }
+      },
+      "required": [
+        "requestId",
+        "leaseId",
+        "request"
+      ]
+    },
+    "RemoteToolAuthorizationAck": {
+      "type": "object",
+      "description": "Fresh remote operation deadline, never a reusable grant.",
+      "additionalProperties": false,
+      "properties": {
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "expiresAtUnixMs"
+      ]
+    },
+    "LocalToolCatalog": {
+      "type": "object",
+      "description": "Only enabled local definitions applicable to this verified agent and device.",
+      "additionalProperties": false,
+      "properties": {
+        "tools": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "builtins.schema.json#/$defs/BuiltinToolInfo"
+          }
+        }
+      },
+      "required": [
+        "tools"
+      ]
+    },
+    "ClientSocketOperation": {
+      "type": "string",
+      "enum": [
+        "CHECK_IN",
+        "AUTHORIZE",
+        "RESULT",
+        "BUILDER_POLL",
+        "BUILDER_RESULT"
+      ],
+      "description": "Fixed authenticated operations on the active-job channel."
+    },
+    "ClientSocketRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{32}$"
+        },
+        "operation": {
+          "$ref": "#/$defs/ClientSocketOperation"
+        },
+        "body": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "requestId",
+        "operation"
+      ],
+      "description": "Correlated bounded request; body is validated again as the selected operation contract."
+    },
+    "ClientSocketReply": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{32}$"
+        },
+        "status": {
+          "type": "integer",
+          "minimum": 200,
+          "maximum": 599
+        },
+        "body": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "requestId",
+        "status",
+        "body"
+      ],
+      "description": "Correlated status and response; body is validated again as the expected response contract."
+    },
+    "RemoteToolInspection": {
+      "type": "object",
+      "description": "Same-tenant administrator inspection of one completed response; excludes arguments and private lease credentials.",
+      "additionalProperties": false,
+      "properties": {
+        "record": {
+          "$ref": "endpoint.schema.json#/$defs/RemoteToolRecord"
+        },
+        "output": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "record"
+      ]
+    },
+    "EndpointAdoption": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Authenticated device adoption metadata. No owner or per-agent permission cache; discovery and effects require current online authority.",
+      "properties": {
+        "serverId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "authorizationEpoch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "digest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        }
+      },
+      "required": [
+        "serverId",
+        "deviceId",
+        "revision",
+        "authorizationEpoch",
+        "digest"
+      ]
+    }
+  }
+}

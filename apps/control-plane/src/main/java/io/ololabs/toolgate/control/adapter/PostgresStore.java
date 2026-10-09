@@ -30,6 +30,7 @@ public class PostgresStore implements Store {
             ? SqliteState.open(java.nio.file.Path.of(config.getValue("toolgate.quickstart.database", String.class))) : (javax.sql.DataSource) dataSource.get(), codec);
     }
     public PostgresStore(javax.sql.DataSource dataSource, ContractCodec codec) { this.dataSource = dataSource; this.codec = codec; }
+    public java.util.List<TenantId> tenants(){try(var connection=dataSource.getConnection();var s=connection.prepareStatement("SELECT tenant_id FROM control_tenants ORDER BY tenant_id LIMIT 10000");var rows=s.executeQuery()){var ids=new java.util.ArrayList<TenantId>();while(rows.next())ids.add(new TenantId(rows.getString(1)));return java.util.List.copyOf(ids);}catch(SQLException failure){throw Failure.unavailable();}}
     public <T> T transaction(TenantId tenant, boolean write, Function<Session, T> work) {
         try (var connection = dataSource.getConnection()) {
             connection.setAutoCommit(false);
@@ -139,7 +140,7 @@ public class PostgresStore implements Store {
             };
         }
         public long bundleSequence() {
-            try (var statement = statement("SELECT COALESCE(max(sequence),0) FROM control_policy_bundles WHERE tenant_id=?"); var rows = statement.executeQuery()) {
+            try (var statement = statement("SELECT max(n) FROM (SELECT COALESCE(max(sequence),0) n FROM control_policy_bundles WHERE tenant_id=? UNION ALL SELECT snapshot_sequence n FROM control_recovery_floors WHERE tenant_id=?) floors",tenant); var rows = statement.executeQuery()) {
                 rows.next(); return rows.getLong(1);
             } catch (SQLException e) { throw Failure.unavailable(); }
         }

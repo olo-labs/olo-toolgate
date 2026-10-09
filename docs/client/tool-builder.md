@@ -85,11 +85,9 @@ binaries do not establish that guarantee. Follow [runtime support](runtime-suppo
    decision for the exact tool, runtime image, arguments and resource.
    Inline tools also bind permits to a digest of the complete immutable runtime
    and tool registration, so changing source cannot reuse an old approval.
-   Configure the Gateway's existing extractor registry for this tool's `execute`
-   action, pointer `/path` and kind `CUSTOM`, and publish an explicit policy for
-   `runtime/<toolId>` through the existing [policy workflow](../control-plane/policy-bundles.md).
-   Unknown tools or missing policies remain BLOCK; package assignment grants no
-   runtime authorization.
+   Register a reviewed, versioned extractor in Control and place the Tool in its
+   primary Tool Group. Create an explicit Tool Group execution binding and complete
+   group grants. Package assignment and successful tests create no runtime rights.
 
    ```sh
    olo-toolgate-client run custom.echo '{"text":"hello"}'
@@ -128,23 +126,14 @@ author source inside the same confined engine; debug mode does not enable host
 execution, unrestricted shells or secret logging. Run the real integration gate:
 
 ```sh
-python tools/deployment/check.py --builder \
-  --control-image olo-toolgate-control:module10 \
-  --binary target/release/olo-toolgate-client
+python tools/enterprise/check.py
+python tools/quickstart/check.py --build
 ```
 
-Build the image with `apps/control-plane/Dockerfile` and a real Linux release
-binary first. On Windows supply the Linux binary and `--docker-cli` path to a
-real Linux Docker CLI. The harness owns disposable infrastructure, enrolls a
-real client, runs signed tests, seals/releases/deploys a package, invokes Gateway,
-checks outages/revocation and runs browser authoring/accessibility tests.
-
-Run `make check`, `python tools/control/check.py` and the existing real managed
-runtime gate documented in `local-runtimes.md`. CI adds builder E2E to the
-protected Control image gate and inline runners to the client runtime gate.
-Evidence is written to `build/client/module10-integration.json`; private temporary
-credentials stay out of committed artifacts. Check the [completion report](../codex/modules/10-completion.md)
-for executed commands and remaining native platform gates.
+EndpointTest covers certificate-bound Builder/Fleet dispatch and revocation of the
+creator's group authority before queued dispatch, result submission and artifact
+retrieval. The native OCI runtime tests cover confinement separately. Historical
+module reports describe earlier implementations; they are not current gate results.
 
 ## Diagnose failures
 

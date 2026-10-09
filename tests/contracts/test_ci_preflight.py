@@ -12,8 +12,8 @@ class EarlyGateTests(unittest.TestCase):
     def test_expensive_jobs_require_preflight(self):
         targets = {
             'foundation': ['check'],
-            'gateway': ['policy-compatibility', 'container-and-cluster'],
-            'control': ['clients', 'policy-compatibility', 'container-and-cluster'],
+            'gateway': ['policy-compatibility', 'container-and-replicas'],
+            'control': ['clients', 'policy-compatibility', 'container-and-replicas'],
             'quickstart': ['clients', 'image'],
             'client': ['native', 'public-bundle'],
         }

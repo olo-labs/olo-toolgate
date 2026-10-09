@@ -1,201 +1,11 @@
 {
-  "Identifier": "device-1",
-  "SemanticVersion": "0.1.0-dev",
-  "Sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  "SecretReference": "secret://example/token",
-  "ContractSet": {
-    "name": "olo-toolgate-contracts",
-    "version": "0.1.0-dev"
-  },
-  "RequestContext": {
-    "requestId": "request-1",
-    "tenantId": "tenant-1",
-    "mode": "HUMAN",
-    "userId": "user-1",
-    "agentId": "agent-1",
-    "chain": [],
-    "bindingId": "example",
-    "deviceId": "example"
-  },
-  "ErrorCode": "VALIDATION",
-  "ErrorEnvelope": {
-    "code": "VALIDATION",
-    "requestId": "request-1",
-    "retryable": false
-  },
-  "ResourceKind": "CUSTOM",
-  "ResourceDescriptor": {
-    "kind": "CUSTOM",
-    "locator": "calculator"
-  },
-  "ToolAction": {
-    "name": "evaluate",
-    "resourceKinds": [
-      "CUSTOM"
-    ]
-  },
-  "ToolDefinition": {
-    "id": "calculator",
-    "name": "Calculator",
-    "description": "Pure calculation",
-    "actions": [
-      {
-        "name": "evaluate",
-        "resourceKinds": [
-          "CUSTOM"
-        ]
-      }
-    ],
-    "inputSchema": {
-      "type": "object"
-    },
-    "outputSchema": {
-      "type": "number"
-    }
-  },
-  "Decision": "BLOCK",
-  "DecisionReason": "NO_MATCH",
-  "PolicyDecision": {
-    "decision": "BLOCK",
-    "reason": "NO_MATCH",
-    "policyVersion": "0.1.0-dev",
-    "requestId": "request-1"
-  },
-  "PackageState": "READY",
-  "ReportedPackage": {
-    "packageId": "community/calculator",
-    "version": "0.1.0-dev",
-    "state": "READY"
-  },
-  "PackageCompatibility": {
-    "contractsVersion": "0.1.0-dev",
-    "minimumClientVersion": "0.1.0-dev"
+  "AdminSession": {
+    "role": "ADMINISTRATOR"
   },
   "ArtifactDescriptor": {
     "uri": "https://example.invalid/calculator.zip",
     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "sizeBytes": 123
-  },
-  "MarketplaceRelease": {
-    "packageId": "community/calculator",
-    "version": "0.1.0-dev",
-    "manifestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "marketplaceKeyId": "marketplace/test-key",
-    "marketplaceSignature": "fixture-not-a-real-signature"
-  },
-  "DeploymentAssignment": {
-    "assignmentId": "assignment-1",
-    "deviceId": "device-1",
-    "release": {
-      "packageId": "community/calculator",
-      "version": "0.1.0-dev",
-      "manifestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "marketplaceKeyId": "marketplace/test-key",
-      "marketplaceSignature": "fixture-not-a-real-signature"
-    },
-    "organizationKeyId": "organization/test-key",
-    "organizationSignature": "fixture-not-a-real-signature",
-    "desiredPresence": true
-  },
-  "DesiredState": {
-    "deviceId": "device-1",
-    "revision": 1,
-    "assignments": [
-      {
-        "assignmentId": "assignment-1",
-        "deviceId": "device-1",
-        "release": {
-          "packageId": "community/calculator",
-          "version": "0.1.0-dev",
-          "manifestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-          "marketplaceKeyId": "marketplace/test-key",
-          "marketplaceSignature": "fixture-not-a-real-signature"
-        },
-        "organizationKeyId": "organization/test-key",
-        "organizationSignature": "fixture-not-a-real-signature",
-        "desiredPresence": true
-      }
-    ]
-  },
-  "ClientEnrollmentRequest": {
-    "deviceId": "device-1",
-    "clientVersion": "0.1.0-dev",
-    "capabilities": [
-      "calculator"
-    ]
-  },
-  "ClientReport": {
-    "deviceId": "device-1",
-    "clientVersion": "0.1.0-dev",
-    "appliedRevision": 1,
-    "packages": [
-      {
-        "packageId": "community/calculator",
-        "version": "0.1.0-dev",
-        "state": "READY"
-      }
-    ]
-  },
-  "PolicyInput": {
-    "context": {
-      "requestId": "request-1",
-      "tenantId": "tenant-1",
-      "mode": "HUMAN",
-      "userId": "user-1",
-      "agentId": "agent-1",
-      "chain": [],
-      "bindingId": "example",
-      "deviceId": "example"
-    },
-    "toolId": "calculator",
-    "action": "evaluate",
-    "resource": {
-      "kind": "CUSTOM",
-      "locator": "calculator"
-    },
-    "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "toolDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-    "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
-  },
-  "PackageManifest": {
-    "schemaVersion": 1,
-    "id": "community/calculator",
-    "version": "0.1.0-dev",
-    "tools": [
-      {
-        "id": "calculator",
-        "name": "Calculator",
-        "description": "Pure calculation",
-        "actions": [
-          {
-            "name": "evaluate",
-            "resourceKinds": [
-              "CUSTOM"
-            ]
-          }
-        ],
-        "inputSchema": {
-          "type": "object"
-        },
-        "outputSchema": {
-          "type": "number"
-        }
-      }
-    ],
-    "artifacts": [
-      {
-        "uri": "https://example.invalid/calculator.zip",
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 123
-      }
-    ],
-    "credentialReferences": [
-      "secret://example/token"
-    ],
-    "compatibility": {
-      "contractsVersion": "0.1.0-dev",
-      "minimumClientVersion": "0.1.0-dev"
-    }
   },
   "AuthorizationRequest": {
     "toolId": "files.read",
@@ -204,1234 +14,6 @@
       "path": "workspace/readme.txt"
     }
   },
-  "RuntimeAuditEvent": {
-    "timestampUnixMs": 1790899200000,
-    "context": {
-      "requestId": "request-1",
-      "tenantId": "tenant-1",
-      "mode": "HUMAN",
-      "userId": "user-1",
-      "agentId": "agent-1",
-      "chain": [],
-      "bindingId": "example",
-      "deviceId": "example"
-    },
-    "toolId": "files.read",
-    "action": "read",
-    "resourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "argumentsDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "decision": {
-      "decision": "BLOCK",
-      "reason": "NO_MATCH",
-      "policyVersion": "0.1.0-dev",
-      "requestId": "request-1"
-    },
-    "traceId": "cccccccccccccccccccccccccccccccc"
-  },
-  "ControlUser": {
-    "id": "example",
-    "name": "example",
-    "enabled": false,
-    "revision": 1
-  },
-  "ControlTeam": {
-    "id": "example",
-    "name": "example",
-    "enabled": false,
-    "revision": 1,
-    "userIds": [],
-    "roleIds": []
-  },
-  "ControlAgent": {
-    "id": "example",
-    "name": "example",
-    "enabled": false,
-    "revision": 1,
-    "ownerUserId": "example"
-  },
-  "ControlDevice": {
-    "id": "device-1",
-    "name": "User",
-    "enabled": true,
-    "revision": 1,
-    "ownerUserId": "user-1"
-  },
-  "ControlTool": {
-    "id": "example",
-    "name": "example",
-    "enabled": false,
-    "revision": 1,
-    "definition": {
-      "id": "example",
-      "name": "example",
-      "description": "example",
-      "actions": [],
-      "inputSchema": {},
-      "outputSchema": {}
-    },
-    "extractorId": "example",
-    "version": "1.0.0",
-    "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
-  },
-  "ControlPolicy": {
-    "id": "example",
-    "name": "example",
-    "enabled": false,
-    "revision": 1,
-    "decision": "ALLOW",
-    "scope": {
-      "toolGroups": {
-        "ids": [],
-        "all": false
-      },
-      "deviceGroups": {
-        "ids": [],
-        "all": false
-      },
-      "actions": [],
-      "allActions": false,
-      "resources": [],
-      "conditions": {
-        "notBeforeUnixMs": 0,
-        "expiresAtUnixMs": 0,
-        "networkCidrs": [],
-        "devicePosture": [],
-        "regions": [],
-        "hoursUtc": [],
-        "requireOnline": false,
-        "highRisk": false
-      }
-    },
-    "teams": {
-      "ids": [],
-      "all": false
-    },
-    "agentGroups": {
-      "ids": [],
-      "all": false
-    },
-    "approverTeams": {
-      "ids": [],
-      "all": false
-    }
-  },
-  "ControlUserPage": {
-    "items": [
-      {
-        "id": "user-1",
-        "name": "User",
-        "enabled": true,
-        "revision": 1
-      }
-    ]
-  },
-  "ControlTeamPage": {
-    "items": [
-      {
-        "id": "team-1",
-        "name": "User",
-        "enabled": true,
-        "revision": 1,
-        "userIds": [
-          "user-1"
-        ],
-        "roleIds": []
-      }
-    ]
-  },
-  "ControlAgentPage": {
-    "items": [
-      {
-        "id": "agent-1",
-        "name": "User",
-        "enabled": true,
-        "revision": 1,
-        "ownerUserId": "user-1"
-      }
-    ]
-  },
-  "ControlToolPage": {
-    "items": [
-      {
-        "id": "calculator",
-        "name": "User",
-        "enabled": true,
-        "revision": 1,
-        "definition": {
-          "id": "calculator",
-          "name": "Calculator",
-          "description": "Pure calculation",
-          "actions": [
-            {
-              "name": "evaluate",
-              "resourceKinds": [
-                "CUSTOM"
-              ]
-            }
-          ],
-          "inputSchema": {
-            "type": "object"
-          },
-          "outputSchema": {
-            "type": "number"
-          }
-        },
-        "extractorId": "example",
-        "version": "1.0.0",
-        "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
-      }
-    ]
-  },
-  "ControlPolicyPage": {
-    "items": [
-      {
-        "id": "policy-1",
-        "name": "User",
-        "enabled": true,
-        "revision": 1,
-        "decision": "BLOCK",
-        "scope": {
-          "toolGroups": {
-            "ids": [],
-            "all": false
-          },
-          "deviceGroups": {
-            "ids": [],
-            "all": false
-          },
-          "actions": [],
-          "allActions": false,
-          "resources": [],
-          "conditions": {
-            "notBeforeUnixMs": 0,
-            "expiresAtUnixMs": 0,
-            "networkCidrs": [],
-            "devicePosture": [],
-            "regions": [],
-            "hoursUtc": [],
-            "requireOnline": false,
-            "highRisk": false
-          }
-        },
-        "teams": {
-          "ids": [],
-          "all": false
-        },
-        "agentGroups": {
-          "ids": [],
-          "all": false
-        },
-        "approverTeams": {
-          "ids": [],
-          "all": false
-        }
-      }
-    ]
-  },
-  "ControlDevicePage": {
-    "items": [
-      {
-        "id": "device-1",
-        "name": "User",
-        "enabled": true,
-        "revision": 1,
-        "ownerUserId": "user-1"
-      }
-    ]
-  },
-  "ControlSnapshot": {
-    "formatVersion": 2,
-    "tenantId": "example",
-    "revision": 0,
-    "users": [],
-    "teams": [],
-    "agents": [],
-    "tools": [],
-    "policies": [],
-    "devices": [],
-    "roles": [],
-    "deviceGroups": [],
-    "agentGroups": [],
-    "toolGroups": [],
-    "grants": [],
-    "delegations": [],
-    "agentDelegations": [],
-    "bindings": [],
-    "extractors": [],
-    "workloadBindings": [],
-    "identityBindings": [],
-    "deviceEvidence": []
-  },
-  "ControlImportMode": "MERGE",
-  "ControlChangeKind": "CREATE",
-  "ControlEntityKind": "USER",
-  "ControlImportRequest": {
-    "snapshot": {
-      "formatVersion": 2,
-      "tenantId": "example",
-      "revision": 0,
-      "users": [],
-      "teams": [],
-      "agents": [],
-      "tools": [],
-      "policies": [],
-      "devices": [],
-      "roles": [],
-      "deviceGroups": [],
-      "agentGroups": [],
-      "toolGroups": [],
-      "grants": [],
-      "delegations": [],
-      "agentDelegations": [],
-      "bindings": [],
-      "extractors": [],
-      "workloadBindings": [],
-      "identityBindings": [],
-      "deviceEvidence": []
-    },
-    "mode": "MERGE",
-    "dryRun": false
-  },
-  "ControlChange": {
-    "kind": "USER",
-    "id": "user-1",
-    "operation": "CREATE"
-  },
-  "ControlImportResult": {
-    "applied": false,
-    "revision": 0,
-    "changes": [
-      {
-        "kind": "USER",
-        "id": "user-1",
-        "operation": "CREATE"
-      }
-    ]
-  },
-  "ControlAudit": {
-    "sequence": 1,
-    "tenantId": "tenant-1",
-    "actorId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "operation": "CREATE",
-    "target": "users:user-1",
-    "revision": 1,
-    "requestId": "request-1",
-    "occurredAt": "2026-10-02T00:00:00Z",
-    "requestDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-  },
-  "ControlAuditPage": {
-    "items": [
-      {
-        "sequence": 1,
-        "tenantId": "tenant-1",
-        "actorId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "operation": "CREATE",
-        "target": "users:user-1",
-        "revision": 1,
-        "requestId": "request-1",
-        "occurredAt": "2026-10-02T00:00:00Z",
-        "requestDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-      }
-    ]
-  },
-  "BundleRule": {
-    "policyId": "allow-read",
-    "userIds": [
-      "alice"
-    ],
-    "agentIds": [],
-    "deviceIds": [],
-    "toolId": "files",
-    "action": "read",
-    "resource": {
-      "kind": "CUSTOM",
-      "locator": "calculator"
-    },
-    "graceAllowed": true,
-    "effect": "ALLOW"
-  },
-  "BundleEffect": "ALLOW",
-  "CompiledPolicy": {
-    "formatVersion": 1,
-    "rules": [
-      {
-        "policyId": "allow-read",
-        "userIds": [
-          "alice"
-        ],
-        "agentIds": [],
-        "deviceIds": [],
-        "toolId": "files",
-        "action": "read",
-        "resource": {
-          "kind": "CUSTOM",
-          "locator": "calculator"
-        },
-        "graceAllowed": true,
-        "effect": "ALLOW"
-      }
-    ]
-  },
-  "BundleHeader": {
-    "alg": "RS256",
-    "typ": "toolgate-policy-bundle+jws",
-    "kid": "bundle-key-1"
-  },
-  "BundlePayload": {
-    "formatVersion": 1,
-    "issuer": "control",
-    "audience": "gateway",
-    "tenantId": "example",
-    "sequence": 1,
-    "version": "1.0.1",
-    "directoryRevision": 0,
-    "issuedAtUnixMs": 1700000000000,
-    "expiresAtUnixMs": 1700000060000,
-    "graceMs": 0,
-    "policySha256": "2bb1e5048a19bde93c340142b5d9ba1f5ead639dce7add67bfd02d6c3a49b7e1",
-    "policy": "eyJmb3JtYXRWZXJzaW9uIjoxLCJydWxlcyI6W3siYWN0aW9uIjoicmVhZCIsImFnZW50SWRzIjpbXSwiZGV2aWNlSWRzIjpbXSwiZWZmZWN0IjoiQUxMT1ciLCJncmFjZUFsbG93ZWQiOnRydWUsInBvbGljeUlkIjoiYWxsb3ctcmVhZCIsInJlc291cmNlIjp7ImtpbmQiOiJDVVNUT00iLCJsb2NhdG9yIjoiY2FsY3VsYXRvciJ9LCJ0b29sSWQiOiJmaWxlcyIsInVzZXJJZHMiOlsiYWxpY2UiXX1dfQ"
-  },
-  "SignedPolicyBundle": {
-    "jws": "eyJhbGciOiAiUlMyNTYiLCAidHlwIjogInRvb2xnYXRlLXBvbGljeS1idW5kbGUrandzIiwgImtpZCI6ICJidW5kbGUta2V5LTEifQ.eyJmb3JtYXRWZXJzaW9uIjogMSwgImlzc3VlciI6ICJjb250cm9sIiwgImF1ZGllbmNlIjogImdhdGV3YXkiLCAidGVuYW50SWQiOiAiZXhhbXBsZSIsICJzZXF1ZW5jZSI6IDEsICJ2ZXJzaW9uIjogIjEuMC4xIiwgImRpcmVjdG9yeVJldmlzaW9uIjogMCwgImlzc3VlZEF0VW5peE1zIjogMTcwMDAwMDAwMDAwMCwgImV4cGlyZXNBdFVuaXhNcyI6IDE3MDAwMDAwNjAwMDAsICJncmFjZU1zIjogMCwgInBvbGljeVNoYTI1NiI6ICIyYmIxZTUwNDhhMTliZGU5M2MzNDAxNDJiNWQ5YmExZjVlYWQ2MzlkY2U3YWRkNjdiZmQwMmQ2YzNhNDliN2UxIiwgInBvbGljeSI6ICJleUptYjNKdFlYUldaWEp6YVc5dUlqb3hMQ0p5ZFd4bGN5STZXM3NpWVdOMGFXOXVJam9pY21WaFpDSXNJbUZuWlc1MFNXUnpJanBiWFN3aVpHVjJhV05sU1dSeklqcGJYU3dpWldabVpXTjBJam9pUVV4TVQxY2lMQ0puY21GalpVRnNiRzkzWldRaU9uUnlkV1VzSW5CdmJHbGplVWxrSWpvaVlXeHNiM2N0Y21WaFpDSXNJbkpsYzI5MWNtTmxJanA3SW10cGJtUWlPaUpEVlZOVVQwMGlMQ0pzYjJOaGRHOXlJam9pWTJGc1kzVnNZWFJ2Y2lKOUxDSjBiMjlzU1dRaU9pSm1hV3hsY3lJc0luVnpaWEpKWkhNaU9sc2lZV3hwWTJVaVhYMWRmUSJ9.c3RydWN0dXJhbC1vbmx5"
-  },
-  "BundlePublishRequest": {
-    "directoryRevision": 0,
-    "expectedSequence": 0,
-    "lifetimeMs": 60000,
-    "graceMs": 0
-  },
-  "ApprovalSubmission": {
-    "input": {
-      "context": {
-        "requestId": "request-1",
-        "tenantId": "tenant-1",
-        "mode": "HUMAN",
-        "userId": "user-1",
-        "agentId": "agent-1",
-        "chain": [],
-        "bindingId": "example",
-        "deviceId": "example"
-      },
-      "toolId": "calculator",
-      "action": "evaluate",
-      "resource": {
-        "kind": "CUSTOM",
-        "locator": "calculator"
-      },
-      "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "toolDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-      "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
-    },
-    "policyVersion": "1.0.1"
-  },
-  "ApprovalPermitUse": {
-    "approvalId": "approval-1",
-    "permitId": "permit-1",
-    "input": {
-      "context": {
-        "requestId": "request-1",
-        "tenantId": "tenant-1",
-        "mode": "HUMAN",
-        "userId": "user-1",
-        "agentId": "agent-1",
-        "chain": [],
-        "bindingId": "example",
-        "deviceId": "example"
-      },
-      "toolId": "calculator",
-      "action": "evaluate",
-      "resource": {
-        "kind": "CUSTOM",
-        "locator": "calculator"
-      },
-      "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "toolDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-      "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
-    },
-    "policyVersion": "1.0.1"
-  },
-  "ApprovalState": "PENDING",
-  "ApprovalChoice": "APPROVE_ONCE",
-  "ApprovalDecisionRequest": {
-    "decision": "APPROVE_ONCE",
-    "expectedRevision": 1
-  },
-  "ApprovalRecord": {
-    "id": "approval-1",
-    "revision": 1,
-    "state": "PENDING",
-    "input": {
-      "context": {
-        "requestId": "request-1",
-        "tenantId": "tenant-1",
-        "mode": "HUMAN",
-        "userId": "user-1",
-        "agentId": "agent-1",
-        "chain": [],
-        "bindingId": "example",
-        "deviceId": "example"
-      },
-      "toolId": "calculator",
-      "action": "evaluate",
-      "resource": {
-        "kind": "CUSTOM",
-        "locator": "calculator"
-      },
-      "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "toolDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-      "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
-    },
-    "policyVersion": "1.0.1",
-    "createdAtUnixMs": 1,
-    "expiresAtUnixMs": 300001
-  },
-  "ApprovalPage": {
-    "items": [
-      {
-        "id": "approval-1",
-        "revision": 1,
-        "state": "PENDING",
-        "input": {
-          "context": {
-            "requestId": "request-1",
-            "tenantId": "tenant-1",
-            "mode": "HUMAN",
-            "userId": "user-1",
-            "agentId": "agent-1",
-            "chain": [],
-            "bindingId": "example",
-            "deviceId": "example"
-          },
-          "toolId": "calculator",
-          "action": "evaluate",
-          "resource": {
-            "kind": "CUSTOM",
-            "locator": "calculator"
-          },
-          "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-          "toolDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-          "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
-        },
-        "policyVersion": "1.0.1",
-        "createdAtUnixMs": 1,
-        "expiresAtUnixMs": 300001
-      }
-    ]
-  },
-  "ApprovalResolution": {
-    "approvalId": "approval-1",
-    "state": "PENDING",
-    "input": {
-      "context": {
-        "requestId": "request-1",
-        "tenantId": "tenant-1",
-        "mode": "HUMAN",
-        "userId": "user-1",
-        "agentId": "agent-1",
-        "chain": [],
-        "bindingId": "example",
-        "deviceId": "example"
-      },
-      "toolId": "calculator",
-      "action": "evaluate",
-      "resource": {
-        "kind": "CUSTOM",
-        "locator": "calculator"
-      },
-      "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "toolDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-      "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
-    },
-    "policyVersion": "1.0.1"
-  },
-  "ExecutionPermitHeader": {
-    "alg": "RS256",
-    "typ": "toolgate-execution-permit+jws",
-    "kid": "permit-key-1"
-  },
-  "ExecutionPermitClaims": {
-    "permitVersion": 1,
-    "issuer": "gateway",
-    "audience": "endpoint",
-    "tenantId": "tenant-1",
-    "userId": "user-1",
-    "agentId": "agent-1",
-    "toolId": "calculator",
-    "action": "evaluate",
-    "resource": {
-      "kind": "CUSTOM",
-      "locator": "calculator"
-    },
-    "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "requestId": "request-1",
-    "policyVersion": "1.0.1",
-    "approvalId": "approval-1",
-    "jti": "permit-1",
-    "issuedAtUnixMs": 1,
-    "expiresAtUnixMs": 10001
-  },
-  "SignedExecutionPermit": {
-    "jws": "c3RydWN0dXJhbA.c3R1Yg.c2lnbmF0dXJl"
-  },
-  "ExecutionPermitUseRequest": {
-    "permit": {
-      "jws": "c3RydWN0dXJhbA.c3R1Yg.c2lnbmF0dXJl"
-    },
-    "request": {
-      "toolId": "files.read",
-      "action": "read",
-      "arguments": {
-        "path": "workspace/readme.txt"
-      }
-    }
-  },
-  "AuthorizationOutcome": {
-    "decision": {
-      "decision": "BLOCK",
-      "reason": "NO_MATCH",
-      "policyVersion": "0.1.0-dev",
-      "requestId": "request-1"
-    }
-  },
-  "ApprovalBundleRule": {
-    "policyId": "allow-read",
-    "userIds": [
-      "alice"
-    ],
-    "agentIds": [],
-    "deviceIds": [],
-    "toolId": "files",
-    "action": "read",
-    "resource": {
-      "kind": "CUSTOM",
-      "locator": "calculator"
-    },
-    "graceAllowed": false,
-    "effect": "ASK"
-  },
-  "ApprovalCompiledPolicy": {
-    "formatVersion": 2,
-    "rules": [
-      {
-        "policyId": "allow-read",
-        "userIds": [
-          "alice"
-        ],
-        "agentIds": [],
-        "deviceIds": [],
-        "toolId": "files",
-        "action": "read",
-        "resource": {
-          "kind": "CUSTOM",
-          "locator": "calculator"
-        },
-        "graceAllowed": false,
-        "effect": "ASK"
-      }
-    ]
-  },
-  "ApprovalBundlePayload": {
-    "formatVersion": 2,
-    "issuer": "control",
-    "audience": "gateway",
-    "tenantId": "example",
-    "sequence": 1,
-    "version": "1.0.1",
-    "directoryRevision": 0,
-    "issuedAtUnixMs": 1700000000000,
-    "expiresAtUnixMs": 1700000060000,
-    "graceMs": 0,
-    "policySha256": "2bb1e5048a19bde93c340142b5d9ba1f5ead639dce7add67bfd02d6c3a49b7e1",
-    "policy": "eyJmb3JtYXRWZXJzaW9uIjoxLCJydWxlcyI6W3siYWN0aW9uIjoicmVhZCIsImFnZW50SWRzIjpbXSwiZGV2aWNlSWRzIjpbXSwiZWZmZWN0IjoiQUxMT1ciLCJncmFjZUFsbG93ZWQiOnRydWUsInBvbGljeUlkIjoiYWxsb3ctcmVhZCIsInJlc291cmNlIjp7ImtpbmQiOiJDVVNUT00iLCJsb2NhdG9yIjoiY2FsY3VsYXRvciJ9LCJ0b29sSWQiOiJmaWxlcyIsInVzZXJJZHMiOlsiYWxpY2UiXX1dfQ"
-  },
-  "ClientPlatform": "WINDOWS",
-  "EnrollmentState": "PENDING",
-  "EndpointState": "UNENROLLED",
-  "EnrollmentChoice": "APPROVE",
-  "ClientDiscovery": {
-    "protocolVersion": 1,
-    "serverId": "device-1",
-    "organization": "example",
-    "tenantId": "device-1",
-    "controlUrl": "https://control.example.test",
-    "gatewayUrl": "https://control.example.test",
-    "verificationUri": "https://control.example.test",
-    "minimumClientVersion": "0.1.0-dev",
-    "issuedAtUnixMs": 1,
-    "expiresAtUnixMs": 1,
-    "issuerCertificatePem": "example"
-  },
-  "SignedClientDiscovery": {
-    "payload": "AA",
-    "signature": "AA"
-  },
-  "EndpointEnrollmentStart": {
-    "deviceId": "device-1",
-    "clientVersion": "0.1.0-dev",
-    "platform": "WINDOWS",
-    "csrPem": "example",
-    "capabilities": []
-  },
-  "EndpointEnrollmentChallenge": {
-    "enrollmentId": "device-1",
-    "deviceCode": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "userCode": "AAAAAAAAAAAAAAAA",
-    "verificationUri": "https://control.example.test",
-    "expiresAtUnixMs": 1,
-    "pollIntervalSeconds": 2
-  },
-  "EndpointEnrollmentPoll": {
-    "enrollmentId": "device-1",
-    "deviceCode": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-  },
-  "EndpointEnrollmentReview": {
-    "enrollmentId": "device-1",
-    "userCode": "AAAAAAAAAAAAAAAA",
-    "deviceId": "device-1",
-    "platform": "WINDOWS",
-    "keyFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "state": "PENDING",
-    "expiresAtUnixMs": 1
-  },
-  "EndpointEnrollmentPage": {
-    "items": []
-  },
-  "SystemExecutorKind": "HOTFOLDER",
-  "EndpointManagedDevice": {
-    "deviceId": "device-1",
-    "systemExecutor": false,
-    "systemName": "test-machine",
-    "ipAddress": "2001:db8::1"
-  },
-  "EndpointManagedDevicePage": {
-    "items": []
-  },
-  "EndpointApprovalRequest": {
-    "expectedApprovalRevision": 1,
-    "approved": true,
-    "unlimitedConnection": true
-  },
-  "EndpointEnabledRequest": {
-    "expectedRevision": 0,
-    "enabled": false
-  },
-  "EndpointEnrollmentDecision": {
-    "userCode": "AAAAAAAAAAAAAAAA",
-    "keyFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "choice": "APPROVE"
-  },
-  "DeviceIdentity": {
-    "deviceId": "device-1",
-    "tenantId": "device-1",
-    "userId": "device-1",
-    "serverId": "device-1",
-    "certificatePem": "example",
-    "issuerCertificatePem": "example",
-    "expiresAtUnixMs": 1
-  },
-  "EndpointEnrollmentResult": {
-    "state": "PENDING"
-  },
-  "EndpointCheckIn": {
-    "sequence": 1,
-    "report": {
-      "deviceId": "device-1",
-      "clientVersion": "0.1.0-dev",
-      "appliedRevision": 1,
-      "packages": [
-        {
-          "packageId": "community/calculator",
-          "version": "0.1.0-dev",
-          "state": "READY"
-        }
-      ]
-    }
-  },
-  "EndpointCheckInAck": {
-    "deviceId": "device-1",
-    "sequence": 1,
-    "serverTimeUnixMs": 1,
-    "nextIntervalSeconds": 10
-  },
-  "EndpointDeviceRecord": {
-    "deviceId": "device-1",
-    "tenantId": "device-1",
-    "userId": "device-1",
-    "keyFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "state": "UNENROLLED",
-    "revision": 1,
-    "lastSeenUnixMs": 1,
-    "reportSequence": 1,
-    "systemName": "test-machine",
-    "ipAddress": "192.0.2.10"
-  },
-  "EndpointRevokeRequest": {
-    "expectedRevision": 1
-  },
-  "ClientHealth": {
-    "state": "UNENROLLED",
-    "ready": false,
-    "uptimeSeconds": 1,
-    "successfulCheckIns": 1,
-    "failedCheckIns": 1,
-    "reportSequence": 1
-  },
-  "ClientIpcOperation": "HEALTH",
-  "ClientIpcRequest": {
-    "protocolVersion": 1,
-    "requestId": "device-1",
-    "operation": "HEALTH"
-  },
-  "ClientIpcResponse": {
-    "requestId": "device-1"
-  },
-  "EndpointEnrollmentPrompt": {
-    "enrollmentId": "device-1",
-    "userCode": "AAAAAAAAAAAAAAAA",
-    "verificationUri": "https://control.example.test",
-    "expiresAtUnixMs": 1,
-    "pollIntervalSeconds": 2,
-    "keyFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-  },
-  "BuiltinOperation": "CALL",
-  "BuiltinToolInfo": {
-    "toolId": "hotfolder.read_text",
-    "action": "read",
-    "description": "Read bounded UTF-8 content.",
-    "enabled": true,
-    "inputSchema": {
-      "type": "object"
-    },
-    "toolDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-    "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
-  },
-  "BuiltinInvocation": {
-    "toolId": "hotfolder.read_text",
-    "arguments": {
-      "path": "note.txt"
-    }
-  },
-  "BuiltinIpcRequest": {
-    "protocolVersion": 2,
-    "requestId": "request-07",
-    "operation": "CALL",
-    "invocation": {
-      "toolId": "hotfolder.read_text",
-      "arguments": {
-        "path": "note.txt"
-      }
-    }
-  },
-  "BuiltinIpcResponse": {
-    "requestId": "request-07",
-    "output": {
-      "text": "hello"
-    }
-  },
-  "ClientDownloadArtifact": {
-    "platform": "LINUX",
-    "target": "x86_64-unknown-linux-gnu",
-    "filename": "olo-toolgate-client-0.7.0-dev-x86_64-unknown-linux-gnu.tar.gz",
-    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "bytes": 12345
-  },
-  "ClientDownloadManifest": {
-    "version": "0.7.0-dev",
-    "artifacts": [
-      {
-        "platform": "LINUX",
-        "target": "x86_64-unknown-linux-gnu",
-        "filename": "olo-toolgate-client-0.7.0-dev-x86_64-unknown-linux-gnu.tar.gz",
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "bytes": 12345
-      },
-      {
-        "platform": "WINDOWS",
-        "target": "x86_64-pc-windows-msvc",
-        "filename": "olo-toolgate-client-0.7.0-dev-x86_64-pc-windows-msvc.zip",
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "bytes": 12345
-      },
-      {
-        "platform": "MACOS",
-        "target": "x86_64-apple-darwin",
-        "filename": "olo-toolgate-client-0.7.0-dev-x86_64-apple-darwin.tar.gz",
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "bytes": 12345
-      }
-    ]
-  },
-  "LocalRuntimeKind": "PYTHON",
-  "LocalRuntimeState": "MISSING",
-  "LocalRuntimeOperation": "INVOKE",
-  "LocalRuntimeLimits": {
-    "timeoutMs": 2000,
-    "memoryMiB": 128,
-    "maxInputBytes": 4096,
-    "maxOutputBytes": 4096
-  },
-  "ManagedRuntime": {
-    "id": "python-echo",
-    "kind": "PYTHON",
-    "image": "registry.example.com/toolgate/python-echo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "version": "3.14.0"
-  },
-  "LocalToolRegistration": {
-    "toolId": "local.echo",
-    "action": "execute",
-    "runtimeId": "python-echo",
-    "entryPoint": "/opt/tool/tool.py",
-    "inputSchema": {
-      "type": "object"
-    },
-    "outputSchema": {
-      "type": "object"
-    },
-    "limits": {
-      "timeoutMs": 2000,
-      "memoryMiB": 128,
-      "maxInputBytes": 4096,
-      "maxOutputBytes": 4096
-    },
-    "authorizationProfile": {
-      "tool": {
-        "id": "local.echo",
-        "name": "local.echo",
-        "enabled": true,
-        "revision": 1,
-        "version": "1.0.0",
-        "packageDigest": "1f46d112e15700b76859b52f4541113080c3b734916c682658e09353109422e9",
-        "extractorId": "extract-5a77d536026e311f934cfcc372f60551",
-        "definition": {
-          "id": "local.echo",
-          "name": "local.echo",
-          "description": "Reviewed bounded compute capability.",
-          "actions": [
-            {
-              "name": "execute",
-              "resourceKinds": [
-                "CUSTOM"
-              ]
-            }
-          ],
-          "inputSchema": {
-            "type": "object"
-          },
-          "outputSchema": {
-            "type": "object"
-          }
-        }
-      },
-      "extractor": {
-        "id": "extract-5a77d536026e311f934cfcc372f60551",
-        "name": "Resources for local.echo",
-        "enabled": true,
-        "revision": 1,
-        "extractorKind": "FIELDS",
-        "version": "1.0.0",
-        "fields": [],
-        "fixedResources": [
-          {
-            "kind": "CUSTOM",
-            "locator": "runtime/local.echo"
-          }
-        ],
-        "maxResources": 1
-      }
-    }
-  },
-  "LocalToolInput": {
-    "protocolVersion": 1,
-    "requestId": "request-runtime",
-    "toolId": "local.echo",
-    "arguments": {
-      "text": "hello"
-    }
-  },
-  "LocalToolOutput": {
-    "protocolVersion": 1,
-    "requestId": "request-runtime",
-    "output": {
-      "text": "hello"
-    }
-  },
-  "LocalRuntimeStatus": {
-    "runtimeId": "python-echo",
-    "kind": "PYTHON",
-    "state": "MISSING",
-    "version": "3.14.0"
-  },
-  "LocalRuntimeHealth": {
-    "ready": false,
-    "successfulExecutions": 0,
-    "failedExecutions": 0,
-    "runtimes": [
-      {
-        "runtimeId": "python-echo",
-        "kind": "PYTHON",
-        "state": "MISSING",
-        "version": "3.14.0"
-      }
-    ]
-  },
-  "LocalRuntimeIpcRequest": {
-    "protocolVersion": 3,
-    "requestId": "request-runtime",
-    "operation": "INVOKE",
-    "invocation": {
-      "protocolVersion": 1,
-      "requestId": "request-runtime",
-      "toolId": "local.echo",
-      "arguments": {
-        "text": "hello"
-      }
-    }
-  },
-  "LocalRuntimeIpcResponse": {
-    "requestId": "request-runtime",
-    "result": {
-      "protocolVersion": 1,
-      "requestId": "request-runtime",
-      "output": {
-        "text": "hello"
-      }
-    }
-  },
-  "FleetArchitecture": "x86_64",
-  "FleetSignatureHeader": {
-    "alg": "RS256",
-    "typ": "toolgate-package-release+jws",
-    "kid": "device-1"
-  },
-  "FleetSignedDocument": {
-    "jws": "e30.e30.c2ln"
-  },
-  "FleetSelfTest": {
-    "toolId": "device-1",
-    "arguments": {},
-    "expectedOutput": {}
-  },
-  "FleetPackageDocument": {
-    "formatVersion": 1,
-    "packageId": "device-1",
-    "version": "0.1.0-dev",
-    "platforms": [
-      "WINDOWS"
-    ],
-    "architectures": [
-      "x86_64"
-    ],
-    "minimumClientVersion": "0.1.0-dev",
-    "runtimes": [
-      {
-        "id": "python-echo",
-        "kind": "PYTHON",
-        "image": "registry.example.com/toolgate/python-echo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "version": "3.14.0"
-      }
-    ],
-    "tools": [
-      {
-        "toolId": "local.echo",
-        "action": "execute",
-        "runtimeId": "python-echo",
-        "entryPoint": "/opt/tool/tool.py",
-        "inputSchema": {
-          "type": "object"
-        },
-        "outputSchema": {
-          "type": "object"
-        },
-        "limits": {
-          "timeoutMs": 2000,
-          "memoryMiB": 128,
-          "maxInputBytes": 4096,
-          "maxOutputBytes": 4096
-        },
-        "authorizationProfile": {
-          "tool": {
-            "id": "local.echo",
-            "name": "local.echo",
-            "enabled": true,
-            "revision": 1,
-            "version": "0.1.0-dev",
-            "packageDigest": "1f46d112e15700b76859b52f4541113080c3b734916c682658e09353109422e9",
-            "extractorId": "extract-5a77d536026e311f934cfcc372f60551",
-            "definition": {
-              "id": "local.echo",
-              "name": "local.echo",
-              "description": "Reviewed bounded compute capability.",
-              "actions": [
-                {
-                  "name": "execute",
-                  "resourceKinds": [
-                    "CUSTOM"
-                  ]
-                }
-              ],
-              "inputSchema": {
-                "type": "object"
-              },
-              "outputSchema": {
-                "type": "object"
-              }
-            }
-          },
-          "extractor": {
-            "id": "extract-5a77d536026e311f934cfcc372f60551",
-            "name": "Resources for local.echo",
-            "enabled": true,
-            "revision": 1,
-            "extractorKind": "FIELDS",
-            "version": "0.1.0-dev",
-            "fields": [],
-            "fixedResources": [
-              {
-                "kind": "CUSTOM",
-                "locator": "runtime/local.echo"
-              }
-            ],
-            "maxResources": 1
-          }
-        }
-      }
-    ],
-    "selfTests": [
-      {
-        "toolId": "device-1",
-        "arguments": {},
-        "expectedOutput": {}
-      }
-    ]
-  },
-  "FleetPackageRelease": {
-    "packageId": "device-1",
-    "version": "0.1.0-dev",
-    "manifestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "sizeBytes": 1,
-    "release": {
-      "jws": "e30.e30.c2ln"
-    }
-  },
-  "FleetAssignment": {
-    "release": {
-      "packageId": "device-1",
-      "version": "0.1.0-dev",
-      "manifestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "sizeBytes": 1,
-      "release": {
-        "jws": "e30.e30.c2ln"
-      }
-    },
-    "desiredPresence": true
-  },
-  "FleetDesiredSnapshot": {
-    "deviceId": "device-1",
-    "generation": 1,
-    "assignments": []
-  },
-  "FleetDesiredDocument": {
-    "formatVersion": 1,
-    "tenantId": "device-1",
-    "serverId": "device-1",
-    "deviceId": "device-1",
-    "generation": 1,
-    "issuedAtUnixMs": 0,
-    "expiresAtUnixMs": 0,
-    "assignments": []
-  },
-  "FleetArtifactGrantRequest": {
-    "generation": 1,
-    "manifestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-  },
-  "FleetArtifactGrantClaims": {
-    "tenantId": "device-1",
-    "serverId": "device-1",
-    "deviceId": "device-1",
-    "generation": 1,
-    "manifestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "sizeBytes": 1,
-    "grantId": "device-1",
-    "issuedAtUnixMs": 0,
-    "expiresAtUnixMs": 0
-  },
-  "FleetRolloutRequest": {
-    "id": "device-1",
-    "packageId": "device-1",
-    "version": "0.1.0-dev",
-    "deviceIds": [
-      "device-1"
-    ],
-    "desiredPresence": true,
-    "percentage": 1
-  },
-  "FleetRolloutAdvance": {
-    "expectedRevision": 1,
-    "percentage": 1
-  },
-  "FleetRolloutMember": {
-    "deviceId": "device-1",
-    "generation": 0
-  },
-  "FleetRolloutRecord": {
-    "id": "device-1",
-    "packageId": "device-1",
-    "version": "0.1.0-dev",
-    "desiredPresence": true,
-    "percentage": 1,
-    "revision": 1,
-    "createdAtUnixMs": 0,
-    "members": [
-      {
-        "deviceId": "device-1",
-        "generation": 0
-      }
-    ]
-  },
-  "FleetRolloutStatus": {
-    "rollout": {
-      "id": "device-1",
-      "packageId": "device-1",
-      "version": "0.1.0-dev",
-      "desiredPresence": true,
-      "percentage": 1,
-      "revision": 1,
-      "createdAtUnixMs": 0,
-      "members": [
-        {
-          "deviceId": "device-1",
-          "generation": 0
-        }
-      ]
-    },
-    "ready": 0,
-    "failed": 0,
-    "offline": 0,
-    "waiting": 0,
-    "pending": 0,
-    "superseded": 0
-  },
-  "FleetRolloutPage": {
-    "items": []
-  },
-  "FleetReleasePage": {
-    "items": []
-  },
-  "FleetClientStatus": {
-    "generation": 0,
-    "ready": true,
-    "packages": []
-  },
-  "FleetTrustKey": {
-    "kid": "device-1",
-    "n": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "e": "AQAB"
-  },
-  "LocalToolSource": {
-    "code": "def tool(arguments):\n    return {'text': arguments['text']}\n",
-    "sha256": "f9ac9cea83359f08537fcddff8b29026d216f9f2d7685ba96c135643b4ffb6e9"
-  },
-  "BuilderPermission": "COMPUTE",
   "BuilderDefinition": {
     "packageId": "custom-echo",
     "version": "1.0.0",
@@ -1578,157 +160,6 @@
       "locator": "runtime/custom.echo"
     },
     "credentialRequirements": []
-  },
-  "BuilderDraftRequest": {
-    "id": "draft-example",
-    "expectedRevision": 0,
-    "definition": {
-      "packageId": "custom-echo",
-      "version": "1.0.0",
-      "name": "Echo",
-      "description": "Returns a bounded text value.",
-      "useWhen": "Return a test text value.",
-      "doNotUseWhen": "Reading files or accessing network.",
-      "runtime": {
-        "id": "builder-python",
-        "kind": "PYTHON",
-        "image": "registry.example.com/toolgate/python-echo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "version": "3.14.0"
-      },
-      "tool": {
-        "toolId": "custom.echo",
-        "action": "execute",
-        "runtimeId": "builder-python",
-        "entryPoint": "/opt/tool/tool.py",
-        "inputSchema": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "text": {
-              "type": "string",
-              "maxLength": 256
-            }
-          },
-          "required": [
-            "text"
-          ]
-        },
-        "outputSchema": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "text": {
-              "type": "string",
-              "maxLength": 256
-            }
-          },
-          "required": [
-            "text"
-          ]
-        },
-        "limits": {
-          "timeoutMs": 2000,
-          "memoryMiB": 128,
-          "maxInputBytes": 4096,
-          "maxOutputBytes": 4096
-        },
-        "source": {
-          "code": "def tool(arguments):\n    return {'text': arguments['text']}\n",
-          "sha256": "f9ac9cea83359f08537fcddff8b29026d216f9f2d7685ba96c135643b4ffb6e9"
-        },
-        "authorizationProfile": {
-          "tool": {
-            "id": "custom.echo",
-            "name": "custom.echo",
-            "enabled": true,
-            "revision": 1,
-            "version": "1.0.0",
-            "packageDigest": "ef83cd52121214db4e0e9ba218948cfb71ec5d4a04219dedb14f336dc3cde571",
-            "extractorId": "extract-d5f10a3588951e4d33728c61e1973fde",
-            "definition": {
-              "id": "custom.echo",
-              "name": "custom.echo",
-              "description": "Reviewed bounded compute capability.",
-              "actions": [
-                {
-                  "name": "execute",
-                  "resourceKinds": [
-                    "CUSTOM"
-                  ]
-                }
-              ],
-              "inputSchema": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "text": {
-                    "type": "string",
-                    "maxLength": 256
-                  }
-                },
-                "required": [
-                  "text"
-                ]
-              },
-              "outputSchema": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "text": {
-                    "type": "string",
-                    "maxLength": 256
-                  }
-                },
-                "required": [
-                  "text"
-                ]
-              }
-            }
-          },
-          "extractor": {
-            "id": "extract-d5f10a3588951e4d33728c61e1973fde",
-            "name": "Resources for custom.echo",
-            "enabled": true,
-            "revision": 1,
-            "extractorKind": "FIELDS",
-            "version": "1.0.0",
-            "fields": [],
-            "fixedResources": [
-              {
-                "kind": "CUSTOM",
-                "locator": "runtime/custom.echo"
-              }
-            ],
-            "maxResources": 1
-          }
-        }
-      },
-      "platforms": [
-        "LINUX"
-      ],
-      "architectures": [
-        "x86_64"
-      ],
-      "examples": [
-        {
-          "toolId": "custom.echo",
-          "arguments": {
-            "text": "hello"
-          },
-          "expectedOutput": {
-            "text": "hello"
-          }
-        }
-      ],
-      "permissions": [
-        "COMPUTE"
-      ],
-      "resource": {
-        "kind": "CUSTOM",
-        "locator": "runtime/custom.echo"
-      },
-      "credentialRequirements": []
-    }
   },
   "BuilderDraft": {
     "id": "draft-example",
@@ -2322,26 +753,160 @@
       }
     ]
   },
-  "BuilderTestState": "QUEUED",
-  "BuilderTestRequest": {
-    "id": "test-example",
-    "draftId": "draft-example",
-    "expectedRevision": 1,
-    "deviceId": "device-1",
-    "exampleIndex": 0
+  "BuilderDraftRequest": {
+    "id": "draft-example",
+    "expectedRevision": 0,
+    "definition": {
+      "packageId": "custom-echo",
+      "version": "1.0.0",
+      "name": "Echo",
+      "description": "Returns a bounded text value.",
+      "useWhen": "Return a test text value.",
+      "doNotUseWhen": "Reading files or accessing network.",
+      "runtime": {
+        "id": "builder-python",
+        "kind": "PYTHON",
+        "image": "registry.example.com/toolgate/python-echo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "version": "3.14.0"
+      },
+      "tool": {
+        "toolId": "custom.echo",
+        "action": "execute",
+        "runtimeId": "builder-python",
+        "entryPoint": "/opt/tool/tool.py",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "text"
+          ]
+        },
+        "outputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "text"
+          ]
+        },
+        "limits": {
+          "timeoutMs": 2000,
+          "memoryMiB": 128,
+          "maxInputBytes": 4096,
+          "maxOutputBytes": 4096
+        },
+        "source": {
+          "code": "def tool(arguments):\n    return {'text': arguments['text']}\n",
+          "sha256": "f9ac9cea83359f08537fcddff8b29026d216f9f2d7685ba96c135643b4ffb6e9"
+        },
+        "authorizationProfile": {
+          "tool": {
+            "id": "custom.echo",
+            "name": "custom.echo",
+            "enabled": true,
+            "revision": 1,
+            "version": "1.0.0",
+            "packageDigest": "ef83cd52121214db4e0e9ba218948cfb71ec5d4a04219dedb14f336dc3cde571",
+            "extractorId": "extract-d5f10a3588951e4d33728c61e1973fde",
+            "definition": {
+              "id": "custom.echo",
+              "name": "custom.echo",
+              "description": "Reviewed bounded compute capability.",
+              "actions": [
+                {
+                  "name": "execute",
+                  "resourceKinds": [
+                    "CUSTOM"
+                  ]
+                }
+              ],
+              "inputSchema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "maxLength": 256
+                  }
+                },
+                "required": [
+                  "text"
+                ]
+              },
+              "outputSchema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "maxLength": 256
+                  }
+                },
+                "required": [
+                  "text"
+                ]
+              }
+            }
+          },
+          "extractor": {
+            "id": "extract-d5f10a3588951e4d33728c61e1973fde",
+            "name": "Resources for custom.echo",
+            "enabled": true,
+            "revision": 1,
+            "extractorKind": "FIELDS",
+            "version": "1.0.0",
+            "fields": [],
+            "fixedResources": [
+              {
+                "kind": "CUSTOM",
+                "locator": "runtime/custom.echo"
+              }
+            ],
+            "maxResources": 1
+          }
+        }
+      },
+      "platforms": [
+        "LINUX"
+      ],
+      "architectures": [
+        "x86_64"
+      ],
+      "examples": [
+        {
+          "toolId": "custom.echo",
+          "arguments": {
+            "text": "hello"
+          },
+          "expectedOutput": {
+            "text": "hello"
+          }
+        }
+      ],
+      "permissions": [
+        "COMPUTE"
+      ],
+      "resource": {
+        "kind": "CUSTOM",
+        "locator": "runtime/custom.echo"
+      },
+      "credentialRequirements": []
+    }
   },
-  "BuilderTestRecord": {
-    "id": "test-example",
-    "draftId": "draft-example",
-    "definitionDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "deviceId": "device-1",
-    "state": "QUEUED",
-    "revision": 1,
-    "createdAtUnixMs": 1700000000000,
-    "expiresAtUnixMs": 1700000600000,
-    "attempt": 0,
-    "leaseId": "lease-example",
-    "exampleIndex": 0
+  "BuilderPermission": "COMPUTE",
+  "BuilderRevisionRequest": {
+    "expectedRevision": 1
   },
   "BuilderTestPage": {
     "items": [
@@ -2360,6 +925,34 @@
       }
     ]
   },
+  "BuilderTestPoll": {},
+  "BuilderTestRecord": {
+    "id": "test-example",
+    "draftId": "draft-example",
+    "definitionDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "deviceId": "device-1",
+    "state": "QUEUED",
+    "revision": 1,
+    "createdAtUnixMs": 1700000000000,
+    "expiresAtUnixMs": 1700000600000,
+    "attempt": 0,
+    "leaseId": "lease-example",
+    "exampleIndex": 0
+  },
+  "BuilderTestRequest": {
+    "id": "test-example",
+    "draftId": "draft-example",
+    "expectedRevision": 1,
+    "deviceId": "device-1",
+    "exampleIndex": 0
+  },
+  "BuilderTestResult": {
+    "jobId": "test-example",
+    "leaseId": "lease-example",
+    "definitionDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "success": true
+  },
+  "BuilderTestState": "QUEUED",
   "BuilderTestTask": {
     "formatVersion": 1,
     "tenantId": "tenant",
@@ -2527,15 +1120,112 @@
     },
     "expiresAtUnixMs": 1700000600000
   },
-  "BuilderTestPoll": {},
-  "BuilderTestResult": {
-    "jobId": "test-example",
-    "leaseId": "lease-example",
-    "definitionDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "success": true
+  "BuiltinInvocation": {
+    "toolId": "hotfolder.read_text",
+    "arguments": {
+      "path": "note.txt"
+    }
   },
-  "BuilderRevisionRequest": {
-    "expectedRevision": 1
+  "BuiltinIpcRequest": {
+    "protocolVersion": 2,
+    "requestId": "request-07",
+    "operation": "CALL",
+    "invocation": {
+      "toolId": "hotfolder.read_text",
+      "arguments": {
+        "path": "note.txt"
+      }
+    }
+  },
+  "BuiltinIpcResponse": {
+    "requestId": "request-07",
+    "output": {
+      "text": "hello"
+    }
+  },
+  "BuiltinOperation": "CALL",
+  "BuiltinToolInfo": {
+    "toolId": "hotfolder.read_text",
+    "action": "read",
+    "description": "Read bounded UTF-8 content.",
+    "enabled": true,
+    "inputSchema": {
+      "type": "object"
+    },
+    "toolDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "BundleHeader": {
+    "alg": "RS256",
+    "typ": "toolgate-policy-bundle+jws",
+    "kid": "bundle-key-1"
+  },
+  "BundlePublishRequest": {
+    "directoryRevision": 0,
+    "expectedSequence": 0,
+    "lifetimeMs": 60000,
+    "graceMs": 0
+  },
+  "ClientDiscovery": {
+    "protocolVersion": 1,
+    "serverId": "device-1",
+    "organization": "example",
+    "tenantId": "device-1",
+    "controlUrl": "https://control.example.test",
+    "gatewayUrl": "https://control.example.test",
+    "verificationUri": "https://control.example.test",
+    "minimumClientVersion": "0.1.0-dev",
+    "issuedAtUnixMs": 1,
+    "expiresAtUnixMs": 1,
+    "issuerCertificatePem": "example"
+  },
+  "ClientDownloadArtifact": {
+    "platform": "LINUX",
+    "target": "x86_64-unknown-linux-gnu",
+    "filename": "olo-toolgate-client-0.7.0-dev-x86_64-unknown-linux-gnu.tar.gz",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "bytes": 12345
+  },
+  "ClientDownloadManifest": {
+    "version": "0.7.0-dev",
+    "artifacts": [
+      {
+        "platform": "LINUX",
+        "target": "x86_64-unknown-linux-gnu",
+        "filename": "olo-toolgate-client-0.7.0-dev-x86_64-unknown-linux-gnu.tar.gz",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 12345
+      },
+      {
+        "platform": "WINDOWS",
+        "target": "x86_64-pc-windows-msvc",
+        "filename": "olo-toolgate-client-0.7.0-dev-x86_64-pc-windows-msvc.zip",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 12345
+      },
+      {
+        "platform": "MACOS",
+        "target": "x86_64-apple-darwin",
+        "filename": "olo-toolgate-client-0.7.0-dev-x86_64-apple-darwin.tar.gz",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 12345
+      }
+    ]
+  },
+  "ClientEnrollmentRequest": {
+    "deviceId": "device-1",
+    "clientVersion": "0.1.0-dev",
+    "capabilities": [
+      "calculator"
+    ]
+  },
+  "ClientHealth": {
+    "state": "UNENROLLED",
+    "ready": false,
+    "uptimeSeconds": 1,
+    "successfulCheckIns": 1,
+    "failedCheckIns": 1,
+    "reportSequence": 1
   },
   "ClientInstallerArtifact": {
     "platform": "LINUX",
@@ -2570,10 +1260,457 @@
       }
     ]
   },
-  "AdminSession": {
-    "role": "ADMINISTRATOR"
+  "ClientIpcOperation": "HEALTH",
+  "ClientIpcRequest": {
+    "protocolVersion": 1,
+    "requestId": "device-1",
+    "operation": "HEALTH"
   },
-  "UserRole": "BASIC",
+  "ClientIpcResponse": {
+    "requestId": "device-1"
+  },
+  "ClientPlatform": "WINDOWS",
+  "ClientReport": {
+    "deviceId": "device-1",
+    "clientVersion": "0.1.0-dev",
+    "appliedRevision": 1,
+    "packages": [
+      {
+        "packageId": "community/calculator",
+        "version": "0.1.0-dev",
+        "state": "READY"
+      }
+    ]
+  },
+  "ClientSocketOperation": "CHECK_IN",
+  "ClientSocketReply": {
+    "requestId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "status": 200,
+    "body": {
+      "deviceId": "device-1",
+      "sequence": 1,
+      "serverTimeUnixMs": 1,
+      "nextIntervalSeconds": 10
+    }
+  },
+  "ClientSocketRequest": {
+    "requestId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "operation": "CHECK_IN",
+    "body": {
+      "sequence": 1,
+      "report": {
+        "deviceId": "device-1",
+        "clientVersion": "0.1.0-dev",
+        "appliedRevision": 1,
+        "packages": [
+          {
+            "packageId": "community/calculator",
+            "version": "0.1.0-dev",
+            "state": "READY"
+          }
+        ]
+      }
+    }
+  },
+  "ContractSet": {
+    "name": "olo-toolgate-contracts",
+    "version": "0.1.0-dev"
+  },
+  "ControlAccessGrant": {
+    "id": "example",
+    "name": "example",
+    "enabled": false,
+    "revision": 1,
+    "sourceType": "TEAM",
+    "sourceId": "example",
+    "purpose": "HUMAN",
+    "scope": {
+      "toolGroups": {
+        "ids": [],
+        "all": false
+      },
+      "deviceGroups": {
+        "ids": [],
+        "all": false
+      },
+      "actions": [],
+      "allActions": false,
+      "resources": [],
+      "conditions": {
+        "notBeforeUnixMs": 0,
+        "expiresAtUnixMs": 0,
+        "networkCidrs": [],
+        "devicePosture": [],
+        "regions": [],
+        "hoursUtc": [],
+        "requireOnline": false,
+        "highRisk": false
+      }
+    }
+  },
+  "ControlAccessGrantPage": {
+    "items": []
+  },
+  "ControlAgent": {
+    "id": "example",
+    "name": "example",
+    "enabled": false,
+    "revision": 1,
+    "ownerUserId": "example"
+  },
+  "ControlAgentDelegation": {
+    "id": "example",
+    "name": "example",
+    "enabled": false,
+    "revision": 1,
+    "fromAgentGroupId": "example",
+    "toAgentGroupId": "example",
+    "scope": {
+      "toolGroups": {
+        "ids": [],
+        "all": false
+      },
+      "deviceGroups": {
+        "ids": [],
+        "all": false
+      },
+      "actions": [],
+      "allActions": false,
+      "resources": [],
+      "conditions": {
+        "notBeforeUnixMs": 0,
+        "expiresAtUnixMs": 0,
+        "networkCidrs": [],
+        "devicePosture": [],
+        "regions": [],
+        "hoursUtc": [],
+        "requireOnline": false,
+        "highRisk": false
+      }
+    },
+    "maximumDepth": 1
+  },
+  "ControlAgentDelegationPage": {
+    "items": []
+  },
+  "ControlAgentGroup": {
+    "id": "example",
+    "name": "example",
+    "enabled": false,
+    "revision": 1,
+    "agentIds": [],
+    "roleIds": []
+  },
+  "ControlAgentGroupPage": {
+    "items": []
+  },
+  "ControlAgentPage": {
+    "items": [
+      {
+        "id": "agent-1",
+        "name": "User",
+        "enabled": true,
+        "revision": 1,
+        "ownerUserId": "user-1"
+      }
+    ]
+  },
+  "ControlAudit": {
+    "sequence": 1,
+    "tenantId": "tenant-1",
+    "actorId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "operation": "CREATE",
+    "target": "users:user-1",
+    "revision": 1,
+    "requestId": "request-1",
+    "occurredAt": "2026-10-02T00:00:00Z",
+    "requestDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "ControlAuditPage": {
+    "items": [
+      {
+        "sequence": 1,
+        "tenantId": "tenant-1",
+        "actorId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "operation": "CREATE",
+        "target": "users:user-1",
+        "revision": 1,
+        "requestId": "request-1",
+        "occurredAt": "2026-10-02T00:00:00Z",
+        "requestDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    ]
+  },
+  "ControlChange": {
+    "kind": "USER",
+    "id": "user-1",
+    "operation": "CREATE"
+  },
+  "ControlChangeKind": "CREATE",
+  "ControlDelegation": {
+    "id": "example",
+    "name": "example",
+    "enabled": false,
+    "revision": 1,
+    "teamId": "example",
+    "agentGroupId": "example",
+    "scope": {
+      "toolGroups": {
+        "ids": [],
+        "all": false
+      },
+      "deviceGroups": {
+        "ids": [],
+        "all": false
+      },
+      "actions": [],
+      "allActions": false,
+      "resources": [],
+      "conditions": {
+        "notBeforeUnixMs": 0,
+        "expiresAtUnixMs": 0,
+        "networkCidrs": [],
+        "devicePosture": [],
+        "regions": [],
+        "hoursUtc": [],
+        "requireOnline": false,
+        "highRisk": false
+      }
+    }
+  },
+  "ControlDelegationPage": {
+    "items": []
+  },
+  "ControlDevice": {
+    "id": "device-1",
+    "name": "User",
+    "enabled": true,
+    "revision": 1,
+    "ownerUserId": "user-1"
+  },
+  "ControlDeviceEvidence": {
+    "id": "example",
+    "name": "example",
+    "enabled": false,
+    "revision": 1,
+    "deviceId": "example",
+    "posture": [],
+    "region": "example",
+    "verifiedNetworkAddress": "example",
+    "verifiedAtUnixMs": 0,
+    "expiresAtUnixMs": 0
+  },
+  "ControlDeviceEvidencePage": {
+    "items": []
+  },
+  "ControlDeviceGroup": {
+    "id": "default-devices",
+    "name": "Default device group",
+    "enabled": true,
+    "revision": 1,
+    "deviceIds": [
+      "device-1"
+    ]
+  },
+  "ControlDeviceGroupPage": {
+    "items": [
+      {
+        "id": "default-devices",
+        "name": "Default device group",
+        "enabled": true,
+        "revision": 1,
+        "deviceIds": [
+          "device-1"
+        ]
+      }
+    ]
+  },
+  "ControlDevicePage": {
+    "items": [
+      {
+        "id": "device-1",
+        "name": "User",
+        "enabled": true,
+        "revision": 1,
+        "ownerUserId": "user-1"
+      }
+    ]
+  },
+  "ControlEntityKind": "USER",
+  "ControlExecutionBinding": {
+    "id": "example",
+    "name": "example",
+    "enabled": false,
+    "revision": 1,
+    "toolGroupId": "example",
+    "deviceGroupId": "example",
+    "actions": [],
+    "allowedPackageDigests": [],
+    "requireOnline": false,
+    "ownerDependency": false
+  },
+  "ControlExecutionBindingPage": {
+    "items": []
+  },
+  "ControlIdentityBinding": {
+    "id": "example",
+    "name": "example",
+    "enabled": false,
+    "revision": 1,
+    "userId": "example",
+    "issuer": "example",
+    "subject": "example",
+    "sessionEpoch": 1,
+    "firstSeenUnixMs": 0,
+    "lastAttemptUnixMs": 0,
+    "attemptCount": 1,
+    "registrationReason": "example",
+    "sessionsValidAfterUnixMs": 0
+  },
+  "ControlIdentityBindingPage": {
+    "items": []
+  },
+  "ControlImportMode": "MERGE",
+  "ControlImportRequest": {
+    "snapshot": {
+      "formatVersion": 2,
+      "tenantId": "example",
+      "revision": 0,
+      "users": [],
+      "teams": [],
+      "agents": [],
+      "tools": [],
+      "policies": [],
+      "devices": [],
+      "roles": [],
+      "deviceGroups": [],
+      "agentGroups": [],
+      "toolGroups": [],
+      "grants": [],
+      "delegations": [],
+      "agentDelegations": [],
+      "bindings": [],
+      "extractors": [],
+      "workloadBindings": [],
+      "identityBindings": [],
+      "deviceEvidence": []
+    },
+    "mode": "MERGE",
+    "dryRun": false
+  },
+  "ControlImportResult": {
+    "applied": false,
+    "revision": 0,
+    "changes": [
+      {
+        "kind": "USER",
+        "id": "user-1",
+        "operation": "CREATE"
+      }
+    ]
+  },
+  "ControlPolicy": {
+    "id": "example",
+    "name": "example",
+    "enabled": false,
+    "revision": 1,
+    "decision": "ALLOW",
+    "scope": {
+      "toolGroups": {
+        "ids": [],
+        "all": false
+      },
+      "deviceGroups": {
+        "ids": [],
+        "all": false
+      },
+      "actions": [],
+      "allActions": false,
+      "resources": [],
+      "conditions": {
+        "notBeforeUnixMs": 0,
+        "expiresAtUnixMs": 0,
+        "networkCidrs": [],
+        "devicePosture": [],
+        "regions": [],
+        "hoursUtc": [],
+        "requireOnline": false,
+        "highRisk": false
+      }
+    },
+    "teams": {
+      "ids": [],
+      "all": false
+    },
+    "agentGroups": {
+      "ids": [],
+      "all": false
+    },
+    "approverTeams": {
+      "ids": [],
+      "all": false
+    }
+  },
+  "ControlPolicyPage": {
+    "items": [
+      {
+        "id": "policy-1",
+        "name": "User",
+        "enabled": true,
+        "revision": 1,
+        "decision": "BLOCK",
+        "scope": {
+          "toolGroups": {
+            "ids": [],
+            "all": false
+          },
+          "deviceGroups": {
+            "ids": [],
+            "all": false
+          },
+          "actions": [],
+          "allActions": false,
+          "resources": [],
+          "conditions": {
+            "notBeforeUnixMs": 0,
+            "expiresAtUnixMs": 0,
+            "networkCidrs": [],
+            "devicePosture": [],
+            "regions": [],
+            "hoursUtc": [],
+            "requireOnline": false,
+            "highRisk": false
+          }
+        },
+        "teams": {
+          "ids": [],
+          "all": false
+        },
+        "agentGroups": {
+          "ids": [],
+          "all": false
+        },
+        "approverTeams": {
+          "ids": [],
+          "all": false
+        }
+      }
+    ]
+  },
+  "ControlResourceExtractor": {
+    "id": "example",
+    "name": "example",
+    "enabled": false,
+    "revision": 1,
+    "extractorKind": "FIXED",
+    "version": "1.0.0",
+    "fields": [],
+    "fixedResources": [],
+    "maxResources": 1
+  },
+  "ControlResourceExtractorPage": {
+    "items": []
+  },
   "ControlRole": {
     "id": "example",
     "name": "example",
@@ -2595,6 +1732,1567 @@
         "managementRules": []
       }
     ]
+  },
+  "ControlSnapshot": {
+    "formatVersion": 2,
+    "tenantId": "example",
+    "revision": 0,
+    "users": [],
+    "teams": [],
+    "agents": [],
+    "tools": [],
+    "policies": [],
+    "devices": [],
+    "roles": [],
+    "deviceGroups": [],
+    "agentGroups": [],
+    "toolGroups": [],
+    "grants": [],
+    "delegations": [],
+    "agentDelegations": [],
+    "bindings": [],
+    "extractors": [],
+    "workloadBindings": [],
+    "identityBindings": [],
+    "deviceEvidence": []
+  },
+  "ControlTeam": {
+    "id": "example",
+    "name": "example",
+    "enabled": false,
+    "revision": 1,
+    "userIds": [],
+    "roleIds": []
+  },
+  "ControlTeamPage": {
+    "items": [
+      {
+        "id": "team-1",
+        "name": "User",
+        "enabled": true,
+        "revision": 1,
+        "userIds": [
+          "user-1"
+        ],
+        "roleIds": []
+      }
+    ]
+  },
+  "ControlTool": {
+    "id": "example",
+    "name": "example",
+    "enabled": false,
+    "revision": 1,
+    "definition": {
+      "id": "example",
+      "name": "example",
+      "description": "example",
+      "actions": [],
+      "inputSchema": {},
+      "outputSchema": {}
+    },
+    "extractorId": "example",
+    "version": "1.0.0",
+    "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "ControlToolGroup": {
+    "id": "example",
+    "name": "example",
+    "enabled": false,
+    "revision": 1,
+    "toolIds": []
+  },
+  "ControlToolGroupPage": {
+    "items": []
+  },
+  "ControlToolPage": {
+    "items": [
+      {
+        "id": "calculator",
+        "name": "User",
+        "enabled": true,
+        "revision": 1,
+        "definition": {
+          "id": "calculator",
+          "name": "Calculator",
+          "description": "Pure calculation",
+          "actions": [
+            {
+              "name": "evaluate",
+              "resourceKinds": [
+                "CUSTOM"
+              ]
+            }
+          ],
+          "inputSchema": {
+            "type": "object"
+          },
+          "outputSchema": {
+            "type": "number"
+          }
+        },
+        "extractorId": "example",
+        "version": "1.0.0",
+        "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    ]
+  },
+  "ControlUser": {
+    "id": "example",
+    "name": "example",
+    "enabled": false,
+    "revision": 1
+  },
+  "ControlUserPage": {
+    "items": [
+      {
+        "id": "user-1",
+        "name": "User",
+        "enabled": true,
+        "revision": 1
+      }
+    ]
+  },
+  "ControlWorkloadBinding": {
+    "id": "example",
+    "name": "example",
+    "enabled": false,
+    "revision": 1,
+    "agentId": "example",
+    "mode": "HUMAN",
+    "issuer": "example",
+    "subject": "example",
+    "audience": "example",
+    "credentialSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "credentialEpoch": 1,
+    "expiresAtUnixMs": 0
+  },
+  "ControlWorkloadBindingPage": {
+    "items": []
+  },
+  "Decision": "BLOCK",
+  "DeploymentAssignment": {
+    "assignmentId": "assignment-1",
+    "deviceId": "device-1",
+    "release": {
+      "packageId": "community/calculator",
+      "version": "0.1.0-dev",
+      "manifestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "marketplaceKeyId": "marketplace/test-key",
+      "marketplaceSignature": "fixture-not-a-real-signature"
+    },
+    "organizationKeyId": "organization/test-key",
+    "organizationSignature": "fixture-not-a-real-signature",
+    "desiredPresence": true
+  },
+  "DesiredState": {
+    "deviceId": "device-1",
+    "revision": 1,
+    "assignments": [
+      {
+        "assignmentId": "assignment-1",
+        "deviceId": "device-1",
+        "release": {
+          "packageId": "community/calculator",
+          "version": "0.1.0-dev",
+          "manifestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "marketplaceKeyId": "marketplace/test-key",
+          "marketplaceSignature": "fixture-not-a-real-signature"
+        },
+        "organizationKeyId": "organization/test-key",
+        "organizationSignature": "fixture-not-a-real-signature",
+        "desiredPresence": true
+      }
+    ]
+  },
+  "DeviceIdentity": {
+    "deviceId": "device-1",
+    "tenantId": "device-1",
+    "userId": "device-1",
+    "serverId": "device-1",
+    "certificatePem": "example",
+    "issuerCertificatePem": "example",
+    "expiresAtUnixMs": 1
+  },
+  "EndpointAdoption": {
+    "serverId": "server",
+    "deviceId": "device",
+    "revision": 1,
+    "authorizationEpoch": 1,
+    "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "EndpointApprovalRequest": {
+    "expectedApprovalRevision": 1,
+    "approved": true,
+    "unlimitedConnection": true
+  },
+  "EndpointCheckIn": {
+    "sequence": 1,
+    "report": {
+      "deviceId": "device-1",
+      "clientVersion": "0.1.0-dev",
+      "appliedRevision": 1,
+      "packages": [
+        {
+          "packageId": "community/calculator",
+          "version": "0.1.0-dev",
+          "state": "READY"
+        }
+      ]
+    }
+  },
+  "EndpointCheckInAck": {
+    "deviceId": "device-1",
+    "sequence": 1,
+    "serverTimeUnixMs": 1,
+    "nextIntervalSeconds": 10
+  },
+  "EndpointDeviceRecord": {
+    "deviceId": "device-1",
+    "tenantId": "device-1",
+    "userId": "device-1",
+    "keyFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "state": "UNENROLLED",
+    "revision": 1,
+    "lastSeenUnixMs": 1,
+    "reportSequence": 1,
+    "systemName": "test-machine",
+    "ipAddress": "192.0.2.10"
+  },
+  "EndpointEnabledRequest": {
+    "expectedRevision": 0,
+    "enabled": false
+  },
+  "EndpointEnrollmentChallenge": {
+    "enrollmentId": "device-1",
+    "deviceCode": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "userCode": "AAAAAAAAAAAAAAAA",
+    "verificationUri": "https://control.example.test",
+    "expiresAtUnixMs": 1,
+    "pollIntervalSeconds": 2
+  },
+  "EndpointEnrollmentDecision": {
+    "userCode": "AAAAAAAAAAAAAAAA",
+    "keyFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "choice": "APPROVE"
+  },
+  "EndpointEnrollmentPage": {
+    "items": []
+  },
+  "EndpointEnrollmentPoll": {
+    "enrollmentId": "device-1",
+    "deviceCode": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "EndpointEnrollmentPrompt": {
+    "enrollmentId": "device-1",
+    "userCode": "AAAAAAAAAAAAAAAA",
+    "verificationUri": "https://control.example.test",
+    "expiresAtUnixMs": 1,
+    "pollIntervalSeconds": 2,
+    "keyFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "EndpointEnrollmentResult": {
+    "state": "PENDING"
+  },
+  "EndpointEnrollmentReview": {
+    "enrollmentId": "device-1",
+    "userCode": "AAAAAAAAAAAAAAAA",
+    "deviceId": "device-1",
+    "platform": "WINDOWS",
+    "keyFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "state": "PENDING",
+    "expiresAtUnixMs": 1
+  },
+  "EndpointEnrollmentStart": {
+    "deviceId": "device-1",
+    "clientVersion": "0.1.0-dev",
+    "platform": "WINDOWS",
+    "csrPem": "example",
+    "capabilities": []
+  },
+  "EndpointManagedDevice": {
+    "deviceId": "device-1",
+    "systemExecutor": false,
+    "systemName": "test-machine",
+    "ipAddress": "2001:db8::1"
+  },
+  "EndpointManagedDevicePage": {
+    "items": []
+  },
+  "EndpointRevokeRequest": {
+    "expectedRevision": 1
+  },
+  "EndpointState": "UNENROLLED",
+  "EnrollmentChoice": "APPROVE",
+  "EnrollmentState": "PENDING",
+  "EnterpriseActorHop": {
+    "agentId": "example",
+    "workloadBindingId": "example"
+  },
+  "EnterpriseAdoptionStatus": {
+    "deviceId": "device",
+    "directoryRevision": 1,
+    "authorizationEpoch": 1,
+    "graphDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "observedAtUnixMs": 1
+  },
+  "EnterpriseApproval": {
+    "id": "example",
+    "approvalType": "OPERATION",
+    "invocationId": "example",
+    "requestDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "authorizationEpoch": 0,
+    "directoryRevision": 0,
+    "obligationIds": [],
+    "reviews": [],
+    "state": "PENDING",
+    "revision": 1,
+    "expiresAtUnixMs": 0
+  },
+  "EnterpriseApprovalDecisionRequest": {
+    "expectedRevision": 1,
+    "obligationId": "example",
+    "decision": "APPROVE"
+  },
+  "EnterpriseApprovalPage": {
+    "items": []
+  },
+  "EnterpriseApprovalReview": {
+    "obligationId": "example",
+    "reviewerUserId": "example",
+    "decision": "APPROVE",
+    "decidedAtUnixMs": 0
+  },
+  "EnterpriseApprovalState": "PENDING",
+  "EnterpriseApprovalType": "OPERATION",
+  "EnterpriseAuthorityStatus": {
+    "directoryRevision": 1,
+    "authorizationEpoch": 1,
+    "snapshotSequence": 0,
+    "adoptions": []
+  },
+  "EnterpriseAuthorizationOutcome": {
+    "invocation": {
+      "id": "example",
+      "requestDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "evaluation": {
+        "context": {
+          "requestId": "example",
+          "tenantId": "example",
+          "mode": "HUMAN",
+          "chain": [],
+          "bindingId": "example",
+          "deviceId": "example"
+        },
+        "toolId": "example",
+        "action": "example",
+        "argumentsDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "resources": [],
+        "toolDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "nowUnixMs": 0,
+        "authorityRevision": 0,
+        "online": false
+      },
+      "state": "PENDING_APPROVAL",
+      "revision": 1,
+      "authorizationEpoch": 0,
+      "expiresAtUnixMs": 0,
+      "completedResources": [],
+      "diagnosticId": "example"
+    }
+  },
+  "EnterpriseConditions": {
+    "notBeforeUnixMs": 0,
+    "expiresAtUnixMs": 0,
+    "networkCidrs": [],
+    "devicePosture": [],
+    "regions": [],
+    "hoursUtc": [],
+    "requireOnline": false,
+    "highRisk": false
+  },
+  "EnterpriseConfigurationAction": "SUBMIT",
+  "EnterpriseConfigurationChange": {
+    "id": "change-a",
+    "requesterUserId": "user-a",
+    "command": {
+      "operation": "CREATE",
+      "kind": "USER",
+      "entityId": "user-new",
+      "document": "{}",
+      "expectedRevision": 0
+    },
+    "requestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "directoryRevision": 1,
+    "authorizationEpoch": 1,
+    "state": "DRAFT",
+    "revision": 1,
+    "createdAtUnixMs": 1,
+    "expiresAtUnixMs": 60001,
+    "requiredReviews": 1,
+    "impact": [
+      {
+        "kind": "USER",
+        "entityId": "user-new",
+        "operation": "CREATE",
+        "beforeDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "afterDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ],
+    "affectedGroups": [
+      "team-default"
+    ],
+    "affectedIndividuals": [
+      "user-new"
+    ],
+    "reviews": []
+  },
+  "EnterpriseConfigurationCommand": {
+    "operation": "CREATE",
+    "kind": "USER",
+    "entityId": "user-new",
+    "document": "{}",
+    "expectedRevision": 0
+  },
+  "EnterpriseConfigurationImpact": {
+    "kind": "USER",
+    "entityId": "user-new",
+    "operation": "CREATE",
+    "beforeDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "afterDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "EnterpriseConfigurationImpactOperation": "CREATE",
+  "EnterpriseConfigurationOperation": "CREATE",
+  "EnterpriseConfigurationPage": {
+    "items": [
+      {
+        "id": "change-a",
+        "requesterUserId": "user-a",
+        "command": {
+          "operation": "CREATE",
+          "kind": "USER",
+          "entityId": "user-new",
+          "document": "{}",
+          "expectedRevision": 0
+        },
+        "requestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "directoryRevision": 1,
+        "authorizationEpoch": 1,
+        "state": "DRAFT",
+        "revision": 1,
+        "createdAtUnixMs": 1,
+        "expiresAtUnixMs": 60001,
+        "requiredReviews": 1,
+        "impact": [
+          {
+            "kind": "USER",
+            "entityId": "user-new",
+            "operation": "CREATE",
+            "beforeDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+            "afterDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ],
+        "affectedGroups": [
+          "team-default"
+        ],
+        "affectedIndividuals": [
+          "user-new"
+        ],
+        "reviews": []
+      }
+    ]
+  },
+  "EnterpriseConfigurationReview": {
+    "reviewerUserId": "reviewer-a",
+    "decision": "APPROVE",
+    "reviewedAtUnixMs": 100
+  },
+  "EnterpriseConfigurationState": "DRAFT",
+  "EnterpriseConfigurationTransition": {
+    "expectedRevision": 1,
+    "action": "SUBMIT"
+  },
+  "EnterpriseContext": {
+    "requestId": "example",
+    "tenantId": "example",
+    "mode": "HUMAN",
+    "chain": [],
+    "bindingId": "example",
+    "deviceId": "example"
+  },
+  "EnterpriseDecision": {
+    "decision": "ALLOW",
+    "reason": "MATCHED",
+    "witnesses": [],
+    "obligations": [],
+    "revision": 0,
+    "authorizationEpoch": 0,
+    "validUntilUnixMs": 0,
+    "diagnosticId": "example"
+  },
+  "EnterpriseDecisionReason": "MATCHED",
+  "EnterpriseEffectReport": {
+    "invocationId": "example",
+    "expectedRevision": 1,
+    "state": "PENDING_APPROVAL",
+    "completedResources": []
+  },
+  "EnterpriseEffectiveAccess": {
+    "entityId": "alice",
+    "kind": "USER",
+    "directoryRevision": 1,
+    "authorizationEpoch": 1,
+    "memberships": [
+      {
+        "groupType": "TEAM",
+        "groupId": "team-default",
+        "enabled": true,
+        "roleIds": [],
+        "grants": []
+      }
+    ],
+    "bindings": [],
+    "managementRoles": []
+  },
+  "EnterpriseEffectiveMembership": {
+    "groupType": "TEAM",
+    "groupId": "team-default",
+    "enabled": true,
+    "roleIds": [],
+    "grants": []
+  },
+  "EnterpriseEvaluation": {
+    "context": {
+      "requestId": "example",
+      "tenantId": "example",
+      "mode": "HUMAN",
+      "chain": [],
+      "bindingId": "example",
+      "deviceId": "example"
+    },
+    "toolId": "example",
+    "action": "example",
+    "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "resources": [],
+    "toolDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "packageDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "nowUnixMs": 0,
+    "authorityRevision": 0,
+    "online": false
+  },
+  "EnterpriseExtractorKind": "FIXED",
+  "EnterpriseGrantPurpose": "HUMAN",
+  "EnterpriseGroupType": "TEAM",
+  "EnterpriseHours": {
+    "dayOfWeek": 0,
+    "startMinute": 0,
+    "endMinute": 1
+  },
+  "EnterpriseHumanOutcome": {
+    "invocation": {
+      "id": "example",
+      "requestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "evaluation": {
+        "context": {
+          "requestId": "example",
+          "tenantId": "example",
+          "mode": "HUMAN",
+          "chain": [],
+          "bindingId": "example",
+          "deviceId": "example"
+        },
+        "toolId": "example",
+        "action": "example",
+        "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "resources": [],
+        "toolDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "packageDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "nowUnixMs": 0,
+        "authorityRevision": 0,
+        "online": false
+      },
+      "state": "PENDING_APPROVAL",
+      "revision": 1,
+      "authorizationEpoch": 0,
+      "expiresAtUnixMs": 0,
+      "completedResources": [],
+      "diagnosticId": "example"
+    }
+  },
+  "EnterpriseHumanRequest": {
+    "bindingId": "binding-a",
+    "deviceId": "device-a",
+    "request": {
+      "toolId": "files.read",
+      "action": "read",
+      "arguments": {
+        "path": "workspace/readme.txt"
+      }
+    }
+  },
+  "EnterpriseHumanTarget": {
+    "bindingId": "binding-a",
+    "deviceId": "device-a"
+  },
+  "EnterpriseInvocation": {
+    "id": "example",
+    "requestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "evaluation": {
+      "context": {
+        "requestId": "example",
+        "tenantId": "example",
+        "mode": "HUMAN",
+        "chain": [],
+        "bindingId": "example",
+        "deviceId": "example"
+      },
+      "toolId": "example",
+      "action": "example",
+      "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "resources": [],
+      "toolDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "packageDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "nowUnixMs": 0,
+      "authorityRevision": 0,
+      "online": false
+    },
+    "state": "PENDING_APPROVAL",
+    "revision": 1,
+    "authorizationEpoch": 0,
+    "expiresAtUnixMs": 0,
+    "completedResources": [],
+    "diagnosticId": "example"
+  },
+  "EnterpriseInvocationPage": {
+    "items": []
+  },
+  "EnterpriseInvocationRequest": {
+    "context": {
+      "requestId": "example",
+      "tenantId": "example",
+      "mode": "HUMAN",
+      "chain": [],
+      "bindingId": "example",
+      "deviceId": "example"
+    },
+    "request": {
+      "toolId": "example",
+      "action": "example",
+      "arguments": {}
+    },
+    "toolDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "EnterpriseInvocationState": "PENDING_APPROVAL",
+  "EnterpriseManagementRule": {
+    "actions": [],
+    "groupType": "TEAM",
+    "groups": {
+      "ids": [],
+      "all": false
+    },
+    "grantableScopes": [],
+    "conditions": {
+      "notBeforeUnixMs": 0,
+      "expiresAtUnixMs": 0,
+      "networkCidrs": [],
+      "devicePosture": [],
+      "regions": [],
+      "hoursUtc": [],
+      "requireOnline": false,
+      "highRisk": false
+    }
+  },
+  "EnterpriseMemberType": "USER",
+  "EnterpriseOperationalStatus": {
+    "pendingSnapshotEvents": 0,
+    "oldestUnpublishedUnixMs": 0,
+    "unknownOutcomes": 0,
+    "expiredRunningEffects": 0,
+    "permitLifetimeMs": 0,
+    "clockSkewMs": 0,
+    "authorityCacheGraceMs": 0,
+    "readyProbeFreshnessMs": 0
+  },
+  "EnterprisePermitClaims": {
+    "issuer": "example",
+    "audience": "example",
+    "nonce": "example",
+    "invocationId": "example",
+    "requestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "evaluationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorizationEpoch": 0,
+    "directoryRevision": 0,
+    "issuedAtUnixMs": 0,
+    "expiresAtUnixMs": 0,
+    "toolDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "packageDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "bindingId": "example",
+    "deviceId": "example",
+    "approvalIds": []
+  },
+  "EnterprisePermitConsumption": {
+    "invocationId": "example",
+    "permit": {
+      "jws": "example"
+    },
+    "argumentsDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "resources": [],
+    "toolDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "EnterprisePermitHeader": {
+    "alg": "RS256",
+    "typ": "toolgate-effect-permit+jws",
+    "kid": "example"
+  },
+  "EnterpriseReconciledState": "SUCCEEDED",
+  "EnterpriseReconciliation": {
+    "id": "device-1",
+    "invocationId": "device-1",
+    "requesterUserId": "device-1",
+    "request": {
+      "expectedRevision": 0,
+      "state": "SUCCEEDED",
+      "completedResources": [],
+      "evidenceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "requestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "revision": 0,
+    "state": "PENDING"
+  },
+  "EnterpriseReconciliationDecision": {
+    "expectedRevision": 0,
+    "approve": false
+  },
+  "EnterpriseReconciliationRequest": {
+    "expectedRevision": 0,
+    "state": "SUCCEEDED",
+    "completedResources": [],
+    "evidenceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "EnterpriseReconciliationState": "PENDING",
+  "EnterpriseRecoveryAuthorization": {
+    "formatVersion": 1,
+    "tenantId": "tenant-a",
+    "expectedRevision": 0,
+    "snapshot": {
+      "formatVersion": 2,
+      "tenantId": "example",
+      "revision": 0,
+      "users": [],
+      "teams": [],
+      "agents": [],
+      "tools": [],
+      "policies": [],
+      "devices": [],
+      "roles": [],
+      "deviceGroups": [],
+      "agentGroups": [],
+      "toolGroups": [],
+      "grants": [],
+      "delegations": [],
+      "agentDelegations": [],
+      "bindings": [],
+      "extractors": [],
+      "workloadBindings": [],
+      "identityBindings": [],
+      "deviceEvidence": []
+    },
+    "reasonDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "issuedAtUnixMs": 1,
+    "expiresAtUnixMs": 60001
+  },
+  "EnterpriseRecoveryProof": {
+    "keyId": "reviewer-a",
+    "signature": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+  },
+  "EnterpriseRequestMode": "HUMAN",
+  "EnterpriseReservation": {
+    "invocation": {
+      "id": "example",
+      "requestDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "evaluation": {
+        "context": {
+          "requestId": "example",
+          "tenantId": "example",
+          "mode": "HUMAN",
+          "chain": [],
+          "bindingId": "example",
+          "deviceId": "example"
+        },
+        "toolId": "example",
+        "action": "example",
+        "argumentsDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "resources": [],
+        "toolDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "nowUnixMs": 0,
+        "authorityRevision": 0,
+        "online": false
+      },
+      "state": "PENDING_APPROVAL",
+      "revision": 1,
+      "authorizationEpoch": 0,
+      "expiresAtUnixMs": 0,
+      "completedResources": [],
+      "diagnosticId": "example"
+    },
+    "permit": {
+      "jws": "example"
+    }
+  },
+  "EnterpriseReservationRequest": {
+    "invocationId": "example",
+    "expectedRevision": 1
+  },
+  "EnterpriseResourceMatch": "EXACT",
+  "EnterpriseResourceRule": {
+    "kind": "FILE",
+    "locator": "example",
+    "match": "EXACT"
+  },
+  "EnterpriseReviewDecision": "APPROVE",
+  "EnterpriseReviewedRecovery": {
+    "authorization": {
+      "formatVersion": 1,
+      "tenantId": "tenant-a",
+      "expectedRevision": 0,
+      "snapshot": {
+        "formatVersion": 2,
+        "tenantId": "example",
+        "revision": 0,
+        "users": [],
+        "teams": [],
+        "agents": [],
+        "tools": [],
+        "policies": [],
+        "devices": [],
+        "roles": [],
+        "deviceGroups": [],
+        "agentGroups": [],
+        "toolGroups": [],
+        "grants": [],
+        "delegations": [],
+        "agentDelegations": [],
+        "bindings": [],
+        "extractors": [],
+        "workloadBindings": [],
+        "identityBindings": [],
+        "deviceEvidence": []
+      },
+      "reasonDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "issuedAtUnixMs": 1,
+      "expiresAtUnixMs": 60001
+    },
+    "proofs": [
+      {
+        "keyId": "reviewer-a",
+        "signature": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      {
+        "keyId": "reviewer-b",
+        "signature": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+      }
+    ]
+  },
+  "EnterpriseRoleType": "HUMAN",
+  "EnterpriseScope": {
+    "toolGroups": {
+      "ids": [],
+      "all": false
+    },
+    "deviceGroups": {
+      "ids": [],
+      "all": false
+    },
+    "actions": [],
+    "allActions": false,
+    "resources": [],
+    "conditions": {
+      "notBeforeUnixMs": 0,
+      "expiresAtUnixMs": 0,
+      "networkCidrs": [],
+      "devicePosture": [],
+      "regions": [],
+      "hoursUtc": [],
+      "requireOnline": false,
+      "highRisk": false
+    }
+  },
+  "EnterpriseSecretDelivery": {
+    "value": "example"
+  },
+  "EnterpriseSecretDeliveryRequest": {
+    "invocationId": "device-1",
+    "name": "example"
+  },
+  "EnterpriseShadowRequest": {
+    "snapshot": {
+      "formatVersion": 2,
+      "tenantId": "example",
+      "revision": 0,
+      "users": [],
+      "teams": [],
+      "agents": [],
+      "tools": [],
+      "policies": [],
+      "devices": [],
+      "roles": [],
+      "deviceGroups": [],
+      "agentGroups": [],
+      "toolGroups": [],
+      "grants": [],
+      "delegations": [],
+      "agentDelegations": [],
+      "bindings": [],
+      "extractors": [],
+      "workloadBindings": [],
+      "identityBindings": [],
+      "deviceEvidence": []
+    },
+    "evaluation": {
+      "context": {
+        "requestId": "example",
+        "tenantId": "example",
+        "mode": "HUMAN",
+        "chain": [],
+        "bindingId": "example",
+        "deviceId": "example"
+      },
+      "toolId": "example",
+      "action": "example",
+      "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "resources": [],
+      "toolDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "packageDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "nowUnixMs": 0,
+      "authorityRevision": 0,
+      "online": false
+    },
+    "observedLegacyDecision": "BLOCK",
+    "legacyEvidenceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "EnterpriseShadowResult": {
+    "decision": {
+      "decision": "ALLOW",
+      "reason": "MATCHED",
+      "witnesses": [],
+      "obligations": [],
+      "revision": 0,
+      "authorizationEpoch": 0,
+      "validUntilUnixMs": 0,
+      "diagnosticId": "example"
+    },
+    "observedLegacyDecision": "BLOCK",
+    "legacyEvidenceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "proposedSnapshotDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "accessExpansion": false
+  },
+  "EnterpriseSignedPermit": {
+    "jws": "example"
+  },
+  "EnterpriseSnapshotPayload": {
+    "formatVersion": 3,
+    "issuer": "control",
+    "audience": "gateway",
+    "tenantId": "tenant",
+    "sequence": 1,
+    "policyVersion": "3.0.1",
+    "directoryRevision": 1,
+    "authorizationEpoch": 1,
+    "issuedAtUnixMs": 0,
+    "expiresAtUnixMs": 1,
+    "graphSha256": "9ff7d4d9d135fbea91ebd1f17f84acad1651e5f509a1f7dd3b090b7d16589dd2",
+    "graphBase64": "eyJhZ2VudERlbGVnYXRpb25zIjpbXSwiYWdlbnRHcm91cHMiOltdLCJhZ2VudHMiOltdLCJiaW5kaW5ncyI6W10sImRlbGVnYXRpb25zIjpbXSwiZGV2aWNlRXZpZGVuY2UiOltdLCJkZXZpY2VHcm91cHMiOltdLCJkZXZpY2VzIjpbXSwiZXh0cmFjdG9ycyI6W10sImZvcm1hdFZlcnNpb24iOjIsImdyYW50cyI6W10sImlkZW50aXR5QmluZGluZ3MiOltdLCJwb2xpY2llcyI6W10sInJldmlzaW9uIjowLCJyb2xlcyI6W10sInRlYW1zIjpbXSwidGVuYW50SWQiOiJleGFtcGxlIiwidG9vbEdyb3VwcyI6W10sInRvb2xzIjpbXSwidXNlcnMiOltdLCJ3b3JrbG9hZEJpbmRpbmdzIjpbXX0"
+  },
+  "EnterpriseSourceType": "TEAM",
+  "EnterpriseVaultPage": {
+    "items": [
+      {
+        "name": "demo/token",
+        "toolGroupId": "default-tools",
+        "deviceGroupId": "default-devices"
+      }
+    ]
+  },
+  "EnterpriseVaultReference": {
+    "name": "demo/token",
+    "toolGroupId": "default-tools",
+    "deviceGroupId": "default-devices"
+  },
+  "EnterpriseVaultStored": {
+    "stored": true
+  },
+  "EnterpriseVaultWrite": {
+    "name": "demo/token",
+    "toolGroupId": "default-tools",
+    "deviceGroupId": "default-devices",
+    "value": "fixture value"
+  },
+  "EnterpriseWitness": {
+    "bindingId": "example",
+    "provenance": []
+  },
+  "ErrorCode": "VALIDATION",
+  "ErrorEnvelope": {
+    "code": "VALIDATION",
+    "requestId": "request-1",
+    "retryable": false
+  },
+  "ExtractorField": {
+    "pointer": "example",
+    "kind": "FILE",
+    "multiple": false
+  },
+  "FleetArchitecture": "x86_64",
+  "FleetArtifactGrantClaims": {
+    "tenantId": "device-1",
+    "serverId": "device-1",
+    "deviceId": "device-1",
+    "generation": 1,
+    "manifestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "sizeBytes": 1,
+    "grantId": "device-1",
+    "issuedAtUnixMs": 0,
+    "expiresAtUnixMs": 0
+  },
+  "FleetArtifactGrantRequest": {
+    "generation": 1,
+    "manifestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "FleetAssignment": {
+    "release": {
+      "packageId": "device-1",
+      "version": "0.1.0-dev",
+      "manifestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sizeBytes": 1,
+      "release": {
+        "jws": "e30.e30.c2ln"
+      }
+    },
+    "desiredPresence": true
+  },
+  "FleetClientStatus": {
+    "generation": 0,
+    "ready": true,
+    "packages": []
+  },
+  "FleetDesiredDocument": {
+    "formatVersion": 1,
+    "tenantId": "device-1",
+    "serverId": "device-1",
+    "deviceId": "device-1",
+    "generation": 1,
+    "issuedAtUnixMs": 0,
+    "expiresAtUnixMs": 0,
+    "assignments": []
+  },
+  "FleetDesiredSnapshot": {
+    "deviceId": "device-1",
+    "generation": 1,
+    "assignments": []
+  },
+  "FleetPackageDocument": {
+    "formatVersion": 1,
+    "packageId": "device-1",
+    "version": "0.1.0-dev",
+    "platforms": [
+      "WINDOWS"
+    ],
+    "architectures": [
+      "x86_64"
+    ],
+    "minimumClientVersion": "0.1.0-dev",
+    "runtimes": [
+      {
+        "id": "python-echo",
+        "kind": "PYTHON",
+        "image": "registry.example.com/toolgate/python-echo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "version": "3.14.0"
+      }
+    ],
+    "tools": [
+      {
+        "toolId": "local.echo",
+        "action": "execute",
+        "runtimeId": "python-echo",
+        "entryPoint": "/opt/tool/tool.py",
+        "inputSchema": {
+          "type": "object"
+        },
+        "outputSchema": {
+          "type": "object"
+        },
+        "limits": {
+          "timeoutMs": 2000,
+          "memoryMiB": 128,
+          "maxInputBytes": 4096,
+          "maxOutputBytes": 4096
+        },
+        "authorizationProfile": {
+          "tool": {
+            "id": "local.echo",
+            "name": "local.echo",
+            "enabled": true,
+            "revision": 1,
+            "version": "0.1.0-dev",
+            "packageDigest": "1f46d112e15700b76859b52f4541113080c3b734916c682658e09353109422e9",
+            "extractorId": "extract-5a77d536026e311f934cfcc372f60551",
+            "definition": {
+              "id": "local.echo",
+              "name": "local.echo",
+              "description": "Reviewed bounded compute capability.",
+              "actions": [
+                {
+                  "name": "execute",
+                  "resourceKinds": [
+                    "CUSTOM"
+                  ]
+                }
+              ],
+              "inputSchema": {
+                "type": "object"
+              },
+              "outputSchema": {
+                "type": "object"
+              }
+            }
+          },
+          "extractor": {
+            "id": "extract-5a77d536026e311f934cfcc372f60551",
+            "name": "Resources for local.echo",
+            "enabled": true,
+            "revision": 1,
+            "extractorKind": "FIELDS",
+            "version": "0.1.0-dev",
+            "fields": [],
+            "fixedResources": [
+              {
+                "kind": "CUSTOM",
+                "locator": "runtime/local.echo"
+              }
+            ],
+            "maxResources": 1
+          }
+        }
+      }
+    ],
+    "selfTests": [
+      {
+        "toolId": "device-1",
+        "arguments": {},
+        "expectedOutput": {}
+      }
+    ]
+  },
+  "FleetPackageRelease": {
+    "packageId": "device-1",
+    "version": "0.1.0-dev",
+    "manifestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "sizeBytes": 1,
+    "release": {
+      "jws": "e30.e30.c2ln"
+    }
+  },
+  "FleetReleasePage": {
+    "items": []
+  },
+  "FleetRolloutAdvance": {
+    "expectedRevision": 1,
+    "percentage": 1
+  },
+  "FleetRolloutMember": {
+    "deviceId": "device-1",
+    "generation": 0
+  },
+  "FleetRolloutPage": {
+    "items": []
+  },
+  "FleetRolloutRecord": {
+    "id": "device-1",
+    "packageId": "device-1",
+    "version": "0.1.0-dev",
+    "desiredPresence": true,
+    "percentage": 1,
+    "revision": 1,
+    "createdAtUnixMs": 0,
+    "members": [
+      {
+        "deviceId": "device-1",
+        "generation": 0
+      }
+    ]
+  },
+  "FleetRolloutRequest": {
+    "id": "device-1",
+    "packageId": "device-1",
+    "version": "0.1.0-dev",
+    "deviceIds": [
+      "device-1"
+    ],
+    "desiredPresence": true,
+    "percentage": 1
+  },
+  "FleetRolloutStatus": {
+    "rollout": {
+      "id": "device-1",
+      "packageId": "device-1",
+      "version": "0.1.0-dev",
+      "desiredPresence": true,
+      "percentage": 1,
+      "revision": 1,
+      "createdAtUnixMs": 0,
+      "members": [
+        {
+          "deviceId": "device-1",
+          "generation": 0
+        }
+      ]
+    },
+    "ready": 0,
+    "failed": 0,
+    "offline": 0,
+    "waiting": 0,
+    "pending": 0,
+    "superseded": 0
+  },
+  "FleetSelfTest": {
+    "toolId": "device-1",
+    "arguments": {},
+    "expectedOutput": {}
+  },
+  "FleetSignatureHeader": {
+    "alg": "RS256",
+    "typ": "toolgate-package-release+jws",
+    "kid": "device-1"
+  },
+  "FleetSignedDocument": {
+    "jws": "e30.e30.c2ln"
+  },
+  "FleetTrustKey": {
+    "kid": "device-1",
+    "n": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "e": "AQAB"
+  },
+  "GroupMembership": {
+    "entityType": "USER",
+    "entityId": "example",
+    "groupIds": [
+      "example"
+    ],
+    "revision": 0
+  },
+  "GroupSelection": {
+    "ids": [],
+    "all": false
+  },
+  "Identifier": "device-1",
+  "InstalledAuthorizationProfile": {
+    "tool": {
+      "id": "example",
+      "name": "example",
+      "enabled": false,
+      "revision": 1,
+      "definition": {
+        "id": "example",
+        "name": "example",
+        "description": "example",
+        "actions": [],
+        "inputSchema": {},
+        "outputSchema": {}
+      },
+      "extractorId": "example",
+      "version": "1.0.0",
+      "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "extractor": {
+      "id": "example",
+      "name": "example",
+      "enabled": false,
+      "revision": 1,
+      "extractorKind": "FIXED",
+      "version": "1.0.0",
+      "fields": [],
+      "fixedResources": [],
+      "maxResources": 1
+    }
+  },
+  "LocalRuntimeHealth": {
+    "ready": false,
+    "successfulExecutions": 0,
+    "failedExecutions": 0,
+    "runtimes": [
+      {
+        "runtimeId": "python-echo",
+        "kind": "PYTHON",
+        "state": "MISSING",
+        "version": "3.14.0"
+      }
+    ]
+  },
+  "LocalRuntimeIpcRequest": {
+    "protocolVersion": 3,
+    "requestId": "request-runtime",
+    "operation": "INVOKE",
+    "invocation": {
+      "protocolVersion": 1,
+      "requestId": "request-runtime",
+      "toolId": "local.echo",
+      "arguments": {
+        "text": "hello"
+      }
+    }
+  },
+  "LocalRuntimeIpcResponse": {
+    "requestId": "request-runtime",
+    "result": {
+      "protocolVersion": 1,
+      "requestId": "request-runtime",
+      "output": {
+        "text": "hello"
+      }
+    }
+  },
+  "LocalRuntimeKind": "PYTHON",
+  "LocalRuntimeLimits": {
+    "timeoutMs": 2000,
+    "memoryMiB": 128,
+    "maxInputBytes": 4096,
+    "maxOutputBytes": 4096
+  },
+  "LocalRuntimeOperation": "INVOKE",
+  "LocalRuntimeState": "MISSING",
+  "LocalRuntimeStatus": {
+    "runtimeId": "python-echo",
+    "kind": "PYTHON",
+    "state": "MISSING",
+    "version": "3.14.0"
+  },
+  "LocalToolCatalog": {
+    "tools": [
+      {
+        "toolId": "hotfolder.read_text",
+        "action": "read",
+        "description": "Read bounded UTF-8 content.",
+        "enabled": true,
+        "inputSchema": {
+          "type": "object"
+        },
+        "toolDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    ]
+  },
+  "LocalToolInput": {
+    "protocolVersion": 1,
+    "requestId": "request-runtime",
+    "toolId": "local.echo",
+    "arguments": {
+      "text": "hello"
+    }
+  },
+  "LocalToolOutput": {
+    "protocolVersion": 1,
+    "requestId": "request-runtime",
+    "output": {
+      "text": "hello"
+    }
+  },
+  "LocalToolRegistration": {
+    "toolId": "local.echo",
+    "action": "execute",
+    "runtimeId": "python-echo",
+    "entryPoint": "/opt/tool/tool.py",
+    "inputSchema": {
+      "type": "object"
+    },
+    "outputSchema": {
+      "type": "object"
+    },
+    "limits": {
+      "timeoutMs": 2000,
+      "memoryMiB": 128,
+      "maxInputBytes": 4096,
+      "maxOutputBytes": 4096
+    },
+    "authorizationProfile": {
+      "tool": {
+        "id": "local.echo",
+        "name": "local.echo",
+        "enabled": true,
+        "revision": 1,
+        "version": "1.0.0",
+        "packageDigest": "1f46d112e15700b76859b52f4541113080c3b734916c682658e09353109422e9",
+        "extractorId": "extract-5a77d536026e311f934cfcc372f60551",
+        "definition": {
+          "id": "local.echo",
+          "name": "local.echo",
+          "description": "Reviewed bounded compute capability.",
+          "actions": [
+            {
+              "name": "execute",
+              "resourceKinds": [
+                "CUSTOM"
+              ]
+            }
+          ],
+          "inputSchema": {
+            "type": "object"
+          },
+          "outputSchema": {
+            "type": "object"
+          }
+        }
+      },
+      "extractor": {
+        "id": "extract-5a77d536026e311f934cfcc372f60551",
+        "name": "Resources for local.echo",
+        "enabled": true,
+        "revision": 1,
+        "extractorKind": "FIELDS",
+        "version": "1.0.0",
+        "fields": [],
+        "fixedResources": [
+          {
+            "kind": "CUSTOM",
+            "locator": "runtime/local.echo"
+          }
+        ],
+        "maxResources": 1
+      }
+    }
+  },
+  "LocalToolSource": {
+    "code": "def tool(arguments):\n    return {'text': arguments['text']}\n",
+    "sha256": "f9ac9cea83359f08537fcddff8b29026d216f9f2d7685ba96c135643b4ffb6e9"
+  },
+  "ManagedRuntime": {
+    "id": "python-echo",
+    "kind": "PYTHON",
+    "image": "registry.example.com/toolgate/python-echo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "version": "3.14.0"
+  },
+  "MarketplaceRelease": {
+    "packageId": "community/calculator",
+    "version": "0.1.0-dev",
+    "manifestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "marketplaceKeyId": "marketplace/test-key",
+    "marketplaceSignature": "fixture-not-a-real-signature"
+  },
+  "PackageCompatibility": {
+    "contractsVersion": "0.1.0-dev",
+    "minimumClientVersion": "0.1.0-dev"
+  },
+  "PackageManifest": {
+    "schemaVersion": 1,
+    "id": "community/calculator",
+    "version": "0.1.0-dev",
+    "tools": [
+      {
+        "id": "calculator",
+        "name": "Calculator",
+        "description": "Pure calculation",
+        "actions": [
+          {
+            "name": "evaluate",
+            "resourceKinds": [
+              "CUSTOM"
+            ]
+          }
+        ],
+        "inputSchema": {
+          "type": "object"
+        },
+        "outputSchema": {
+          "type": "number"
+        }
+      }
+    ],
+    "artifacts": [
+      {
+        "uri": "https://example.invalid/calculator.zip",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sizeBytes": 123
+      }
+    ],
+    "credentialReferences": [
+      "secret://example/token"
+    ],
+    "compatibility": {
+      "contractsVersion": "0.1.0-dev",
+      "minimumClientVersion": "0.1.0-dev"
+    }
+  },
+  "PackageState": "READY",
+  "RemoteToolAuthorization": {
+    "requestId": "request",
+    "leaseId": "lease",
+    "request": {
+      "toolId": "files.read",
+      "action": "read",
+      "arguments": {
+        "path": "workspace/readme.txt"
+      }
+    }
+  },
+  "RemoteToolAuthorizationAck": {
+    "expiresAtUnixMs": 1700000030000
+  },
+  "RemoteToolInspection": {
+    "record": {
+      "requestId": "request",
+      "deviceId": "device",
+      "agentId": "agent",
+      "toolId": "tool",
+      "state": "WAITING_FOR_POLL",
+      "receivedAtUnixMs": 1700000000000,
+      "expiresAtUnixMs": 1700000030000
+    },
+    "output": {
+      "text": "hello"
+    }
+  },
+  "RemoteToolPage": {
+    "items": [
+      {
+        "requestId": "request",
+        "deviceId": "device",
+        "agentId": "agent",
+        "toolId": "tool",
+        "state": "WAITING_FOR_POLL",
+        "receivedAtUnixMs": 1700000000000,
+        "expiresAtUnixMs": 1700000030000
+      }
+    ]
+  },
+  "RemoteToolRecord": {
+    "requestId": "request",
+    "deviceId": "device",
+    "agentId": "agent",
+    "toolId": "tool",
+    "state": "WAITING_FOR_POLL",
+    "receivedAtUnixMs": 1700000000000,
+    "expiresAtUnixMs": 1700000030000
+  },
+  "RemoteToolResponse": {
+    "record": {
+      "requestId": "request",
+      "deviceId": "device",
+      "agentId": "agent",
+      "toolId": "tool",
+      "state": "WAITING_FOR_POLL",
+      "receivedAtUnixMs": 1700000000000,
+      "expiresAtUnixMs": 1700000030000
+    }
+  },
+  "RemoteToolResult": {
+    "requestId": "request",
+    "leaseId": "lease",
+    "output": {
+      "value": "ok"
+    }
   },
   "RemoteToolState": "WAITING_FOR_POLL",
   "RemoteToolSubmission": {
@@ -2660,999 +3358,61 @@
       "jws": "example"
     }
   },
-  "RemoteToolResult": {
-    "requestId": "request",
-    "leaseId": "lease",
-    "output": {
-      "value": "ok"
-    }
+  "ReportedPackage": {
+    "packageId": "community/calculator",
+    "version": "0.1.0-dev",
+    "state": "READY"
   },
-  "RemoteToolRecord": {
-    "requestId": "request",
-    "deviceId": "device",
-    "agentId": "agent",
-    "toolId": "tool",
-    "state": "WAITING_FOR_POLL",
-    "receivedAtUnixMs": 1700000000000,
-    "expiresAtUnixMs": 1700000030000
-  },
-  "RemoteToolPage": {
-    "items": [
-      {
-        "requestId": "request",
-        "deviceId": "device",
-        "agentId": "agent",
-        "toolId": "tool",
-        "state": "WAITING_FOR_POLL",
-        "receivedAtUnixMs": 1700000000000,
-        "expiresAtUnixMs": 1700000030000
-      }
-    ]
-  },
-  "RemoteToolResponse": {
-    "record": {
-      "requestId": "request",
-      "deviceId": "device",
-      "agentId": "agent",
-      "toolId": "tool",
-      "state": "WAITING_FOR_POLL",
-      "receivedAtUnixMs": 1700000000000,
-      "expiresAtUnixMs": 1700000030000
-    }
-  },
-  "RemoteToolAuthorization": {
-    "requestId": "request",
-    "leaseId": "lease",
-    "request": {
-      "toolId": "files.read",
-      "action": "read",
-      "arguments": {
-        "path": "workspace/readme.txt"
-      }
-    }
-  },
-  "RemoteToolAuthorizationAck": {
-    "expiresAtUnixMs": 1700000030000
-  },
-  "LocalToolCatalog": {
-    "tools": [
-      {
-        "toolId": "hotfolder.read_text",
-        "action": "read",
-        "description": "Read bounded UTF-8 content.",
-        "enabled": true,
-        "inputSchema": {
-          "type": "object"
-        },
-        "toolDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-        "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
-      }
-    ]
-  },
-  "ClientSocketOperation": "CHECK_IN",
-  "ClientSocketRequest": {
-    "requestId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "operation": "CHECK_IN",
-    "body": {
-      "sequence": 1,
-      "report": {
-        "deviceId": "device-1",
-        "clientVersion": "0.1.0-dev",
-        "appliedRevision": 1,
-        "packages": [
-          {
-            "packageId": "community/calculator",
-            "version": "0.1.0-dev",
-            "state": "READY"
-          }
-        ]
-      }
-    }
-  },
-  "ClientSocketReply": {
-    "requestId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "status": 200,
-    "body": {
-      "deviceId": "device-1",
-      "sequence": 1,
-      "serverTimeUnixMs": 1,
-      "nextIntervalSeconds": 10
-    }
-  },
-  "RemoteToolInspection": {
-    "record": {
-      "requestId": "request",
-      "deviceId": "device",
-      "agentId": "agent",
-      "toolId": "tool",
-      "state": "WAITING_FOR_POLL",
-      "receivedAtUnixMs": 1700000000000,
-      "expiresAtUnixMs": 1700000030000
-    },
-    "output": {
-      "text": "hello"
-    }
-  },
-  "ControlDeviceGroup": {
-    "id": "default-devices",
-    "name": "Default device group",
-    "enabled": true,
-    "revision": 1,
-    "deviceIds": [
-      "device-1"
-    ]
-  },
-  "ControlDeviceGroupPage": {
-    "items": [
-      {
-        "id": "default-devices",
-        "name": "Default device group",
-        "enabled": true,
-        "revision": 1,
-        "deviceIds": [
-          "device-1"
-        ]
-      }
-    ]
-  },
-  "EnterpriseRoleType": "HUMAN",
-  "EnterpriseRequestMode": "HUMAN",
-  "EnterpriseGroupType": "TEAM",
-  "EnterpriseSourceType": "TEAM",
-  "EnterpriseGrantPurpose": "HUMAN",
-  "EnterpriseResourceMatch": "EXACT",
-  "EnterpriseExtractorKind": "FIXED",
-  "EnterpriseDecisionReason": "MATCHED",
-  "EnterpriseInvocationState": "PENDING_APPROVAL",
-  "GroupSelection": {
-    "ids": [],
-    "all": false
-  },
-  "EnterpriseResourceRule": {
-    "kind": "FILE",
-    "locator": "example",
-    "match": "EXACT"
-  },
-  "EnterpriseHours": {
-    "dayOfWeek": 0,
-    "startMinute": 0,
-    "endMinute": 1
-  },
-  "EnterpriseConditions": {
-    "notBeforeUnixMs": 0,
-    "expiresAtUnixMs": 0,
-    "networkCidrs": [],
-    "devicePosture": [],
-    "regions": [],
-    "hoursUtc": [],
-    "requireOnline": false,
-    "highRisk": false
-  },
-  "EnterpriseScope": {
-    "toolGroups": {
-      "ids": [],
-      "all": false
-    },
-    "deviceGroups": {
-      "ids": [],
-      "all": false
-    },
-    "actions": [],
-    "allActions": false,
-    "resources": [],
-    "conditions": {
-      "notBeforeUnixMs": 0,
-      "expiresAtUnixMs": 0,
-      "networkCidrs": [],
-      "devicePosture": [],
-      "regions": [],
-      "hoursUtc": [],
-      "requireOnline": false,
-      "highRisk": false
-    }
-  },
-  "EnterpriseManagementRule": {
-    "actions": [],
-    "groupType": "TEAM",
-    "groups": {
-      "ids": [],
-      "all": false
-    },
-    "grantableScopes": [],
-    "conditions": {
-      "notBeforeUnixMs": 0,
-      "expiresAtUnixMs": 0,
-      "networkCidrs": [],
-      "devicePosture": [],
-      "regions": [],
-      "hoursUtc": [],
-      "requireOnline": false,
-      "highRisk": false
-    }
-  },
-  "ControlAgentGroup": {
-    "id": "example",
-    "name": "example",
-    "enabled": false,
-    "revision": 1,
-    "agentIds": [],
-    "roleIds": []
-  },
-  "ControlToolGroup": {
-    "id": "example",
-    "name": "example",
-    "enabled": false,
-    "revision": 1,
-    "toolIds": []
-  },
-  "ControlAccessGrant": {
-    "id": "example",
-    "name": "example",
-    "enabled": false,
-    "revision": 1,
-    "sourceType": "TEAM",
-    "sourceId": "example",
-    "purpose": "HUMAN",
-    "scope": {
-      "toolGroups": {
-        "ids": [],
-        "all": false
-      },
-      "deviceGroups": {
-        "ids": [],
-        "all": false
-      },
-      "actions": [],
-      "allActions": false,
-      "resources": [],
-      "conditions": {
-        "notBeforeUnixMs": 0,
-        "expiresAtUnixMs": 0,
-        "networkCidrs": [],
-        "devicePosture": [],
-        "regions": [],
-        "hoursUtc": [],
-        "requireOnline": false,
-        "highRisk": false
-      }
-    }
-  },
-  "ControlDelegation": {
-    "id": "example",
-    "name": "example",
-    "enabled": false,
-    "revision": 1,
-    "teamId": "example",
-    "agentGroupId": "example",
-    "scope": {
-      "toolGroups": {
-        "ids": [],
-        "all": false
-      },
-      "deviceGroups": {
-        "ids": [],
-        "all": false
-      },
-      "actions": [],
-      "allActions": false,
-      "resources": [],
-      "conditions": {
-        "notBeforeUnixMs": 0,
-        "expiresAtUnixMs": 0,
-        "networkCidrs": [],
-        "devicePosture": [],
-        "regions": [],
-        "hoursUtc": [],
-        "requireOnline": false,
-        "highRisk": false
-      }
-    }
-  },
-  "ControlAgentDelegation": {
-    "id": "example",
-    "name": "example",
-    "enabled": false,
-    "revision": 1,
-    "fromAgentGroupId": "example",
-    "toAgentGroupId": "example",
-    "scope": {
-      "toolGroups": {
-        "ids": [],
-        "all": false
-      },
-      "deviceGroups": {
-        "ids": [],
-        "all": false
-      },
-      "actions": [],
-      "allActions": false,
-      "resources": [],
-      "conditions": {
-        "notBeforeUnixMs": 0,
-        "expiresAtUnixMs": 0,
-        "networkCidrs": [],
-        "devicePosture": [],
-        "regions": [],
-        "hoursUtc": [],
-        "requireOnline": false,
-        "highRisk": false
-      }
-    },
-    "maximumDepth": 1
-  },
-  "ControlExecutionBinding": {
-    "id": "example",
-    "name": "example",
-    "enabled": false,
-    "revision": 1,
-    "toolGroupId": "example",
-    "deviceGroupId": "example",
-    "actions": [],
-    "allowedPackageDigests": [],
-    "requireOnline": false,
-    "ownerDependency": false
-  },
-  "ExtractorField": {
-    "pointer": "example",
-    "kind": "FILE",
-    "multiple": false
-  },
-  "ControlResourceExtractor": {
-    "id": "example",
-    "name": "example",
-    "enabled": false,
-    "revision": 1,
-    "extractorKind": "FIXED",
-    "version": "1.0.0",
-    "fields": [],
-    "fixedResources": [],
-    "maxResources": 1
-  },
-  "ControlWorkloadBinding": {
-    "id": "example",
-    "name": "example",
-    "enabled": false,
-    "revision": 1,
-    "agentId": "example",
+  "RequestContext": {
+    "requestId": "request-1",
+    "tenantId": "tenant-1",
     "mode": "HUMAN",
-    "issuer": "example",
-    "subject": "example",
-    "audience": "example",
-    "credentialSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "credentialEpoch": 1,
-    "expiresAtUnixMs": 0
-  },
-  "ControlIdentityBinding": {
-    "id": "example",
-    "name": "example",
-    "enabled": false,
-    "revision": 1,
-    "userId": "example",
-    "issuer": "example",
-    "subject": "example",
-    "sessionEpoch": 1,
-    "firstSeenUnixMs": 0,
-    "lastAttemptUnixMs": 0,
-    "attemptCount": 1,
-    "registrationReason": "example",
-    "sessionsValidAfterUnixMs": 0
-  },
-  "ControlDeviceEvidence": {
-    "id": "example",
-    "name": "example",
-    "enabled": false,
-    "revision": 1,
-    "deviceId": "example",
-    "posture": [],
-    "region": "example",
-    "verifiedNetworkAddress": "example",
-    "verifiedAtUnixMs": 0,
-    "expiresAtUnixMs": 0
-  },
-  "GroupMembership": {
-    "entityType": "USER",
-    "entityId": "example",
-    "groupIds": [
-      "example"
-    ],
-    "revision": 0
-  },
-  "EnterpriseMemberType": "USER",
-  "EnterpriseActorHop": {
-    "agentId": "example",
-    "workloadBindingId": "example"
-  },
-  "EnterpriseContext": {
-    "requestId": "example",
-    "tenantId": "example",
-    "mode": "HUMAN",
+    "userId": "user-1",
+    "agentId": "agent-1",
     "chain": [],
     "bindingId": "example",
     "deviceId": "example"
   },
-  "EnterpriseEvaluation": {
-    "context": {
-      "requestId": "example",
-      "tenantId": "example",
-      "mode": "HUMAN",
-      "chain": [],
-      "bindingId": "example",
-      "deviceId": "example"
-    },
-    "toolId": "example",
-    "action": "example",
-    "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "resources": [],
-    "toolDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "packageDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "nowUnixMs": 0,
-    "authorityRevision": 0,
-    "online": false
+  "ResourceDescriptor": {
+    "kind": "CUSTOM",
+    "locator": "calculator"
   },
-  "EnterpriseWitness": {
-    "bindingId": "example",
-    "provenance": []
+  "ResourceKind": "CUSTOM",
+  "SecretReference": "secret://example/token",
+  "SemanticVersion": "0.1.0-dev",
+  "Sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "SignedClientDiscovery": {
+    "payload": "AA",
+    "signature": "AA"
   },
-  "EnterpriseDecision": {
-    "decision": "ALLOW",
-    "reason": "MATCHED",
-    "witnesses": [],
-    "obligations": [],
-    "revision": 0,
-    "authorizationEpoch": 0,
-    "validUntilUnixMs": 0,
-    "diagnosticId": "example"
+  "SignedPolicyBundle": {
+    "jws": "eyJhbGciOiAiUlMyNTYiLCAidHlwIjogInRvb2xnYXRlLXBvbGljeS1idW5kbGUrandzIiwgImtpZCI6ICJidW5kbGUta2V5LTEifQ.eyJmb3JtYXRWZXJzaW9uIjogMSwgImlzc3VlciI6ICJjb250cm9sIiwgImF1ZGllbmNlIjogImdhdGV3YXkiLCAidGVuYW50SWQiOiAiZXhhbXBsZSIsICJzZXF1ZW5jZSI6IDEsICJ2ZXJzaW9uIjogIjEuMC4xIiwgImRpcmVjdG9yeVJldmlzaW9uIjogMCwgImlzc3VlZEF0VW5peE1zIjogMTcwMDAwMDAwMDAwMCwgImV4cGlyZXNBdFVuaXhNcyI6IDE3MDAwMDAwNjAwMDAsICJncmFjZU1zIjogMCwgInBvbGljeVNoYTI1NiI6ICIyYmIxZTUwNDhhMTliZGU5M2MzNDAxNDJiNWQ5YmExZjVlYWQ2MzlkY2U3YWRkNjdiZmQwMmQ2YzNhNDliN2UxIiwgInBvbGljeSI6ICJleUptYjNKdFlYUldaWEp6YVc5dUlqb3hMQ0p5ZFd4bGN5STZXM3NpWVdOMGFXOXVJam9pY21WaFpDSXNJbUZuWlc1MFNXUnpJanBiWFN3aVpHVjJhV05sU1dSeklqcGJYU3dpWldabVpXTjBJam9pUVV4TVQxY2lMQ0puY21GalpVRnNiRzkzWldRaU9uUnlkV1VzSW5CdmJHbGplVWxrSWpvaVlXeHNiM2N0Y21WaFpDSXNJbkpsYzI5MWNtTmxJanA3SW10cGJtUWlPaUpEVlZOVVQwMGlMQ0pzYjJOaGRHOXlJam9pWTJGc1kzVnNZWFJ2Y2lKOUxDSjBiMjlzU1dRaU9pSm1hV3hsY3lJc0luVnpaWEpKWkhNaU9sc2lZV3hwWTJVaVhYMWRmUSJ9.c3RydWN0dXJhbC1vbmx5"
   },
-  "EnterpriseInvocation": {
-    "id": "example",
-    "requestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "evaluation": {
-      "context": {
-        "requestId": "example",
-        "tenantId": "example",
-        "mode": "HUMAN",
-        "chain": [],
-        "bindingId": "example",
-        "deviceId": "example"
-      },
-      "toolId": "example",
-      "action": "example",
-      "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "resources": [],
-      "toolDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "packageDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "nowUnixMs": 0,
-      "authorityRevision": 0,
-      "online": false
-    },
-    "state": "PENDING_APPROVAL",
-    "revision": 1,
-    "authorizationEpoch": 0,
-    "expiresAtUnixMs": 0,
-    "completedResources": [],
-    "diagnosticId": "example"
-  },
-  "EnterpriseSignedPermit": {
-    "jws": "example"
-  },
-  "EnterprisePermitClaims": {
-    "issuer": "example",
-    "audience": "example",
-    "nonce": "example",
-    "invocationId": "example",
-    "requestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "evaluationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "authorizationEpoch": 0,
-    "directoryRevision": 0,
-    "issuedAtUnixMs": 0,
-    "expiresAtUnixMs": 0,
-    "toolDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "packageDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "bindingId": "example",
-    "deviceId": "example",
-    "approvalIds": []
-  },
-  "ControlAgentGroupPage": {
-    "items": []
-  },
-  "ControlToolGroupPage": {
-    "items": []
-  },
-  "ControlAccessGrantPage": {
-    "items": []
-  },
-  "ControlDelegationPage": {
-    "items": []
-  },
-  "ControlAgentDelegationPage": {
-    "items": []
-  },
-  "ControlExecutionBindingPage": {
-    "items": []
-  },
-  "ControlResourceExtractorPage": {
-    "items": []
-  },
-  "ControlWorkloadBindingPage": {
-    "items": []
-  },
-  "ControlIdentityBindingPage": {
-    "items": []
-  },
-  "ControlDeviceEvidencePage": {
-    "items": []
-  },
-  "EnterpriseSnapshotPayload": {
-    "formatVersion": 3,
-    "issuer": "control",
-    "audience": "gateway",
-    "tenantId": "tenant",
-    "sequence": 1,
-    "policyVersion": "3.0.1",
-    "directoryRevision": 1,
-    "authorizationEpoch": 1,
-    "issuedAtUnixMs": 0,
-    "expiresAtUnixMs": 1,
-    "graphSha256": "9ff7d4d9d135fbea91ebd1f17f84acad1651e5f509a1f7dd3b090b7d16589dd2",
-    "graphBase64": "eyJhZ2VudERlbGVnYXRpb25zIjpbXSwiYWdlbnRHcm91cHMiOltdLCJhZ2VudHMiOltdLCJiaW5kaW5ncyI6W10sImRlbGVnYXRpb25zIjpbXSwiZGV2aWNlRXZpZGVuY2UiOltdLCJkZXZpY2VHcm91cHMiOltdLCJkZXZpY2VzIjpbXSwiZXh0cmFjdG9ycyI6W10sImZvcm1hdFZlcnNpb24iOjIsImdyYW50cyI6W10sImlkZW50aXR5QmluZGluZ3MiOltdLCJwb2xpY2llcyI6W10sInJldmlzaW9uIjowLCJyb2xlcyI6W10sInRlYW1zIjpbXSwidGVuYW50SWQiOiJleGFtcGxlIiwidG9vbEdyb3VwcyI6W10sInRvb2xzIjpbXSwidXNlcnMiOltdLCJ3b3JrbG9hZEJpbmRpbmdzIjpbXX0"
-  },
-  "EnterpriseApprovalType": "OPERATION",
-  "EnterpriseApprovalState": "PENDING",
-  "EnterpriseReviewDecision": "APPROVE",
-  "EnterpriseApprovalReview": {
-    "obligationId": "example",
-    "reviewerUserId": "example",
-    "decision": "APPROVE",
-    "decidedAtUnixMs": 0
-  },
-  "EnterpriseApproval": {
-    "id": "example",
-    "approvalType": "OPERATION",
-    "invocationId": "example",
-    "requestDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-    "authorizationEpoch": 0,
-    "directoryRevision": 0,
-    "obligationIds": [],
-    "reviews": [],
-    "state": "PENDING",
-    "revision": 1,
-    "expiresAtUnixMs": 0
-  },
-  "EnterpriseApprovalDecisionRequest": {
-    "expectedRevision": 1,
-    "obligationId": "example",
-    "decision": "APPROVE"
-  },
-  "EnterpriseInvocationRequest": {
-    "context": {
-      "requestId": "example",
-      "tenantId": "example",
-      "mode": "HUMAN",
-      "chain": [],
-      "bindingId": "example",
-      "deviceId": "example"
-    },
-    "request": {
-      "toolId": "example",
-      "action": "example",
-      "arguments": {}
-    },
-    "toolDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-    "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
-  },
-  "EnterpriseReservationRequest": {
-    "invocationId": "example",
-    "expectedRevision": 1
-  },
-  "EnterpriseReservation": {
-    "invocation": {
-      "id": "example",
-      "requestDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-      "evaluation": {
-        "context": {
-          "requestId": "example",
-          "tenantId": "example",
-          "mode": "HUMAN",
-          "chain": [],
-          "bindingId": "example",
-          "deviceId": "example"
-        },
-        "toolId": "example",
-        "action": "example",
-        "argumentsDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-        "resources": [],
-        "toolDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-        "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-        "nowUnixMs": 0,
-        "authorityRevision": 0,
-        "online": false
-      },
-      "state": "PENDING_APPROVAL",
-      "revision": 1,
-      "authorizationEpoch": 0,
-      "expiresAtUnixMs": 0,
-      "completedResources": [],
-      "diagnosticId": "example"
-    },
-    "permit": {
-      "jws": "example"
-    }
-  },
-  "EnterprisePermitConsumption": {
-    "invocationId": "example",
-    "permit": {
-      "jws": "example"
-    },
-    "argumentsDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-    "resources": [],
-    "toolDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-    "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
-  },
-  "EnterpriseEffectReport": {
-    "invocationId": "example",
-    "expectedRevision": 1,
-    "state": "PENDING_APPROVAL",
-    "completedResources": []
-  },
-  "EnterprisePermitHeader": {
-    "alg": "RS256",
-    "typ": "toolgate-effect-permit+jws",
-    "kid": "example"
-  },
-  "EnterpriseApprovalPage": {
-    "items": []
-  },
-  "EnterpriseAuthorizationOutcome": {
-    "invocation": {
-      "id": "example",
-      "requestDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-      "evaluation": {
-        "context": {
-          "requestId": "example",
-          "tenantId": "example",
-          "mode": "HUMAN",
-          "chain": [],
-          "bindingId": "example",
-          "deviceId": "example"
-        },
-        "toolId": "example",
-        "action": "example",
-        "argumentsDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-        "resources": [],
-        "toolDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-        "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-        "nowUnixMs": 0,
-        "authorityRevision": 0,
-        "online": false
-      },
-      "state": "PENDING_APPROVAL",
-      "revision": 1,
-      "authorizationEpoch": 0,
-      "expiresAtUnixMs": 0,
-      "completedResources": [],
-      "diagnosticId": "example"
-    }
-  },
-  "InstalledAuthorizationProfile": {
-    "tool": {
-      "id": "example",
-      "name": "example",
-      "enabled": false,
-      "revision": 1,
-      "definition": {
-        "id": "example",
-        "name": "example",
-        "description": "example",
-        "actions": [],
-        "inputSchema": {},
-        "outputSchema": {}
-      },
-      "extractorId": "example",
-      "version": "1.0.0",
-      "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
-    },
-    "extractor": {
-      "id": "example",
-      "name": "example",
-      "enabled": false,
-      "revision": 1,
-      "extractorKind": "FIXED",
-      "version": "1.0.0",
-      "fields": [],
-      "fixedResources": [],
-      "maxResources": 1
-    }
-  },
-  "EnterpriseRecoveryAuthorization": {
-    "formatVersion": 1,
-    "tenantId": "tenant-a",
-    "expectedRevision": 0,
-    "snapshot": {
-      "formatVersion": 2,
-      "tenantId": "example",
-      "revision": 0,
-      "users": [],
-      "teams": [],
-      "agents": [],
-      "tools": [],
-      "policies": [],
-      "devices": [],
-      "roles": [],
-      "deviceGroups": [],
-      "agentGroups": [],
-      "toolGroups": [],
-      "grants": [],
-      "delegations": [],
-      "agentDelegations": [],
-      "bindings": [],
-      "extractors": [],
-      "workloadBindings": [],
-      "identityBindings": [],
-      "deviceEvidence": []
-    },
-    "reasonDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "issuedAtUnixMs": 1,
-    "expiresAtUnixMs": 60001
-  },
-  "EnterpriseRecoveryProof": {
-    "keyId": "reviewer-a",
-    "signature": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-  },
-  "EnterpriseReviewedRecovery": {
-    "authorization": {
-      "formatVersion": 1,
-      "tenantId": "tenant-a",
-      "expectedRevision": 0,
-      "snapshot": {
-        "formatVersion": 2,
-        "tenantId": "example",
-        "revision": 0,
-        "users": [],
-        "teams": [],
-        "agents": [],
-        "tools": [],
-        "policies": [],
-        "devices": [],
-        "roles": [],
-        "deviceGroups": [],
-        "agentGroups": [],
-        "toolGroups": [],
-        "grants": [],
-        "delegations": [],
-        "agentDelegations": [],
-        "bindings": [],
-        "extractors": [],
-        "workloadBindings": [],
-        "identityBindings": [],
-        "deviceEvidence": []
-      },
-      "reasonDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-      "issuedAtUnixMs": 1,
-      "expiresAtUnixMs": 60001
-    },
-    "proofs": [
-      {
-        "keyId": "reviewer-a",
-        "signature": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-      },
-      {
-        "keyId": "reviewer-b",
-        "signature": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
-      }
+  "SystemExecutorKind": "HOTFOLDER",
+  "ToolAction": {
+    "name": "evaluate",
+    "resourceKinds": [
+      "CUSTOM"
     ]
   },
-  "EnterpriseConfigurationState": "DRAFT",
-  "EnterpriseConfigurationCommand": {
-    "operation": "CREATE",
-    "kind": "USER",
-    "entityId": "user-new",
-    "document": "{}",
-    "expectedRevision": 0
-  },
-  "EnterpriseConfigurationImpact": {
-    "kind": "USER",
-    "entityId": "user-new",
-    "operation": "CREATE",
-    "beforeDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-    "afterDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-  },
-  "EnterpriseConfigurationReview": {
-    "reviewerUserId": "reviewer-a",
-    "decision": "APPROVE",
-    "reviewedAtUnixMs": 100
-  },
-  "EnterpriseConfigurationChange": {
-    "id": "change-a",
-    "requesterUserId": "user-a",
-    "command": {
-      "operation": "CREATE",
-      "kind": "USER",
-      "entityId": "user-new",
-      "document": "{}",
-      "expectedRevision": 0
+  "ToolDefinition": {
+    "id": "calculator",
+    "name": "Calculator",
+    "description": "Pure calculation",
+    "actions": [
+      {
+        "name": "evaluate",
+        "resourceKinds": [
+          "CUSTOM"
+        ]
+      }
+    ],
+    "inputSchema": {
+      "type": "object"
     },
-    "requestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "directoryRevision": 1,
-    "authorizationEpoch": 1,
-    "state": "DRAFT",
-    "revision": 1,
-    "createdAtUnixMs": 1,
-    "expiresAtUnixMs": 60001,
-    "requiredReviews": 1,
-    "impact": [
-      {
-        "kind": "USER",
-        "entityId": "user-new",
-        "operation": "CREATE",
-        "beforeDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-        "afterDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      }
-    ],
-    "affectedGroups": [
-      "team-default"
-    ],
-    "affectedIndividuals": [
-      "user-new"
-    ],
-    "reviews": []
-  },
-  "EnterpriseConfigurationPage": {
-    "items": [
-      {
-        "id": "change-a",
-        "requesterUserId": "user-a",
-        "command": {
-          "operation": "CREATE",
-          "kind": "USER",
-          "entityId": "user-new",
-          "document": "{}",
-          "expectedRevision": 0
-        },
-        "requestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "directoryRevision": 1,
-        "authorizationEpoch": 1,
-        "state": "DRAFT",
-        "revision": 1,
-        "createdAtUnixMs": 1,
-        "expiresAtUnixMs": 60001,
-        "requiredReviews": 1,
-        "impact": [
-          {
-            "kind": "USER",
-            "entityId": "user-new",
-            "operation": "CREATE",
-            "beforeDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-            "afterDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-          }
-        ],
-        "affectedGroups": [
-          "team-default"
-        ],
-        "affectedIndividuals": [
-          "user-new"
-        ],
-        "reviews": []
-      }
-    ]
-  },
-  "EnterpriseConfigurationTransition": {
-    "expectedRevision": 1,
-    "action": "SUBMIT"
-  },
-  "EnterpriseConfigurationOperation": "CREATE",
-  "EnterpriseConfigurationImpactOperation": "CREATE",
-  "EnterpriseConfigurationAction": "SUBMIT",
-  "EndpointAdoption": {
-    "serverId": "server",
-    "deviceId": "device",
-    "revision": 1,
-    "authorizationEpoch": 1,
-    "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-  },
-  "EnterpriseHumanRequest": {
-    "bindingId": "binding-a",
-    "deviceId": "device-a",
-    "request": {
-      "toolId": "files.read",
-      "action": "read",
-      "arguments": {
-        "path": "workspace/readme.txt"
-      }
+    "outputSchema": {
+      "type": "number"
     }
   },
-  "EnterpriseHumanTarget": {
-    "bindingId": "binding-a",
-    "deviceId": "device-a"
-  },
-  "EnterpriseHumanOutcome": {
-    "invocation": {
-      "id": "example",
-      "requestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "evaluation": {
-        "context": {
-          "requestId": "example",
-          "tenantId": "example",
-          "mode": "HUMAN",
-          "chain": [],
-          "bindingId": "example",
-          "deviceId": "example"
-        },
-        "toolId": "example",
-        "action": "example",
-        "argumentsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "resources": [],
-        "toolDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "packageDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "nowUnixMs": 0,
-        "authorityRevision": 0,
-        "online": false
-      },
-      "state": "PENDING_APPROVAL",
-      "revision": 1,
-      "authorizationEpoch": 0,
-      "expiresAtUnixMs": 0,
-      "completedResources": [],
-      "diagnosticId": "example"
-    }
-  },
-  "EnterpriseVaultWrite": {
-    "name": "demo/token",
-    "toolGroupId": "default-tools",
-    "deviceGroupId": "default-devices",
-    "value": "fixture value"
-  },
-  "EnterpriseVaultReference": {
-    "name": "demo/token",
-    "toolGroupId": "default-tools",
-    "deviceGroupId": "default-devices"
-  },
-  "EnterpriseVaultPage": {
-    "items": [
-      {
-        "name": "demo/token",
-        "toolGroupId": "default-tools",
-        "deviceGroupId": "default-devices"
-      }
-    ]
-  },
-  "EnterpriseVaultStored": {
-    "stored": true
-  },
-  "EnterpriseEffectiveMembership": {
-    "groupType": "TEAM",
-    "groupId": "team-default",
-    "enabled": true,
-    "roleIds": [],
-    "grants": []
-  },
-  "EnterpriseEffectiveAccess": {
-    "entityId": "alice",
-    "kind": "USER",
-    "directoryRevision": 1,
-    "authorizationEpoch": 1,
-    "memberships": [
-      {
-        "groupType": "TEAM",
-        "groupId": "team-default",
-        "enabled": true,
-        "roleIds": [],
-        "grants": []
-      }
-    ],
-    "bindings": [],
-    "managementRoles": []
-  },
-  "EnterpriseAdoptionStatus": {
-    "deviceId": "device",
-    "directoryRevision": 1,
-    "authorizationEpoch": 1,
-    "graphDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "observedAtUnixMs": 1
-  },
-  "EnterpriseAuthorityStatus": {
-    "directoryRevision": 1,
-    "authorizationEpoch": 1,
-    "snapshotSequence": 0,
-    "adoptions": []
-  }
+  "UserRole": "BASIC"
 }

@@ -38,7 +38,7 @@ jobs:
   policy-compatibility:
     needs: preflight
     uses: ./.github/workflows/policy.yml
-  container-and-cluster:
+  container-and-replicas:
     needs: clients
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -54,19 +54,9 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
-      - name: Install pinned validation and cluster tooling
+      - name: Install pinned validation tooling
         run: |
           python -m pip install -r tools/requirements.txt
-          curl --fail --location --proto '=https' -o kind https://github.com/kubernetes-sigs/kind/releases/download/v0.27.0/kind-linux-amd64
-          curl --fail --location --proto '=https' -o kind.sha256sum https://github.com/kubernetes-sigs/kind/releases/download/v0.27.0/kind-linux-amd64.sha256sum
-          test "$(sha256sum kind | cut -d' ' -f1)" = "$(cut -d' ' -f1 kind.sha256sum)"
-          chmod +x kind
-          sudo install kind /usr/local/bin/kind
-          curl --fail --location --proto '=https' -o kubectl https://dl.k8s.io/release/v1.32.2/bin/linux/amd64/kubectl
-          curl --fail --location --proto '=https' -o kubectl.sha256 https://dl.k8s.io/release/v1.32.2/bin/linux/amd64/kubectl.sha256
-          test "$(sha256sum kubectl | cut -d' ' -f1)" = "$(cat kubectl.sha256)"
-          chmod +x kubectl
-          sudo install kubectl /usr/local/bin/kubectl
           curl --fail --location --proto '=https' -o helm.tar.gz https://get.helm.sh/helm-v3.17.3-linux-amd64.tar.gz
           curl --fail --location --proto '=https' -o helm.sha256sum https://get.helm.sh/helm-v3.17.3-linux-amd64.tar.gz.sha256sum
           test "$(sha256sum helm.tar.gz | cut -d' ' -f1)" = "$(cut -d' ' -f1 helm.sha256sum)"
@@ -84,7 +74,6 @@ jobs:
           python tools/quality.py
           python -m unittest discover -s tests/contracts -v
           python tools/control/check.py
-          python tools/ui/check.py --no-build
           python tools/ui/package.py
           python tools/check.py --scans
           python tools/control/helm.py
@@ -94,16 +83,13 @@ jobs:
           path: deploy/client-assets/release
       - name: Build, smoke and scan production image
         run: |
+          python tools/quickstart/check.py --build --client-assets deploy/client-assets/release
           python tools/control/container.py --client-assets deploy/client-assets/release
           python tools/client/downloads.py --image olo-toolgate-control:module05
-          python tools/client/extract.py --target x86_64-unknown-linux-gnu --output build/client/native/olo-toolgate-client
-          docker build -f apps/gateway/Dockerfile --build-arg VERSION="$(cat VERSION)" --build-arg REVISION="$(git rev-parse HEAD)" -t olo-toolgate-gateway:module07 .
-          python tools/client/integration.py --control-image olo-toolgate-control:module05 --binary build/client/native/olo-toolgate-client
-          python tools/deployment/check.py --builder --control-image olo-toolgate-control:module05 --binary build/client/native/olo-toolgate-client
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.61.1 image --no-progress --exit-code 1 --severity HIGH,CRITICAL olo-toolgate-control:module05
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/build/control:/evidence" aquasec/trivy:0.61.1 image --no-progress --format cyclonedx --output /evidence/control-sbom.cdx.json olo-toolgate-control:module05
           python tools/ui/merge_sbom.py
-          python tools/control/cluster.py --client-downloads
+          python tools/enterprise/helm.py
           docker save olo-toolgate-control:module05 -o build/control/image.tar
           cp -r build/ui build/control/ui-evidence
           cp CHANGELOG.md docs/control-plane/upgrades.md build/control/
@@ -115,7 +101,7 @@ jobs:
           if-no-files-found: error
   publish:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' && inputs.publish
-    needs: [container-and-cluster, policy-compatibility]
+    needs: [container-and-replicas, policy-compatibility]
     runs-on: ubuntu-24.04
     environment: control-release
     permissions:

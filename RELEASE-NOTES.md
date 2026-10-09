@@ -13,6 +13,16 @@ The project follows semantic versioning once stable versioning begins.
 
 ## 0.10.0-dev
 
+- Enterprise intermediary checkpoint: replace individual ACLs and local ALLOW with
+  complete group grants, live Control authority, single-use bound effect permits,
+  durable budgets and outcomes, scoped runtime secret delivery, independent
+  configuration/reconciliation review and signed restore quarantine. Add migration
+  shadow evidence, production replica checks and current group administration UIs.
+- Remove retired active contract models, static-policy setup and obsolete test
+  producers. Older development clients/configuration writers must be upgraded;
+  legacy authority is archived and requires explicit reviewed group conversion.
+  Earlier entries below describe historical features superseded by this change.
+
 - Verify automatic membership audit transactions in HTTP smoke and SQLite tests,
   give the Compose test Gateway a readiness probe, and handle local Quickstart
   images without attempting registry pulls.

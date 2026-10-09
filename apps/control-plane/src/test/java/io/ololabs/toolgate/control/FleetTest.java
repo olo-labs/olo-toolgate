@@ -16,8 +16,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 final class FleetTest {
     private final ContractCodec codec=new ContractCodec();
-    private com.fasterxml.jackson.databind.JsonNode fixtures()throws Exception{return new com.fasterxml.jackson.databind.ObjectMapper().readTree(Path.of(System.getProperty("toolgate.fixtures")).getParent().getParent().getParent().resolve("fleet/v1/signed.json").toFile());}
-    private FleetCrypto crypto()throws Exception{
+    com.fasterxml.jackson.databind.JsonNode fixtures()throws Exception{return new com.fasterxml.jackson.databind.ObjectMapper().readTree(Path.of(System.getProperty("toolgate.fixtures")).getParent().getParent().getParent().resolve("fleet/v1/signed.json").toFile());}
+    FleetCrypto crypto()throws Exception{
         var fixture=fixtures();var generator=KeyPairGenerator.getInstance("RSA");generator.initialize(2048);var pair=generator.generateKeyPair();var publicKey=(RSAPublicKey)pair.getPublic();var bytes=publicKey.getModulus().toByteArray();if(bytes[0]==0)bytes=Arrays.copyOfRange(bytes,1,bytes.length);
         var signer=new FleetTrustKey("signer",Base64.getUrlEncoder().withoutPadding().encodeToString(bytes),"AQAB");
         var organization=new ArrayList<FleetTrustKey>();organization.add(signer);organization.add(codec.model(fixture.get("organizationKeys").get(0).toString(),FleetTrustKey.class));

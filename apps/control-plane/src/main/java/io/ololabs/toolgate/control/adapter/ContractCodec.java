@@ -42,8 +42,8 @@ public class ContractCodec implements Codec {
         mapper = JsonMapper.builder(factory).enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).build();
         try {
             var definitions = mapper.createObjectNode();
-            for (var file : java.util.List.of("common", "identifiers", "error", "resource", "tool", "policy", "package", "client", "deployment", "runtime", "control", "bundle", "approval", "endpoint", "builtins", "execution", "fleet", "builder", "enterprise")) {
-                var path = "/io/ololabs/toolgate/contracts/schemas/v1/" + file + ".schema.json";
+            for (var file : io.ololabs.toolgate.contracts.ContractSet.SCHEMA_FILES) {
+                var path = "/io/ololabs/toolgate/contracts/schemas/v1/" + file;
                 try (var input = io.ololabs.toolgate.contracts.ContractSet.class.getResourceAsStream(path)) {
                     if (input == null) throw new IllegalStateException("Shared schema artifact is incomplete");
                     var schema = mapper.readTree(input);
@@ -52,11 +52,15 @@ public class ContractCodec implements Codec {
             }
             var factorySchema = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012);
             canonicalDefinitions = definitions;
-            for (var definition : definitions.properties()) {
-                var name = definition.getKey();
-                var wrapper = mapper.createObjectNode(); wrapper.put("$schema", "https://json-schema.org/draft/2020-12/schema");
-                wrapper.set("$defs", definitions); wrapper.put("$ref", "#/$defs/" + name);
-                validators.put(name, factorySchema.getSchema(wrapper));
+            // One schema resource shares reference validators across all models. Rebuilding the
+            // full graph for every wrapper exhausts the bounded production heap at startup.
+            var rootNode=mapper.createObjectNode();rootNode.put("$schema","https://json-schema.org/draft/2020-12/schema");
+            rootNode.put("$id","urn:olo:toolgate:canonical-contracts:v1");rootNode.set("$defs",definitions);
+            var config=com.networknt.schema.SchemaValidatorsConfig.builder().cacheRefs(true).build();
+            var root=factorySchema.getSchema(rootNode,config);
+            for(var definition:definitions.properties()) {
+                var path=new com.networknt.schema.JsonNodePath(com.networknt.schema.PathType.JSON_POINTER).append("$defs").append(definition.getKey());
+                validators.put(definition.getKey(),root.getSubSchema(path));
             }
         } catch (java.io.IOException e) { throw new IllegalStateException("Cannot initialize canonical contracts", e); }
     }

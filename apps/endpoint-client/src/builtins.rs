@@ -67,6 +67,9 @@ impl Settings {
 
 /// The adapter must return only after validating/consuming a grant for this exact request.
 pub trait AuthorizationPort: Send + Sync {
+    fn secret(&self, _name: String) -> Call<'_, String> {
+        Box::pin(async { Err(Failure::Unsupported) })
+    }
     fn authorize(&self, request: AuthorizationRequest) -> Call<'_, ()>;
     /// Managed execution needs the consumed permit's deadline. An adapter that
     /// cannot provide bounded authorization is unsupported, never implicitly ALLOW.
@@ -89,7 +92,7 @@ pub struct Executor {
     validators: BTreeMap<String, jsonschema::Validator>,
     events: VecDeque<Value>,
     sequence: u64,
-    web: Option<(reqwest::Client, String)>,
+    web: Option<String>,
     web_domains: Vec<String>,
     epoch: String,
     packet_log: Option<crate::diagnostics::PacketLog>,
@@ -118,7 +121,9 @@ impl Executor {
             }
             let mut tool = crate::authorization_profile::builtin_info(item, matches[0], &package)?;
             tool.enabled = tool.tool_id != "client.read_log_entry"
-                && (tool.tool_id != "web.search" || settings.web_search_token_path.is_some());
+                && (tool.tool_id != "web.search"
+                    || settings.web_search_token_path.is_some()
+                    || !settings.web_search_allowed_domains.is_empty());
             validators.insert(
                 tool.tool_id.clone(),
                 jsonschema::validator_for(
@@ -129,10 +134,7 @@ impl Executor {
             catalog.push(tool);
         }
         let web = if let Some(path) = &settings.web_search_token_path {
-            Some((
-                super::tool_gateway::client(None)?,
-                super::tool_gateway::secret(path)?,
-            ))
+            Some(super::tool_gateway::secret(path)?)
         } else {
             None
         };
@@ -311,7 +313,13 @@ impl Executor {
         self.events.push_back(json!({"sequence":self.sequence,"path":path,"kind":kind,"timestampUnixMs":crate::now()}));
     }
     async fn search(&self, query: &str) -> Result<Value> {
-        let (client, token) = self.web.as_ref().ok_or(Failure::Unsupported)?;
+        let delivered = self.authorization.secret("web-search".into()).await;
+        let token = match delivered {
+            Ok(value) => value,
+            Err(Failure::Unsupported) => self.web.clone().ok_or(Failure::Unsupported)?,
+            Err(failure) => return Err(failure),
+        };
+        let client = super::tool_gateway::public_client("api.search.brave.com").await?;
         let mut url = reqwest::Url::parse("https://api.search.brave.com/res/v1/web/search")
             .map_err(|_| Failure::Validation)?;
         url.query_pairs_mut().extend_pairs([
@@ -321,7 +329,7 @@ impl Executor {
         ]);
         let response = client
             .get(url)
-            .header("X-Subscription-Token", token)
+            .header("X-Subscription-Token", &token)
             .header("Accept", "application/json")
             .send()
             .await

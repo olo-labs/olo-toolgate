@@ -52,7 +52,8 @@ final class BuilderTest {
             for(var key:List.of("update-a","update-b"))jobs.add(pool.submit(()->{try{service.save(admin,codec.json(new BuilderDraftRequest("draft",1L,definition)),key,"request");return true;}catch(Failure failure){assertEquals(409,failure.status());return false;}}));
             int winners=0;for(var job:jobs)if(job.get())winners++;assertEquals(1,winners);
         }finally{pool.shutdownNow();}
-        // Domain seal consumes a durable designated-client result; real leased execution is covered by the TLS E2E.
+        // Sealing requires every exact current example's durable result. Certificate-bound
+        // dispatch and revoked creator authority are covered in EndpointTest.
         var current=codec.model(service.drafts(admin,null).body(),BuilderDraftPage.class).items().getFirst();
         store.transaction(tenant,true,tx->{var passed=new BuilderTestRecord("passed","draft",current.definitionDigest(),"device",BuilderTestState.PASSED,3L,1700000000000L,1700000060000L,1L,"lease",0L,null);tx.builder().save(BuilderStore.Kind.TEST,new BuilderStore.Row("passed",3,codec.json(passed)),0);return null;});
         var sealed=codec.model(service.seal(admin,"draft",codec.json(new BuilderRevisionRequest(2L)),"seal","request").body(),BuilderDraft.class);assertTrue(sealed.sealed());

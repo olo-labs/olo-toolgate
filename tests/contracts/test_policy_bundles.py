@@ -18,7 +18,7 @@ ROOT=Path(__file__).resolve().parents[2]
 class PolicyContractsTests(unittest.TestCase):
     def test_public_vectors_verify_and_canonical_version_is_compatible(self):
         corpus=json.loads((ROOT/'tests/fixtures/policy/signed-v1.json').read_text())
-        models=validators(schemas_at(ROOT/'packages/contracts/schemas/v1'))
+        models=validators(schemas_at(ROOT/'tests/fixtures/contracts/pre-enterprise'))
         keyring={item['keyId']:item for item in corpus['keyring']['keys']}
         def decode(value):return base64.urlsafe_b64decode(value+'==')
         for name in ('allow','strict','many','block','rollback','rotated','precedence'):
@@ -32,10 +32,10 @@ class PolicyContractsTests(unittest.TestCase):
         frozen=json.loads((ROOT/'tests/fixtures/contracts/v1/compatibility.json').read_text())
         archival=validators(schemas_at(ROOT/'tests/fixtures/contracts/v1/schemas'))
         for model,fixture in frozen['fixtures'].items():archival[model].validate(fixture)
-        with self.assertRaises(ValidationError):models['EnterpriseSnapshotPayload'].validate(json.loads(decode(corpus['bundles']['allow']['jws'].split('.')[1])))
+        with self.assertRaises(ValidationError):validators(schemas_at(ROOT/'packages/contracts/schemas/v1'))['EnterpriseSnapshotPayload'].validate(json.loads(decode(corpus['bundles']['allow']['jws'].split('.')[1])))
     def test_trust_domains_and_algorithms_are_not_interchangeable(self):
-        models=validators(schemas_at(ROOT/'packages/contracts/schemas/v1'))
-        fixtures=json.loads((ROOT/'tests/fixtures/contracts/v1/valid.json').read_text())
+        models=validators(schemas_at(ROOT/'tests/fixtures/contracts/pre-enterprise'))
+        fixtures=json.loads((ROOT/'tests/fixtures/contracts/pre-enterprise/valid.json').read_text())
         for name in ('MarketplaceRelease','DeploymentAssignment','PolicyDecision','RequestContext'):
             with self.assertRaises(ValidationError):models['SignedPolicyBundle'].validate(fixtures[name])
         for field,value in [('alg','none'),('typ','JWT'),('kid',''),('jku','https://evil.invalid/keys')]:

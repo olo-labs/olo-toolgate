@@ -12,6 +12,7 @@ COPY apps/endpoint-client apps/endpoint-client
 COPY tools/gateway/collect-notices.sh /src/collect-notices.sh
 RUN --mount=type=cache,id=toolgate-gateway-registry,target=/usr/local/cargo/registry \
     --mount=type=cache,id=toolgate-quickstart-musl,target=/src/target,sharing=locked \
+    find apps/gateway/src apps/endpoint-client/src packages/contracts/rust/src -type f -exec touch {} + && \
     cargo build --release --locked -p olo-toolgate-gateway --bin olo-toolgate-gateway -p olo-toolgate-client --bin quickstart-tools && \
     cp target/release/olo-toolgate-gateway target/release/quickstart-tools /usr/local/bin/ && \
     sh /src/collect-notices.sh /licenses
@@ -28,6 +29,7 @@ COPY tools/quickstart/python_notices.py /opt/quickstart-python-notices.py
 RUN /opt/quickstart-python/bin/python /opt/quickstart-python-notices.py
 COPY --from=rust-build /usr/local/bin/olo-toolgate-gateway /usr/local/bin/quickstart-tools /usr/local/bin/
 COPY --from=rust-build /licenses /usr/share/licenses/olo-toolgate/quickstart-rust/
+COPY tools/enterprise/restore.py /opt/quickstart/enterprise_restore.py
 COPY apps/quickstart/supervisor.py apps/quickstart/enterprise_bootstrap.py VERSION /opt/quickstart/
 COPY packages/contracts/tools/builtins.json /opt/quickstart/builtins.json
 COPY docs/getting-started/one-minute-quickstart.md docs/deployment/quickstart.md /usr/share/doc/toolgate-quickstart/

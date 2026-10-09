@@ -68,7 +68,7 @@ public final class FleetService {
     private EndpointDeviceRecord active(Store.Session tx,String id){var row=tx.endpoint(id);if(row==null)throw forbidden();var device=codec.model(row.document(),EndpointDeviceRecord.class);endpoints.active(tx,device);return device;}
     /** Stable hash order makes increasing percentages retain the initial canary cohort. */
     public static int selected(int total,long percentage){return (int)((total*percentage+99)/100);}
-    private FleetRolloutRecord assign(Store.Session tx,FleetRolloutRecord rollout,long percentage){
+    private FleetRolloutRecord assign(Store.Session tx,FleetRolloutRecord rollout,long percentage,String creator){
         var release=release(tx,rollout.packageId(),rollout.version());
         var selected=selected(rollout.members().size(),percentage);var members=new ArrayList<FleetRolloutMember>();int index=0;
         for(var member:rollout.members()){
@@ -88,6 +88,7 @@ public final class FleetService {
             codec.model(codec.json(desired),FleetDesiredSnapshot.class);
             if(codec.json(desired).getBytes(java.nio.charset.StandardCharsets.UTF_8).length>60000)throw Failure.validation();
             tx.fleet().save(DESIRED,new FleetStore.Row(member.deviceId(),generation,codec.json(desired)),before==null?0:before.revision());
+            tx.enterprise().rememberCreator("FLEET",DirectoryService.digest(member.deviceId()+"\n"+release.manifestDigest()),creator);
             members.add(new FleetRolloutMember(member.deviceId(),generation));
         }
         return new FleetRolloutRecord(rollout.id(),rollout.packageId(),rollout.version(),rollout.desiredPresence(),percentage,rollout.revision(),rollout.createdAtUnixMs(),members);
@@ -100,7 +101,7 @@ public final class FleetService {
             if(tx.fleet().count(ROLLOUT)>=256)throw Failure.conflict();
             for(var id:request.deviceIds())active(tx,id);
             var members=request.deviceIds().stream().sorted(Comparator.comparing(id->DirectoryService.digest(request.id()+"\n"+id))).map(id->new FleetRolloutMember(id,0L)).toList();
-            var rollout=assign(tx,new FleetRolloutRecord(request.id(),request.packageId(),request.version(),request.desiredPresence(),request.percentage(),1L,now,members),request.percentage());
+            var rollout=assign(tx,new FleetRolloutRecord(request.id(),request.packageId(),request.version(),request.desiredPresence(),request.percentage(),1L,now,members),request.percentage(),actor.userId());
             tx.fleet().save(ROLLOUT,new FleetStore.Row(rollout.id(),1,codec.json(rollout)),0);
             tx.audit(actor.id(),"PACKAGE_ASSIGN",rollout.id(),1,requestId,digest);var result=reply(rollout,1);tx.remember(actor.id(),key,digest,result);return result;
         });
@@ -108,11 +109,11 @@ public final class FleetService {
     public Store.Reply advance(DirectoryService.Actor actor,String id,String body,String key,String requestId){
         admin(actor);Ids.valid(id);Ids.valid(key);Ids.valid(requestId);var request=codec.model(body,FleetRolloutAdvance.class);var digest=DirectoryService.digest("fleet.advance\n"+id+"\n"+body);
         return store.transaction(tenant,true,tx->{now(tx);var row=tx.fleet().get(ROLLOUT,id);if(row==null)throw Failure.conflict();rolloutPermission(tx,actor,"deploy",codec.model(row.document(),FleetRolloutRecord.class));var replay=tx.replay(actor.id(),key,digest);if(replay!=null)return replay;
-            if(row.revision()!=request.expectedRevision())throw Failure.conflict();
+            if(!java.util.Objects.equals(row.revision(),request.expectedRevision()))throw Failure.conflict();
             var before=codec.model(row.document(),FleetRolloutRecord.class);if(request.percentage()<=before.percentage())throw Failure.conflict();
             // A superseded canary cannot silently assign its old release to remaining devices.
             for(var member:before.members())if(member.generation()>0&&!matches(snapshot(tx,member.deviceId()),before))throw Failure.conflict();
-            var updated=assign(tx,new FleetRolloutRecord(id,before.packageId(),before.version(),before.desiredPresence(),request.percentage(),next(row.revision()),before.createdAtUnixMs(),before.members()),request.percentage());
+            var updated=assign(tx,new FleetRolloutRecord(id,before.packageId(),before.version(),before.desiredPresence(),request.percentage(),next(row.revision()),before.createdAtUnixMs(),before.members()),request.percentage(),actor.userId());
             tx.fleet().save(ROLLOUT,new FleetStore.Row(id,updated.revision(),codec.json(updated)),row.revision());
             tx.audit(actor.id(),"ROLLOUT_ADVANCE",id,updated.revision(),requestId,digest);var result=reply(updated,updated.revision());tx.remember(actor.id(),key,digest,result);return result;
         });
@@ -136,10 +137,17 @@ public final class FleetService {
     }
     public Store.Reply rollouts(DirectoryService.Actor actor,String after){admin(actor);if(after!=null)Ids.valid(after);
         return store.transaction(tenant,false,tx->{new ManagementAccess(codec).access(tx.load(),actor.userId());long now=clock.millis();var rows=tx.fleet().page(ROLLOUT,after==null?"":after,33);return reply(new FleetRolloutPage(rows.stream().limit(32).map(r->codec.model(r.document(),FleetRolloutRecord.class)).filter(r->{try{rolloutPermission(tx,actor,"read",r);return true;}catch(Failure denied){if(denied.status()!=403)throw denied;return false;}}).map(r->status(tx,r,now)).toList(),rows.size()>32?rows.get(31).id():null),0);});}
+    private void currentCreator(Store.Session tx,String device,FleetAssignment assignment){
+        String user=tx.enterprise().creator("FLEET",DirectoryService.digest(device+"\n"+assignment.release().manifestDigest()));
+        if(user==null)throw forbidden();
+        var actor=new DirectoryService.Actor(tenant,DirectoryService.digest("queued\n"+user),true,false,user);
+        permission(tx,actor,"deploy",crypto.release(assignment.release().release()).model());
+        endpoints.management(tx,actor,"deploy",device);
+    }
     public Store.Reply desired(X509Certificate peer){available();return store.transaction(tenant,true,tx->{long now=now(tx);var device=endpoints.authenticate(tx,peer,now);var row=tx.fleet().get(DESIRED,device.deviceId());
         if(row==null){var initial=snapshot(tx,device.deviceId());tx.fleet().save(DESIRED,new FleetStore.Row(device.deviceId(),1,codec.json(initial)),0);}
-        var desired=snapshot(tx,device.deviceId());return reply(crypto.desired(new FleetDesiredDocument(1L,tenant.value(),server,device.deviceId(),desired.generation(),now,now+300000,desired.assignments())),desired.generation());});}
-    private FleetPackageRelease assigned(Store.Session tx,String device,long generation,String digest){var desired=snapshot(tx,device);if(desired.generation()!=generation)throw Failure.conflict();
+        var desired=snapshot(tx,device.deviceId());for(var assignment:desired.assignments())currentCreator(tx,device.deviceId(),assignment);return reply(crypto.desired(new FleetDesiredDocument(1L,tenant.value(),server,device.deviceId(),desired.generation(),now,now+300000,desired.assignments())),desired.generation());});}
+    private FleetPackageRelease assigned(Store.Session tx,String device,long generation,String digest){var desired=snapshot(tx,device);for(var assignment:desired.assignments())currentCreator(tx,device,assignment);if(desired.generation()!=generation)throw Failure.conflict();
         return desired.assignments().stream().filter(a->a.desiredPresence()&&a.release().manifestDigest().equals(digest)).map(FleetAssignment::release).findFirst().orElseThrow(FleetService::forbidden);}
     public Store.Reply grant(X509Certificate peer,String body,String requestId){available();Ids.valid(requestId);var request=codec.model(body,FleetArtifactGrantRequest.class);
         return store.transaction(tenant,true,tx->{long now=now(tx);var device=endpoints.authenticate(tx,peer,now);var release=assigned(tx,device.deviceId(),request.generation(),request.manifestDigest());

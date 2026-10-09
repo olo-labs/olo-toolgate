@@ -52,7 +52,7 @@ class ControlAssetsTests(unittest.TestCase):
         with self.assertRaises(ValidationError):Draft7Validator(schema).validate(values)
     def test_container_workflow_tests_scans_and_publishes_exact_image(self):
         workflow=yaml.safe_load((ROOT/'.github/workflows/control.yml').read_text());text=(ROOT/'.github/workflows/control.yml').read_text()
-        for command in ('tools/control/check.py','tools/control/helm.py','tools/control/container.py','tools/control/cluster.py','--severity HIGH,CRITICAL','--format cyclonedx','docker save','docker load'):
+        for command in ('tools/control/check.py','tools/control/helm.py','tools/control/container.py','tools/enterprise/helm.py','--severity HIGH,CRITICAL','--format cyclonedx','docker save','docker load'):
             self.assertIn(command,text)
         self.assertEqual('control-release',workflow['jobs']['publish']['environment'])
         dockerfile=(ROOT/'apps/control-plane/Dockerfile').read_text()

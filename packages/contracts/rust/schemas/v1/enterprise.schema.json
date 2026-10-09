@@ -2640,7 +2640,7 @@
           "type": "array",
           "maxItems": 512,
           "items": {
-            "$ref": "enterprise.schema.json#/$defs/ControlRole"
+            "$ref": "control.schema.json#/$defs/ControlRole"
           }
         }
       },
@@ -2727,6 +2727,287 @@
         "authorizationEpoch",
         "snapshotSequence",
         "adoptions"
+      ]
+    },
+    "EnterpriseSecretDeliveryRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "invocationId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$"
+        }
+      },
+      "required": [
+        "invocationId",
+        "name"
+      ],
+      "description": "Certificate-bound secret delivery to an executing invocation. Original reviewed resource set must contain this exact secret."
+    },
+    "EnterpriseSecretDelivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32768
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "description": "Runtime-only secret value; never returned by management, export, result or diagnostic routes."
+    },
+    "EnterpriseInvocationPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Scoped durable effect states. A cursor does not disclose hidden rows.",
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/EnterpriseInvocation"
+          }
+        },
+        "nextCursor": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "items"
+      ]
+    },
+    "EnterpriseReconciliationRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Immutable independently reviewed downstream evidence. Never creates a new permit.",
+      "properties": {
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "state": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseReconciledState"
+        },
+        "completedResources": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "resource.schema.json#/$defs/ResourceDescriptor"
+          }
+        },
+        "evidenceDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "resultDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "expectedRevision",
+        "state",
+        "completedResources",
+        "evidenceDigest"
+      ]
+    },
+    "EnterpriseReconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Maker and independent eligible checker resolve an unknown effect; evidence stays external.",
+      "properties": {
+        "id": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "invocationId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "requesterUserId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "request": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseReconciliationRequest"
+        },
+        "requestDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "reviewerUserId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "state": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseReconciliationState"
+        }
+      },
+      "required": [
+        "id",
+        "invocationId",
+        "requesterUserId",
+        "request",
+        "requestDigest",
+        "revision",
+        "state"
+      ]
+    },
+    "EnterpriseReconciliationDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Independent eligible checker decision against the exact durable reconciliation revision.",
+      "properties": {
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "approve": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "expectedRevision",
+        "approve"
+      ]
+    },
+    "EnterpriseShadowRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Read-only comparison to a captured immutable legacy result; never a second runtime authority.",
+      "properties": {
+        "snapshot": {
+          "$ref": "control.schema.json#/$defs/ControlSnapshot"
+        },
+        "evaluation": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseEvaluation"
+        },
+        "observedLegacyDecision": {
+          "$ref": "policy.schema.json#/$defs/Decision"
+        },
+        "legacyEvidenceDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "snapshot",
+        "evaluation",
+        "observedLegacyDecision",
+        "legacyEvidenceDigest"
+      ]
+    },
+    "EnterpriseShadowResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "No grant is applied and no approval, quota or permit is consumed.",
+      "properties": {
+        "decision": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseDecision"
+        },
+        "observedLegacyDecision": {
+          "$ref": "policy.schema.json#/$defs/Decision"
+        },
+        "legacyEvidenceDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "proposedSnapshotDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "accessExpansion": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "decision",
+        "observedLegacyDecision",
+        "legacyEvidenceDigest",
+        "proposedSnapshotDigest",
+        "accessExpansion"
+      ]
+    },
+    "EnterpriseReconciledState": {
+      "type": "string",
+      "enum": [
+        "SUCCEEDED",
+        "FAILED",
+        "PARTIAL"
+      ]
+    },
+    "EnterpriseReconciliationState": {
+      "type": "string",
+      "enum": [
+        "PENDING",
+        "APPLIED",
+        "DENIED"
+      ]
+    },
+    "EnterpriseOperationalStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Scoped operational health and configured hard bounds. Snapshot lag never authorizes a cached effect.",
+      "properties": {
+        "pendingSnapshotEvents": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "oldestUnpublishedUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "unknownOutcomes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expiredRunningEffects": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "permitLifetimeMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "clockSkewMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "authorityCacheGraceMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "readyProbeFreshnessMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "pendingSnapshotEvents",
+        "oldestUnpublishedUnixMs",
+        "unknownOutcomes",
+        "expiredRunningEffects",
+        "permitLifetimeMs",
+        "clockSkewMs",
+        "authorityCacheGraceMs",
+        "readyProbeFreshnessMs"
       ]
     }
   }
