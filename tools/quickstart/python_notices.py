@@ -9,7 +9,7 @@ import urllib.request
 
 target = Path('/usr/share/licenses/olo-toolgate/quickstart-python')
 target.mkdir(parents=True, exist_ok=True)
-for name in ('cryptography','cffi','pycparser','redis','psycopg','typing_extensions'):
+for name in ('cryptography','cffi','pycparser','psycopg','typing_extensions'):
     distribution = importlib.metadata.distribution(name)
     destination = target/(name+'-'+distribution.version)
     destination.mkdir(exist_ok=True)
