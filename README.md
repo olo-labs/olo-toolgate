@@ -1,5 +1,46 @@
 # OLO ToolGate
 
+> **Control what AI can do.**
+
+OLO ToolGate is an open-source control plane for **building, distributing,
+authorizing, and governing AI tools** across users, agents, devices, and resources.
+
+[![Watch the 36-second OLO ToolGate overview: agent requests, group access, Allow/Ask/Block, and device activity](docs/media/toolgate-overview.gif)](https://github.com/olo-labs/olo-toolgate/raw/refs/heads/main/docs/media/toolgate-overview.mp4)
+
+**[Watch the video (36 seconds, MP4)](https://github.com/olo-labs/olo-toolgate/raw/refs/heads/main/docs/media/toolgate-overview.mp4)**
+· [Read the transcript](docs/media/README.md)
+· [Try Quickstart](docs/getting-started/one-minute-quickstart.md)
+· [Find a good first issue](https://github.com/olo-labs/olo-toolgate/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22)
+
+The captioned overview explains an agent's request, group-based access, policy
+decisions, and device status. It plays without sound; the animation above is a preview.
+
+## Console snapshots
+
+Captured from the running local **0.10.0-dev** console on October 10, 2026.
+The enabled/disabled states shown are the local demo's current configuration.
+
+<details>
+<summary>Tool directory — registered capabilities and their current status</summary>
+
+![Real ToolGate console showing registered tools, identifiers, status and revision](docs/media/console-tools.jpg)
+
+</details>
+
+<details>
+<summary>Tool Groups — ReadOnly, ReadAndWrite, Admin and the default group</summary>
+
+![Real ToolGate console showing the four standard Tool Groups and their access-level explanation](docs/media/console-tool-groups.jpg)
+
+</details>
+
+<details>
+<summary>Configuration reviews — complete export, import modes and preview</summary>
+
+![Real ToolGate console showing complete configuration export, JSON file selection, Replace and Merge import modes, and independent review guidance](docs/media/console-configuration.jpg)
+
+</details>
+
 The enterprise intermediary version uses group-only grants and current Control
 checks for discovery, protected effects and saved results. Unknown verified Users
 start disabled in the default Team; default groups grant no access. Agents have a
@@ -32,10 +73,6 @@ See the guide for engine prerequisites and platform limitations.
 For current execution commands, configuration and troubleshooting, read
 [how to run and use ToolGate](docs/operations/execution-guide.md) and
 [how to debug ToolGate](docs/operations/debugging.md).
-
-> **Control what AI can do.**
-
-OLO ToolGate is an open-source control plane for **building, distributing, authorizing, and governing AI tools** across users, agents, devices, and resources.
 
 MCP is part of the story — not the limit.
 
@@ -320,7 +357,25 @@ so Java services can later move into separate repositories without changing impo
 
 ## Want to contribute?
 
-You should be able to get from clone to a useful developer environment with:
+Your first PR can be a small documentation improvement. We have
+[20 starter issues](docs/contributors/good-first-contributions.md), each with file
+pointers, references, and an acceptance checklist. A few places to start:
+
+| Starter issue | Small PR scope |
+| --- | --- |
+| [Explain groups and actors in a glossary #4](https://github.com/olo-labs/olo-toolgate/issues/4) | One short page and a navigation link |
+| [Add three calculator examples #5](https://github.com/olo-labs/olo-toolgate/issues/5) | Examples in the first-tool guide |
+| [Explain Windows tray status and activity #6](https://github.com/olo-labs/olo-toolgate/issues/6) | One walkthrough and a navigation link |
+| [Explain development release artifacts #7](https://github.com/olo-labs/olo-toolgate/issues/7) | A table in the release guide |
+
+Comment on an issue to check availability, fork the repository, and open a focused
+PR that links the issue. Draft PRs and questions are welcome. For documentation
+changes, preview the Markdown and check your links; follow the issue's validation
+steps and the [contribution guide](CONTRIBUTING.md) before requesting review.
+Browse [all open good first issues](https://github.com/olo-labs/olo-toolgate/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22)
+for the current list.
+
+For code contributions, start the development environment:
 
 ```bash
 git clone https://github.com/olo-labs/olo-toolgate.git
