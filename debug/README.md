@@ -9,6 +9,10 @@ with the production Dockerfiles, smoke-test the new image, then start the consol
 at http://127.0.0.1:18090/console/. `restart.bat` repeats the checks and build
 before replacing the container. `stop.bat` stops this stack and preserves data.
 Scripts work from any current directory and never commit or push.
+Start and restart synchronize version metadata and regenerate contract bindings
+before running the read-only preflight, dependency installation and build checks.
+This repairs Windows line-ending drift and refreshes outputs after contract edits;
+generated changes stay in the working tree for review.
 
 Run `create-devices.bat` from the repository root to create Linux Docker devices
 with the current endpoint client. It prompts for a Linux device count, defaulting

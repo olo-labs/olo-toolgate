@@ -29,10 +29,14 @@ try {
     }
     Invoke-Checked $python @('-m', 'venv', '.dev/debug/venv')
     $python = Join-Path $root '.dev/debug/venv/Scripts/python.exe'
+    # Local builds synchronize generated files before applying the read-only CI gate.
+    Write-Host 'Synchronizing version metadata and generated contract bindings...'
+    Invoke-Checked $python @('tools/contracts/version.py')
+    Invoke-Checked $python @('tools/contracts/generate.py')
+    Invoke-Checked $python @('tools/ci/preflight.py')
     Invoke-Checked $python @('-m', 'pip', 'install', '-r', 'tools/requirements.txt')
     Invoke-Checked npm @('ci', '--ignore-scripts')
     Invoke-Checked npx @('--no-install', 'playwright', 'install', 'chromium')
-    Invoke-Checked $python @('tools/ci/preflight.py')
     Invoke-Checked $python @('-m', 'unittest', 'discover', '-s', 'tests/ci', '-v')
     Invoke-Checked $python @('tools/quality.py')
     Invoke-Checked $python @('-m', 'unittest', 'discover', '-s', 'tests/contracts', '-v')
