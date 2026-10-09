@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Keep installation reviews within Control's initial recovery boundary."""
 import base64
+import ast
+import http.client
 import importlib.util
 import json
 from pathlib import Path
@@ -9,6 +11,7 @@ import tempfile
 import subprocess
 import unittest
 from unittest.mock import patch
+from unittest.mock import Mock
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
@@ -23,6 +26,21 @@ check_spec.loader.exec_module(quickstart_check)
 
 
 class QuickstartBootstrapTests(unittest.TestCase):
+    def test_dependency_outage_clears_readiness_without_exiting_supervisor(self):
+        source = ast.parse((ROOT/'apps/quickstart/supervisor.py').read_text(encoding='utf-8'))
+        function = next(node for node in source.body if isinstance(node, ast.FunctionDef) and node.name == 'dependencies_ready')
+        call = Mock(return_value=(200, {}, {}))
+        namespace = {'call': call, 'http': http}
+        exec(compile(ast.Module(body=[function], type_ignores=[]), '<supervisor readiness>', 'exec'), namespace)
+        ready = namespace['dependencies_ready']
+        self.assertTrue(ready())
+        self.assertEqual(2, call.call_count)
+        for failure in (TimeoutError(), ConnectionRefusedError(), http.client.RemoteDisconnected()):
+            call.side_effect = failure
+            self.assertFalse(ready())
+        call.side_effect = None
+        self.assertTrue(ready())
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

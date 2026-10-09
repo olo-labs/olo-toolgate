@@ -4,6 +4,36 @@
 
 Track the mandatory attached implementation specification against source changes and executable evidence. The group-only model replaces the prior individual ACL model. No legacy ALLOW path may run beside the new evaluator. Data conversion is an explicit reviewed operation, not a runtime authorization fallback.
 
+## Saved work checkpoint - 2026-10-09
+
+This checkpoint preserves work in progress. It does not close the 96 acceptance
+rows below or claim that all end-to-end gates pass.
+
+Additional verification completed since the intermediary checkpoint:
+
+- Java/shared contract gates pass with 130 tests, including additional authority,
+  lifecycle, condition, delegation and mandatory-membership scenarios. The host
+  Windows POSIX skip is covered by a separate passing non-root Linux custody gate.
+- Fresh PostgreSQL runtime and actual PostgreSQL restore gates pass.
+- Production Gateway SERVICE/HUMAN/ASK, live Core outage/recovery, revocation and
+  restart gates pass. Quickstart now keeps its supervisor alive through dependency
+  health-check exceptions; bootstrap regression tests pass.
+- Local Maven publication/artifact consumption, TypeScript/PHP contract checks,
+  Helm rendering/negative configuration checks, and source/dependency/license/
+  secret scans pass. No external release was published.
+
+Remaining validation in this saved work:
+
+- The expanded administration browser workflow currently fails at its Agent Group
+  selector. Earlier accessible screen/mobile coverage passed; the new guided
+  mapping and reviewed membership workflows still need a successful complete run.
+- The newly expanded production Gateway DELEGATED fixture currently fails during
+  setup because it refers to the supervisor database class by the wrong name.
+  Its additional native delegated execution checks have not passed yet.
+- Per-case mapping of all 96 acceptance rows, final production image scans, and
+  final integrated checks remain open. The older sections below describe earlier
+  checkpoints and must be reconciled when these remaining gates close.
+
 ## Intermediary working version - 2026-10-09
 
 This is an explicitly requested intermediary checkpoint, not a declaration that

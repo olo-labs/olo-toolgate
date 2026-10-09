@@ -18,7 +18,7 @@ import {Devices} from './Devices';
 import {RemoteRequests} from './RemoteRequests';
 import { ThemePicker } from './Theme';
 import { Audit } from './Audit';
-import { DirectoryEditor } from './DirectoryEditor';
+import { DirectoryEditor, entityTitles } from './DirectoryEditor';
 import {AgentToolMapping,PublishAccess,GroupMembershipEditor} from './AccessMapping';
 import oloLogo from './assets/olo.png';
 
@@ -197,15 +197,15 @@ function Directory({ client, kind }: { client: ControlClient; kind: DirectoryKin
     return () => {abort.abort();clearInterval(timer);};
   },[client,kind,cursor,attempt]);
   const refresh = () => setAttempt(attempt+1);
-  return <><div className="page-heading"><div><p className="eyebrow">Organization directory</p><h1>{label}</h1></div><div className="actions"><button onClick={refresh}>Refresh</button>{<button className="primary" onClick={() => { setSelected(undefined); setCreating(true); }}>Add {kind==='users'?'user':kind==='teams'?'team':kind==='roles'?'role':kind==='tools'?'tool':kind==='policies'?'policy':kind==='agents'?'agent':kind==='deviceGroups'?'device group':'client'}</button>}</div></div>
-    <p className="intro">{kind === 'users' ? 'Users inherit access through Teams. Verified new identities appear disabled for administrator review.' : kind === 'policies' ? 'Review who can use what, and where. These records have not been distributed to runtime gateways.' : kind === 'devices' ? 'Manage registered clients. Directory activation and device enrollment are separate approvals.' : `Browse registered ${label.toLowerCase()} in your organization.`}</p>
+  return <><div className="page-heading"><div><p className="eyebrow">Organization directory</p><h1>{label}</h1></div><div className="actions"><button onClick={refresh}>Refresh</button>{<button className="primary" onClick={() => { setSelected(undefined); setCreating(true); }}>Add {kind==='users'?'user':kind==='devices'?'client':entityTitles[kind]}</button>}</div></div>
+    <p className="intro">{kind === 'users' ? 'Users inherit access through Teams. Verified new identities appear disabled for administrator review.' : kind === 'policies' ? 'Policies constrain complete grants through current online authority. Snapshot publication and device adoption are separate states.' : kind === 'devices' ? 'Manage registered clients. Directory activation and device enrollment are separate approvals.' : `Browse registered ${label.toLowerCase()} in your organization.`}</p>
     {kind==='devices'&&<p className="hint">Green means an active client checked in within the last two minutes. Red means the client is offline or unavailable; the status label explains why. The client list and connection status refresh every two seconds.</p>}
     {error ? <Failure error={error} retry={refresh} /> : !page ? <p role="status">Loading {label.toLowerCase()}…</p> : <>
       {page.items.length === 0 ? <section className="empty"><h2>No {label.toLowerCase()} on this page</h2><p>{kind === 'users' ? 'Add a directory user to get started.' : 'Records will appear here when they are added to Control.'}</p></section> :
         <div className="table-wrap"><table><caption className="sr-only">{label} directory</caption><thead><tr><th scope="col">Name</th><th scope="col">Identifier</th>{kind==='devices'&&<th scope="col">Connection</th>}<th scope="col">Directory status</th><th scope="col">Revision</th></tr></thead><tbody>{page.items.map(record => <tr key={record.id}><th scope="row"><button className="record-link" onClick={() => { setSelected(record); setCreating(false); }}>{record.name}</button></th><td><code>{record.id}</code></td>{kind==='devices'&&<td><ClientConnection client={client} id={record.id} enabled={record.enabled} ownerUserId={'ownerUserId' in record?record.ownerUserId:''}/></td>}<td><span className={`status ${record.enabled ? 'enabled' : ''}`}>{record.enabled ? 'Enabled' : 'Disabled'}</span></td><td>{record.revision}</td></tr>)}</tbody></table></div>}
       <div className="pagination"><span>{page.items.length} records on this page</span><div className="actions"><button disabled={!history.length} onClick={() => { setCursor(history.at(-1)); setHistory(history.slice(0,-1)); }}>Previous page</button><button disabled={!page.nextCursor} onClick={() => { setHistory([...history,cursor]); setCursor(page.nextCursor); }}>Next page</button></div></div>
     </>}
-    {kind==='deviceGroups'&&<><p className="hint">Groups define device membership. Assign group access in Users, Teams or Roles; bind each tool to one group. Disabled groups grant no access.</p><PublishAccess client={client}/></>}
+    {kind==='deviceGroups'&&<><p className="hint">Device groups contain devices. Complete group grants and Tool Group execution bindings determine access. Disabled groups grant no access.</p><PublishAccess client={client}/></>}
     {(creating || selected) && (kind === 'users' ? <UserEditor key={selected?.id ?? 'new'} client={client} user={selected as ControlUser | undefined} close={() => { setCreating(false); setSelected(undefined); }} saved={refresh} /> : <DirectoryEditor key={selected?.id??'new'} client={client} kind={kind} record={selected as DirectoryRecords[Exclude<DirectoryKind,'users'>] | undefined} close={()=>{setCreating(false);setSelected(undefined);}} saved={refresh}/>)}
   </>;
 }

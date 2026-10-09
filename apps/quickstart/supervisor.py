@@ -247,6 +247,15 @@ def initialize():
     fleet_keys()
 
 
+def dependencies_ready():
+    # A live dependency may time out during an outage. Clear readiness while
+    # retaining the processes and sockets so online authorization can deny and recover.
+    try:
+        return call('/q/health/ready',port=9092)[0]==200 and call('/v1/health/ready',port=9091)[0]==200
+    except (OSError, http.client.HTTPException):
+        return False
+
+
 def call(path, token=None, body=None, port=8082, secure=False, method=None, extra_headers=None):
     client = http.client.HTTPSConnection('127.0.0.1', port, timeout=10, context=ssl.create_default_context(cafile=str(DATA/'keys/device-ca.crt'))) if secure else http.client.HTTPConnection('127.0.0.1', port, timeout=10)
     headers = {'Content-Type': 'application/json', 'X-Request-ID': secrets.token_hex(16)}
@@ -596,7 +605,7 @@ def main():
             renewed = time.monotonic(); boot = renewed
             while not stop.wait(1):
                 if any(child.poll() is not None for child in children): raise ValueError('Composed process failed')
-                ready = call('/q/health/ready',port=9092)[0]==200 and call('/v1/health/ready',port=9091)[0]==200
+                ready = dependencies_ready()
                 if ready: ready_state.set()
                 else: ready_state.clear()
                 now = time.monotonic()

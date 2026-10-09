@@ -93,15 +93,24 @@ def smoke(image, browser, database_options=None, gateway_image=None):
         origin=f'http://127.0.0.1:{port}'
         mcp_origin=origin
         if gateway_image:
+            delegated_token=secrets.token_urlsafe(48)
+            delegated_digest=hashlib.sha256(delegated_token.encode()).hexdigest()
             # Exact production Gateway, online authority on an explicit fixture-only loopback hop.
             exec_text('/opt/quickstart-python/bin/python','-c',
                 "import sys;sys.path.insert(0,'/opt/quickstart');import supervisor as s;import json;"
                 "c=json.loads((s.DATA/'run/gateway.json').read_text());c['listen']='0.0.0.0:8084';c['trustedTlsProxy']=True;"
                 "c['managementListen']='0.0.0.0:9094';s.atomic(s.DATA/'run/external-gateway.json',json.dumps(c))")
+            exec_text('/opt/quickstart-python/bin/python','-c',
+                "import sys;sys.path.insert(0,'/opt/quickstart');import supervisor as s;import json,time;"
+                "db=s.State();identities=[json.loads(r[0]) for r in db.execute(\"SELECT document FROM control_records WHERE kind='IDENTITY_BINDING'\").fetchall()];db.connection.close();"
+                "i=next(i for i in identities if i['subject']=='admin');values=json.loads((s.DATA/'run/credentials.json').read_text());"
+                "c={**values[0]['context'],'mode':'DELEGATED','workloadBindingId':'workload-delegated','userId':i['userId'],'sessionEpoch':i['sessionEpoch'],'credentialSha256':"+repr(delegated_digest)+"};"
+                "values.append(dict(tokenSha256="+repr(delegated_digest)+",context=c,expiresAtUnixMs=int(time.time()*1000)+3600000));"
+                "s.atomic(s.DATA/'run/external-credentials.json',json.dumps(values))")
             external=run(['docker','run','-d','--read-only','--cap-drop=ALL','--security-opt=no-new-privileges',
                 '--memory=256m','--cpus=1','--network','container:'+container,'-v',volume+':/data:ro',
                 '-e','TOOLGATE_GATEWAY_CONFIG=/data/run/external-gateway.json',
-                '-e','TOOLGATE_GATEWAY_CREDENTIALS=/data/run/credentials.json',gateway_image],capture_output=True,text=True).stdout.strip()
+                '-e','TOOLGATE_GATEWAY_CREDENTIALS=/data/run/external-credentials.json',gateway_image],capture_output=True,text=True).stdout.strip()
             containers.append(external)
             gateway_info=json.loads(run(['docker','inspect',external],capture_output=True,text=True).stdout)[0]
             assert gateway_info['Config']['User']=='65532:65532' and gateway_info['HostConfig']['ReadonlyRootfs']
@@ -239,13 +248,13 @@ def smoke(image, browser, database_options=None, gateway_image=None):
             reviewed('/api/control/v1/grants',dict(id='service-'+purpose.lower(),name='Reviewed service '+purpose,
                 enabled=True,revision=1,sourceType='AGENT_GROUP',sourceId='default-agents',purpose=purpose,scope=scope))
         service_token=exec_text('cat','/data/run/runtime-token')
-        def mcp(method,params=None,key=None):
+        def mcp(method,params=None,key=None,token=None):
             body={'jsonrpc':'2.0','id':key or secrets.token_hex(16),'method':method,'params':{
                 **(params or {}),'_meta':{'io.modelcontextprotocol/protocolVersion':'2026-07-28','io.modelcontextprotocol/clientCapabilities':{'tools':{}}}}}
             headers={'Accept':'application/json, text/event-stream','MCP-Protocol-Version':'2026-07-28',
                 'MCP-Method':method,'X-Request-ID':body['id'],'Idempotency-Key':body['id']}
             if method=='tools/call':headers['MCP-Name']=params['name']
-            status,raw,_=request(mcp_origin+'/mcp',service_token,body,'POST',headers)
+            status,raw,_=request(mcp_origin+'/mcp',token or service_token,body,'POST',headers)
             return status,json.loads(raw)
         assert {t['name'] for t in ok(mcp('tools/list'))['result']['tools']}=={'calculator.evaluate'}
         service_key=secrets.token_hex(16)
@@ -257,6 +266,23 @@ def smoke(image, browser, database_options=None, gateway_image=None):
         assert ok(mcp('tools/list'))['result']['tools']==[]
         assert mcp('tools/call',{'name':'calculator.evaluate','arguments':{'expression':'7*2'}},service_key)[0]==403
         mark('real authenticated Gateway SERVICE/group capability/native effect/exact retry/live revocation')
+        if gateway_image:
+            identity=next(i for i in ok(api('/api/control/v1/identity-bindings',admin))['items'] if i['subject']=='admin')
+            reviewed('/api/control/v1/workload-bindings',dict(id='workload-delegated',name='Verified human delegation',
+                enabled=True,revision=1,agentId='agent-local',mode='DELEGATED',issuer='gateway',subject='local-workload',
+                audience='gateway',credentialSha256=delegated_digest,credentialEpoch=1,
+                expiresAtUnixMs=int(time.time()*1000)+3600000,delegatedUserId=identity['userId'],delegatedSessionEpoch=identity['sessionEpoch']))
+            assert ok(mcp('tools/list',token=delegated_token))['result']['tools']==[]
+            reviewed('/api/control/v1/delegations',dict(id='human-delegation',name='Same Team and Agent Group',
+                enabled=True,revision=1,teamId='installation-administrators',agentGroupId='default-agents',scope=scope))
+            assert {t['name'] for t in ok(mcp('tools/list',token=delegated_token))['result']['tools']}=={'calculator.evaluate'}
+            result=ok(mcp('tools/call',{'name':'calculator.evaluate','arguments':{'expression':'8*3'}},token=delegated_token))
+            assert result['result']['structuredContent']['value']==24
+            delegation=ok(api('/api/control/v1/delegations/human-delegation',admin))
+            reviewed('/api/control/v1/delegations/human-delegation',{**delegation,'enabled':False},'PUT',delegation['revision'])
+            assert ok(mcp('tools/list',token=delegated_token))['result']['tools']==[]
+            assert mcp('tools/call',{'name':'calculator.evaluate','arguments':{'expression':'8*3'}},token=delegated_token)[0]==403
+            mark('real DELEGATED identity/same Team and Agent Group/native effect/current delegation revocation')
         # Configure the diagnostic workload outside the mimic script. The script only calls/logs.
         for tool_id in ('hotfolder.write_text','client.read_log_entry'):
             tool=ok(api('/api/control/v1/tools/'+tool_id,admin))
@@ -350,29 +376,54 @@ def smoke(image, browser, database_options=None, gateway_image=None):
         tls_port=ports['8443/tcp'][0]['HostPort']
         origin=f'http://127.0.0.1:{port}'
         mcp_origin=origin if not gateway_image else 'http://127.0.0.1:'+ports['8084/tcp'][0]['HostPort']
-        if gateway_image:gateway_management='http://127.0.0.1:'+ports['9094/tcp'][0]['HostPort']
+        if gateway_image:
+            gateway_management='http://127.0.0.1:'+ports['9094/tcp'][0]['HostPort']
+            # This fixture shares the parent's network namespace. Docker replaces
+            # that namespace on restart; rejoin it before proving authority outage.
+            run(['docker','restart','-t','35',external],capture_output=True)
+            deadline=time.monotonic()+40
+            while True:
+                try:
+                    if request(gateway_management+'/v1/health/ready')[0]==200:break
+                except (urllib.error.URLError,TimeoutError,ConnectionError):pass
+                assert time.monotonic()<deadline,'Gateway did not rejoin the restarted fixture'
+                time.sleep(.25)
         admin=ok(api('/api/quickstart/v1/login',body={'username':'admin','password':passwords['admin']},method='POST'))['accessToken']
         assert ok(api('/api/control/v1/access/status',admin))['authorizationEpoch']>=authority['authorizationEpoch']
         assert ok(api('/api/quickstart/v1/tools',admin))['tools']==[]
         assert ok(api('/api/control/v1/grants/'+grant['id'],admin))['enabled'] is False
         mark('restart preserves identity/key/revocation/monotonic epoch/no installation reseeding')
         if gateway_image and not browser:
-            run(['docker','stop','-t','35',container],capture_output=True)
-            deadline=time.monotonic()+12
-            while request(gateway_management+'/v1/health/ready')[0]==200:
-                assert time.monotonic()<deadline,'Stale Gateway remained ready without Core'
+            # Freeze only Core: stopping its namespace-owning container also removes
+            # Docker's published Gateway ports, which cannot prove fail-closed HTTP.
+            signal_core="import os,pathlib,signal;ids=[int(p.parent.name) for p in pathlib.Path('/proc').glob('[0-9]*/comm') if p.read_text().strip()=='java'];assert len(ids)==1;os.kill(ids[0],signal.SIG%s)"
+            exec_text('/opt/quickstart-python/bin/python','-c',signal_core%'STOP')
+            try:
+                deadline=time.monotonic()+15
+                while request(gateway_management+'/v1/health/ready')[0]==200:
+                    assert time.monotonic()<deadline,'Stale Gateway remained ready without Core'
+                    time.sleep(.25)
+                assert mcp('tools/list')[0] in (502,503)
+            finally:
+                exec_text('/opt/quickstart-python/bin/python','-c',signal_core%'CONT')
+            deadline=time.monotonic()+20
+            while request(gateway_management+'/v1/health/ready')[0]!=200:
+                assert time.monotonic()<deadline,'Gateway did not recover current authority'
                 time.sleep(.25)
-            assert mcp('tools/list')[0] in (502,503)
+            assert mcp('tools/list')[0]==200
             run(['docker','stop','-t','35',external],capture_output=True)
             state=json.loads(run(['docker','inspect',external],capture_output=True,text=True).stdout)[0]['State']
             assert state['ExitCode']==0,state
             logs=run(['docker','logs',external],capture_output=True,text=True)
             assert service_token not in logs.stdout+logs.stderr
-            mark('Core outage fails Gateway closed/graceful production Gateway shutdown/redacted logs')
+            assert delegated_token not in logs.stdout+logs.stderr
+            mark('Core outage fails Gateway closed/recovers without restart/graceful production Gateway shutdown/redacted logs')
         if browser:
             run(['npm','exec','--workspace','@olo-labs/toolgate-admin-ui','--','playwright','test',
                  'tests/e2e/enterprise.spec.ts'],env={**os.environ,'TOOLGATE_ENTERPRISE_ORIGIN':origin,
-                 'TOOLGATE_ENTERPRISE_PASSWORD':passwords['admin']})
+                 'TOOLGATE_ENTERPRISE_PASSWORD':passwords['admin'],
+                 'TOOLGATE_ENTERPRISE_REVIEWER_1':passwords['reviewer-1'],
+                 'TOOLGATE_ENTERPRISE_REVIEWER_2':passwords['reviewer-2']})
             mark('real accessible enterprise administration browser')
         output=ROOT/'build/quickstart';output.mkdir(parents=True,exist_ok=True)
         (output/('smoke-postgresql.json' if database_options else 'smoke.json')).write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')

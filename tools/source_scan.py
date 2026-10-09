@@ -7,6 +7,7 @@ runtime artifacts have separate image/SBOM scans. Every selected working file is
 copied, including modifications; no source paths or license findings are waived.
 """
 import subprocess
+from contextlib import contextmanager
 import tarfile
 import tempfile
 from pathlib import Path
@@ -14,7 +15,8 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 
 
-def scan():
+@contextmanager
+def snapshot():
     names=subprocess.check_output(['git','ls-files','--cached','--others','--exclude-standard','-z'],cwd=ROOT).decode('utf-8').split('\0')
     (ROOT/'.dev').mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='source-scan-',dir=ROOT/'.dev') as temporary:
@@ -32,6 +34,20 @@ def scan():
                     entry.mode=0o644;entry.mtime=0;output.addfile(entry,content)
                 count+=1
         print(f'Scanning {count} working source files; Linux snapshot avoids slow Windows mount traversal',flush=True)
+        yield archive
+
+
+def secret_scan():
+    # Include tracked modifications and untracked source. Ignore private operator
+    # custody only through Git's inventory, so accidentally tracked keys still fail.
+    with snapshot() as archive:
+        command='mkdir /source && tar -xf /source.tar -C /source && exec gitleaks detect --source=/source --no-git --redact --exit-code=1'
+        subprocess.run(['docker','run','--rm','-v',f'{archive.as_posix()}:/source.tar:ro',
+                        '--entrypoint','sh','zricethezav/gitleaks:v8.24.2','-c',command],cwd=ROOT,check=True)
+
+
+def scan():
+    with snapshot() as archive:
         command='mkdir /source && tar -xf /source.tar -C /source && exec trivy fs --no-progress --timeout 15m --include-dev-deps --scanners vuln,license --license-full --exit-code 1 --severity HIGH,CRITICAL /source'
         subprocess.run(['docker','run','--rm','-v',f'{archive.as_posix()}:/source.tar:ro','--entrypoint','sh','aquasec/trivy:0.61.1','-c',command],cwd=ROOT,check=True)
 

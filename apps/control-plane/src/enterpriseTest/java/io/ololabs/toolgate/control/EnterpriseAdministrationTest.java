@@ -45,6 +45,19 @@ class EnterpriseAdministrationTest {
         var reply=directory.mutate(administrator,Kind.USER,"new-user","CREATE",graph.codec.json(new ControlUser("new-user","Pending review",false,1L)),0,"new-user-key","request");assertEquals(201,reply.status());
         store.transaction(administrator.tenant(),false,tx->{assertEquals(List.of("team-default"),GroupGraph.memberships(tx.load(),graph.codec,Kind.USER,"new-user",false));return null;});
     }
+    @Test void everyIndividualCreationAndGroupDeletionKeepsMandatoryMembership(){
+        var tool=(com.fasterxml.jackson.databind.node.ObjectNode)graph.codec.value(graph.entries.get(Kind.TOOL.id("tool")).document());tool.put("id","new-tool");tool.put("enabled",false);((com.fasterxml.jackson.databind.node.ObjectNode)tool.get("definition")).put("id","new-tool");
+        var records=Map.of(Kind.USER,graph.codec.json(new ControlUser("created-user","Created",false,1L)),Kind.AGENT,graph.codec.json(new ControlAgent("created-agent","Created",false,1L,"bob")),Kind.DEVICE,graph.codec.json(new ControlDevice("created-device","Created",false,1L,"bob")),Kind.TOOL,graph.codec.json(tool));
+        var defaults=Map.of(Kind.USER,"team-default",Kind.AGENT,"default-agents",Kind.DEVICE,"default-devices",Kind.TOOL,"default-tools");
+        for(var record:records.entrySet()){
+            var id=((com.fasterxml.jackson.databind.JsonNode)graph.codec.value(record.getValue())).get("id").asText();
+            assertEquals(201,directory.mutate(administrator,record.getKey(),id,"CREATE",record.getValue(),0,"create-"+id,"request").status());
+            store.transaction(administrator.tenant(),false,tx->{assertEquals(List.of(defaults.get(record.getKey())),GroupGraph.memberships(tx.load(),graph.codec,record.getKey(),id,false));graph.codec.validatePolicies(tx.load());return null;});
+        }
+        assertThrows(Failure.class,()->directory.mutate(administrator,Kind.AGENT_GROUP,"group-a","DELETE",null,1,"delete-group-a","request"));
+        directory.mutate(administrator,Kind.AGENT_GROUP,"group-b","DELETE",null,1,"delete-group-b","request");
+        store.transaction(administrator.tenant(),false,tx->{assertEquals(List.of("group-a"),GroupGraph.memberships(tx.load(),graph.codec,Kind.AGENT,"agent",false));graph.codec.validatePolicies(tx.load());return null;});
+    }
     @Test void lastMembershipCannotBeRemovedByDirectGroupEditing() {
         var group=graph.codec.model(directory.get(administrator,Kind.AGENT_GROUP,"group-a").body(),ControlAgentGroup.class);
         directory.mutate(administrator,Kind.AGENT_GROUP,group.id(),"UPDATE",graph.codec.json(new ControlAgentGroup(group.id(),group.name(),true,1L,List.of(),List.of())),1,"first","request");

@@ -118,6 +118,20 @@
         "https://github.com/sunfishcode/winx/blob/v0.36.4/LICENSE"
       ]
     },
+    "psycopg:3.3.6:build-test": {
+      "expression": "LGPL-3.0-only",
+      "scope": "build-test",
+      "reason": "Unmodified local operator/restore test dependency, installed separately by pip. This tooling review does not approve bundled binary wheels in product runtime images; runtime psycopg has its own source/notices review.",
+      "sourceArtifact": "https://files.pythonhosted.org/packages/76/26/3ea4ca5eaea1c0debcdf7ee7c1613fbe721dc27a03c461c0817ffd8a0601/psycopg-3.3.6.tar.gz",
+      "licenseUrls": ["https://github.com/psycopg/psycopg/blob/3.3.6/LICENSE.txt"]
+    },
+    "psycopg-binary:3.3.6:build-test": {
+      "expression": "LGPL-3.0-only",
+      "scope": "build-test",
+      "reason": "Unmodified pip-installed local test/restore tooling adapter, required on Windows without system libpq. It is excluded from Quickstart runtime requirements and distributed product images. Pip preserves the wheel's upstream licenses; corresponding source remains available from the pinned upstream release.",
+      "sourceArtifact": "https://github.com/psycopg/psycopg/tree/3.3.6/psycopg_c",
+      "licenseUrls": ["https://github.com/psycopg/psycopg/blob/3.3.6/LICENSE.txt"]
+    },
     "psycopg:3.3.6": {
       "expression": "LGPL-3.0-only",
       "scope": "runtime",

@@ -108,7 +108,7 @@ def audit(rust_metadata, output=None):
         normalized = re.sub(r'[-_.]+', '-', distribution.metadata['Name']).lower()
         if normalized in visited: continue
         visited.add(normalized)
-        inventory.append({'ecosystem':'python-tools','name':normalized,'version':distribution.version,'license':python_license(distribution)})
+        inventory.append({'ecosystem':'python-tools','name':normalized,'version':distribution.version,'license':python_license(distribution),'scope':'build-test'})
         for spec in distribution.requires or []:
             requirement = Requirement(spec)
             if requirement.marker is None or requirement.marker.evaluate(): pending.append(requirement.name)
@@ -141,7 +141,8 @@ def audit(rust_metadata, output=None):
     for dependency in inventory:
         expression = dependency['license']
         tooling = dependency['ecosystem'] == 'python-tools' or dependency.get('scope') == 'build-test' or dependency['name'].startswith(('org.junit','org.opentest4j','org.apiguardian'))
-        review = reviews.get(dependency['name']+':'+dependency['version'])
+        coordinate = dependency['name']+':'+dependency['version']
+        review = reviews.get(coordinate+':'+str(dependency.get('scope'))) or reviews.get(coordinate)
         reviewed = review and review['expression'] == expression and review['scope'] == dependency.get('scope')
         if reviewed: dependency['review'] = review
         if expression != 'BSD family (package classifier)' and not reviewed and not accepted(expression, tooling):
