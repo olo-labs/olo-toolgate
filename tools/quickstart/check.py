@@ -152,11 +152,12 @@ def smoke(image, browser, database_options=None, gateway_image=None):
             tokens[user]=login[1]['accessToken']
         admin=tokens['admin']
         snapshot=ok(api('/api/control/v1/config/export',admin))
-        assert snapshot['grants']==[] and snapshot['delegations']==[]
+        assert all(g['id'].startswith('standard-') for g in snapshot['grants']) and snapshot['delegations']==[]
         assert all(not tool['enabled'] for tool in snapshot['tools'])
-        assert {x['id'] for x in snapshot['agentGroups']}=={'default-agents'}
-        assert {x['id'] for x in snapshot['toolGroups']}=={'default-tools'}
-        assert {x['id'] for x in snapshot['deviceGroups']}=={'default-devices'}
+        for key,default,suffix in [('agentGroups','default-agents','AgentGroup'),('toolGroups','default-tools','ToolGroup'),('deviceGroups','default-devices','DeviceGroup')]:
+            assert {x['id'] for x in snapshot[key]}=={default,*[tier+suffix for tier in ('ReadOnly','ReadAndWrite','Admin')]}
+            member={'agentGroups':'agentIds','toolGroups':'toolIds','deviceGroups':'deviceIds'}[key]
+            assert all(not row[member] for row in snapshot[key] if row['id']!=default)
         mark('fresh reviewed installation/independent identities/default groups/zero runtime rights')
         # The actual native executable owns this CSR/key and advertises actual installed binary profiles.
         deadline=time.monotonic()+45

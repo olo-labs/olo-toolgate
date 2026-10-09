@@ -6,6 +6,7 @@ COPY package.json package-lock.json VERSION LICENSE ./
 COPY packages/contracts/typescript/ packages/contracts/typescript/
 COPY packages/contracts/VERSION packages/contracts/VERSION
 COPY apps/admin-ui/ apps/admin-ui/
+COPY config/initial/ config/initial/
 COPY tests/fixtures/contracts/v1/valid.json tests/fixtures/contracts/v1/valid.json
 COPY tools/ui/build.mjs tools/ui/build.mjs
 RUN npm ci --ignore-scripts && npm run ui:build && node tools/ui/build.mjs --metadata-only
@@ -17,6 +18,7 @@ COPY gradlew gradlew.bat settings.gradle.kts build.gradle.kts gradle.properties 
 COPY gradle/ gradle/
 COPY packages/contracts/ packages/contracts/
 COPY apps/control-plane/ apps/control-plane/
+COPY config/initial/ config/initial/
 COPY --from=console /workspace/apps/admin-ui/dist/ apps/admin-ui/dist/
 COPY apps/marketplace-api/build.gradle.kts apps/marketplace-api/build.gradle.kts
 COPY apps/marketplace-worker/build.gradle.kts apps/marketplace-worker/build.gradle.kts

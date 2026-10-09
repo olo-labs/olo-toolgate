@@ -5,7 +5,8 @@ param(
     [string]$Gateway = 'https://localhost:18450',
     [string]$TokenFile = '',
     [string]$CaFile = '',
-    [string]$File = 'rahul-nigam.txt'
+    [string]$File = 'rahul-nigam.txt',
+    [ValidateRange(0,60)][int]$DurationSeconds = 8
 )
 $ErrorActionPreference = 'Stop'
 & "$PSScriptRoot/agent-mimic.ps1" @PSBoundParameters

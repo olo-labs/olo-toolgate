@@ -33,12 +33,13 @@ def prepare(data, tenant, issuer, key, atomic, profiles):
                     policies=[], devices=[], roles=[], deviceGroups=[], agentGroups=[], toolGroups=[], grants=[],
                     delegations=[], agentDelegations=[], bindings=[], extractors=[], workloadBindings=[],
                     identityBindings=[], deviceEvidence=[])
-    subjects = ['admin', 'reviewer-1', 'reviewer-2']
-    snapshot['users'] = [dict(id=user, name='Quickstart '+user, enabled=True, revision=1) for user in subjects]
+    administrators = ['admin', 'reviewer-1', 'reviewer-2']
+    subjects = administrators + ['test-readonly', 'test-readwrite', 'test-admin']
+    snapshot['users'] = [dict(id=user, name='Quickstart '+user, enabled=user in administrators, revision=1) for user in subjects]
     snapshot['teams'] = [dict(id='team-default', name='Default team', enabled=True, revision=1,
                               userIds=subjects, roleIds=[]),
                          dict(id='installation-administrators', name='Installation administrators', enabled=True,
-                              revision=1, userIds=subjects, roleIds=['installation-management'])]
+                              revision=1, userIds=administrators, roleIds=['installation-management'])]
     conditions = dict(notBeforeUnixMs=0, expiresAtUnixMs=0, networkCidrs=[], devicePosture=[], regions=[],
                       hoursUtc=[], requireOnline=True, highRisk=False)
     all_groups = dict(ids=[], all=True)

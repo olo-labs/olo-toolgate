@@ -22,6 +22,17 @@ public class EndpointSocket {
     private static final String PATH="/api/control/v1/endpoint/socket";
     private static final org.jboss.logging.Logger LOG=org.jboss.logging.Logger.getLogger(EndpointSocket.class);
     private final AtomicInteger connections=new AtomicInteger();
+    // A faster socket can arrive within the 250 ms floor after the previous HTTP
+    // poll. Check-in is idempotent; retry only its conflict, never an effect or
+    // authorization denial. Sequence/digest validation still runs on the retry.
+    static Store.Reply checkInWithJitter(java.util.function.Supplier<Store.Reply> request){
+        try{return request.get();}
+        catch(Failure failure){
+            if(failure.code()!=ErrorCode.CONFLICT)throw failure;
+            try{Thread.sleep(250);}catch(InterruptedException interrupted){Thread.currentThread().interrupt();throw Failure.unavailable();}
+            return request.get();
+        }
+    }
     void routes(@Observes Router router){
         router.get(PATH).order(-900).handler(context->{
             X509Certificate peer;
@@ -73,7 +84,7 @@ public class EndpointSocket {
                     endpoints.verifySocketPeer(peer);
                     String body=codec.json(request.body());
                     reply=switch(request.operation()){
-                        case CHECK_IN -> endpoints.checkIn(peer,body,request.requestId(),true,systemName,ipAddress);
+                        case CHECK_IN -> checkInWithJitter(()->endpoints.checkIn(peer,body,request.requestId(),true,systemName,ipAddress));
                         case AUTHORIZE -> endpoints.relay().authorize(peer,body);
                         case RESULT -> endpoints.relay().result(peer,body,request.requestId());
                         case BUILDER_POLL -> {if(request.body()!=null)throw Failure.validation();yield builder.poll(peer,request.requestId());}

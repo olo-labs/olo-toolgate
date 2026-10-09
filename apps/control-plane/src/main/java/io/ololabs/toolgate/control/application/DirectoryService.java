@@ -56,6 +56,7 @@ public final class DirectoryService {
             if(old!=null)require(actor,before,operation.toLowerCase(Locale.ROOT),old);
             var replay=tx.replay(actor.id(),key,hash);if(replay!=null)return replay;
             lifecycle(tx,old,input);
+            if(GroupGraph.group(kind))management.requireAllocation(before,before,actor.userId(),input==null?old:input,System.currentTimeMillis());
             if(operation.equals("CREATE")){if(old!=null||tx.used(typedId)||input==null||input.revision()!=1)throw Failure.conflict();}
             else if(old==null||old.revision()!=expected||input!=null&&input.revision()!=expected)throw Failure.conflict();
             if(GroupGraph.group(kind)&&input!=null) {
@@ -68,6 +69,7 @@ public final class DirectoryService {
             var entries=new HashMap<>(before.entries());GroupGraph.defaults(entries,codec);
             if(input==null){entries.remove(typedId);if(GroupGraph.individual(kind))GroupGraph.removeMember(entries,codec,kind,id);}else entries.put(typedId,codec.revision(input,old==null?1:old.revision()+1));
             if(old==null&&input!=null&&GroupGraph.individual(kind))GroupGraph.addDefault(entries,codec,kind,id);
+            if((kind==Kind.USER||kind==Kind.AGENT)&&input!=null&&input.enabled()&&(old==null||!old.enabled()))for(var group:GroupGraph.memberships(new Directory(before.revision(),entries),codec,kind,id,false))management.requireAllocation(before,new Directory(before.revision(),entries),actor.userId(),entries.get(GroupGraph.groupKind(kind).id(group)),System.currentTimeMillis());
             if(kind==Kind.USER&&old!=null&&old.enabled()!=inputEnabled(input))invalidateSessions(entries,id);
             if(kind==Kind.AGENT&&old!=null&&old.enabled()!=inputEnabled(input))invalidateWorkloads(entries,id,null);
             var after=validated(before,before.revision()+1,entries);secretReferences(tx,after);tx.save(before,after);auditChanges(tx,actor,before,after,requestId,operation,hash);
@@ -110,14 +112,24 @@ public final class DirectoryService {
             for(var e:input.directory().entries().values())require(actor,before,"update",e);
             var replay=input.dryRun()?null:tx.replay(actor.id(),key,hash);if(replay!=null)return replay;if(before.revision()!=expected)throw Failure.conflict();
             var entries=input.replace()?new HashMap<Ids.RecordId,Directory.Entry>():new HashMap<>(before.entries());
-            for(var e:input.directory().entries().values()) {var old=before.entries().get(e.id());if(old==null&&tx.used(e.id()))throw Failure.conflict();lifecycle(tx,old,e);var normalized=codec.revision(e,old==null?1:old.revision());entries.put(e.id(),old!=null&&old.document().equals(normalized.document())?old:codec.revision(e,old==null?1:old.revision()+1));}
+            for(var proposed:input.directory().entries().values()) {var old=before.entries().get(proposed.id());var e=importObservations(old,proposed);if(old==null&&tx.used(e.id()))throw Failure.conflict();lifecycle(tx,old,e);var normalized=codec.revision(e,old==null?1:old.revision());entries.put(e.id(),old!=null&&old.document().equals(normalized.document())?old:codec.revision(e,old==null?1:old.revision()+1));}
             for(var e:before.entries().values()){var next=entries.get(e.id());if(GroupGraph.individual(e.id().kind())&&e.enabled()!=inputEnabled(next)){if(e.id().kind()==Kind.USER)invalidateSessions(entries,e.id().value());if(e.id().kind()==Kind.AGENT)invalidateWorkloads(entries,e.id().value(),null);}}
             // Import is reviewed as a complete graph; missing memberships are rejected rather than guessed.
             var changes=changes(before,new Directory(before.revision(),entries));var after=validated(before,before.revision()+(changes.isEmpty()||input.dryRun()?0:1),entries);secretReferences(tx,after);
+            for(var group:after.entries().values())if(GroupGraph.group(group.id().kind())) {
+                var old=before.entries().get(group.id());var prior=old==null?List.<String>of():GroupGraph.members(old,codec);
+                if(GroupGraph.members(group,codec).stream().anyMatch(member->!prior.contains(member))||!GroupGraph.roles(group,codec).equals(old==null?List.of():GroupGraph.roles(old,codec)))management.requireAllocation(before,after,actor.userId(),group,System.currentTimeMillis());
+            }
             for(var e:before.entries().values())if(GroupGraph.protectedDefault(e.id())&&!entries.containsKey(e.id()))throw Failure.conflict();
             for(var e:after.entries().values()) {var old=before.entries().get(e.id());if(old==null)continue;if(e.id().kind()==Kind.IDENTITY_BINDING&&(codec.model(e.document(),ControlIdentityBinding.class).sessionEpoch()<codec.model(old.document(),ControlIdentityBinding.class).sessionEpoch()||codec.model(e.document(),ControlIdentityBinding.class).sessionsValidAfterUnixMs()<codec.model(old.document(),ControlIdentityBinding.class).sessionsValidAfterUnixMs())||e.id().kind()==Kind.WORKLOAD_BINDING&&codec.model(e.document(),ControlWorkloadBinding.class).credentialEpoch()<codec.model(old.document(),ControlWorkloadBinding.class).credentialEpoch())throw Failure.conflict();}
             var reply=new Store.Reply(200,codec.result(!input.dryRun(),after.revision(),changes),after.revision());if(!input.dryRun()){tx.save(before,after);auditChanges(tx,actor,before,after,requestId,"IMPORT",hash);tx.remember(actor.id(),key,hash,reply);}return reply;
         });
+    }
+    private Directory.Entry importObservations(Directory.Entry old,Directory.Entry proposed) {
+        if(old==null||proposed.id().kind()!=Kind.IDENTITY_BINDING)return proposed;
+        var live=codec.model(old.document(),ControlIdentityBinding.class);var desired=codec.model(proposed.document(),ControlIdentityBinding.class);
+        // Verified login observations change without a configuration revision. Import cannot replace them.
+        return codec.entry(Kind.IDENTITY_BINDING,codec.json(new ControlIdentityBinding(desired.id(),desired.name(),desired.enabled(),desired.revision(),desired.userId(),desired.issuer(),desired.subject(),desired.sessionEpoch(),desired.firstSeenUnixMs(),live.lastAttemptUnixMs(),live.attemptCount(),live.registrationReason(),desired.sessionsValidAfterUnixMs())));
     }
     private List<Map<String,String>> changes(Directory before,Directory after) {
         var result=new ArrayList<Map<String,String>>();var keys=new HashSet<>(before.entries().keySet());keys.addAll(after.entries().keySet());keys.stream().sorted(Comparator.comparing((Ids.RecordId i)->i.kind().name()).thenComparing(Ids.RecordId::value)).forEach(id->{var a=before.entries().get(id);var b=after.entries().get(id);if(!Objects.equals(a,b))result.add(Map.of("kind",id.kind().name(),"id",id.value(),"operation",a==null?"CREATE":b==null?"DELETE":"UPDATE"));});return result;
@@ -130,7 +142,7 @@ public final class DirectoryService {
     private Store.Reply membership(Directory d,Kind kind,String id) {return new Store.Reply(200,codec.json(new GroupMembership(EnterpriseMemberType.valueOf(kind.name()),id,GroupGraph.memberships(d,codec,kind,id,false),d.revision())),d.revision());}
     public Store.Reply setMemberships(Actor actor,Kind kind,String id,String document,long expected,String key,String requestId) {
         actor.requireAdmin();Ids.valid(key);Ids.valid(requestId);var input=codec.model(document,GroupMembership.class);if(!id.equals(input.entityId())||!kind.name().equals(input.entityType().name())||input.revision()!=expected)throw Failure.validation();var hash=digest("MEMBERSHIPS\n"+codec.json(input));
-        return store.transaction(actor.tenant(),true,tx->{var before=tx.load();var entity=before.entries().get(kind.id(id));if(entity==null)throw missingFailure();require(actor,before,"update",entity);for(var group:input.groupIds())management.require(before,actor.userId(),"update",GroupGraph.groupKind(kind),group,System.currentTimeMillis());var replay=tx.replay(actor.id(),key,hash);if(replay!=null)return replay;if(before.revision()!=expected)throw Failure.conflict();var entries=new HashMap<>(before.entries());GroupGraph.setMemberships(entries,codec,kind,id,input.groupIds());var after=validated(before,before.revision()+1,entries);tx.save(before,after);auditChanges(tx,actor,before,after,requestId,"MEMBERSHIP_UPDATE",hash);var reply=membership(after,kind,id);tx.remember(actor.id(),key,hash,reply);return reply;});
+        return store.transaction(actor.tenant(),true,tx->{var before=tx.load();var entity=before.entries().get(kind.id(id));if(entity==null)throw missingFailure();require(actor,before,"update",entity);for(var group:input.groupIds()){management.require(before,actor.userId(),"update",GroupGraph.groupKind(kind),group,System.currentTimeMillis());management.requireAllocation(before,before,actor.userId(),before.entries().get(GroupGraph.groupKind(kind).id(group)),System.currentTimeMillis());}var replay=tx.replay(actor.id(),key,hash);if(replay!=null)return replay;if(before.revision()!=expected)throw Failure.conflict();var entries=new HashMap<>(before.entries());GroupGraph.setMemberships(entries,codec,kind,id,input.groupIds());var after=validated(before,before.revision()+1,entries);tx.save(before,after);auditChanges(tx,actor,before,after,requestId,"MEMBERSHIP_UPDATE",hash);var reply=membership(after,kind,id);tx.remember(actor.id(),key,hash,reply);return reply;});
     }
     public Store.Reply simulate(Actor actor,String document) {actor.requireAdmin();var input=codec.model(document,EnterpriseEvaluation.class);return store.transaction(actor.tenant(),false,tx->{management.requireAll(tx.load(),actor.userId(),"simulate",System.currentTimeMillis());var decision=new EnterpriseEvaluator(codec).evaluate(actor.tenant(),tx.load(),input);return new Store.Reply(200,codec.json(decision),tx.load().revision());});}
     public Store.Reply shadow(Actor actor,String document){actor.requireAdmin();var request=codec.model(document,EnterpriseShadowRequest.class);return store.transaction(actor.tenant(),false,tx->{management.requireAll(tx.load(),actor.userId(),"simulate",lifecycleClock.millis());

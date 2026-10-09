@@ -134,6 +134,9 @@ export class ControlClient {
   saveMemberships(entity:'users'|'agents'|'tools'|'devices',body:GroupMembership,key:string):Promise<GroupMembership>{const operation={users:operations.updateUserGroupMembership,agents:operations.updateAgentGroupMembership,tools:operations.updateToolGroupMembership,devices:operations.updateDeviceGroupMembership}[entity];return this.send(operation,{id:body.entityId,body,revision:body.revision,key});}
   simulateAccess(body:EnterpriseEvaluation):Promise<EnterpriseDecision>{return this.send(operations.simulateEnterpriseAccess,{body});}
   exportConfig():Promise<ControlSnapshot>{return this.send(operations.exportConfig);}
+  installPresets(snapshot:ControlSnapshot,key:string):Promise<unknown>{return this.send(operations.importConfig,{body:{snapshot,mode:'MERGE',dryRun:false},revision:snapshot.revision,key});}
+  previewConfiguration(snapshot:ControlSnapshot,mode:'MERGE'|'REPLACE'):Promise<{changes:readonly {kind:string;id:string;operation:string}[]}>{return this.send(operations.importConfig,{body:{snapshot,mode,dryRun:true},revision:snapshot.revision,key:crypto.randomUUID()});}
+  importConfiguration(snapshot:ControlSnapshot,mode:'MERGE'|'REPLACE',key:string):Promise<unknown>{return this.send(operations.importConfig,{body:{snapshot,mode,dryRun:false},revision:snapshot.revision,key});}
   currentBundle():Promise<SignedPolicyBundle>{return this.send(operations.getCurrentPolicyBundle);}
   publishAccess(body:BundlePublishRequest,key:string):Promise<SignedPolicyBundle>{return this.send(operations.publishPolicyBundle,{body,key});}
   saveRecord<K extends DirectoryKind>(kind:K,record:DirectoryRecords[K],existing:boolean,key:string):Promise<DirectoryRecords[K]> {

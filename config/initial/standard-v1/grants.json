@@ -1,0 +1,676 @@
+{
+  "grants": [
+    {
+      "id": "standard-ReadOnly-human",
+      "name": "standard-ReadOnly-human",
+      "enabled": true,
+      "revision": 1,
+      "sourceType": "ROLE",
+      "sourceId": "standard-ReadOnly-human",
+      "purpose": "HUMAN",
+      "scope": {
+        "toolGroups": {
+          "ids": [
+            "ReadOnlyToolGroup",
+            "ReadAndWriteToolGroup",
+            "AdminToolGroup"
+          ],
+          "all": false
+        },
+        "deviceGroups": {
+          "ids": [
+            "ReadOnlyDeviceGroup",
+            "ReadAndWriteDeviceGroup",
+            "AdminDeviceGroup"
+          ],
+          "all": false
+        },
+        "actions": [
+          "read",
+          "list",
+          "info",
+          "search",
+          "events",
+          "hash",
+          "evaluate",
+          "transform",
+          "validate",
+          "get",
+          "query",
+          "inspect",
+          "describe",
+          "status"
+        ],
+        "allActions": false,
+        "resources": [
+          {
+            "kind": "FILE",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "URL",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "DATABASE",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "CUSTOM",
+            "locator": "",
+            "match": "ANY"
+          }
+        ],
+        "conditions": {
+          "notBeforeUnixMs": 0,
+          "expiresAtUnixMs": 0,
+          "networkCidrs": [],
+          "devicePosture": [],
+          "regions": [],
+          "hoursUtc": [],
+          "requireOnline": true,
+          "highRisk": false
+        }
+      }
+    },
+    {
+      "id": "standard-ReadOnly-capability",
+      "name": "standard-ReadOnly-capability",
+      "enabled": true,
+      "revision": 1,
+      "sourceType": "ROLE",
+      "sourceId": "standard-ReadOnly-actor",
+      "purpose": "CAPABILITY",
+      "scope": {
+        "toolGroups": {
+          "ids": [
+            "ReadOnlyToolGroup",
+            "ReadAndWriteToolGroup",
+            "AdminToolGroup"
+          ],
+          "all": false
+        },
+        "deviceGroups": {
+          "ids": [
+            "ReadOnlyDeviceGroup",
+            "ReadAndWriteDeviceGroup",
+            "AdminDeviceGroup"
+          ],
+          "all": false
+        },
+        "actions": [
+          "read",
+          "list",
+          "info",
+          "search",
+          "events",
+          "hash",
+          "evaluate",
+          "transform",
+          "validate",
+          "get",
+          "query",
+          "inspect",
+          "describe",
+          "status"
+        ],
+        "allActions": false,
+        "resources": [
+          {
+            "kind": "FILE",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "URL",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "DATABASE",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "CUSTOM",
+            "locator": "",
+            "match": "ANY"
+          }
+        ],
+        "conditions": {
+          "notBeforeUnixMs": 0,
+          "expiresAtUnixMs": 0,
+          "networkCidrs": [],
+          "devicePosture": [],
+          "regions": [],
+          "hoursUtc": [],
+          "requireOnline": true,
+          "highRisk": false
+        }
+      }
+    },
+    {
+      "id": "standard-ReadOnly-service",
+      "name": "standard-ReadOnly-service",
+      "enabled": true,
+      "revision": 1,
+      "sourceType": "ROLE",
+      "sourceId": "standard-ReadOnly-actor",
+      "purpose": "SERVICE",
+      "scope": {
+        "toolGroups": {
+          "ids": [
+            "ReadOnlyToolGroup",
+            "ReadAndWriteToolGroup",
+            "AdminToolGroup"
+          ],
+          "all": false
+        },
+        "deviceGroups": {
+          "ids": [
+            "ReadOnlyDeviceGroup",
+            "ReadAndWriteDeviceGroup",
+            "AdminDeviceGroup"
+          ],
+          "all": false
+        },
+        "actions": [
+          "read",
+          "list",
+          "info",
+          "search",
+          "events",
+          "hash",
+          "evaluate",
+          "transform",
+          "validate",
+          "get",
+          "query",
+          "inspect",
+          "describe",
+          "status"
+        ],
+        "allActions": false,
+        "resources": [
+          {
+            "kind": "FILE",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "URL",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "DATABASE",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "CUSTOM",
+            "locator": "",
+            "match": "ANY"
+          }
+        ],
+        "conditions": {
+          "notBeforeUnixMs": 0,
+          "expiresAtUnixMs": 0,
+          "networkCidrs": [],
+          "devicePosture": [],
+          "regions": [],
+          "hoursUtc": [],
+          "requireOnline": true,
+          "highRisk": false
+        }
+      }
+    },
+    {
+      "id": "standard-ReadAndWrite-human",
+      "name": "standard-ReadAndWrite-human",
+      "enabled": true,
+      "revision": 1,
+      "sourceType": "ROLE",
+      "sourceId": "standard-ReadAndWrite-human",
+      "purpose": "HUMAN",
+      "scope": {
+        "toolGroups": {
+          "ids": [
+            "ReadOnlyToolGroup",
+            "ReadAndWriteToolGroup",
+            "AdminToolGroup"
+          ],
+          "all": false
+        },
+        "deviceGroups": {
+          "ids": [
+            "ReadOnlyDeviceGroup",
+            "ReadAndWriteDeviceGroup",
+            "AdminDeviceGroup"
+          ],
+          "all": false
+        },
+        "actions": [
+          "read",
+          "list",
+          "info",
+          "search",
+          "events",
+          "hash",
+          "evaluate",
+          "transform",
+          "validate",
+          "get",
+          "query",
+          "inspect",
+          "describe",
+          "status",
+          "write",
+          "append",
+          "mkdir",
+          "copy",
+          "move",
+          "create",
+          "update",
+          "delete",
+          "remove",
+          "put",
+          "patch"
+        ],
+        "allActions": false,
+        "resources": [
+          {
+            "kind": "FILE",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "URL",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "DATABASE",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "CUSTOM",
+            "locator": "",
+            "match": "ANY"
+          }
+        ],
+        "conditions": {
+          "notBeforeUnixMs": 0,
+          "expiresAtUnixMs": 0,
+          "networkCidrs": [],
+          "devicePosture": [],
+          "regions": [],
+          "hoursUtc": [],
+          "requireOnline": true,
+          "highRisk": false
+        }
+      }
+    },
+    {
+      "id": "standard-ReadAndWrite-capability",
+      "name": "standard-ReadAndWrite-capability",
+      "enabled": true,
+      "revision": 1,
+      "sourceType": "ROLE",
+      "sourceId": "standard-ReadAndWrite-actor",
+      "purpose": "CAPABILITY",
+      "scope": {
+        "toolGroups": {
+          "ids": [
+            "ReadOnlyToolGroup",
+            "ReadAndWriteToolGroup",
+            "AdminToolGroup"
+          ],
+          "all": false
+        },
+        "deviceGroups": {
+          "ids": [
+            "ReadOnlyDeviceGroup",
+            "ReadAndWriteDeviceGroup",
+            "AdminDeviceGroup"
+          ],
+          "all": false
+        },
+        "actions": [
+          "read",
+          "list",
+          "info",
+          "search",
+          "events",
+          "hash",
+          "evaluate",
+          "transform",
+          "validate",
+          "get",
+          "query",
+          "inspect",
+          "describe",
+          "status",
+          "write",
+          "append",
+          "mkdir",
+          "copy",
+          "move",
+          "create",
+          "update",
+          "delete",
+          "remove",
+          "put",
+          "patch"
+        ],
+        "allActions": false,
+        "resources": [
+          {
+            "kind": "FILE",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "URL",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "DATABASE",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "CUSTOM",
+            "locator": "",
+            "match": "ANY"
+          }
+        ],
+        "conditions": {
+          "notBeforeUnixMs": 0,
+          "expiresAtUnixMs": 0,
+          "networkCidrs": [],
+          "devicePosture": [],
+          "regions": [],
+          "hoursUtc": [],
+          "requireOnline": true,
+          "highRisk": false
+        }
+      }
+    },
+    {
+      "id": "standard-ReadAndWrite-service",
+      "name": "standard-ReadAndWrite-service",
+      "enabled": true,
+      "revision": 1,
+      "sourceType": "ROLE",
+      "sourceId": "standard-ReadAndWrite-actor",
+      "purpose": "SERVICE",
+      "scope": {
+        "toolGroups": {
+          "ids": [
+            "ReadOnlyToolGroup",
+            "ReadAndWriteToolGroup",
+            "AdminToolGroup"
+          ],
+          "all": false
+        },
+        "deviceGroups": {
+          "ids": [
+            "ReadOnlyDeviceGroup",
+            "ReadAndWriteDeviceGroup",
+            "AdminDeviceGroup"
+          ],
+          "all": false
+        },
+        "actions": [
+          "read",
+          "list",
+          "info",
+          "search",
+          "events",
+          "hash",
+          "evaluate",
+          "transform",
+          "validate",
+          "get",
+          "query",
+          "inspect",
+          "describe",
+          "status",
+          "write",
+          "append",
+          "mkdir",
+          "copy",
+          "move",
+          "create",
+          "update",
+          "delete",
+          "remove",
+          "put",
+          "patch"
+        ],
+        "allActions": false,
+        "resources": [
+          {
+            "kind": "FILE",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "URL",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "DATABASE",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "CUSTOM",
+            "locator": "",
+            "match": "ANY"
+          }
+        ],
+        "conditions": {
+          "notBeforeUnixMs": 0,
+          "expiresAtUnixMs": 0,
+          "networkCidrs": [],
+          "devicePosture": [],
+          "regions": [],
+          "hoursUtc": [],
+          "requireOnline": true,
+          "highRisk": false
+        }
+      }
+    },
+    {
+      "id": "standard-Admin-human",
+      "name": "standard-Admin-human",
+      "enabled": true,
+      "revision": 1,
+      "sourceType": "ROLE",
+      "sourceId": "standard-Admin-human",
+      "purpose": "HUMAN",
+      "scope": {
+        "toolGroups": {
+          "ids": [
+            "ReadOnlyToolGroup",
+            "ReadAndWriteToolGroup",
+            "AdminToolGroup"
+          ],
+          "all": false
+        },
+        "deviceGroups": {
+          "ids": [
+            "ReadOnlyDeviceGroup",
+            "ReadAndWriteDeviceGroup",
+            "AdminDeviceGroup"
+          ],
+          "all": false
+        },
+        "actions": [],
+        "allActions": true,
+        "resources": [
+          {
+            "kind": "FILE",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "URL",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "DATABASE",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "CUSTOM",
+            "locator": "",
+            "match": "ANY"
+          }
+        ],
+        "conditions": {
+          "notBeforeUnixMs": 0,
+          "expiresAtUnixMs": 0,
+          "networkCidrs": [],
+          "devicePosture": [],
+          "regions": [],
+          "hoursUtc": [],
+          "requireOnline": true,
+          "highRisk": false
+        }
+      }
+    },
+    {
+      "id": "standard-Admin-capability",
+      "name": "standard-Admin-capability",
+      "enabled": true,
+      "revision": 1,
+      "sourceType": "ROLE",
+      "sourceId": "standard-Admin-actor",
+      "purpose": "CAPABILITY",
+      "scope": {
+        "toolGroups": {
+          "ids": [
+            "ReadOnlyToolGroup",
+            "ReadAndWriteToolGroup",
+            "AdminToolGroup"
+          ],
+          "all": false
+        },
+        "deviceGroups": {
+          "ids": [
+            "ReadOnlyDeviceGroup",
+            "ReadAndWriteDeviceGroup",
+            "AdminDeviceGroup"
+          ],
+          "all": false
+        },
+        "actions": [],
+        "allActions": true,
+        "resources": [
+          {
+            "kind": "FILE",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "URL",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "DATABASE",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "CUSTOM",
+            "locator": "",
+            "match": "ANY"
+          }
+        ],
+        "conditions": {
+          "notBeforeUnixMs": 0,
+          "expiresAtUnixMs": 0,
+          "networkCidrs": [],
+          "devicePosture": [],
+          "regions": [],
+          "hoursUtc": [],
+          "requireOnline": true,
+          "highRisk": false
+        }
+      }
+    },
+    {
+      "id": "standard-Admin-service",
+      "name": "standard-Admin-service",
+      "enabled": true,
+      "revision": 1,
+      "sourceType": "ROLE",
+      "sourceId": "standard-Admin-actor",
+      "purpose": "SERVICE",
+      "scope": {
+        "toolGroups": {
+          "ids": [
+            "ReadOnlyToolGroup",
+            "ReadAndWriteToolGroup",
+            "AdminToolGroup"
+          ],
+          "all": false
+        },
+        "deviceGroups": {
+          "ids": [
+            "ReadOnlyDeviceGroup",
+            "ReadAndWriteDeviceGroup",
+            "AdminDeviceGroup"
+          ],
+          "all": false
+        },
+        "actions": [],
+        "allActions": true,
+        "resources": [
+          {
+            "kind": "FILE",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "URL",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "DATABASE",
+            "locator": "",
+            "match": "ANY"
+          },
+          {
+            "kind": "CUSTOM",
+            "locator": "",
+            "match": "ANY"
+          }
+        ],
+        "conditions": {
+          "notBeforeUnixMs": 0,
+          "expiresAtUnixMs": 0,
+          "networkCidrs": [],
+          "devicePosture": [],
+          "regions": [],
+          "hoursUtc": [],
+          "requireOnline": true,
+          "highRisk": false
+        }
+      }
+    }
+  ]
+}

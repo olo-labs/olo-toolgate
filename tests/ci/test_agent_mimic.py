@@ -13,6 +13,43 @@ spec=importlib.util.spec_from_file_location('agent_mimic',ROOT/'debug/agent-mimi
 mimic=importlib.util.module_from_spec(spec);spec.loader.exec_module(mimic)
 
 class ScriptTests(unittest.TestCase):
+    def test_repeats_only_existing_write_then_reads_log(self):
+        calls=[]
+        class Agent:
+            def rpc(self,method,params=None):
+                calls.append((method,params))
+                if params['name']=='hotfolder.write_text':return {'structuredContent':{'success':True}}
+                return {'structuredContent':{'file':'packets.jsonl','entry':{'direction':'RECEIVE'}}}
+        with contextlib.redirect_stdout(io.StringIO()),patch.object(mimic.time,'monotonic',side_effect=[0,1,2,8]),patch.object(mimic.time,'sleep') as sleep:
+            mimic.mimic(Agent(),'rahul-nigam.txt',8)
+        self.assertEqual([params['name'] for _,params in calls],['hotfolder.write_text','hotfolder.write_text','client.read_log_entry'])
+        self.assertEqual(calls[0],calls[1])
+        sleep.assert_called_once_with(0.25)
+    def test_repeated_write_failure_stops_without_reading_log(self):
+        calls=[]
+        class Agent:
+            def rpc(self,method,params=None):
+                calls.append(params['name'])
+                return {'structuredContent':{'success':len(calls)==1}}
+        with contextlib.redirect_stdout(io.StringIO()),patch.object(mimic.time,'monotonic',side_effect=[0,1,2]),patch.object(mimic.time,'sleep'),self.assertRaises(ValueError):
+            mimic.mimic(Agent(),'rahul-nigam.txt',8)
+        self.assertEqual(calls,['hotfolder.write_text','hotfolder.write_text'])
+    def test_invalid_duration_sends_nothing(self):
+        class Agent:
+            def rpc(self,*args):raise AssertionError('Invalid duration must not call the gateway')
+        for duration in (-1,61,True,1.5,'8'):
+            with self.subTest(duration=duration),self.assertRaisesRegex(ValueError,'Duration seconds'):
+                mimic.mimic(Agent(),'rahul-nigam.txt',duration)
+    def test_call_that_outlasts_interval_is_not_repeated(self):
+        calls=[]
+        class Agent:
+            def rpc(self,method,params=None):
+                calls.append(params['name'])
+                return {'structuredContent':{'success':True}} if len(calls)==1 else {'structuredContent':{'file':'packets.jsonl','entry':{}}}
+        with contextlib.redirect_stdout(io.StringIO()),patch.object(mimic.time,'monotonic',side_effect=[0,20]),patch.object(mimic.time,'sleep') as sleep:
+            mimic.mimic(Agent(),'rahul-nigam.txt',8)
+        self.assertEqual(calls,['hotfolder.write_text','client.read_log_entry'])
+        sleep.assert_not_called()
     def test_only_calls_two_tools_and_prints_their_responses(self):
         calls=[]
         class Agent:

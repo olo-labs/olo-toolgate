@@ -27,7 +27,10 @@ try {
     foreach ($command in @('git', 'node', 'npm')) {
         if (-not (Get-Command $command -ErrorAction SilentlyContinue)) { throw "Install $command and add it to PATH." }
     }
-    Invoke-Checked $python @('-m', 'venv', '.dev/debug/venv')
+    # Reuse the environment: recreating its executable while a debug command runs fails on Windows.
+    if (-not (Test-Path -LiteralPath '.dev/debug/venv/Scripts/python.exe')) {
+        Invoke-Checked $python @('-m', 'venv', '.dev/debug/venv')
+    }
     $python = Join-Path $root '.dev/debug/venv/Scripts/python.exe'
     # Local builds synchronize generated files before applying the read-only CI gate.
     Write-Host 'Synchronizing version metadata and generated contract bindings...'

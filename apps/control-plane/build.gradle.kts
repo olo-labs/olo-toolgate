@@ -6,6 +6,12 @@ plugins {
 }
 
 val usePublishedContracts = providers.gradleProperty("usePublishedContracts").map(String::toBoolean).orElse(false)
+// Pin initial configuration to the built release; upgrades never reseed stored tenant state.
+val releaseConfigurations = groovy.json.JsonSlurper().parse(rootProject.file("config/initial/releases.json")) as Map<*, *>
+val releaseConfiguration = (releaseConfigurations["releases"] as Map<*, *>)[rootProject.file("VERSION").readText().trim()] as String
+val initialConfiguration = releaseConfiguration
+check(initialConfiguration.matches(Regex("[A-Za-z0-9-]+"))) { "Invalid initial configuration bundle" }
+val initialConfigurationDirectory = rootProject.file("config/initial/$initialConfiguration")
 val contractsVersion = providers.gradleProperty("contractsVersion").getOrElse(rootProject.file("packages/contracts/VERSION").readText().trim())
 dependencies {
     implementation(enforcedPlatform(libs.quarkus.bom))
@@ -57,6 +63,7 @@ val buildAdminUi = tasks.register<Exec>("buildAdminUi") {
     commandLine("node", "tools/ui/build.mjs")
     inputs.files(rootProject.fileTree("apps/admin-ui") { exclude("dist/**", "node_modules/**", "coverage/**", "test-results/**") })
     inputs.files(rootProject.fileTree("packages/contracts/typescript/src"), rootProject.file("package-lock.json"), rootProject.file("VERSION"), rootProject.file("LICENSE"), rootProject.file("tools/ui/build.mjs"))
+    inputs.files(rootProject.fileTree("config/initial"))
     outputs.dir(consoleDirectory)
     enabled = !prebuiltConsole
 }
@@ -82,6 +89,7 @@ val verifyAdminUi = tasks.register<VerifyConsoleArtifact>("verifyAdminUi") {
 tasks.processResources {
     dependsOn(verifyAdminUi)
     from(consoleDirectory) { into("META-INF/resources/console"); exclude(".vite/**") }
+    from(initialConfigurationDirectory) { into("initial-configuration"); include("*.json") }
     from(rootProject.file("packages/contracts/openapi/control-v1.yaml")) {
         into("META-INF")
         rename { "openapi.yaml" }

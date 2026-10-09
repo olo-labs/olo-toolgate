@@ -14,6 +14,15 @@ import org.junit.jupiter.api.io.TempDir;
 import static org.junit.jupiter.api.Assertions.*;
 
 class EnterpriseAdministrationTest {
+    @Test void completeImportPreservesVerifiedLoginObservationsSinceExport(){
+        var intake=new IdentityIntake(store,graph.codec);long now=EnterpriseConformanceTest.NOW;
+        var identity=intake.observe(administrator.tenant(),"https://idp.example","import-subject",null,null,now,now+900000,now);
+        var snapshot=(com.fasterxml.jackson.databind.JsonNode)graph.codec.value(directory.export(administrator,false).body());long revision=snapshot.get("revision").asLong();
+        intake.observe(administrator.tenant(),"https://idp.example","import-subject",null,null,now+61000,now+900000,now+61000);
+        var body=graph.codec.json(Map.of("snapshot",snapshot,"mode","REPLACE","dryRun",false));
+        assertEquals(200,directory.importConfig(administrator,body,false,revision,"roundtrip-observations","request").status());
+        store.transaction(administrator.tenant(),false,tx->{var binding=tx.load().entries().values().stream().filter(e->e.id().kind()==Kind.IDENTITY_BINDING).map(e->graph.codec.model(e.document(),ControlIdentityBinding.class)).filter(b->b.userId().equals(identity.userId())).findFirst().orElseThrow();assertEquals(2L,binding.attemptCount());assertEquals(now+61000,binding.lastAttemptUnixMs());assertEquals(revision,tx.load().revision());return null;});
+    }
     @Test void repeatedVerifiedLoginMetadataDoesNotRevokeUnrelatedApprovals(){
         var intake=new IdentityIntake(store,graph.codec);long now=EnterpriseConformanceTest.NOW;
         var first=intake.observe(administrator.tenant(),"https://idp.example","new-subject",null,null,now,now+900000,now);assertFalse(first.enabled());

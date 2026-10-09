@@ -1,5 +1,42 @@
 # Enterprise access control implementation status
 
+## Standard presets and configuration transfer - 2026-10-10
+
+The release-selected `config/initial` JSON bundle defines protected defaults and
+ReadOnly, ReadAndWrite and Admin Teams, Agent Groups, Device Groups and Tool Groups.
+Presets include typed roles, complete grants, execution bindings and independent
+review for sensitive Admin actions. Fresh installation applies the bundle once;
+existing installations use reviewed import. Package pins and enabled identities
+remain explicit prerequisites. Assignment and activation enforce administrative
+ceilings, including protection against Super Admin elevation through membership.
+
+The console supports device group selection during approval, preparation of missing
+standard presets, complete 18-collection export, import preview and independent
+review before applying edited snapshots. Imports preserve newer verified login
+activity while rejecting credential/session rollback. Quickstart test identities
+start disabled with unique private credentials.
+
+The debug scripts use actual admin/reviewer API login and reviewed Agent allocation.
+The MCP mimic uses the installed write/log tools, and a stdio bridge provides the
+same authorized discovery/execution path for compatible AI clients.
+
+Extension validation: 94 enterprise conformance tests passed, including the
+27-combination preset action matrix, default/unpinned/offline denial, sensitive
+operation review, membership elevation rejection and import/activity round trips.
+The complete `debug/start.bat` deployment pipeline passed: 51 CI tests, 82 contract
+tests, 124 console tests, Windows/Linux browser downloads, fresh native runtime
+execution/revocation/approval/import/restart checks and the real administration
+browser. The persistent debug container is healthy.
+
+Installed Windows verification passed on device
+`device-d5402222a1cf3d801e0529ddcde7e586`: the batch script repeated
+`hotfolder.write_text` and returned `client.read_log_entry`; the MCP stdio bridge
+completed initialization, discovery and both native calls. The file contents and
+RUNNING/SUCCEEDED activity events were verified. ReadOnly discovery exposed only
+the log reader; ReadAndWrite/Admin discovery exposed both diagnostic tools. The
+installed executable remained unchanged (SHA-256
+`c231ef7537c3f3b3d934f23e99623ad27ce7bb2afd86aeb5449c470863c47279`).
+
 ## Current implementation and acceptance - 2026-10-09
 
 The canonical group-only implementation is present across contracts, Control,

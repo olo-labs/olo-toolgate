@@ -1,0 +1,145 @@
+{
+  "teams": [
+    {
+      "id": "team-default",
+      "name": "Default teams",
+      "enabled": true,
+      "revision": 1,
+      "userIds": [],
+      "roleIds": []
+    },
+    {
+      "id": "ReadOnlyTeam",
+      "name": "ReadOnlyTeam",
+      "enabled": true,
+      "revision": 1,
+      "userIds": [],
+      "roleIds": [
+        "standard-ReadOnly-human",
+        "standard-ReadOnly-management"
+      ]
+    },
+    {
+      "id": "ReadAndWriteTeam",
+      "name": "ReadAndWriteTeam",
+      "enabled": true,
+      "revision": 1,
+      "userIds": [],
+      "roleIds": [
+        "standard-ReadAndWrite-human",
+        "standard-ReadAndWrite-management"
+      ]
+    },
+    {
+      "id": "AdminTeam",
+      "name": "AdminTeam",
+      "enabled": true,
+      "revision": 1,
+      "userIds": [],
+      "roleIds": [
+        "standard-Admin-human",
+        "standard-Admin-management"
+      ]
+    }
+  ],
+  "agentGroups": [
+    {
+      "id": "default-agents",
+      "name": "Default agentGroups",
+      "enabled": true,
+      "revision": 1,
+      "agentIds": [],
+      "roleIds": []
+    },
+    {
+      "id": "ReadOnlyAgentGroup",
+      "name": "ReadOnlyAgentGroup",
+      "enabled": true,
+      "revision": 1,
+      "agentIds": [],
+      "roleIds": [
+        "standard-ReadOnly-actor"
+      ]
+    },
+    {
+      "id": "ReadAndWriteAgentGroup",
+      "name": "ReadAndWriteAgentGroup",
+      "enabled": true,
+      "revision": 1,
+      "agentIds": [],
+      "roleIds": [
+        "standard-ReadAndWrite-actor"
+      ]
+    },
+    {
+      "id": "AdminAgentGroup",
+      "name": "AdminAgentGroup",
+      "enabled": true,
+      "revision": 1,
+      "agentIds": [],
+      "roleIds": [
+        "standard-Admin-actor"
+      ]
+    }
+  ],
+  "deviceGroups": [
+    {
+      "id": "default-devices",
+      "name": "Default deviceGroups",
+      "enabled": true,
+      "revision": 1,
+      "deviceIds": []
+    },
+    {
+      "id": "ReadOnlyDeviceGroup",
+      "name": "ReadOnlyDeviceGroup",
+      "enabled": true,
+      "revision": 1,
+      "deviceIds": []
+    },
+    {
+      "id": "ReadAndWriteDeviceGroup",
+      "name": "ReadAndWriteDeviceGroup",
+      "enabled": true,
+      "revision": 1,
+      "deviceIds": []
+    },
+    {
+      "id": "AdminDeviceGroup",
+      "name": "AdminDeviceGroup",
+      "enabled": true,
+      "revision": 1,
+      "deviceIds": []
+    }
+  ],
+  "toolGroups": [
+    {
+      "id": "default-tools",
+      "name": "Default toolGroups",
+      "enabled": true,
+      "revision": 1,
+      "toolIds": []
+    },
+    {
+      "id": "ReadOnlyToolGroup",
+      "name": "ReadOnlyToolGroup",
+      "enabled": true,
+      "revision": 1,
+      "toolIds": []
+    },
+    {
+      "id": "ReadAndWriteToolGroup",
+      "name": "ReadAndWriteToolGroup",
+      "enabled": true,
+      "revision": 1,
+      "toolIds": []
+    },
+    {
+      "id": "AdminToolGroup",
+      "name": "AdminToolGroup",
+      "enabled": true,
+      "revision": 1,
+      "toolIds": []
+    }
+  ]
+}

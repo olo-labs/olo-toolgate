@@ -1,0 +1,692 @@
+{
+  "roles": [
+    {
+      "id": "standard-ReadOnly-human",
+      "name": "standard-ReadOnly-human",
+      "enabled": true,
+      "revision": 1,
+      "portalRole": "BASIC",
+      "roleType": "HUMAN",
+      "managementRules": []
+    },
+    {
+      "id": "standard-ReadOnly-actor",
+      "name": "standard-ReadOnly-actor",
+      "enabled": true,
+      "revision": 1,
+      "portalRole": "BASIC",
+      "roleType": "ACTOR_SERVICE",
+      "managementRules": []
+    },
+    {
+      "id": "standard-ReadOnly-management",
+      "name": "standard-ReadOnly-management",
+      "enabled": true,
+      "revision": 1,
+      "portalRole": "ADMINISTRATOR",
+      "roleType": "MANAGEMENT",
+      "managementRules": [
+        {
+          "actions": [
+            "read",
+            "audit",
+            "simulate",
+            "export"
+          ],
+          "groupType": "TEAM",
+          "groups": {
+            "ids": [],
+            "all": true
+          },
+          "grantableScopes": [],
+          "conditions": {
+            "notBeforeUnixMs": 0,
+            "expiresAtUnixMs": 0,
+            "networkCidrs": [],
+            "devicePosture": [],
+            "regions": [],
+            "hoursUtc": [],
+            "requireOnline": true,
+            "highRisk": false
+          }
+        },
+        {
+          "actions": [
+            "read",
+            "audit",
+            "simulate",
+            "export"
+          ],
+          "groupType": "AGENT_GROUP",
+          "groups": {
+            "ids": [],
+            "all": true
+          },
+          "grantableScopes": [],
+          "conditions": {
+            "notBeforeUnixMs": 0,
+            "expiresAtUnixMs": 0,
+            "networkCidrs": [],
+            "devicePosture": [],
+            "regions": [],
+            "hoursUtc": [],
+            "requireOnline": true,
+            "highRisk": false
+          }
+        },
+        {
+          "actions": [
+            "read",
+            "audit",
+            "simulate",
+            "export"
+          ],
+          "groupType": "TOOL_GROUP",
+          "groups": {
+            "ids": [],
+            "all": true
+          },
+          "grantableScopes": [],
+          "conditions": {
+            "notBeforeUnixMs": 0,
+            "expiresAtUnixMs": 0,
+            "networkCidrs": [],
+            "devicePosture": [],
+            "regions": [],
+            "hoursUtc": [],
+            "requireOnline": true,
+            "highRisk": false
+          }
+        },
+        {
+          "actions": [
+            "read",
+            "audit",
+            "simulate",
+            "export"
+          ],
+          "groupType": "DEVICE_GROUP",
+          "groups": {
+            "ids": [],
+            "all": true
+          },
+          "grantableScopes": [],
+          "conditions": {
+            "notBeforeUnixMs": 0,
+            "expiresAtUnixMs": 0,
+            "networkCidrs": [],
+            "devicePosture": [],
+            "regions": [],
+            "hoursUtc": [],
+            "requireOnline": true,
+            "highRisk": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "standard-ReadAndWrite-human",
+      "name": "standard-ReadAndWrite-human",
+      "enabled": true,
+      "revision": 1,
+      "portalRole": "BASIC",
+      "roleType": "HUMAN",
+      "managementRules": []
+    },
+    {
+      "id": "standard-ReadAndWrite-actor",
+      "name": "standard-ReadAndWrite-actor",
+      "enabled": true,
+      "revision": 1,
+      "portalRole": "BASIC",
+      "roleType": "ACTOR_SERVICE",
+      "managementRules": []
+    },
+    {
+      "id": "standard-ReadAndWrite-management",
+      "name": "standard-ReadAndWrite-management",
+      "enabled": true,
+      "revision": 1,
+      "portalRole": "ADMINISTRATOR",
+      "roleType": "MANAGEMENT",
+      "managementRules": [
+        {
+          "actions": [
+            "read",
+            "audit",
+            "simulate",
+            "export",
+            "create",
+            "update",
+            "publish",
+            "attest",
+            "build"
+          ],
+          "groupType": "TEAM",
+          "groups": {
+            "ids": [],
+            "all": true
+          },
+          "grantableScopes": [],
+          "conditions": {
+            "notBeforeUnixMs": 0,
+            "expiresAtUnixMs": 0,
+            "networkCidrs": [],
+            "devicePosture": [],
+            "regions": [],
+            "hoursUtc": [],
+            "requireOnline": true,
+            "highRisk": false
+          }
+        },
+        {
+          "actions": [
+            "read",
+            "audit",
+            "simulate",
+            "export",
+            "create",
+            "update",
+            "publish",
+            "attest",
+            "build"
+          ],
+          "groupType": "AGENT_GROUP",
+          "groups": {
+            "ids": [],
+            "all": true
+          },
+          "grantableScopes": [],
+          "conditions": {
+            "notBeforeUnixMs": 0,
+            "expiresAtUnixMs": 0,
+            "networkCidrs": [],
+            "devicePosture": [],
+            "regions": [],
+            "hoursUtc": [],
+            "requireOnline": true,
+            "highRisk": false
+          }
+        },
+        {
+          "actions": [
+            "read",
+            "audit",
+            "simulate",
+            "export",
+            "create",
+            "update",
+            "publish",
+            "attest",
+            "build"
+          ],
+          "groupType": "TOOL_GROUP",
+          "groups": {
+            "ids": [],
+            "all": true
+          },
+          "grantableScopes": [],
+          "conditions": {
+            "notBeforeUnixMs": 0,
+            "expiresAtUnixMs": 0,
+            "networkCidrs": [],
+            "devicePosture": [],
+            "regions": [],
+            "hoursUtc": [],
+            "requireOnline": true,
+            "highRisk": false
+          }
+        },
+        {
+          "actions": [
+            "read",
+            "audit",
+            "simulate",
+            "export",
+            "create",
+            "update",
+            "publish",
+            "attest",
+            "build"
+          ],
+          "groupType": "DEVICE_GROUP",
+          "groups": {
+            "ids": [],
+            "all": true
+          },
+          "grantableScopes": [],
+          "conditions": {
+            "notBeforeUnixMs": 0,
+            "expiresAtUnixMs": 0,
+            "networkCidrs": [],
+            "devicePosture": [],
+            "regions": [],
+            "hoursUtc": [],
+            "requireOnline": true,
+            "highRisk": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "standard-Admin-human",
+      "name": "standard-Admin-human",
+      "enabled": true,
+      "revision": 1,
+      "portalRole": "BASIC",
+      "roleType": "HUMAN",
+      "managementRules": []
+    },
+    {
+      "id": "standard-Admin-actor",
+      "name": "standard-Admin-actor",
+      "enabled": true,
+      "revision": 1,
+      "portalRole": "BASIC",
+      "roleType": "ACTOR_SERVICE",
+      "managementRules": []
+    },
+    {
+      "id": "standard-Admin-management",
+      "name": "standard-Admin-management",
+      "enabled": true,
+      "revision": 1,
+      "portalRole": "ADMINISTRATOR",
+      "roleType": "MANAGEMENT",
+      "managementRules": [
+        {
+          "actions": [
+            "read",
+            "create",
+            "update",
+            "delete",
+            "enable",
+            "disable",
+            "manage-role",
+            "grant",
+            "import",
+            "export",
+            "audit",
+            "simulate",
+            "publish",
+            "policy",
+            "attest",
+            "rotate-credential",
+            "approve-configuration",
+            "approve-operation",
+            "cancel-operation",
+            "approve-device",
+            "revoke",
+            "build",
+            "deploy",
+            "vault-read",
+            "vault-write"
+          ],
+          "groupType": "TEAM",
+          "groups": {
+            "ids": [],
+            "all": true
+          },
+          "grantableScopes": [
+            {
+              "toolGroups": {
+                "ids": [
+                  "ReadOnlyToolGroup",
+                  "ReadAndWriteToolGroup",
+                  "AdminToolGroup"
+                ],
+                "all": false
+              },
+              "deviceGroups": {
+                "ids": [
+                  "ReadOnlyDeviceGroup",
+                  "ReadAndWriteDeviceGroup",
+                  "AdminDeviceGroup"
+                ],
+                "all": false
+              },
+              "actions": [],
+              "allActions": true,
+              "resources": [
+                {
+                  "kind": "FILE",
+                  "locator": "",
+                  "match": "ANY"
+                },
+                {
+                  "kind": "URL",
+                  "locator": "",
+                  "match": "ANY"
+                },
+                {
+                  "kind": "DATABASE",
+                  "locator": "",
+                  "match": "ANY"
+                },
+                {
+                  "kind": "CUSTOM",
+                  "locator": "",
+                  "match": "ANY"
+                }
+              ],
+              "conditions": {
+                "notBeforeUnixMs": 0,
+                "expiresAtUnixMs": 0,
+                "networkCidrs": [],
+                "devicePosture": [],
+                "regions": [],
+                "hoursUtc": [],
+                "requireOnline": true,
+                "highRisk": false
+              }
+            }
+          ],
+          "conditions": {
+            "notBeforeUnixMs": 0,
+            "expiresAtUnixMs": 0,
+            "networkCidrs": [],
+            "devicePosture": [],
+            "regions": [],
+            "hoursUtc": [],
+            "requireOnline": true,
+            "highRisk": false
+          }
+        },
+        {
+          "actions": [
+            "read",
+            "create",
+            "update",
+            "delete",
+            "enable",
+            "disable",
+            "manage-role",
+            "grant",
+            "import",
+            "export",
+            "audit",
+            "simulate",
+            "publish",
+            "policy",
+            "attest",
+            "rotate-credential",
+            "approve-configuration",
+            "approve-operation",
+            "cancel-operation",
+            "approve-device",
+            "revoke",
+            "build",
+            "deploy",
+            "vault-read",
+            "vault-write"
+          ],
+          "groupType": "AGENT_GROUP",
+          "groups": {
+            "ids": [],
+            "all": true
+          },
+          "grantableScopes": [
+            {
+              "toolGroups": {
+                "ids": [
+                  "ReadOnlyToolGroup",
+                  "ReadAndWriteToolGroup",
+                  "AdminToolGroup"
+                ],
+                "all": false
+              },
+              "deviceGroups": {
+                "ids": [
+                  "ReadOnlyDeviceGroup",
+                  "ReadAndWriteDeviceGroup",
+                  "AdminDeviceGroup"
+                ],
+                "all": false
+              },
+              "actions": [],
+              "allActions": true,
+              "resources": [
+                {
+                  "kind": "FILE",
+                  "locator": "",
+                  "match": "ANY"
+                },
+                {
+                  "kind": "URL",
+                  "locator": "",
+                  "match": "ANY"
+                },
+                {
+                  "kind": "DATABASE",
+                  "locator": "",
+                  "match": "ANY"
+                },
+                {
+                  "kind": "CUSTOM",
+                  "locator": "",
+                  "match": "ANY"
+                }
+              ],
+              "conditions": {
+                "notBeforeUnixMs": 0,
+                "expiresAtUnixMs": 0,
+                "networkCidrs": [],
+                "devicePosture": [],
+                "regions": [],
+                "hoursUtc": [],
+                "requireOnline": true,
+                "highRisk": false
+              }
+            }
+          ],
+          "conditions": {
+            "notBeforeUnixMs": 0,
+            "expiresAtUnixMs": 0,
+            "networkCidrs": [],
+            "devicePosture": [],
+            "regions": [],
+            "hoursUtc": [],
+            "requireOnline": true,
+            "highRisk": false
+          }
+        },
+        {
+          "actions": [
+            "read",
+            "create",
+            "update",
+            "delete",
+            "enable",
+            "disable",
+            "manage-role",
+            "grant",
+            "import",
+            "export",
+            "audit",
+            "simulate",
+            "publish",
+            "policy",
+            "attest",
+            "rotate-credential",
+            "approve-configuration",
+            "approve-operation",
+            "cancel-operation",
+            "approve-device",
+            "revoke",
+            "build",
+            "deploy",
+            "vault-read",
+            "vault-write"
+          ],
+          "groupType": "TOOL_GROUP",
+          "groups": {
+            "ids": [],
+            "all": true
+          },
+          "grantableScopes": [
+            {
+              "toolGroups": {
+                "ids": [
+                  "ReadOnlyToolGroup",
+                  "ReadAndWriteToolGroup",
+                  "AdminToolGroup"
+                ],
+                "all": false
+              },
+              "deviceGroups": {
+                "ids": [
+                  "ReadOnlyDeviceGroup",
+                  "ReadAndWriteDeviceGroup",
+                  "AdminDeviceGroup"
+                ],
+                "all": false
+              },
+              "actions": [],
+              "allActions": true,
+              "resources": [
+                {
+                  "kind": "FILE",
+                  "locator": "",
+                  "match": "ANY"
+                },
+                {
+                  "kind": "URL",
+                  "locator": "",
+                  "match": "ANY"
+                },
+                {
+                  "kind": "DATABASE",
+                  "locator": "",
+                  "match": "ANY"
+                },
+                {
+                  "kind": "CUSTOM",
+                  "locator": "",
+                  "match": "ANY"
+                }
+              ],
+              "conditions": {
+                "notBeforeUnixMs": 0,
+                "expiresAtUnixMs": 0,
+                "networkCidrs": [],
+                "devicePosture": [],
+                "regions": [],
+                "hoursUtc": [],
+                "requireOnline": true,
+                "highRisk": false
+              }
+            }
+          ],
+          "conditions": {
+            "notBeforeUnixMs": 0,
+            "expiresAtUnixMs": 0,
+            "networkCidrs": [],
+            "devicePosture": [],
+            "regions": [],
+            "hoursUtc": [],
+            "requireOnline": true,
+            "highRisk": false
+          }
+        },
+        {
+          "actions": [
+            "read",
+            "create",
+            "update",
+            "delete",
+            "enable",
+            "disable",
+            "manage-role",
+            "grant",
+            "import",
+            "export",
+            "audit",
+            "simulate",
+            "publish",
+            "policy",
+            "attest",
+            "rotate-credential",
+            "approve-configuration",
+            "approve-operation",
+            "cancel-operation",
+            "approve-device",
+            "revoke",
+            "build",
+            "deploy",
+            "vault-read",
+            "vault-write"
+          ],
+          "groupType": "DEVICE_GROUP",
+          "groups": {
+            "ids": [],
+            "all": true
+          },
+          "grantableScopes": [
+            {
+              "toolGroups": {
+                "ids": [
+                  "ReadOnlyToolGroup",
+                  "ReadAndWriteToolGroup",
+                  "AdminToolGroup"
+                ],
+                "all": false
+              },
+              "deviceGroups": {
+                "ids": [
+                  "ReadOnlyDeviceGroup",
+                  "ReadAndWriteDeviceGroup",
+                  "AdminDeviceGroup"
+                ],
+                "all": false
+              },
+              "actions": [],
+              "allActions": true,
+              "resources": [
+                {
+                  "kind": "FILE",
+                  "locator": "",
+                  "match": "ANY"
+                },
+                {
+                  "kind": "URL",
+                  "locator": "",
+                  "match": "ANY"
+                },
+                {
+                  "kind": "DATABASE",
+                  "locator": "",
+                  "match": "ANY"
+                },
+                {
+                  "kind": "CUSTOM",
+                  "locator": "",
+                  "match": "ANY"
+                }
+              ],
+              "conditions": {
+                "notBeforeUnixMs": 0,
+                "expiresAtUnixMs": 0,
+                "networkCidrs": [],
+                "devicePosture": [],
+                "regions": [],
+                "hoursUtc": [],
+                "requireOnline": true,
+                "highRisk": false
+              }
+            }
+          ],
+          "conditions": {
+            "notBeforeUnixMs": 0,
+            "expiresAtUnixMs": 0,
+            "networkCidrs": [],
+            "devicePosture": [],
+            "regions": [],
+            "hoursUtc": [],
+            "requireOnline": true,
+            "highRisk": false
+          }
+        }
+      ]
+    }
+  ]
+}

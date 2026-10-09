@@ -8,6 +8,7 @@ import {ApprovalDuration,defaultDuration,durationBody,localDateTime,validDuratio
 import {DirectoryEditor} from './DirectoryEditor';
 import {DeviceDetails} from './DeviceDetails';
 import {DeviceMembership,PublishAccess} from './AccessMapping';
+import {ScopePicker} from './ScopePicker';
 
 function approved(row:EndpointManagedDevice,now:number){const device=row.endpointDevice;return Boolean(device&&device.state==='ACTIVE'&&device.connectionApproved!==false&&(device.connectionExpiresAtUnixMs===undefined||device.connectionExpiresAtUnixMs>now));}
 function connection(row:EndpointManagedDevice,now:number){
@@ -28,6 +29,8 @@ export function Devices({client}:{client:ControlClient}){
   const [selected,setSelected]=useState<EndpointManagedDevice>();const [creating,setCreating]=useState(false);const [editing,setEditing]=useState<EndpointManagedDevice>();
   const [duration,setDuration]=useState(defaultDuration);const [confirmed,setConfirmed]=useState(false);const [notice,setNotice]=useState('');
   const [membership,setMembership]=useState<string>();
+  const [approvalGroups,setApprovalGroups]=useState<string[]>(['default-devices']);
+  const [approvalGroupsReady,setApprovalGroupsReady]=useState(true);const approvalChoice=useRef(0);
   const alive=useRef(true);const guard=useRef(false);const heading=useRef<HTMLHeadingElement>(null);
   useEffect(()=>{heading.current?.focus();},[selected]);
   useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
@@ -49,15 +52,22 @@ export function Devices({client}:{client:ControlClient}){
     finally{guard.current=false;if(alive.current)setBusy(false);}
   }
   function choose(row:EndpointManagedDevice){
+    const choice=++approvalChoice.current;setApprovalGroupsReady(!row.directoryDevice);
+    setApprovalGroups(['default-devices']);
+    if(row.directoryDevice)void client.memberships('devices',row.deviceId).then(value=>{if(alive.current&&choice===approvalChoice.current){setApprovalGroups([...value.groupIds]);setApprovalGroupsReady(true);}}).catch(failure=>{if(alive.current&&choice===approvalChoice.current)setError(failure);});
     setSelected(row);setCreating(false);setEditing(undefined);setConfirmed(false);setError(undefined);setNotice('');
     const deadline=row.endpointDevice?.connectionExpiresAtUnixMs;
     setDuration(row.endpointDevice&&deadline===undefined?{...defaultDuration(),unlimited:true}:deadline!==undefined&&deadline>Date.now()?{unlimited:false,until:localDateTime(deadline)}:defaultDuration());
   }
   function submit(event:FormEvent){
-    event.preventDefault();if(!selected||!confirmed||!validDuration(duration,Date.now()))return;
+    event.preventDefault();if(!selected||!confirmed||!approvalGroupsReady||!approvalGroups.length||!validDuration(duration,Date.now()))return;
     const row=selected;const endpoint=row.endpointDevice;
-    void mutate(()=>endpoint?client.setDeviceApproval(row.deviceId,{expectedApprovalRevision:endpoint.approvalRevision??1,approved:true,...durationBody(duration)},crypto.randomUUID())
-      :client.decideEnrollment({userCode:row.enrollment!.userCode,keyFingerprint:row.enrollment!.keyFingerprint,choice:'APPROVE',...durationBody(duration)},crypto.randomUUID()),'Device approved.');
+    void mutate(async()=>{
+      if(endpoint)await client.setDeviceApproval(row.deviceId,{expectedApprovalRevision:endpoint.approvalRevision??1,approved:true,...durationBody(duration)},crypto.randomUUID());
+      else await client.decideEnrollment({userCode:row.enrollment!.userCode,keyFingerprint:row.enrollment!.keyFingerprint,choice:'APPROVE',...durationBody(duration)},crypto.randomUUID());
+      const current=await client.memberships('devices',row.deviceId);
+      if([...current.groupIds].sort().join('\n')!==[...approvalGroups].sort().join('\n'))await client.saveMemberships('devices',{...current,groupIds:approvalGroups},crypto.randomUUID());
+    },'Device approved.');
   }
   return <><div className="page-heading"><div><p className="eyebrow">Device access</p><h1>Clients</h1></div><div className="actions"><button onClick={reload} disabled={busy}>Refresh</button><button onClick={()=>{setCreating(true);setEditing(undefined);setSelected(undefined);}} disabled={busy}>Add client</button></div></div>
     <p>All registered devices and requests waiting for approval. Enablement and approval are separate: both are required for client access. This list refreshes every two seconds.</p>
@@ -80,8 +90,11 @@ export function Devices({client}:{client:ControlClient}){
     {selected&&<section className="guidance"><h2 ref={heading} tabIndex={-1}>Approve {selected.deviceId}</h2><p>Owner: {selected.endpointDevice?.userId??selected.directoryDevice?.ownerUserId??'Your signed-in user'}</p><p>Key fingerprint: <code>{selected.endpointDevice?.keyFingerprint??selected.enrollment?.keyFingerprint}</code></p>
       {selected.enrollment&&<p>Enrollment code: <code>{selected.enrollment.userCode}</code></p>}
       <form onSubmit={submit}><ApprovalDuration value={duration} onChange={setDuration} now={now} disabled={busy}/>
+        {!approvalGroupsReady&&<p role="status">Loading current device groups…</p>}
+        <ScopePicker client={client} kind="deviceGroups" label="Device groups" value={approvalGroups} onChange={setApprovalGroups} disabled={busy||!approvalGroupsReady}/>
+        <p className="hint">The device is approved first. A membership change creates a configuration draft and requires independent approval before its group permissions apply.</p>
         <label><input type="checkbox" checked={confirmed} onChange={event=>setConfirmed(event.target.checked)} disabled={busy}/> {selected.enrollment?'I compared the code and fingerprint on the requesting device.':'I confirm access for this enrolled device and owner.'}</label>
-        <div className="actions"><button disabled={busy||!confirmed||!validDuration(duration,now)||Boolean(selected.enrollment&&selected.enrollment.expiresAtUnixMs<=now)}>Approve device</button><button type="button" disabled={busy} onClick={()=>setSelected(undefined)}>Cancel</button></div></form></section>}
+        <div className="actions"><button disabled={busy||!confirmed||!approvalGroupsReady||!approvalGroups.length||!validDuration(duration,now)||Boolean(selected.enrollment&&selected.enrollment.expiresAtUnixMs<=now)}>Approve device</button><button type="button" disabled={busy} onClick={()=>setSelected(undefined)}>Cancel</button></div></form></section>}
     {membership&&<DeviceMembership key={membership} client={client} id={membership} close={()=>setMembership(undefined)} saved={()=>{setNotice('Device membership saved. Publish access changes to update gateways.');reload();}}/>}
     <PublishAccess client={client}/>
     {(creating||editing?.directoryDevice)&&<DirectoryEditor client={client} kind="devices" record={editing?.directoryDevice} close={()=>{setCreating(false);setEditing(undefined);}} saved={reload}/>}</>;

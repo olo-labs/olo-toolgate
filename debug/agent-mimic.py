@@ -8,6 +8,7 @@ from pathlib import Path
 import secrets
 import ssl
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -86,7 +87,9 @@ class Agent:
             try: code = json.loads(response.read(131073)).get('code', 'MCP_REJECTED')
             except (ValueError, AttributeError): code = 'MCP_REJECTED'
             if response.code == 401:
-                raise ValueError('MCP HTTP 401: agent token is invalid, expired or not configured on this gateway; supply its configured credential with -TokenFile. Device approval does not create an agent credential') from None
+                raise ValueError('MCP HTTP 401: agent token is invalid, expired or not configured on this gateway; run configure-debug-agent.bat separately or supply its configured credential with -TokenFile. Device approval does not create an agent credential') from None
+            if response.code == 403:
+                raise ValueError('MCP HTTP 403: access denied; the target device must be online, approved, and enabled, with matching installed tool profiles and agent group grants. The debug script cannot change these requirements') from None
             raise ValueError(f'MCP HTTP {response.code}: {code}; check enrollment, agent binding and permissions') from None
         except urllib.error.URLError as failure:
             if isinstance(failure.reason, ssl.SSLCertVerificationError):
@@ -104,11 +107,21 @@ class Agent:
         if not isinstance(result, dict) or result.get('isError'): raise ValueError('MCP tool failed')
         return result
 
-def mimic(agent, file_path):
-    write = agent.rpc('tools/call', {'name': 'hotfolder.write_text', 'arguments': {'path': file_path, 'text': TEXT}})
-    print('Client file-write response:', flush=True)
-    print(json.dumps(write, ensure_ascii=True, indent=2), flush=True)
-    if write.get('structuredContent', {}).get('success') is not True: raise ValueError('Client did not confirm file creation')
+def mimic(agent, file_path, duration_seconds=0):
+    if not isinstance(duration_seconds, int) or isinstance(duration_seconds, bool) or not 0 <= duration_seconds <= 60:
+        raise ValueError('Duration seconds must be between 0 and 60')
+    if duration_seconds:
+        print(f'Open the client tray > Show Status. Repeating hotfolder.write_text for {duration_seconds} seconds; each request uses the existing tool.', flush=True)
+    deadline = time.monotonic() + duration_seconds
+    while True:
+        write = agent.rpc('tools/call', {'name': 'hotfolder.write_text', 'arguments': {'path': file_path, 'text': TEXT}})
+        print('Client file-write response:', flush=True)
+        print(json.dumps(write, ensure_ascii=True, indent=2), flush=True)
+        if write.get('structuredContent', {}).get('success') is not True: raise ValueError('Client did not confirm file creation')
+        remaining = deadline - time.monotonic()
+        if remaining <= 0: break
+        time.sleep(min(0.25, remaining))
+        if time.monotonic() >= deadline: break
     log = agent.rpc('tools/call', {'name': 'client.read_log_entry', 'arguments': {}})
     print('Client log response:', flush=True)
     print(json.dumps(log, ensure_ascii=True, indent=2), flush=True)
@@ -122,8 +135,10 @@ def main():
     parser.add_argument('--token-file', type=Path, default=Path(os.environ.get('TOOLGATE_AGENT_TOKEN_PATH', ROOT / '.dev/debug/client-agent-token')))
     parser.add_argument('--ca-file', type=Path)
     parser.add_argument('--file', default='rahul-nigam.txt')
+    parser.add_argument('--duration-seconds', type=int, default=8,
+                        help='Repeat the existing file-write tool for 0..60 seconds (default: 8); 0 sends one write')
     args = parser.parse_args()
-    try: mimic(Agent(args.gateway, args.token_file, resolve_ca(args.gateway, args.ca_file)), args.file)
+    try: mimic(Agent(args.gateway, args.token_file, resolve_ca(args.gateway, args.ca_file)), args.file, args.duration_seconds)
     except (OSError, ValueError, KeyError, TypeError) as failure:
         # Exceptions from OS/TLS can include private filenames; keep those generic.
         print('FAILED: ' + (str(failure) if isinstance(failure, ValueError) else 'Cannot connect or load the agent credential/CA; check configuration and Gateway health'), file=sys.stderr)

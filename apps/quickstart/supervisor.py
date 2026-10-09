@@ -42,7 +42,7 @@ DATA = Path('/data')
 TENANT = 'quickstart'
 ISSUER = 'https://quickstart.local'
 GROUPS = ()  # Human portal permissions derive only from the reviewed Team/Role graph.
-LOCAL_USERS = ('admin', 'reviewer-1', 'reviewer-2')
+LOCAL_USERS = ('admin', 'reviewer-1', 'reviewer-2', 'test-readonly', 'test-readwrite', 'test-admin')
 
 
 def password_disabled():

@@ -15,6 +15,7 @@ import { QuickstartTools } from './QuickstartTools';
 import { ClientDownloads } from './ClientDownloads';
 import { ClientConnection } from './ClientConnection';
 import {Devices} from './Devices';
+import {StandardPresets} from './StandardPresets';
 import {RemoteRequests} from './RemoteRequests';
 import { ThemePicker } from './Theme';
 import { Audit } from './Audit';
@@ -107,7 +108,7 @@ export function App() {
         {!safeOrigin() && <div role="alert" className="notice error">Open this console over HTTPS before connecting.</div>}
         {Boolean(error) && <Failure error={error} />}
         {passwordDisabled&&<><p role="status">Local password-free Quickstart. Reviewers still use their independent passwords.</p><button onClick={() => { void connect(null, true); }} disabled={connecting}>Reconnect administrator</button></>}
-        <form onSubmit={connect}>{quickstart&&<><label htmlFor="local-username">Local account</label><select id="local-username" value={username} onChange={e=>setUsername(e.target.value)} disabled={connecting}><option value="admin">Administrator</option><option value="reviewer-1">Reviewer 1</option><option value="reviewer-2">Reviewer 2</option></select></>}<label htmlFor="access-token">{quickstart ? 'Password' : 'Access token'}</label>
+        <form onSubmit={connect}>{quickstart&&<><label htmlFor="local-username">Local account</label><select id="local-username" value={username} onChange={e=>setUsername(e.target.value)} disabled={connecting}><option value="admin">Administrator</option><option value="reviewer-1">Reviewer 1</option><option value="reviewer-2">Reviewer 2</option><option value="test-readonly">ReadOnly test user</option><option value="test-readwrite">ReadAndWrite test user</option><option value="test-admin">Admin test user</option></select></>}<label htmlFor="access-token">{quickstart ? 'Password' : 'Access token'}</label>
           <input id="access-token" type="password" autoComplete="off" spellCheck={false} maxLength={16384} required value={credential} onChange={e => setCredential(e.target.value)} disabled={connecting || !safeOrigin()} aria-describedby="token-help" />
           {quickstart && <><label htmlFor="new-password">New password (required on first login)</label><input id="new-password" type="password" autoComplete="new-password" minLength={16} maxLength={128} value={newPassword} onChange={e => setNewPassword(e.target.value)} disabled={connecting} /></>}
           <p id="token-help" className="hint">Kept in memory for this session. Refreshing or disconnecting clears it.</p>
@@ -205,6 +206,7 @@ function Directory({ client, kind }: { client: ControlClient; kind: DirectoryKin
         <div className="table-wrap"><table><caption className="sr-only">{label} directory</caption><thead><tr><th scope="col">Name</th><th scope="col">Identifier</th>{kind==='devices'&&<th scope="col">Connection</th>}<th scope="col">Directory status</th><th scope="col">Revision</th></tr></thead><tbody>{page.items.map(record => <tr key={record.id}><th scope="row"><button className="record-link" onClick={() => { setSelected(record); setCreating(false); }}>{record.name}</button></th><td><code>{record.id}</code></td>{kind==='devices'&&<td><ClientConnection client={client} id={record.id} enabled={record.enabled} ownerUserId={'ownerUserId' in record?record.ownerUserId:''}/></td>}<td><span className={`status ${record.enabled ? 'enabled' : ''}`}>{record.enabled ? 'Enabled' : 'Disabled'}</span></td><td>{record.revision}</td></tr>)}</tbody></table></div>}
       <div className="pagination"><span>{page.items.length} records on this page</span><div className="actions"><button disabled={!history.length} onClick={() => { setCursor(history.at(-1)); setHistory(history.slice(0,-1)); }}>Previous page</button><button disabled={!page.nextCursor} onClick={() => { setHistory([...history,cursor]); setCursor(page.nextCursor); }}>Next page</button></div></div>
     </>}
+    {['teams','agentGroups','toolGroups','deviceGroups'].includes(kind)&&<StandardPresets client={client}/>}
     {kind==='deviceGroups'&&<><p className="hint">Device groups contain devices. Complete group grants and Tool Group execution bindings determine access. Disabled groups grant no access.</p><PublishAccess client={client}/></>}
     {(creating || selected) && (kind === 'users' ? <UserEditor key={selected?.id ?? 'new'} client={client} user={selected as ControlUser | undefined} close={() => { setCreating(false); setSelected(undefined); }} saved={refresh} /> : <DirectoryEditor key={selected?.id??'new'} client={client} kind={kind} record={selected as DirectoryRecords[Exclude<DirectoryKind,'users'>] | undefined} close={()=>{setCreating(false);setSelected(undefined);}} saved={refresh}/>)}
   </>;

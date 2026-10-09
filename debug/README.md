@@ -110,20 +110,29 @@ Run `setup-agent-mimic.bat` or `agent-mimic.bat` to call an already configured,
 approved and connected client through `https://localhost:18450/mcp`. The setup
 filename is retained as an alias for the call-and-log command. Configure the
 device, agent credential and intended grants beforehand. The commands only
-send the two tool calls and record their responses. Denied or unavailable calls
-fail visibly.
+call existing tools and record their responses. By default, the script repeats
+the same file-write call for eight seconds, then reads one log entry. It does not
+install tools, update the client, configure the device, or grant permissions.
+Denied or unavailable calls fail visibly.
 
 Both commands save visible console output and errors in timestamped files under
 `.dev/debug/logs/`; each run prints its log path. The **Client tool requests** page
 fills the parent canvas and logs progress. Use **View response** for the completed
-JSON output. Both wrappers accept `-Gateway`, `-TokenFile`, `-CaFile` and `-File`.
-It calls `hotfolder.write_text`, then waits for its response before calling
-`client.read_log_entry`. `hotfolder.write_text` creates
+JSON output. Both wrappers accept `-Gateway`, `-TokenFile`, `-CaFile`, `-File`
+and `-DurationSeconds` (0..60, default 8). Open the client tray's **Show Status**
+before running the script to observe the repeated real requests. Each existing
+tool may finish quickly; the script does not make a single device command run
+for eight seconds or fabricate client progress. Use
+`setup-agent-mimic.bat -DurationSeconds 0` for exactly one write and one log read.
+Calls run sequentially, with a short pause between repeated writes; each response
+is logged. `hotfolder.write_text` creates
 `rahul-nigam.txt` containing exactly `My Name is Rahul Nigam` in the installed
 client's protected HotFolder. `client.read_log_entry` reads exactly one latest
 entry from that client's real `packets.jsonl`. Both complete tool responses are
-printed in the console. A denied or failed write stops the script before the
-second call.
+printed in the console. Repeated writes use the same path and text. A denied or
+failed write immediately stops the script before further calls, including the
+log read. The duration bounds repetition; an already dispatched request keeps
+its normal gateway timeout.
 
 The calls use an existing device-bound agent bearer token in
 `.dev/debug/client-agent-token`, readable only by the current Windows account
@@ -132,6 +141,68 @@ and SYSTEM. The server stores its hash in `/data/client-runtime-credentials.json
 credentials for this debug stack. Credentials expire after 24 hours. The mimic
 commands use the existing agent credential; enrollment, approval, permissions
 and credential administration belong to the deployment's configuration.
+
+For this isolated Quickstart debug container, `configure-debug-agent.bat
+--device-id <approved-device-id> --profiles <existing-installed-profiles.json>`
+separately provisions the debug agent through reviewed group mappings and renews
+its 24-hour credential. Supply profiles exported by the already installed client's
+`authorization-profiles` command; the helper registers only `hotfolder.write_text`
+and `client.read_log_entry`. It uses API password logins, independently reviewed
+standard group mappings, and the actual installed package digest. ReadAndWrite
+rights apply inside the configured HotFolder. It restarts the local debug gateway
+to load its credential and preserves other credentials and data. Initial provisioning
+changes server configuration only; the separate client helper enables the existing
+tools without replacing the client executable. The mimic itself only calls and logs.
+The setup wrapper can allocate the existing agent through the reviewed API.
+An expired token needs explicit renewal; a stopped or
+unconfigured client cannot execute a command through a script alone.
+
+An installed Windows client may be connected while `client.json` has no tool
+profiles. To register the **existing** write/log tools for this debug gateway,
+run `configure-client-tools.bat -DeviceId <approved-device-id>` after provisioning
+the debug agent. It checks the local enrolled identity, preserves enrollment,
+CA trust and IPC peers, installs the two existing definitions in the protected
+configuration, and restarts the service. It does not replace the executable or
+grant server permissions. Administrator approval is required for these protected
+configuration changes. A startup failure restores the previous configuration.
+
+For device `device-d5402222a1cf3d801e0529ddcde7e586`, run this explicit one-time
+setup from the repository root (PowerShell):
+
+```powershell
+& 'C:/Program Files/OLO/ToolGate/olo-toolgate-client.exe' authorization-profiles |
+    Set-Content .dev/debug/existing-client-profiles.json -Encoding UTF8
+debug/configure-debug-agent.bat --device-id device-d5402222a1cf3d801e0529ddcde7e586 --profiles .dev/debug/existing-client-profiles.json --local-fixture-reviewers
+debug/configure-client-tools.bat -DeviceId device-d5402222a1cf3d801e0529ddcde7e586
+debug/setup-agent-mimic.bat
+```
+
+Re-run credential provisioning when the 24-hour credential expires, followed by
+client configuration to refresh its protected local gateway credential. Routine
+mimic and AI calls never perform setup. If a client executable is independently
+upgraded, export its actual profiles again and repeat this explicit setup to
+refresh the pinned package definitions.
+
+AI clients that support MCP stdio can use [ai-client.example.json](ai-client.example.json)
+to launch `agent-mcp-stdio.py`. Adjust the two absolute repository paths if needed.
+The bridge implements initialization and translates `tools/list` and `tools/call`
+to the gateway's existing protocol. stdout contains only newline-delimited MCP
+JSON; request diagnostics go to stderr. The protocol framing follows the
+[MCP stdio specification](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#stdio)
+and [initialization lifecycle](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle).
+It supports the 2025-11-25, 2025-06-18, 2025-03-26 and 2024-11-05 initialization
+versions. It calls the gateway sequentially and advertises only tools, with no
+subscriptions or asynchronous cancellation support. Each call keeps the normal
+gateway timeout and online authorization checks.
+
+The console URL is the management UI. The AI gateway is `https://localhost:18450/mcp`.
+Its configured credential binds the device and agent; requests cannot select
+another device or grant themselves access. With the supplied debug mappings,
+an AI can discover `hotfolder.write_text` and `client.read_log_entry`, write
+`rahul-nigam.txt` and read one packet log entry. ReadAndWrite presets permit other
+normalized paths inside the configured HotFolder; the client filesystem boundary still applies. Additional AI actors need their own configured credentials and reviewed
+Agent Group memberships/grants. The example contains no credential; the bridge
+reads the protected existing token file and the installed CA configuration.
 
 Fresh client installation needs only the EXE downloaded from Enroll Device while
 this container is running. Setup obtains the public local CA, validates HTTPS,
@@ -171,3 +242,37 @@ logs contain SEND/RECEIVE without the credential, enrollment code or file text.
 It also verifies a fresh client install obtains its own CA, measures the 500 ms
 poll cadence, rejects sockets without device identity, and checks bidirectional
 heartbeats and idle disconnect. Results are written to `build/quickstart/mcp-smoke.json`.
+
+## Standard groups and reviewed API allocation
+
+The release configuration lives in [config/initial](../config/initial/README.md).
+Every fresh installation includes ReadOnly, ReadAndWrite, and Admin presets for
+Teams, Agents, Devices, and Tools; existing installations import them through review.
+
+Admin username/password settings are at the top of `setup-agent-mimic.bat` and
+`configure-debug-agent.bat`. Prefer `TOOLGATE_ADMIN_USERNAME` /
+`TOOLGATE_ADMIN_PASSWORD` environment variables. No JWT is minted by these scripts.
+The current local debug environment permits an empty admin password only while its
+explicit password-disabled Quickstart setting is enabled. Other installations require
+a valid password and completion of the normal first-login password change.
+
+`setup-agent-mimic.bat` allocates the configured agent via
+`PUT /api/control/v1/agents/{id}/groups`, then invokes the call-and-log mimic.
+An unchanged allocation creates no draft. A changed allocation is submitted and
+waits up to ten minutes for independent approval in the console. Super Admin
+permission does not bypass review. For automation, separately supplied reviewer
+credentials (`TOOLGATE_REVIEWER1_PASSWORD` / `TOOLGATE_REVIEWER2_PASSWORD`)
+can authenticate independent review identities through the same login API.
+
+`--local-fixture-reviewers` is explicit local test provisioning: it uses unique
+Quickstart bootstrap passwords and normal API first-login changes, stores the
+resulting test credentials in the private `.dev/debug/local-test-credentials.json`,
+and uses independent fixture accounts for reviews. It also enables and assigns
+`test-readonly`, `test-readwrite`, and `test-admin` to their standard Teams.
+No password or bearer credential is logged. Ordinary MCP calls never provision access.
+
+The setup pins only the installed diagnostic tools to the ReadAndWrite execution
+binding and assigns the selected device/tools to the corresponding standard groups.
+It removes the previous bespoke debug groups/grants after moving their memberships.
+Use `--allocate-agent` for later group changes without rotating the workload token.
+The ReadOnly group intentionally fails writes; ReadAndWrite allows this diagnostic.

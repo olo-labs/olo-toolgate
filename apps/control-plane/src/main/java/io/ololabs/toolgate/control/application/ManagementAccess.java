@@ -53,9 +53,25 @@ public final class ManagementAccess {
         requireAll(directory,user,action,now);
     }
     private void requireIndividual(Directory directory,String user,String action,Kind kind,String id,long now){var entry=directory.entries().get(kind.id(id));if(entry!=null)requireEntry(directory,user,action,entry,now);else require(directory,user,action,GroupGraph.groupKind(kind),GroupGraph.DEFAULTS.get(GroupGraph.groupKind(kind)),now);}
+    /** Receiving-group membership cannot confer management or runtime rights beyond the allocating actor's ceilings. */
+    public void requireAllocation(Directory authority,Directory proposed,String user,Directory.Entry group,long now) {
+        if(group==null)throw Failure.validation();
+        var roles=GroupGraph.roles(group,codec);
+        for(var id:roles){var entry=proposed.entries().get(Kind.ROLE.id(id));if(entry==null)throw Failure.validation();var role=codec.model(entry.document(),ControlRole.class);if(role.enabled())requireRoleCeilings(authority,user,role,now);}
+        for(var entry:proposed.entries().values())if(entry.id().kind()==Kind.GRANT&&entry.enabled()) {
+            var grant=codec.model(entry.document(),ControlAccessGrant.class);
+            boolean inherited=grant.sourceType()==EnterpriseSourceType.ROLE&&roles.contains(grant.sourceId())
+                ||grant.sourceType().name().equals(group.id().kind().name())&&grant.sourceId().equals(group.id().value());
+            if(inherited&&access(authority,user).grants().stream().noneMatch(rule->rule.actions().contains("grant")&&current(rule.conditions(),now)&&rule.grantableScopes().stream().anyMatch(scope->contains(scope,grant.scope()))))throw denied();
+        }
+    }
     private void requireRoleCeilings(Directory directory,String user,ControlRole role,long now) {
         var authority=access(directory,user);
         if(role.portalRole()==UserRole.SUPER_ADMIN&&authority.portalRole()!=UserRole.SUPER_ADMIN)throw denied();
+        if(role.enabled())for(var entry:directory.entries().values())if(entry.id().kind()==Kind.GRANT&&entry.enabled()) {
+            var grant=codec.model(entry.document(),ControlAccessGrant.class);
+            if(grant.sourceType()==EnterpriseSourceType.ROLE&&grant.sourceId().equals(role.id())&&authority.grants().stream().noneMatch(rule->rule.actions().contains("grant")&&current(rule.conditions(),now)&&rule.grantableScopes().stream().anyMatch(scope->contains(scope,grant.scope()))))throw denied();
+        }
         for(var requested:role.managementRules()){
             if(authority.grants().stream().noneMatch(ceiling->ceiling.groupType()==requested.groupType()&&current(ceiling.conditions(),now)
                 &&selectionContains(ceiling.groups(),requested.groups())&&ceiling.actions().containsAll(requested.actions())

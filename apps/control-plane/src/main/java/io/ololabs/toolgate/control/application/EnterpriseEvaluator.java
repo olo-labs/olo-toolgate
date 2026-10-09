@@ -74,6 +74,7 @@ public final class EnterpriseEvaluator {
             var groups=GroupGraph.memberships(directory,codec,Kind.TOOL,tool.id(),true); require(groups.size()==1,GROUP_UNAVAILABLE);toolGroup=groups.getFirst();
             var device=active(Kind.DEVICE,context.deviceId(),ControlDevice.class,DEVICE_UNTRUSTED);
             binding=active(Kind.BINDING,context.bindingId(),ControlExecutionBinding.class,NO_BINDING);
+            StandardAccessPresets.validateBinding(binding);
             require(binding.toolGroupId().equals(toolGroup)&&binding.actions().contains(request.action())&&binding.allowedPackageDigests().contains(request.packageDigest()),NO_BINDING);
             active(Kind.DEVICE_GROUP,binding.deviceGroupId(),ControlDeviceGroup.class,GROUP_UNAVAILABLE);
             require(GroupGraph.memberships(directory,codec,Kind.DEVICE,device.id(),true).contains(binding.deviceGroupId()),NO_BINDING);

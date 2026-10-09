@@ -49,6 +49,8 @@ public final class ReviewedRecovery {
                 if(e.id().kind()==Ids.Kind.IDENTITY_BINDING&&old!=null){var a=codec.model(old.document(),ControlIdentityBinding.class);var b=codec.model(e.document(),ControlIdentityBinding.class);if(!a.userId().equals(b.userId())||!a.issuer().equals(b.issuer())||!a.subject().equals(b.subject())||b.sessionEpoch()<=a.sessionEpoch()||b.sessionsValidAfterUnixMs()<now)throw ManagementAccess.denied();}
                 entries.put(e.id(),codec.revision(e,old==null?1:old.revision()+1));
             }
+            // Fresh installations include dormant presets. Recovery never restores or changes existing runtime rights.
+            if(initial)StandardAccessPresets.install(entries,codec);
             var after=new Directory(before.revision()+1,entries);after.validate(512,1048576);codec.validatePolicies(after);
             boolean recovery=after.entries().values().stream().filter(e->e.id().kind()==Ids.Kind.USER&&e.enabled()).anyMatch(e->{var access=new ManagementAccess(codec).access(after,e.id().value());return access.portalRole()==UserRole.SUPER_ADMIN&&GroupGraph.DEFAULTS.keySet().stream().allMatch(kind->access.grants().stream().anyMatch(rule->rule.groupType().name().equals(kind.name())&&rule.groups().all()&&rule.actions().contains("recover")&&ManagementAccess.current(rule.conditions(),now)));});
             if(!recovery)throw ManagementAccess.denied();tx.save(before,after);tx.enterprise().rememberRecovery(digest);
