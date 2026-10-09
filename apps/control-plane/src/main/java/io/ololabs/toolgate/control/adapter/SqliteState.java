@@ -24,8 +24,8 @@ public final class SqliteState {
             var source = new org.sqlite.SQLiteDataSource(settings); source.setUrl("jdbc:sqlite:" + path);
             try (var c = source.getConnection(); var s = c.createStatement()) {
                 s.execute("CREATE TABLE IF NOT EXISTS quickstart_migrations(version INTEGER PRIMARY KEY, checksum TEXT NOT NULL)");
-                try(var r=s.executeQuery("SELECT COALESCE(max(version),0) FROM quickstart_migrations")){if(!r.next() || r.getInt(1)>4)throw new IllegalStateException("Newer local state requires a newer image");}
-                for(int version=1;version<=4;version++) {
+                try(var r=s.executeQuery("SELECT COALESCE(max(version),0) FROM quickstart_migrations")){if(!r.next() || r.getInt(1)>6)throw new IllegalStateException("Newer local state requires a newer image");}
+                for(int version=1;version<=6;version++) {
                     String script;
                     try(var input=SqliteState.class.getResourceAsStream("/db/quickstart/V"+version+".sql")){
                         if(input==null)throw new IllegalStateException(); script=new String(input.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8).replace("\r\n","\n");
@@ -49,8 +49,7 @@ public final class SqliteState {
     static boolean local(Connection c) throws SQLException {return c.getMetaData().getDatabaseProductName().equals("SQLite");}
     static String sql(Connection c,String sql) throws SQLException {
         if(!local(c))return sql;
-        return sql.replace("(control_approvals.document::jsonb->>'revision')::bigint", "json_extract(control_approvals.document,'$.revision')")
-            .replace("(excluded.document::jsonb->>'revision')::bigint", "json_extract(excluded.document,'$.revision')")
+        return sql
             .replace("(document::jsonb->>'expiresAtUnixMs')::bigint", "json_extract(document,'$.expiresAtUnixMs')")
             .replace("::jsonb", "").replace("::text", "").replace("GREATEST(", "max(")
             .replace("clock_timestamp()", "unixepoch()");

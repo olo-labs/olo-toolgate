@@ -1,7 +1,7 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
 //! Immutable administrator configuration. Unknown settings are errors.
-use crate::{extraction::ExtractorBinding, policy::StaticPolicy, validation::Contracts};
+use crate::validation::Contracts;
 use serde::{Deserialize, Serialize};
 use std::{io::Read, net::SocketAddr, path::Path};
 
@@ -28,9 +28,9 @@ impl Default for Limits {
             max_concurrent_requests: 128,
             max_connections: 256,
             requests_per_second: 1000,
-            request_timeout_ms: 2000,
-            connection_timeout_ms: 10000,
-            shutdown_timeout_ms: 15000,
+            request_timeout_ms: 20000,
+            connection_timeout_ms: 35000,
+            shutdown_timeout_ms: 35000,
             audit_queue_capacity: 256,
         }
     }
@@ -41,31 +41,21 @@ impl Default for Limits {
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Config {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub local_mcp: Option<crate::relay::RelayConfig>,
+    pub control: crate::relay::RelayConfig,
     pub listen: SocketAddr,
     pub management_listen: SocketAddr,
     pub trusted_tls_proxy: bool,
     pub allowed_origins: Vec<String>,
     #[serde(default)]
     pub limits: Limits,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub policy: Option<StaticPolicy>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub bundle_source: Option<crate::bundles::BundleSourceConfig>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub approval: Option<crate::approvals::ApprovalConfig>,
-    pub extractors: Vec<ExtractorBinding>,
 }
 
 impl Config {
     /// Invalid or unbounded configuration prevents startup.
-    pub fn validate(&self, contracts: &Contracts, now: u64) -> Result<(), &'static str> {
-        if let Some(relay) = &self.local_mcp {
-            relay.validate()?;
-            if self.limits.request_timeout_ms < 10000 {
-                return Err("local MCP relay requires a request timeout of at least ten seconds");
-            }
+    pub fn validate(&self, _contracts: &Contracts, _now: u64) -> Result<(), &'static str> {
+        self.control.validate()?;
+        if self.limits.request_timeout_ms < 10000 {
+            return Err("online authority requires a ten-second request budget");
         }
         if self.listen.port() == 0
             || self.management_listen.port() == 0
@@ -106,26 +96,6 @@ impl Config {
         {
             return Err("origins must be exact HTTPS origins without a trailing slash");
         }
-        match (&self.policy, &self.bundle_source) {
-            (Some(policy), None) => policy.validate(contracts, now)?,
-            (None, Some(source)) => source.validate()?,
-            _ => return Err("exactly one static or signed policy source is required"),
-        }
-        if let Some(approval) = &self.approval {
-            approval.validate()?;
-            let source = self
-                .bundle_source
-                .as_ref()
-                .ok_or("approvals require signed policy")?;
-            if approval.private_key_path == source.keyring_path
-                || approval.private_key_path == source.token_path
-                || approval.private_key_path == approval.token_path
-                || approval.request_timeout_ms >= l.request_timeout_ms
-            {
-                return Err("approval key domains or timeout invalid");
-            }
-        }
-        crate::extraction::Registry::new(self.extractors.clone())?;
         Ok(())
     }
 }

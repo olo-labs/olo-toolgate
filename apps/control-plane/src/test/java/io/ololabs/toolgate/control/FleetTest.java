@@ -40,7 +40,7 @@ final class FleetTest {
         try(var connection=java.sql.DriverManager.getConnection(base,"control_migrator",password);var statement=connection.createStatement()){statement.execute("CREATE DATABASE "+database);}
         var url=base.replace("/control?","/"+database+"?");org.flywaydb.core.Flyway.configure().dataSource(url,"control_migrator",password).load().migrate();
         var source=new org.postgresql.ds.PGSimpleDataSource();source.setURL(url);source.setUser("control_app");source.setPassword(password);
-        var store=new PostgresStore(source,codec);var directory=new DirectoryService(store,codec,512,1048576);var tenant=new Ids.TenantId("fleet");var admin=new DirectoryService.Actor(tenant,"a".repeat(64),true);
+        var store=new PostgresStore(source,codec);var directory=new DirectoryService(store,codec,512,1048576);var tenant=new Ids.TenantId("fleet");var admin=TestSupport.seed(store,codec,tenant,"root");
         directory.mutate(admin,Ids.Kind.USER,"owner","CREATE",DomainTest.user("owner",1),0,"user","request");
         var clock=Clock.fixed(Instant.ofEpochMilli(1700000000000L),ZoneOffset.UTC);
         var endpoint=new EndpointService(store,codec,null,clock,true,"fleet","server","Organization","https://control.example.test","https://gateway.example.test");

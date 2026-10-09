@@ -1,6 +1,6 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
-//! Private loopback adapter for the existing fixed built-ins. No author code executes here.
+//! Private tool ingress uses the same group authority and enrolled device identity as the client.
 use axum::{
     extract::{DefaultBodyLimit, State},
     http::{HeaderMap, StatusCode},
@@ -8,160 +8,15 @@ use axum::{
     Json, Router,
 };
 use olo_toolgate_client::{
-    builtins::{AuthorizationPort, Executor, Settings},
-    contracts::Contracts,
-    transport::Call,
-    Failure,
+    config::Config, contracts::Contracts, identity::DeviceKey, service::ClientService,
+    storage::ProtectedStore, transport::HttpsControl, Failure,
 };
-use olo_toolgate_contracts::{
-    AuthorizationOutcome, AuthorizationRequest, BuiltinInvocation, Decision,
-};
+use olo_toolgate_contracts::BuiltinInvocation;
 use serde_json::{json, Value};
-use std::sync::{Arc, Mutex};
-
-struct LocalGateway {
-    client: reqwest::Client,
-    token: String,
-    hotfolder_token: String,
-    outcome: Arc<Mutex<Option<Value>>>,
-    contracts: Contracts,
-}
-impl AuthorizationPort for LocalGateway {
-    fn authorize(&self, request: AuthorizationRequest) -> Call<'_, ()> {
-        Box::pin(async move {
-            // Read current directory enablement before every effect, including ALLOW policies.
-            // This is the fixed Quickstart adapter; no agent can choose the service identity.
-            let machine = olo_toolgate_client::tool_gateway::secret(std::path::Path::new(
-                "/data/run/machine-token",
-            ))?;
-            let response = self
-                .client
-                .get("http://127.0.0.1:8082/api/control/v1/users/local-tools")
-                .bearer_auth(&machine)
-                .send()
-                .await
-                .map_err(|_| Failure::Unavailable)?;
-            if response.status() != 200 {
-                return Err(Failure::Unauthorized);
-            }
-            let owner: olo_toolgate_contracts::ControlUser = self.contracts.decode(
-                "ControlUser",
-                &olo_toolgate_client::tool_gateway::body(response).await?,
-            )?;
-            if owner.id != "local-tools" || !owner.enabled {
-                return Err(Failure::Unauthorized);
-            }
-            let devices: &[&str] = if request.tool_id.starts_with("hotfolder.") {
-                &["local-builtins", "local-hotfolder"]
-            } else {
-                &["local-builtins"]
-            };
-            for id in devices {
-                let response = self
-                    .client
-                    .get(format!("http://127.0.0.1:8082/api/control/v1/devices/{id}"))
-                    .bearer_auth(&machine)
-                    .send()
-                    .await
-                    .map_err(|_| Failure::Unavailable)?;
-                if response.status() != 200 {
-                    return Err(Failure::Unauthorized);
-                }
-                let device: olo_toolgate_contracts::ControlDevice = self.contracts.decode(
-                    "ControlDevice",
-                    &olo_toolgate_client::tool_gateway::body(response).await?,
-                )?;
-                if device.id != *id || !device.enabled || device.owner_user_id != "local-tools" {
-                    return Err(Failure::Unauthorized);
-                }
-            }
-            let correlation = olo_toolgate_client::identity::nonce()?;
-            let token = if request.tool_id.starts_with("hotfolder.") {
-                &self.hotfolder_token
-            } else {
-                &self.token
-            };
-            let response = self
-                .client
-                .post("http://127.0.0.1:8081/v2/authorize")
-                .bearer_auth(token)
-                .header("x-request-id", &correlation)
-                .header(
-                    "traceparent",
-                    format!("00-{correlation}-{}-01", &correlation[..16]),
-                )
-                .header("content-type", "application/json")
-                .body(serde_json::to_vec(&request).map_err(|_| Failure::Validation)?)
-                .send()
-                .await
-                .map_err(|_| Failure::Unavailable)?;
-            if response.status() != 200 {
-                return Err(Failure::Unauthorized);
-            }
-            let request_id = response
-                .headers()
-                .get("x-request-id")
-                .and_then(|h| h.to_str().ok())
-                .ok_or(Failure::Validation)?
-                .to_owned();
-            let outcome: AuthorizationOutcome = self.contracts.decode(
-                "AuthorizationOutcome",
-                &olo_toolgate_client::tool_gateway::body(response).await?,
-            )?;
-            if outcome.decision.request_id != request_id {
-                return Err(Failure::Validation);
-            }
-            if outcome.decision.decision != Decision::Allow {
-                *self.outcome.lock().map_err(|_| Failure::Unavailable)? = Some(
-                    json!({"decision":outcome.decision.decision,"approvalId":outcome.approval_id}),
-                );
-                return Err(Failure::Unauthorized);
-            }
-            let permit = match (outcome.approval_id, outcome.permit) {
-                (Some(_), Some(permit)) => Some(permit),
-                (None, None) => None,
-                _ => return Err(Failure::Unauthorized),
-            };
-            if let Some(permit) = permit {
-                let response = self
-                    .client
-                    .post("http://127.0.0.1:8081/v1/permits/consume")
-                    .bearer_auth(token)
-                    .header("x-request-id", &correlation)
-                    .header(
-                        "traceparent",
-                        format!("00-{correlation}-{}-01", &correlation[..16]),
-                    )
-                    .header("content-type", "application/json")
-                    .body(
-                        serde_json::to_vec(&json!({"permit":permit,"request":request}))
-                            .map_err(|_| Failure::Validation)?,
-                    )
-                    .send()
-                    .await
-                    .map_err(|_| Failure::Unavailable)?;
-                let response_id = response
-                    .headers()
-                    .get("x-request-id")
-                    .and_then(|h| h.to_str().ok())
-                    .ok_or(Failure::Validation)?
-                    .to_owned();
-                let value: olo_toolgate_contracts::PolicyDecision = self.contracts.decode(
-                    "PolicyDecision",
-                    &olo_toolgate_client::tool_gateway::body(response).await?,
-                )?;
-                if value.decision != Decision::Allow || value.request_id != response_id {
-                    return Err(Failure::Unauthorized);
-                }
-            }
-            Ok(())
-        })
-    }
-}
+use std::sync::Arc;
 struct Tools {
-    executor: tokio::sync::Mutex<Executor>,
+    service: tokio::sync::Mutex<ClientService>,
     token: String,
-    outcome: Arc<Mutex<Option<Value>>>,
 }
 async fn invoke(
     State(tools): State<Arc<Tools>>,
@@ -170,35 +25,25 @@ async fn invoke(
 ) -> (StatusCode, Json<Value>) {
     use subtle::ConstantTimeEq;
     let expected = format!("Bearer {}", tools.token);
-    if !bool::from(
-        headers
-            .get("authorization")
-            .map(|h| h.as_bytes())
-            .unwrap_or_default()
-            .ct_eq(expected.as_bytes()),
-    ) {
+    let mut authorization = headers.get_all("authorization").iter();
+    let credential = authorization
+        .next()
+        .map(|h| h.as_bytes())
+        .unwrap_or_default();
+    if authorization.next().is_some() || !bool::from(credential.ct_eq(expected.as_bytes())) {
         return (
             StatusCode::UNAUTHORIZED,
             Json(json!({"code":"UNAUTHORIZED"})),
         );
     }
-    let mut executor = tools.executor.lock().await;
-    if let Ok(mut outcome) = tools.outcome.lock() {
-        *outcome = None;
-    }
-    match executor
-        .execute(invocation, olo_toolgate_client::now() + 10000)
-        .await
-    {
+    let mut service = tools.service.lock().await;
+    match service.execute_tool(invocation).await {
         Ok(result) => (StatusCode::OK, Json(json!({"result":result}))),
         Err(failure) => {
-            let outcome = tools.outcome.lock().ok().and_then(|v| v.clone());
-            if let Some(value) = outcome {
-                return (StatusCode::FORBIDDEN, Json(value));
-            }
             let (status, code) = match failure {
                 Failure::Validation => (StatusCode::BAD_REQUEST, "VALIDATION"),
-                Failure::Unauthorized => (StatusCode::FORBIDDEN, "FORBIDDEN"),
+                Failure::Unauthorized | Failure::Revoked => (StatusCode::FORBIDDEN, "FORBIDDEN"),
+                Failure::Conflict => (StatusCode::CONFLICT, "CONFLICT"),
                 Failure::Unsupported => (StatusCode::NOT_IMPLEMENTED, "UNSUPPORTED"),
                 _ => (StatusCode::SERVICE_UNAVAILABLE, "DEPENDENCY_UNAVAILABLE"),
             };
@@ -208,56 +53,65 @@ async fn invoke(
 }
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let _ = rustls::crypto::ring::default_provider().install_default();
-    let settings: Settings = serde_json::from_slice(&std::fs::read("/data/run/builtins.json")?)?;
+    if std::env::args().nth(1).as_deref() == Some("--authorization-profiles") {
+        println!(
+            "{}",
+            serde_json::to_string(
+                &olo_toolgate_client::authorization_profile::builtin_profiles()
+                    .map_err(|_| "Installed profile unavailable")?
+            )?
+        );
+        return Ok(());
+    }
+    let path = std::env::var("TOOLGATE_CLIENT_CONFIG")
+        .map_err(|_| "Enrolled client configuration required")?;
+    let bytes =
+        olo_toolgate_client::storage::read_owned(std::path::Path::new(&path), 1048576, true)
+            .map_err(|_| "Protected client configuration required")?;
+    let config: Config = serde_json::from_slice(&bytes)?;
+    config
+        .validate()
+        .map_err(|_| "Invalid client configuration")?;
+    let settings = config
+        .tools
+        .as_ref()
+        .ok_or("Reviewed installed tool profiles required")?;
     let token = olo_toolgate_client::tool_gateway::secret(&settings.gateway_token_path)
-        .map_err(|_| "Invalid private token")?;
-    let hotfolder_token = olo_toolgate_client::tool_gateway::secret(std::path::Path::new(
-        "/data/run/hotfolder-token",
-    ))
-    .map_err(|_| "Invalid HotFolder token")?;
-    let outcome = Arc::new(Mutex::new(None));
-    let client = reqwest::Client::builder()
-        .no_proxy()
-        .redirect(reqwest::redirect::Policy::none())
-        .retry(reqwest::retry::never())
-        .referer(false)
-        .tls_sslkeylogfile(false)
-        .timeout(std::time::Duration::from_secs(5))
-        .build()?;
-    let authorization = Arc::new(LocalGateway {
-        client,
-        token: token.clone(),
-        hotfolder_token,
-        outcome: outcome.clone(),
-        contracts: Contracts::new().map_err(|_| "Invalid canonical contracts")?,
-    });
-    let executor =
-        Executor::new(&settings, authorization).map_err(|_| "Invalid built-in configuration")?;
-    let state = Arc::new(Tools {
-        executor: tokio::sync::Mutex::new(executor),
+        .map_err(|_| "Private ingress credential required")?;
+    let contracts = Arc::new(Contracts::new().map_err(|_| "Canonical contracts unavailable")?);
+    let store = ProtectedStore::open(config.state_directory.clone())
+        .map_err(|_| "Protected state unavailable")?;
+    let key = Arc::new(
+        DeviceKey::load_or_create(&store).map_err(|_| "Protected device key unavailable")?,
+    );
+    let control = Arc::new(
+        HttpsControl::new(config.clone(), key.clone(), contracts)
+            .map_err(|_| "Device transport invalid")?,
+    );
+    let service = ClientService::open(config, store, key, control)
+        .map_err(|_| "Device service unavailable")?;
+    let tools = Arc::new(Tools {
+        service: tokio::sync::Mutex::new(service),
         token,
-        outcome,
+    });
+    let heartbeat = tools.clone();
+    tokio::spawn(async move {
+        loop {
+            let _ = heartbeat.service.lock().await.tick().await;
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        }
     });
     let router = Router::new()
         .route("/invoke", post(invoke))
         .layer(DefaultBodyLimit::max(65536))
-        .with_state(state);
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:8083").await?;
-    axum::serve(listener, router)
-        .with_graceful_shutdown(async {
-            #[cfg(unix)]
-            {
-                let mut terminate =
-                    tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-                        .expect("Signal handler");
-                tokio::select! { _=terminate.recv()=>{}, _=tokio::signal::ctrl_c()=>{} }
-            }
-            #[cfg(not(unix))]
-            {
-                let _ = tokio::signal::ctrl_c().await;
-            }
-        })
-        .await?;
+        .with_state(tools);
+    axum::serve(
+        tokio::net::TcpListener::bind("127.0.0.1:8083").await?,
+        router,
+    )
+    .with_graceful_shutdown(async {
+        let _ = tokio::signal::ctrl_c().await;
+    })
+    .await?;
     Ok(())
 }

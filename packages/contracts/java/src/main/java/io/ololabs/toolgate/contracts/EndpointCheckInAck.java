@@ -11,7 +11,7 @@ package io.ololabs.toolgate.contracts;
  * @param nextIntervalSeconds canonical nextIntervalSeconds value
  * @param nextIntervalMs canonical nextIntervalMs value
  * @param identity canonical identity value
- * @param configuration canonical configuration value
+ * @param adoption canonical adoption value
  * @param task canonical task value
  */
 @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
@@ -22,7 +22,7 @@ public record EndpointCheckInAck(
     @com.fasterxml.jackson.annotation.JsonProperty(value = "nextIntervalSeconds", required = true) Long nextIntervalSeconds,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "nextIntervalMs", required = false) Long nextIntervalMs,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "identity", required = false) DeviceIdentity identity,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "configuration", required = false) EndpointPermissionConfiguration configuration,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "adoption", required = false) EndpointAdoption adoption,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "task", required = false) RemoteToolTask task
 ) {
     /** Reject absent required references and copy collections to retain value semantics.
@@ -33,7 +33,7 @@ public record EndpointCheckInAck(
      * @param nextIntervalSeconds canonical nextIntervalSeconds value
      * @param nextIntervalMs canonical nextIntervalMs value
      * @param identity canonical identity value
-     * @param configuration canonical configuration value
+     * @param adoption canonical adoption value
      * @param task canonical task value
      */
     public EndpointCheckInAck {

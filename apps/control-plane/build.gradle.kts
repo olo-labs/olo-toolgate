@@ -33,6 +33,23 @@ tasks.test {
     outputs.upToDateWhen { false }
 }
 
+// Security conformance has an independent source set so it can run during migration
+// work without weakening the ordinary regression suite or its compile boundaries.
+val enterpriseTests = sourceSets.create("enterpriseTest") {
+    compileClasspath += sourceSets.main.get().output
+    runtimeClasspath += sourceSets.main.get().output
+}
+configurations[enterpriseTests.implementationConfigurationName].extendsFrom(configurations.testImplementation.get())
+configurations[enterpriseTests.runtimeOnlyConfigurationName].extendsFrom(configurations.testRuntimeOnly.get())
+tasks.register<Test>("enterpriseTest") {
+    description = "Runs enterprise group graph and authorization conformance tests"
+    testClassesDirs = enterpriseTests.output.classesDirs
+    classpath = enterpriseTests.runtimeClasspath
+    useJUnitPlatform()
+    outputs.upToDateWhen { false }
+}
+tasks.check { dependsOn("enterpriseTest") }
+
 val consoleDirectory = rootProject.file("apps/admin-ui/dist")
 val prebuiltConsole = providers.gradleProperty("prebuiltAdminUi").map(String::toBoolean).getOrElse(false)
 val buildAdminUi = tasks.register<Exec>("buildAdminUi") {

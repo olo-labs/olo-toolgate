@@ -34,7 +34,9 @@ class ControlAssetsTests(unittest.TestCase):
             output=Path(folder);version=(ROOT/'VERSION').read_text().strip()
             metadata=json.loads((output/'compatibility.json').read_text())
             self.assertEqual(version,metadata['runtimeComponents']['control'])
-            self.assertEqual(10,metadata['controlDatabase']['flywaySchema'])
+            self.assertEqual(13,metadata['controlDatabase']['flywaySchema'])
+            self.assertEqual(6,metadata['controlDatabase']['sqliteSchema'])
+            self.assertEqual([3],metadata['policyBundle']['supportedFormatVersions'])
             self.assertEqual('ghcr.io/olo-labs/olo-toolgate-control:'+version,metadata['controlImage'])
             with tarfile.open(output/('olo-toolgate-contracts-'+version+'.tar.gz')) as archive:
                 self.assertIn('schemas/v1/control.schema.json',archive.getnames())
@@ -44,7 +46,7 @@ class ControlAssetsTests(unittest.TestCase):
         folder=ROOT/'deploy/helm/olo-toolgate';values=yaml.safe_load((folder/'values.yaml').read_text());schema=json.loads((folder/'values.schema.json').read_text())
         self.assertFalse(values['control']['enabled']);values['control']['enabled']=True
         with self.assertRaises(ValidationError):Draft7Validator(schema).validate(values)
-        values['control']['publicKeySecret']='identity';values['control']['database'].update(credentialsSecret='db',caSecret='db-ca')
+        values['control']['publicKeySecret']='identity';values['control']['database'].update(credentialsSecret='db',caSecret='db-ca');values['control']['effect']['signingSecret']='effect-custody'
         Draft7Validator(schema).validate(values)
         values['control']['database']['sslMode']='disable'
         with self.assertRaises(ValidationError):Draft7Validator(schema).validate(values)

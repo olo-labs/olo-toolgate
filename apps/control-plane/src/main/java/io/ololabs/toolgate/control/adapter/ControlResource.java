@@ -9,43 +9,26 @@ import io.ololabs.toolgate.control.domain.Ids.Kind;
 import io.ololabs.toolgate.control.domain.Ids.TenantId;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.smallrye.common.annotation.Blocking;
-import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Response;
-import org.eclipse.microprofile.jwt.JsonWebToken;
 
 /** Versioned organization management adapter. Directory records never supply authentication roles. */
 @Path("/api/control/v1")
 @Produces("application/json")
 @Blocking
-@RolesAllowed({"toolgate-admin", "toolgate-reader"})
+@io.quarkus.security.Authenticated
 public class ControlResource {
-    private static final String COLLECTION = "{kind:users|teams|agents|tools|policies|devices|roles}";
+    private static final String COLLECTION = "{kind:users|teams|agents|tools|policies|devices|roles|device-groups|agent-groups|tool-groups|grants|delegations|agent-delegations|bindings|extractors|workload-bindings|identity-bindings|device-evidence}";
     @Inject DirectoryService service;
+    @Inject io.ololabs.toolgate.control.application.ConfigurationChanges changes;
     @Inject io.ololabs.toolgate.control.application.BundleService bundles;
-    @Inject JsonWebToken jwt;
     @Inject Correlation correlation;
     @Inject MeterRegistry metrics;
-    private DirectoryService.Actor actor() {
-        Object tenant = jwt.getClaim("tenant_id");
-        var now = java.time.Instant.now().getEpochSecond();
-        if (!(tenant instanceof String value) || jwt.getSubject() == null || jwt.getSubject().isBlank()
-                || jwt.getIssuedAtTime() > now || jwt.getIssuedAtTime() < now - 900
-                || jwt.getExpirationTime() <= now || jwt.getExpirationTime() <= jwt.getIssuedAtTime()
-                || jwt.getExpirationTime() - jwt.getIssuedAtTime() > 900) {
-            throw new Failure(io.ololabs.toolgate.contracts.ErrorCode.UNAUTHORIZED, 401, "Invalid identity claims");
-        }
-        try {
-            var actor = new DirectoryService.Actor(new TenantId(value), DirectoryService.digest(jwt.getIssuer() + "\n" + jwt.getSubject()),
-                jwt.getGroups().contains("toolgate-admin"), jwt.getGroups().contains("toolgate-super-admin"));
-            Object boundUser=jwt.getClaim("user_id");
-            if(boundUser!=null && !(boundUser instanceof String)) throw new Failure(io.ololabs.toolgate.contracts.ErrorCode.UNAUTHORIZED,401,"Invalid identity claims");
-            String userId = boundUser instanceof String id ? id : null;
-            if (actor.admin()) service.requirePortal(actor,userId);
-            return new DirectoryService.Actor(actor.tenant(),actor.id(),actor.admin(),service.portalSuper(actor,userId));
-        } catch (IllegalArgumentException e) { throw new Failure(io.ololabs.toolgate.contracts.ErrorCode.UNAUTHORIZED, 401, "Invalid tenant identity"); }
-    }
+    @Inject VerifiedActors actors;
+    @Inject PostgresStore store;@Inject ContractCodec codec;
+    @GET @Path("access/status") public Response authorityStatus(){var a=actor();return response(store.transaction(a.tenant(),false,tx->{new io.ololabs.toolgate.control.application.ManagementAccess(codec).requireAll(tx.load(),a.userId(),"read",System.currentTimeMillis());long seq=tx.bundleSequence();var bundle=seq==0?null:tx.bundle(seq);var value=new io.ololabs.toolgate.contracts.EnterpriseAuthorityStatus(tx.load().revision(),tx.enterprise().authorizationEpoch(),seq,bundle==null?null:bundle.directoryRevision(),tx.enterprise().adoptions());return new Store.Reply(200,codec.json(value),tx.load().revision());}),"READ","authority-status");}
+    private DirectoryService.Actor actor() { return actors.management(); }
     private Response response(Store.Reply reply, String operation, String kind) {
         metrics.counter("toolgate_control_operations_total", "operation", operation, "kind", kind).increment();
         var response = Response.status(reply.status()).header("ETag", "\"" + reply.revision() + "\"");
@@ -56,26 +39,26 @@ public class ControlResource {
         try { var result = Long.parseLong(value.substring(1, value.length() - 1)); if (result > 9007199254740991L) throw Failure.validation(); return result; }
         catch (NumberFormatException e) { throw Failure.validation(); }
     }
-    @GET @Path("admin-session") @RolesAllowed("toolgate-admin")
+    @GET @Path("admin-session") @io.quarkus.security.Authenticated
     public String adminSession() {
         var identity=actor();
         return codec.json(java.util.Map.of("role",identity.superAdmin()?"SUPER_ADMIN":"ADMINISTRATOR"));
     }
-    @GET @Path("bundles/current") @RolesAllowed({"toolgate-admin", "toolgate-reader", "toolgate-bundle-reader"})
+    @GET @Path("bundles/current") @io.quarkus.security.Authenticated
     public Response currentBundle() {
-        return Response.fromResponse(response(bundles.current(actor()), "READ", "bundle")).header("Cache-Control", "no-store").build();
+        return Response.fromResponse(response(bundles.current(actors.bundleReader()), "READ", "bundle")).header("Cache-Control", "no-store").build();
     }
     @GET @Path("bundles/versions/{sequence}")
     public Response bundle(@PathParam("sequence") long sequence) {
         if (sequence < 1) throw Failure.validation();
-        return Response.fromResponse(response(bundles.get(actor(), sequence), "READ", "bundle")).header("Cache-Control", "no-store").build();
+        return Response.fromResponse(response(bundles.get(actors.bundleReader(), sequence), "READ", "bundle")).header("Cache-Control", "no-store").build();
     }
-    @POST @Path("bundles/publish") @Consumes("application/json") @RolesAllowed("toolgate-admin")
+    @POST @Path("bundles/publish") @Consumes("application/json") @io.quarkus.security.Authenticated
     public Response publishBundle(@HeaderParam("Idempotency-Key") String key, String document) {
         if (codec.model(document, io.ololabs.toolgate.contracts.BundlePublishRequest.class).rollbackOf() != null) throw Failure.validation();
         return response(bundles.publish(actor(), document, key, correlation.id()), "PUBLISH", "bundle");
     }
-    @POST @Path("bundles/rollback") @Consumes("application/json") @RolesAllowed("toolgate-admin")
+    @POST @Path("bundles/rollback") @Consumes("application/json") @io.quarkus.security.Authenticated
     public Response rollbackBundle(@HeaderParam("Idempotency-Key") String key, String document) {
         if (codec.model(document, io.ololabs.toolgate.contracts.BundlePublishRequest.class).rollbackOf() == null) throw Failure.validation();
         return response(bundles.publish(actor(), document, key, correlation.id()), "ROLLBACK", "bundle");
@@ -88,24 +71,33 @@ public class ControlResource {
     public Response get(@PathParam("kind") String kind, @PathParam("id") String id) {
         return response(service.get(actor(), Kind.path(kind), id), "READ", kind);
     }
-    @POST @Path(COLLECTION) @Consumes("application/json") @RolesAllowed("toolgate-admin")
+    @POST @Path(COLLECTION) @Consumes("application/json") @io.quarkus.security.Authenticated
     public Response create(@PathParam("kind") String kind, @HeaderParam("Idempotency-Key") String key, String document) {
         // Canonical validation happens before extracting the identity used in the application use case.
         var entry = codec.entry(Kind.path(kind), document);
-        return response(service.mutate(actor(), Kind.path(kind), entry.id().value(), "CREATE", document, 0, key, correlation.id()), "CREATE", kind);
+        return response(changes.create(actor(),command(Kind.path(kind),entry.id().value(),"CREATE",document,0),key,correlation.id()), "CREATE", kind);
     }
-    @Inject ContractCodec codec;
+    @GET @Path("{entity:users|agents|tools|devices}/{id}/groups")
+    public Response memberships(@PathParam("entity") String entity,@PathParam("id") String id) { return response(service.memberships(actor(),Kind.path(entity),id),"READ","memberships"); }
+    @GET @Path("{entity:users|agents|tools|devices}/{id}/effective-access")
+    public Response effectiveAccess(@PathParam("entity")String entity,@PathParam("id")String id){return response(new io.ololabs.toolgate.control.application.EffectiveAccess(store,codec).get(actor(),Kind.path(entity),id),"READ","effective-access");}
+    @PUT @Path("{entity:users|agents|tools|devices}/{id}/groups") @Consumes("application/json") @io.quarkus.security.Authenticated
+    public Response memberships(@PathParam("entity") String entity,@PathParam("id") String id,@HeaderParam("If-Match") String etag,@HeaderParam("Idempotency-Key") String key,String document) {
+        return response(changes.create(actor(),command(Kind.path(entity),id,"MEMBERSHIPS",document,expected(etag)),key,correlation.id()),"UPDATE","memberships");
+    }
+    @POST @Path("access/simulate") @Consumes("application/json")
+    public Response simulate(String document) { return response(service.simulate(actor(),document),"SIMULATE","access"); }
     @GET @Path("openapi")
     public String openapi() { actor(); return codec.openapi(); }
-    @PUT @Path(COLLECTION + "/{id:.+}") @Consumes("application/json") @RolesAllowed("toolgate-admin")
+    @PUT @Path(COLLECTION + "/{id:.+}") @Consumes("application/json") @io.quarkus.security.Authenticated
     public Response update(@PathParam("kind") String kind, @PathParam("id") String id, @HeaderParam("If-Match") String etag,
                            @HeaderParam("Idempotency-Key") String key, String document) {
-        return response(service.mutate(actor(), Kind.path(kind), id, "UPDATE", document, expected(etag), key, correlation.id()), "UPDATE", kind);
+        return response(changes.create(actor(),command(Kind.path(kind),id,"UPDATE",document,expected(etag)),key,correlation.id()), "UPDATE", kind);
     }
-    @DELETE @Path(COLLECTION + "/{id:.+}") @RolesAllowed("toolgate-admin")
+    @DELETE @Path(COLLECTION + "/{id:.+}") @io.quarkus.security.Authenticated
     public Response delete(@PathParam("kind") String kind, @PathParam("id") String id, @HeaderParam("If-Match") String etag,
                            @HeaderParam("Idempotency-Key") String key) {
-        return response(service.mutate(actor(), Kind.path(kind), id, "DELETE", null, expected(etag), key, correlation.id()), "DELETE", kind);
+        return response(changes.create(actor(),command(Kind.path(kind),id,"DELETE","",expected(etag)),key,correlation.id()), "DELETE", kind);
     }
     @GET @Path("config/export") @Produces({"application/json", "application/yaml"})
     public Response export(@HeaderParam("Accept") @DefaultValue("application/json") String accept) {
@@ -113,12 +105,17 @@ public class ControlResource {
         var yaml = accept.equals("application/yaml");
         return Response.fromResponse(response(service.export(actor(), yaml), "EXPORT", "config")).type(yaml ? "application/yaml" : "application/json").build();
     }
-    @POST @Path("config/import") @Consumes({"application/json", "application/yaml"}) @RolesAllowed("toolgate-admin")
+    @POST @Path("config/import") @Consumes({"application/json", "application/yaml"}) @io.quarkus.security.Authenticated
     public Response importConfig(@HeaderParam("Content-Type") String type, @HeaderParam("If-Match") String etag,
                                  @HeaderParam("Idempotency-Key") String key, String document) {
-        return response(service.importConfig(actor(), document, type != null && type.split(";", 2)[0].trim().equals("application/yaml"), expected(etag), key, correlation.id()), "IMPORT", "config");
+        var identity=actor();boolean yaml=type!=null&&type.split(";",2)[0].trim().equals("application/yaml");var input=codec.input(document,yaml,identity.tenant());if(input.dryRun())return response(service.importConfig(identity,document,yaml,expected(etag),key,correlation.id()),"PREVIEW","config");
+        var json=codec.json(java.util.Map.of("snapshot",codec.value(codec.snapshot(identity.tenant(),input.directory(),false)),"mode",input.replace()?"REPLACE":"MERGE","dryRun",false));return response(changes.create(identity,command(Kind.USER,"configuration-import","IMPORT",json,expected(etag)),key,correlation.id()),"PROPOSE","config");
     }
-    @GET @Path("audit") @RolesAllowed("toolgate-admin")
+    private io.ololabs.toolgate.contracts.EnterpriseConfigurationCommand command(Kind kind,String id,String op,String document,long revision){return new io.ololabs.toolgate.contracts.EnterpriseConfigurationCommand(io.ololabs.toolgate.contracts.EnterpriseConfigurationOperation.valueOf(op),io.ololabs.toolgate.contracts.ControlEntityKind.valueOf(kind.name()),id,document,revision);}
+    @GET @Path("configuration-changes") public Response configurationChanges(@QueryParam("after")String after){return response(changes.page(actor(),after),"READ","configuration-change");}
+    @GET @Path("configuration-changes/{id}") public Response configurationChange(@PathParam("id")String id){return response(changes.get(actor(),id),"READ","configuration-change");}
+    @POST @Path("configuration-changes/{id}/transition") @Consumes("application/json") public Response configurationTransition(@PathParam("id")String id,@HeaderParam("Idempotency-Key")String key,String document){return response(changes.transition(actor(),id,document,key,correlation.id()),"REVIEW","configuration-change");}
+    @GET @Path("audit") @io.quarkus.security.Authenticated
     public Response audit(@QueryParam("cursor") @DefaultValue("0") long cursor, @QueryParam("limit") @DefaultValue("50") int limit) {
         return response(service.audit(actor(), cursor, limit), "READ", "audit");
     }

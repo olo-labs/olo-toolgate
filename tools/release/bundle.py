@@ -50,11 +50,15 @@ def main():
         metadata = {'productVersion':product, 'contractsVersion':version, 'wireSchemaMajor':1, 'java':21, 'rust':'1.94.1', 'typescript':'5.9.3', 'php':'>=8.2', 'helmChartVersion':product,
                     'runtimeComponents':{'gateway':product,'control':product,'adminUi':product,'endpointClient':product,'otherServices':'not yet implemented'},
                     'adminUi':{'path':'/console/','packaging':'embedded in Control; same-origin API; external signed-token session','api':'Control v1'},
-                    'policyBundle':{'formatVersion':1,'supportedFormatVersions':[1,2],'askFormatVersion':2,'jwsAlgorithm':'RS256','signedHeaderType':'toolgate-policy-bundle+jws','sequence':'monotonic per tenant; rollback is a new version'}, 'approval':{'states':'durable PostgreSQL; once/temporary/deny/expiry','permit':'RS256 dedicated Gateway key; ten-second maximum; atomic jti consume','newInfrastructure':False}, 'gatewayApi':'v1 decisions; v2 approvals; v1 permit consume', 'controlApi':'/api/control/v1; organization records and safe config import/export', 'controlDatabase':{'postgresql':'17.11','flywaySchema':10},
+                    'policyBundle':{'formatVersion':3,'supportedFormatVersions':[3],'purpose':'metadata and administration; never an effect grant','jwsAlgorithm':'RS256','signedHeaderType':'toolgate-policy-bundle+jws','sequence':'monotonic per tenant'},
+                    'approval':{'types':['OPERATION','CONFIGURATION'],'states':'durable per-invocation obligations; no temporary reusable grant','permit':'RS256 dedicated Control key; ten-second maximum; certificate-bound atomic nonce consume'},
+                    'enterpriseAccessRevision':2,'gatewayApi':'/access/invocations; /mcp; retired decision and Gateway-consume routes return 404',
+                    'controlApi':'/api/control/v1; group-only grants, scoped management and current effect authority',
+                    'controlDatabase':{'postgresql':'17.11','flywaySchema':13,'sqliteSchema':6},
                     'endpoint':{'protocolVersion':1,'enrollment':'HTTPS browser code plus verified P-256 CSR','identity':'dedicated RSA device CA; actual mTLS peer; active registry','platforms':['windows-x64','windows-arm64','linux-x64','linux-arm64','macos-x64','macos-arm64'],'execution':True},
-                    'mcp':{'version':'2026-07-28','capabilities':'stateless ingress; optional enrolled-client discovery and queued execution; no legacy sessions; approvals via runtime v2'},
+                    'mcp':{'version':'2026-07-28','capabilities':'stateless ingress; current group-authorized discovery and device-bound execution; per-invocation approvals'},
                     'gatewayImage':f'ghcr.io/olo-labs/olo-toolgate-gateway:{product}', 'controlImage':f'ghcr.io/olo-labs/olo-toolgate-control:{product}',
-                    'compatibilityWindow':'initial v1 Gateway/Control; no prior stable runtime release', 'maven':f'io.ololabs.toolgate:toolgate-contracts:{version}', 'helmOci':f'oci://ghcr.io/olo-labs/charts/olo-toolgate:{product}'}
+                    'compatibilityWindow':'enterprise access revision 2 is a breaking runtime/configuration boundary; preserved archival evidence grants no access', 'maven':f'io.ololabs.toolgate:toolgate-contracts:{version}', 'helmOci':f'oci://ghcr.io/olo-labs/charts/olo-toolgate:{product}'}
         (args.output/'compatibility.json').write_text(json.dumps(metadata, indent=2)+'\n', encoding='utf-8', newline='\n')
     checksum_assets(args.output)
     print(f'Release assets prepared: {args.output}')

@@ -357,6 +357,8 @@ pub struct BuiltinToolInfo {
     pub description: String,
     pub enabled: bool,
     pub input_schema: std::collections::BTreeMap<String, serde_json::Value>,
+    pub tool_digest: String,
+    pub package_digest: String,
 }
 /// Canonical BundleEffect wire values.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -585,6 +587,27 @@ pub struct ContractSet {
     pub name: String,
     pub version: String,
 }
+/// Group/typed-role sourced complete runtime capability; never an individual ACL.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlAccessGrant {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub revision: u64,
+    pub source_type: EnterpriseSourceType,
+    pub source_id: String,
+    pub purpose: EnterpriseGrantPurpose,
+    pub scope: EnterpriseScope,
+}
+/// Bounded canonical directory cursor page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlAccessGrantPage {
+    pub items: Vec<ControlAccessGrant>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
 /// Tenant-scoped agents configuration record. Not a runtime credential or policy grant.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -594,6 +617,46 @@ pub struct ControlAgent {
     pub enabled: bool,
     pub revision: u64,
     pub owner_user_id: String,
+}
+/// Bounded downstream Agent Group delegation; every hop narrows capability.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlAgentDelegation {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub revision: u64,
+    pub from_agent_group_id: String,
+    pub to_agent_group_id: String,
+    pub scope: EnterpriseScope,
+    pub maximum_depth: u64,
+}
+/// Bounded canonical directory cursor page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlAgentDelegationPage {
+    pub items: Vec<ControlAgentDelegation>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
+/// Tenant-scoped Agent membership and compatible actor/management role assignments.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlAgentGroup {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub revision: u64,
+    pub agent_ids: Vec<String>,
+    pub role_ids: Vec<String>,
+}
+/// Bounded canonical directory cursor page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlAgentGroupPage {
+    pub items: Vec<ControlAgentGroup>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
 }
 /// Cursor page; nextCursor is absent after the last item.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -643,6 +706,26 @@ pub enum ControlChangeKind {
     #[serde(rename = "DELETE")]
     Delete,
 }
+/// Delegated human operation requires grant and delegation through this same Team and capability through this same Agent Group.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlDelegation {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub revision: u64,
+    pub team_id: String,
+    pub agent_group_id: String,
+    pub scope: EnterpriseScope,
+}
+/// Bounded canonical directory cursor page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlDelegationPage {
+    pub items: Vec<ControlDelegation>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
 /// Tenant-scoped devices configuration record. Not a runtime credential or policy grant.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -652,6 +735,47 @@ pub struct ControlDevice {
     pub enabled: bool,
     pub revision: u64,
     pub owner_user_id: String,
+}
+/// Administrator/attestation sourced facts; callers cannot supply authoritative evidence.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlDeviceEvidence {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub revision: u64,
+    pub device_id: String,
+    pub posture: Vec<String>,
+    pub region: String,
+    pub verified_network_address: String,
+    pub verified_at_unix_ms: u64,
+    pub expires_at_unix_ms: u64,
+}
+/// Bounded canonical directory cursor page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlDeviceEvidencePage {
+    pub items: Vec<ControlDeviceEvidence>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
+/// Named device group. Membership alone grants no tool execution.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlDeviceGroup {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub revision: u64,
+    pub device_ids: Vec<String>,
+}
+/// Cursor page; nextCursor is absent after the last item.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlDeviceGroupPage {
+    pub items: Vec<ControlDeviceGroup>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
 }
 /// Cursor page; nextCursor is absent after the last item.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -678,6 +802,77 @@ pub enum ControlEntityKind {
     Device,
     #[serde(rename = "ROLE")]
     Role,
+    #[serde(rename = "DEVICE_GROUP")]
+    DeviceGroup,
+    #[serde(rename = "AGENT_GROUP")]
+    AgentGroup,
+    #[serde(rename = "TOOL_GROUP")]
+    ToolGroup,
+    #[serde(rename = "GRANT")]
+    Grant,
+    #[serde(rename = "DELEGATION")]
+    Delegation,
+    #[serde(rename = "AGENT_DELEGATION")]
+    AgentDelegation,
+    #[serde(rename = "BINDING")]
+    Binding,
+    #[serde(rename = "EXTRACTOR")]
+    Extractor,
+    #[serde(rename = "WORKLOAD_BINDING")]
+    WorkloadBinding,
+    #[serde(rename = "IDENTITY_BINDING")]
+    IdentityBinding,
+    #[serde(rename = "DEVICE_EVIDENCE")]
+    DeviceEvidence,
+}
+/// Explicit Tool Group to Device Group binding; one binding is selected per invocation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlExecutionBinding {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub revision: u64,
+    pub tool_group_id: String,
+    pub device_group_id: String,
+    pub actions: Vec<String>,
+    pub allowed_package_digests: Vec<String>,
+    pub require_online: bool,
+    pub owner_dependency: bool,
+}
+/// Bounded canonical directory cursor page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlExecutionBindingPage {
+    pub items: Vec<ControlExecutionBinding>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
+/// Stable verified tenant/issuer/subject identity; email never determines identity.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlIdentityBinding {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub revision: u64,
+    pub user_id: String,
+    pub issuer: String,
+    pub subject: String,
+    pub session_epoch: u64,
+    pub first_seen_unix_ms: u64,
+    pub last_attempt_unix_ms: u64,
+    pub attempt_count: u64,
+    pub registration_reason: String,
+    pub sessions_valid_after_unix_ms: u64,
+}
+/// Bounded canonical directory cursor page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlIdentityBindingPage {
+    pub items: Vec<ControlIdentityBinding>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
 }
 /// Canonical ControlImportMode wire values.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -703,7 +898,7 @@ pub struct ControlImportResult {
     pub revision: u64,
     pub changes: Vec<ControlChange>,
 }
-/// Tenant-scoped policies configuration record. Not a runtime credential or policy grant.
+/// Group-scoped guardrails. ALLOW does not create a grant; BLOCK overrides and ASK accumulates.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ControlPolicy {
@@ -711,14 +906,11 @@ pub struct ControlPolicy {
     pub name: String,
     pub enabled: bool,
     pub revision: u64,
-    pub tool_id: String,
-    pub action: String,
-    pub resource: ResourceDescriptor,
     pub decision: Decision,
-    pub user_ids: Vec<String>,
-    pub team_ids: Vec<String>,
-    pub agent_ids: Vec<String>,
-    pub device_ids: Vec<String>,
+    pub scope: EnterpriseScope,
+    pub teams: GroupSelection,
+    pub agent_groups: GroupSelection,
+    pub approver_teams: GroupSelection,
 }
 /// Cursor page; nextCursor is absent after the last item.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -728,7 +920,33 @@ pub struct ControlPolicyPage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_cursor: Option<String>,
 }
-/// Named tenant role with fixed templates and bounded permission rules.
+/// Reviewed immutable versioned extraction definition; changing it invalidates operation bindings.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlResourceExtractor {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub revision: u64,
+    pub extractor_kind: EnterpriseExtractorKind,
+    pub version: String,
+    pub fields: Vec<ExtractorField>,
+    pub fixed_resources: Vec<ResourceDescriptor>,
+    pub max_resources: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub amount_pointer: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub operation_pointer: Option<String>,
+}
+/// Bounded canonical directory cursor page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlResourceExtractorPage {
+    pub items: Vec<ControlResourceExtractor>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
+/// Typed role assigned only to compatible groups. Management rules cannot confer runtime access.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ControlRole {
@@ -737,7 +955,8 @@ pub struct ControlRole {
     pub enabled: bool,
     pub revision: u64,
     pub portal_role: UserRole,
-    pub rules: RoleRules,
+    pub role_type: EnterpriseRoleType,
+    pub management_rules: Vec<EnterpriseManagementRule>,
 }
 /// Cursor page; nextCursor is absent after the last item.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -747,7 +966,7 @@ pub struct ControlRolePage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_cursor: Option<String>,
 }
-/// Versioned configuration data. Contains no credentials or executable code.
+/// Enterprise group graph. Individual ACLs and retired snapshot formats are rejected.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ControlSnapshot {
@@ -760,8 +979,18 @@ pub struct ControlSnapshot {
     pub tools: Vec<ControlTool>,
     pub policies: Vec<ControlPolicy>,
     pub devices: Vec<ControlDevice>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub roles: Option<Vec<ControlRole>>,
+    pub roles: Vec<ControlRole>,
+    pub device_groups: Vec<ControlDeviceGroup>,
+    pub agent_groups: Vec<ControlAgentGroup>,
+    pub tool_groups: Vec<ControlToolGroup>,
+    pub grants: Vec<ControlAccessGrant>,
+    pub delegations: Vec<ControlDelegation>,
+    pub agent_delegations: Vec<ControlAgentDelegation>,
+    pub bindings: Vec<ControlExecutionBinding>,
+    pub extractors: Vec<ControlResourceExtractor>,
+    pub workload_bindings: Vec<ControlWorkloadBinding>,
+    pub identity_bindings: Vec<ControlIdentityBinding>,
+    pub device_evidence: Vec<ControlDeviceEvidence>,
 }
 /// Tenant-scoped teams configuration record. Not a runtime credential or policy grant.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -772,10 +1001,7 @@ pub struct ControlTeam {
     pub enabled: bool,
     pub revision: u64,
     pub user_ids: Vec<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub device_ids: Option<Vec<String>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub role_ids: Option<Vec<String>>,
+    pub role_ids: Vec<String>,
 }
 /// Cursor page; nextCursor is absent after the last item.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -794,6 +1020,27 @@ pub struct ControlTool {
     pub enabled: bool,
     pub revision: u64,
     pub definition: ToolDefinition,
+    pub extractor_id: String,
+    pub version: String,
+    pub package_digest: String,
+}
+/// Exactly one primary membership for each Tool; execution bindings are group-level.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlToolGroup {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub revision: u64,
+    pub tool_ids: Vec<String>,
+}
+/// Bounded canonical directory cursor page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlToolGroupPage {
+    pub items: Vec<ControlToolGroup>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
 }
 /// Cursor page; nextCursor is absent after the last item.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -811,14 +1058,43 @@ pub struct ControlUser {
     pub name: String,
     pub enabled: bool,
     pub revision: u64,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub access: Option<UserAccess>,
 }
 /// Cursor page; nextCursor is absent after the last item.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ControlUserPage {
     pub items: Vec<ControlUser>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
+/// Individual identity binding is authentication only; permissions derive from Agent Groups.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlWorkloadBinding {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub revision: u64,
+    pub agent_id: String,
+    pub mode: EnterpriseRequestMode,
+    pub issuer: String,
+    pub subject: String,
+    pub audience: String,
+    pub credential_sha256: String,
+    pub credential_epoch: u64,
+    pub expires_at_unix_ms: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delegated_user_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_binding_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delegated_session_epoch: Option<u64>,
+}
+/// Bounded canonical directory cursor page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ControlWorkloadBindingPage {
+    pub items: Vec<ControlWorkloadBinding>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_cursor: Option<String>,
 }
@@ -877,6 +1153,16 @@ pub struct DeviceIdentity {
     pub issuer_certificate_pem: String,
     pub expires_at_unix_ms: u64,
 }
+/// Authenticated device adoption metadata. No owner or per-agent permission cache; discovery and effects require current online authority.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EndpointAdoption {
+    pub server_id: String,
+    pub device_id: String,
+    pub revision: u64,
+    pub authorization_epoch: u64,
+    pub digest: String,
+}
 /// Reversible approval decision for an already enrolled key, preserving its owner and directory status.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -895,7 +1181,7 @@ pub struct EndpointCheckIn {
     pub sequence: u64,
     pub report: ClientReport,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub configuration_digest: Option<String>,
+    pub adoption_digest: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub local_tools: Option<Vec<BuiltinToolInfo>>,
 }
@@ -912,7 +1198,7 @@ pub struct EndpointCheckInAck {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub identity: Option<DeviceIdentity>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub configuration: Option<EndpointPermissionConfiguration>,
+    pub adoption: Option<EndpointAdoption>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub task: Option<RemoteToolTask>,
 }
@@ -1058,27 +1344,6 @@ pub struct EndpointManagedDevice {
 pub struct EndpointManagedDevicePage {
     pub items: Vec<EndpointManagedDevice>,
 }
-/// Server-cached complete replacement of device permissions, acknowledged by digest on the next authenticated poll.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct EndpointPermissionConfiguration {
-    pub server_id: String,
-    pub device_id: String,
-    pub user_id: String,
-    pub revision: u64,
-    pub digest: String,
-    pub permissions: Vec<EndpointPermissionRule>,
-}
-/// Device-owner permission scope used only for local discovery; protected calls still require online authorization.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct EndpointPermissionRule {
-    pub tool_id: String,
-    pub action: String,
-    pub agent_ids: Vec<String>,
-    pub resource: ResourceDescriptor,
-    pub decision: Decision,
-}
 /// Endpoint identity foundation wire model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -1120,6 +1385,740 @@ pub enum EnrollmentState {
     Expired,
     #[serde(rename = "CONSUMED")]
     Consumed,
+}
+/// Verified identity/delegation chain entry; not caller-asserted authority.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseActorHop {
+    pub agent_id: String,
+    pub workload_binding_id: String,
+}
+/// Certificate-authenticated current device acknowledgement. Acknowledgement is metadata, never an execution capability.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseAdoptionStatus {
+    pub device_id: String,
+    pub directory_revision: u64,
+    pub authorization_epoch: u64,
+    pub graph_digest: String,
+    pub observed_at_unix_ms: u64,
+}
+/// Separate exact-operation and configuration approval records. Reviewers cannot expand the approved binding.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseApproval {
+    pub id: String,
+    pub approval_type: EnterpriseApprovalType,
+    pub invocation_id: String,
+    pub request_digest: String,
+    pub authorization_epoch: u64,
+    pub directory_revision: u64,
+    pub obligation_ids: Vec<String>,
+    pub reviews: Vec<EnterpriseApprovalReview>,
+    pub state: EnterpriseApprovalState,
+    pub revision: u64,
+    pub expires_at_unix_ms: u64,
+}
+/// Independent decision for one exact operation obligation and approval revision.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseApprovalDecisionRequest {
+    pub expected_revision: u64,
+    pub obligation_id: String,
+    pub decision: EnterpriseReviewDecision,
+}
+/// Current scoped operation approval queue.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseApprovalPage {
+    pub items: Vec<EnterpriseApproval>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
+/// Audited independent review of one bound obligation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseApprovalReview {
+    pub obligation_id: String,
+    pub reviewer_user_id: String,
+    pub decision: EnterpriseReviewDecision,
+    pub decided_at_unix_ms: u64,
+}
+/// Canonical EnterpriseApprovalState wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnterpriseApprovalState {
+    #[serde(rename = "PENDING")]
+    Pending,
+    #[serde(rename = "APPROVED")]
+    Approved,
+    #[serde(rename = "DENIED")]
+    Denied,
+    #[serde(rename = "CANCELLED")]
+    Cancelled,
+    #[serde(rename = "EXPIRED")]
+    Expired,
+    #[serde(rename = "REVOKED")]
+    Revoked,
+}
+/// Canonical EnterpriseApprovalType wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnterpriseApprovalType {
+    #[serde(rename = "OPERATION")]
+    Operation,
+    #[serde(rename = "CONFIGURATION")]
+    Configuration,
+}
+/// Saved authority, explicitly published signed snapshot and independently acknowledged device adoption are distinct states.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseAuthorityStatus {
+    pub directory_revision: u64,
+    pub authorization_epoch: u64,
+    pub snapshot_sequence: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub published_revision: Option<u64>,
+    pub adoptions: Vec<EnterpriseAdoptionStatus>,
+}
+/// Online authoritative invocation status. Only a reserved signed permit can proceed to device-authenticated consumption.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseAuthorizationOutcome {
+    pub invocation: EnterpriseInvocation,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reservation: Option<EnterpriseReservation>,
+}
+/// All present conditions accumulate. Missing trusted evidence denies.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseConditions {
+    pub not_before_unix_ms: u64,
+    pub expires_at_unix_ms: u64,
+    pub network_cidrs: Vec<String>,
+    pub device_posture: Vec<String>,
+    pub regions: Vec<String>,
+    pub hours_utc: Vec<EnterpriseHours>,
+    pub require_online: bool,
+    pub high_risk: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_amount_minor_units: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_invocations_per_minute: Option<u64>,
+}
+/// Canonical EnterpriseConfigurationAction wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnterpriseConfigurationAction {
+    #[serde(rename = "SUBMIT")]
+    Submit,
+    #[serde(rename = "APPROVE")]
+    Approve,
+    #[serde(rename = "DENY")]
+    Deny,
+    #[serde(rename = "REVOKE")]
+    Revoke,
+    #[serde(rename = "CANCEL")]
+    Cancel,
+    #[serde(rename = "APPLY")]
+    Apply,
+}
+/// Reviewed configuration workflow bound to the exact group graph revision.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseConfigurationChange {
+    pub id: String,
+    pub requester_user_id: String,
+    pub command: EnterpriseConfigurationCommand,
+    pub request_digest: String,
+    pub directory_revision: u64,
+    pub authorization_epoch: u64,
+    pub state: EnterpriseConfigurationState,
+    pub revision: u64,
+    pub created_at_unix_ms: u64,
+    pub expires_at_unix_ms: u64,
+    pub required_reviews: u64,
+    pub impact: Vec<EnterpriseConfigurationImpact>,
+    pub affected_groups: Vec<String>,
+    pub affected_individuals: Vec<String>,
+    pub reviews: Vec<EnterpriseConfigurationReview>,
+}
+/// Reviewed configuration workflow bound to the exact group graph revision.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseConfigurationCommand {
+    pub operation: EnterpriseConfigurationOperation,
+    pub kind: ControlEntityKind,
+    pub entity_id: String,
+    pub document: String,
+    pub expected_revision: u64,
+}
+/// Reviewed configuration workflow bound to the exact group graph revision.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseConfigurationImpact {
+    pub kind: ControlEntityKind,
+    pub entity_id: String,
+    pub operation: EnterpriseConfigurationImpactOperation,
+    pub before_digest: String,
+    pub after_digest: String,
+}
+/// Canonical EnterpriseConfigurationImpactOperation wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnterpriseConfigurationImpactOperation {
+    #[serde(rename = "CREATE")]
+    Create,
+    #[serde(rename = "UPDATE")]
+    Update,
+    #[serde(rename = "DELETE")]
+    Delete,
+}
+/// Canonical EnterpriseConfigurationOperation wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnterpriseConfigurationOperation {
+    #[serde(rename = "CREATE")]
+    Create,
+    #[serde(rename = "UPDATE")]
+    Update,
+    #[serde(rename = "DELETE")]
+    Delete,
+    #[serde(rename = "MEMBERSHIPS")]
+    Memberships,
+    #[serde(rename = "IMPORT")]
+    Import,
+}
+/// Reviewed configuration workflow bound to the exact group graph revision.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseConfigurationPage {
+    pub items: Vec<EnterpriseConfigurationChange>,
+}
+/// Reviewed configuration workflow bound to the exact group graph revision.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseConfigurationReview {
+    pub reviewer_user_id: String,
+    pub decision: EnterpriseReviewDecision,
+    pub reviewed_at_unix_ms: u64,
+}
+/// Canonical EnterpriseConfigurationState wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnterpriseConfigurationState {
+    #[serde(rename = "DRAFT")]
+    Draft,
+    #[serde(rename = "PENDING")]
+    Pending,
+    #[serde(rename = "APPROVED")]
+    Approved,
+    #[serde(rename = "DENIED")]
+    Denied,
+    #[serde(rename = "CANCELLED")]
+    Cancelled,
+    #[serde(rename = "EXPIRED")]
+    Expired,
+    #[serde(rename = "REVOKED")]
+    Revoked,
+    #[serde(rename = "APPLIED")]
+    Applied,
+    #[serde(rename = "STALE")]
+    Stale,
+}
+/// Reviewed configuration workflow bound to the exact group graph revision.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseConfigurationTransition {
+    pub expected_revision: u64,
+    pub action: EnterpriseConfigurationAction,
+}
+/// Trusted complete runtime identity. Authentication adapters construct it; ordinary arguments cannot change it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseContext {
+    pub request_id: String,
+    pub tenant_id: String,
+    pub mode: EnterpriseRequestMode,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workload_binding_id: Option<String>,
+    pub chain: Vec<EnterpriseActorHop>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_epoch: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_epoch: Option<u64>,
+    pub binding_id: String,
+    pub device_id: String,
+}
+/// Deterministic decision, safe reasons, complete witnesses and accumulated obligations.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseDecision {
+    pub decision: Decision,
+    pub reason: EnterpriseDecisionReason,
+    pub witnesses: Vec<EnterpriseWitness>,
+    pub obligations: Vec<String>,
+    pub revision: u64,
+    pub authorization_epoch: u64,
+    pub valid_until_unix_ms: u64,
+    pub diagnostic_id: String,
+}
+/// Canonical EnterpriseDecisionReason wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnterpriseDecisionReason {
+    #[serde(rename = "MATCHED")]
+    Matched,
+    #[serde(rename = "NO_GRANT")]
+    NoGrant,
+    #[serde(rename = "IDENTITY_DISABLED")]
+    IdentityDisabled,
+    #[serde(rename = "INVALID_CONTEXT")]
+    InvalidContext,
+    #[serde(rename = "GROUP_UNAVAILABLE")]
+    GroupUnavailable,
+    #[serde(rename = "NO_BINDING")]
+    NoBinding,
+    #[serde(rename = "DEVICE_UNTRUSTED")]
+    DeviceUntrusted,
+    #[serde(rename = "RESOURCE_REJECTED")]
+    ResourceRejected,
+    #[serde(rename = "BLOCKED")]
+    Blocked,
+    #[serde(rename = "APPROVAL_REQUIRED")]
+    ApprovalRequired,
+    #[serde(rename = "EVIDENCE_MISSING")]
+    EvidenceMissing,
+    #[serde(rename = "EXPIRED")]
+    Expired,
+    #[serde(rename = "STALE_AUTHORITY")]
+    StaleAuthority,
+    #[serde(rename = "QUOTA_EXCEEDED")]
+    QuotaExceeded,
+    #[serde(rename = "VERSION_MISMATCH")]
+    VersionMismatch,
+    #[serde(rename = "MANAGEMENT_DENIED")]
+    ManagementDenied,
+}
+/// Device-bound durable effect outcome and completed resource subset.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseEffectReport {
+    pub invocation_id: String,
+    pub expected_revision: u64,
+    pub state: EnterpriseInvocationState,
+    pub completed_resources: Vec<ResourceDescriptor>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_digest: Option<String>,
+}
+/// Read-only inherited access provenance at the current authority revision. No direct individual access mapping is created. Bindings and candidate grants do not constitute execution authorization.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseEffectiveAccess {
+    pub entity_id: String,
+    pub kind: ControlEntityKind,
+    pub directory_revision: u64,
+    pub authorization_epoch: u64,
+    pub memberships: Vec<EnterpriseEffectiveMembership>,
+    pub bindings: Vec<ControlExecutionBinding>,
+    pub management_roles: Vec<ControlRole>,
+}
+/// Current group membership provenance with intact grants; candidate grants still require the complete request evaluation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseEffectiveMembership {
+    pub group_type: EnterpriseGroupType,
+    pub group_id: String,
+    pub enabled: bool,
+    pub role_ids: Vec<String>,
+    pub grants: Vec<ControlAccessGrant>,
+}
+/// Side-effect-free complete request for simulation or trusted enforcement.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseEvaluation {
+    pub context: EnterpriseContext,
+    pub tool_id: String,
+    pub action: String,
+    pub arguments_digest: String,
+    pub resources: Vec<ResourceDescriptor>,
+    pub tool_digest: String,
+    pub package_digest: String,
+    pub now_unix_ms: u64,
+    pub authority_revision: u64,
+    pub online: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub amount_minor_units: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub operation: Option<String>,
+}
+/// Canonical EnterpriseExtractorKind wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnterpriseExtractorKind {
+    #[serde(rename = "FIXED")]
+    Fixed,
+    #[serde(rename = "FIELDS")]
+    Fields,
+    #[serde(rename = "FILESYSTEM")]
+    Filesystem,
+    #[serde(rename = "NETWORK")]
+    Network,
+    #[serde(rename = "SQL")]
+    Sql,
+    #[serde(rename = "SHELL")]
+    Shell,
+}
+/// Canonical EnterpriseGrantPurpose wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnterpriseGrantPurpose {
+    #[serde(rename = "HUMAN")]
+    Human,
+    #[serde(rename = "CAPABILITY")]
+    Capability,
+    #[serde(rename = "SERVICE")]
+    Service,
+    #[serde(rename = "SECRET")]
+    Secret,
+}
+/// Canonical EnterpriseGroupType wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnterpriseGroupType {
+    #[serde(rename = "TEAM")]
+    Team,
+    #[serde(rename = "AGENT_GROUP")]
+    AgentGroup,
+    #[serde(rename = "TOOL_GROUP")]
+    ToolGroup,
+    #[serde(rename = "DEVICE_GROUP")]
+    DeviceGroup,
+}
+/// Trusted UTC window; end must exceed start.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseHours {
+    pub day_of_week: u64,
+    pub start_minute: u64,
+    pub end_minute: u64,
+}
+/// Pending approvals carry no queued task or effect capability. Dispatched operations include the durable relay status.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseHumanOutcome {
+    pub invocation: EnterpriseInvocation,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dispatch: Option<RemoteToolResponse>,
+}
+/// Verified human selects an exact execution binding and target. User and session facts are always supplied by the authenticated adapter.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseHumanRequest {
+    pub binding_id: String,
+    pub device_id: String,
+    pub request: AuthorizationRequest,
+}
+/// Target for current verified-human discovery.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseHumanTarget {
+    pub binding_id: String,
+    pub device_id: String,
+}
+/// Durable exact binding and outcome state. OUTCOME_UNKNOWN never authorizes a blind retry.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseInvocation {
+    pub id: String,
+    pub request_digest: String,
+    pub evaluation: EnterpriseEvaluation,
+    pub state: EnterpriseInvocationState,
+    pub revision: u64,
+    pub authorization_epoch: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reserved_nonce: Option<String>,
+    pub expires_at_unix_ms: u64,
+    pub completed_resources: Vec<ResourceDescriptor>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub downstream_idempotency_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_digest: Option<String>,
+    pub diagnostic_id: String,
+}
+/// Exact authenticated invocation with original arguments and installed code digests.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseInvocationRequest {
+    pub context: RequestContext,
+    pub request: AuthorizationRequest,
+    pub tool_digest: String,
+    pub package_digest: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub downstream_idempotency_key: Option<String>,
+}
+/// Canonical EnterpriseInvocationState wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnterpriseInvocationState {
+    #[serde(rename = "PENDING_APPROVAL")]
+    PendingApproval,
+    #[serde(rename = "QUEUED")]
+    Queued,
+    #[serde(rename = "RESERVED")]
+    Reserved,
+    #[serde(rename = "DISPATCHED")]
+    Dispatched,
+    #[serde(rename = "EXECUTING")]
+    Executing,
+    #[serde(rename = "SUCCEEDED")]
+    Succeeded,
+    #[serde(rename = "FAILED")]
+    Failed,
+    #[serde(rename = "CANCELLED")]
+    Cancelled,
+    #[serde(rename = "EXPIRED")]
+    Expired,
+    #[serde(rename = "PARTIAL")]
+    Partial,
+    #[serde(rename = "OUTCOME_UNKNOWN")]
+    OutcomeUnknown,
+}
+/// Management grants belong to group-assigned Management Roles only.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseManagementRule {
+    pub actions: Vec<String>,
+    pub group_type: EnterpriseGroupType,
+    pub groups: GroupSelection,
+    pub grantable_scopes: Vec<EnterpriseScope>,
+    pub conditions: EnterpriseConditions,
+}
+/// Canonical EnterpriseMemberType wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnterpriseMemberType {
+    #[serde(rename = "USER")]
+    User,
+    #[serde(rename = "AGENT")]
+    Agent,
+    #[serde(rename = "TOOL")]
+    Tool,
+    #[serde(rename = "DEVICE")]
+    Device,
+}
+/// Short-lived audience-bound permit for one exact invocation and target.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterprisePermitClaims {
+    pub issuer: String,
+    pub audience: String,
+    pub nonce: String,
+    pub invocation_id: String,
+    pub request_digest: String,
+    pub evaluation_digest: String,
+    pub authorization_epoch: u64,
+    pub directory_revision: u64,
+    pub issued_at_unix_ms: u64,
+    pub expires_at_unix_ms: u64,
+    pub tool_digest: String,
+    pub package_digest: String,
+    pub binding_id: String,
+    pub device_id: String,
+    pub approval_ids: Vec<String>,
+}
+/// Certificate-bound single-use consumption of an exact effect capability.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterprisePermitConsumption {
+    pub invocation_id: String,
+    pub permit: EnterpriseSignedPermit,
+    pub arguments_digest: String,
+    pub resources: Vec<ResourceDescriptor>,
+    pub tool_digest: String,
+    pub package_digest: String,
+}
+/// Purpose-specific RS256 effect capability header.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterprisePermitHeader {
+    pub alg: String,
+    pub typ: String,
+    pub kid: String,
+}
+/// Protected operator review for group-only bootstrap or bounded recovery.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseRecoveryAuthorization {
+    pub format_version: u64,
+    pub tenant_id: String,
+    pub expected_revision: u64,
+    pub snapshot: ControlSnapshot,
+    pub reason_digest: String,
+    pub issued_at_unix_ms: u64,
+    pub expires_at_unix_ms: u64,
+}
+/// Protected operator review for group-only bootstrap or bounded recovery.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseRecoveryProof {
+    pub key_id: String,
+    pub signature: String,
+}
+/// Canonical EnterpriseRequestMode wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnterpriseRequestMode {
+    #[serde(rename = "HUMAN")]
+    Human,
+    #[serde(rename = "DELEGATED")]
+    Delegated,
+    #[serde(rename = "SERVICE")]
+    Service,
+}
+/// Durable invocation reservation and its exact signed capability.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseReservation {
+    pub invocation: EnterpriseInvocation,
+    pub permit: EnterpriseSignedPermit,
+}
+/// Compare-and-swap reservation for a queued invocation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseReservationRequest {
+    pub invocation_id: String,
+    pub expected_revision: u64,
+}
+/// Canonical EnterpriseResourceMatch wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnterpriseResourceMatch {
+    #[serde(rename = "EXACT")]
+    Exact,
+    #[serde(rename = "PREFIX")]
+    Prefix,
+    #[serde(rename = "ANY")]
+    Any,
+}
+/// Canonical complete resource constraint; ANY is explicit privileged scope.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseResourceRule {
+    pub kind: ResourceKind,
+    pub locator: String,
+    pub r#match: EnterpriseResourceMatch,
+}
+/// Canonical EnterpriseReviewDecision wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnterpriseReviewDecision {
+    #[serde(rename = "APPROVE")]
+    Approve,
+    #[serde(rename = "DENY")]
+    Deny,
+    #[serde(rename = "REVOKE")]
+    Revoke,
+}
+/// Initial tenant installation has one pinned installation authority. Existing tenant recovery requires at least two distinct pinned independent signing authorities.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseReviewedRecovery {
+    pub authorization: EnterpriseRecoveryAuthorization,
+    pub proofs: Vec<EnterpriseRecoveryProof>,
+}
+/// Canonical EnterpriseRoleType wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnterpriseRoleType {
+    #[serde(rename = "HUMAN")]
+    Human,
+    #[serde(rename = "ACTOR_SERVICE")]
+    ActorService,
+    #[serde(rename = "MANAGEMENT")]
+    Management,
+}
+/// A complete group/action/device/resource tuple; independent scopes are never multiplied.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseScope {
+    pub tool_groups: GroupSelection,
+    pub device_groups: GroupSelection,
+    pub actions: Vec<String>,
+    pub all_actions: bool,
+    pub resources: Vec<EnterpriseResourceRule>,
+    pub conditions: EnterpriseConditions,
+}
+/// Signed enterprise effect permit; claims are bound and consumption is durably atomic.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseSignedPermit {
+    pub jws: String,
+}
+/// Signed group graph for discovery and adoption. It is never an execution permit.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseSnapshotPayload {
+    pub format_version: u64,
+    pub issuer: String,
+    pub audience: String,
+    pub tenant_id: String,
+    pub sequence: u64,
+    pub policy_version: String,
+    pub directory_revision: u64,
+    pub authorization_epoch: u64,
+    pub issued_at_unix_ms: u64,
+    pub expires_at_unix_ms: u64,
+    pub graph_sha256: String,
+    pub graph_base64: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rollback_of: Option<u64>,
+}
+/// Canonical EnterpriseSourceType wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnterpriseSourceType {
+    #[serde(rename = "TEAM")]
+    Team,
+    #[serde(rename = "AGENT_GROUP")]
+    AgentGroup,
+    #[serde(rename = "ROLE")]
+    Role,
+}
+/// Only references covered by the current group management authority are returned.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseVaultPage {
+    pub items: Vec<EnterpriseVaultReference>,
+}
+/// Visible secret name and group boundary; no plaintext or verifier bytes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseVaultReference {
+    pub name: String,
+    pub tool_group_id: String,
+    pub device_group_id: String,
+}
+/// Acknowledgement after authorized encrypted custody and redacted audit commit.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseVaultStored {
+    pub stored: bool,
+}
+/// Encrypted secret custody bound to explicit Tool and Device Groups; plaintext never appears in directory export or audit.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseVaultWrite {
+    pub name: String,
+    pub value: String,
+    pub tool_group_id: String,
+    pub device_group_id: String,
+}
+/// One complete path; Team and Agent Group identifiers cannot be mixed between witnesses.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnterpriseWitness {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub team_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grant_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_group_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub capability_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delegation_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub service_grant_id: Option<String>,
+    pub binding_id: String,
+    pub provenance: Vec<String>,
 }
 /// Canonical ErrorCode wire values.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1188,6 +2187,14 @@ pub struct ExecutionPermitHeader {
 pub struct ExecutionPermitUseRequest {
     pub permit: SignedExecutionPermit,
     pub request: AuthorizationRequest,
+}
+/// Reviewed JSON pointer to resources, including every batch member or source/destination.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ExtractorField {
+    pub pointer: String,
+    pub kind: ResourceKind,
+    pub multiple: bool,
 }
 /// Canonical FleetArchitecture wire values.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1376,6 +2383,29 @@ pub struct FleetTrustKey {
     pub n: String,
     pub e: String,
 }
+/// Atomic complete mandatory membership replacement guarded by directory revision.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct GroupMembership {
+    pub entity_type: EnterpriseMemberType,
+    pub entity_id: String,
+    pub group_ids: Vec<String>,
+    pub revision: u64,
+}
+/// Empty means none; all is explicit, tenant-scoped and requires privileged authoring.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct GroupSelection {
+    pub ids: Vec<String>,
+    pub all: bool,
+}
+/// Reviewed deployment metadata, never a grant. Local executors independently verify the installed package and resource extraction definition.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct InstalledAuthorizationProfile {
+    pub tool: ControlTool,
+    pub extractor: ControlResourceExtractor,
+}
 /// Bounded per-service execution counters and sandbox state.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -1505,6 +2535,7 @@ pub struct LocalToolRegistration {
     pub limits: LocalRuntimeLimits,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<LocalToolSource>,
+    pub authorization_profile: InstalledAuthorizationProfile,
 }
 /// Canonical bounded authoring protocol; declarations never grant execution privileges.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1583,6 +2614,8 @@ pub struct PolicyInput {
     pub action: String,
     pub resource: ResourceDescriptor,
     pub arguments_digest: String,
+    pub tool_digest: String,
+    pub package_digest: String,
 }
 /// A leased client rechecks the exact pending operation online before execution.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1618,7 +2651,8 @@ pub struct RemoteToolPage {
 pub struct RemoteToolRecord {
     pub request_id: String,
     pub device_id: String,
-    pub agent_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_id: Option<String>,
     pub tool_id: String,
     pub state: RemoteToolState,
     pub received_at_unix_ms: u64,
@@ -1673,9 +2707,10 @@ pub enum RemoteToolState {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RemoteToolSubmission {
-    pub input: PolicyInput,
     pub request: AuthorizationRequest,
     pub expires_at_unix_ms: u64,
+    pub context: RequestContext,
+    pub invocation_id: String,
 }
 /// Bounded lease delivered only over device-authenticated polling; executable definitions are never accepted from an agent.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1683,9 +2718,10 @@ pub struct RemoteToolSubmission {
 pub struct RemoteToolTask {
     pub request_id: String,
     pub lease_id: String,
-    pub input: PolicyInput,
     pub request: AuthorizationRequest,
     pub expires_at_unix_ms: u64,
+    pub invocation: EnterpriseInvocation,
+    pub permit: EnterpriseSignedPermit,
 }
 /// Observed package state, distinct from assigned desired state.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1695,16 +2731,28 @@ pub struct ReportedPackage {
     pub version: String,
     pub state: PackageState,
 }
-/// Safe correlation and principal identifiers; contains no credentials.
+/// Authenticated Gateway runtime context. All mode, chain, session, workload, binding and target fields are explicit. Legacy contexts are rejected.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RequestContext {
     pub request_id: String,
     pub tenant_id: String,
-    pub user_id: String,
-    pub agent_id: String,
+    pub mode: EnterpriseRequestMode,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub device_id: Option<String>,
+    pub user_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workload_binding_id: Option<String>,
+    pub chain: Vec<EnterpriseActorHop>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_epoch: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_epoch: Option<u64>,
+    pub binding_id: String,
+    pub device_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_sha256: Option<String>,
 }
 /// Declared resource identity; does not grant access or validate a path.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1726,25 +2774,6 @@ pub enum ResourceKind {
     Device,
     #[serde(rename = "CUSTOM")]
     Custom,
-}
-/// Canonical RoleDeviceScope wire values.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum RoleDeviceScope {
-    #[serde(rename = "NONE")]
-    None,
-    #[serde(rename = "ALL")]
-    All,
-    #[serde(rename = "GROUPS")]
-    Groups,
-}
-/// Fixed capability templates narrowed by device scope and optional tool allowlist. GROUPS requires nonempty group IDs; NONE and ALL require empty groups, validated by Control. Policies authorize each call.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct RoleRules {
-    pub template_ids: Vec<UserPrivilegeTemplate>,
-    pub device_scope: RoleDeviceScope,
-    pub device_group_ids: Vec<String>,
-    pub tool_ids: Vec<String>,
 }
 /// Sanitized authorization evaluation event; hashes replace raw arguments and resource locators. A decision is not execution success.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1806,26 +2835,6 @@ pub struct ToolDefinition {
     pub input_schema: std::collections::BTreeMap<String, serde_json::Value>,
     pub output_schema: std::collections::BTreeMap<String, serde_json::Value>,
 }
-/// Tenant-scoped role and privilege assignment. Device groups are directory teams containing device IDs.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct UserAccess {
-    pub role: UserRole,
-    pub template_ids: Vec<UserPrivilegeTemplate>,
-    pub device_group_ids: Vec<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub role_ids: Option<Vec<String>>,
-}
-/// Canonical UserPrivilegeTemplate wire values.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum UserPrivilegeTemplate {
-    #[serde(rename = "TOOL_USER")]
-    ToolUser,
-    #[serde(rename = "IT_CLOUD_ADMIN")]
-    ItCloudAdmin,
-    #[serde(rename = "APPROVER")]
-    Approver,
-}
 /// Canonical UserRole wire values.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UserRole {
@@ -1882,6 +2891,10 @@ pub const CANONICAL_SCHEMAS: &[(&str, &str)] = &[
     (
         "https://schemas.ololabs.io/toolgate/v1/endpoint.schema.json",
         include_str!("../schemas/v1/endpoint.schema.json"),
+    ),
+    (
+        "https://schemas.ololabs.io/toolgate/v1/enterprise.schema.json",
+        include_str!("../schemas/v1/enterprise.schema.json"),
     ),
     (
         "https://schemas.ololabs.io/toolgate/v1/error.schema.json",

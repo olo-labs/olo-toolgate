@@ -17,7 +17,7 @@ def checks():
     chart = 'deploy/helm/olo-toolgate'
     run(['helm','lint','--strict',chart])
     base = ['--set','control.enabled=true','--set','control.publicKeySecret=control-identity',
-            '--set','control.database.credentialsSecret=control-db','--set','control.database.caSecret=control-db-ca']
+            '--set','control.database.credentialsSecret=control-db','--set','control.database.caSecret=control-db-ca','--set','control.effect.signingSecret=effect-custody']
     variants = {'base':[], 'ha':['--set','control.autoscaling.enabled=true'],
                 'ingress':['--set','control.ingress.enabled=true','--set','control.ingress.className=nginx','--set','control.ingress.tlsSecret=control-tls'],
                 'monitor':['--set','control.serviceMonitor.enabled=true'],
@@ -54,7 +54,7 @@ def checks():
                 assert monitor['spec']['endpoints'][0]['path']=='/q/metrics'; monitor_validator().validate(monitor)
             suffix = '-upgrade' if upgrade else ''; path = folder/f'{name}{suffix}.yaml';path.write_text(rendered,encoding='utf-8',newline='\n')
             run(['docker','run','--rm','-v',f'{ROOT.as_posix()}:/work:ro','ghcr.io/yannh/kubeconform:v0.6.7','-strict','-summary','-kubernetes-version','1.32.0','-skip','ServiceMonitor',f'/work/{path.relative_to(ROOT).as_posix()}'])
-    for flags in (['--set','control.publicKeySecret='],['--set','control.database.credentialsSecret='],['--set','control.database.caSecret='],
+    for flags in (['--set','control.effect.signingSecret='],['--set','control.publicKeySecret='],['--set','control.database.credentialsSecret='],['--set','control.database.caSecret='],
                   ['--set','control.database.sslMode=disable'],['--set','control.securityContext.allowPrivilegeEscalation=true'],
                   ['--set','control.terminationGracePeriodSeconds=20'],['--set','control.limits.maxRecords=513'],
                   ['--set','control.autoscaling.enabled=true','--set','control.autoscaling.minReplicas=9'],['--set','control.ingress.enabled=true'],

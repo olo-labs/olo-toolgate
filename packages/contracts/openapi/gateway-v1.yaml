@@ -4,18 +4,21 @@ openapi: 3.1.0
 info:
   title: OLO ToolGate Gateway Core
   version: 0.10.0-dev
-  description: Stateless runtime decisions, exact-bound human approvals and single-use execution permits. Optional client MCP relay executes enrolled device tools through Control polling. Management uses a separate restricted listener.
+  description: Online enterprise group authority with explicit HUMAN, DELEGATED and
+    SERVICE modes. This gateway accepts workload credentials; HUMAN sessions use verified
+    Control authentication. Every effect consumes a Control permit using the target
+    device certificate.
 servers:
-  - url: https://gateway.example.invalid
+- url: https://gateway.example.invalid
 security:
-  - runtimeBearer: []
+- runtimeBearer: []
 paths:
-  /v2/authorize:
+  /access/invocations:
     post:
-      operationId: authorizeWithApproval
-      description: ASK creates a durable pending request. Approved ASK returns ALLOW
-        and a dedicated signed short-lived permit; execution requires atomic consume.
-        Approval failure BLOCK. Legacy v1/MCP remain fail closed on ASK.
+      operationId: submitAndReserveInvocation
+      description: Submit exact arguments to the current Control group authority.
+        Pending approval carries no capability. Every effect requires a reserved Control
+        permit consumed by the target device over mTLS.
       requestBody:
         required: true
         content:
@@ -28,7 +31,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: https://schemas.ololabs.io/toolgate/v1/approval.schema.json#/$defs/AuthorizationOutcome
+                $ref: https://schemas.ololabs.io/toolgate/v1/enterprise.schema.json#/$defs/EnterpriseAuthorizationOutcome
         '400':
           $ref: '#/components/responses/Error'
         '401':
@@ -47,135 +50,114 @@ paths:
           $ref: '#/components/responses/Error'
         '504':
           $ref: '#/components/responses/Error'
-  /v1/permits/consume:
-    post:
-      operationId: consumeExecutionPermit
-      description: Verify signature, dedicated trust, exact authenticated identity/tool/action/resource/arguments
-        and original request binding, then atomically spend jti and recheck current
-        policy. Repeated use or approval outage blocks.
-      requestBody:
+      parameters:
+      - in: header
+        name: Idempotency-Key
         required: true
-        content:
-          application/json:
-            schema:
-              $ref: https://schemas.ololabs.io/toolgate/v1/approval.schema.json#/$defs/ExecutionPermitUseRequest
-      responses:
-        '200':
-          description: Explicit result; no-store
-          content:
-            application/json:
-              schema:
-                $ref: https://schemas.ololabs.io/toolgate/v1/policy.schema.json#/$defs/PolicyDecision
-        '400':
-          $ref: '#/components/responses/Error'
-        '401':
-          $ref: '#/components/responses/Error'
-        '403':
-          $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
-        '413':
-          $ref: '#/components/responses/Error'
-        '415':
-          $ref: '#/components/responses/Error'
-        '429':
-          $ref: '#/components/responses/Error'
-        '503':
-          $ref: '#/components/responses/Error'
-        '504':
-          $ref: '#/components/responses/Error'
-  /v1/authorize:
-    post:
-      operationId: authorize
-      summary: Evaluate the exact request using credential-bound identity and trusted resource extraction
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: https://schemas.ololabs.io/toolgate/v1/runtime.schema.json#/$defs/AuthorizationRequest
-      responses:
-        '200':
-          description: Explicit ALLOW/BLOCK decision, acknowledged by local audit; never an execution permit
-          headers:
-            X-Request-Id: {schema: {type: string}}
-            traceparent: {schema: {type: string}}
-            Cache-Control: {schema: {type: string, const: no-store}}
-          content:
-            application/json:
-              schema:
-                $ref: https://schemas.ololabs.io/toolgate/v1/policy.schema.json#/$defs/PolicyDecision
-        '400': {$ref: '#/components/responses/Error'}
-        '401': {$ref: '#/components/responses/Error'}
-        '403': {$ref: '#/components/responses/Error'}
-        '413': {$ref: '#/components/responses/Error'}
-        '415': {$ref: '#/components/responses/Error'}
-        '429': {$ref: '#/components/responses/Error'}
-        '431': {$ref: '#/components/responses/Error'}
-        '503': {$ref: '#/components/responses/Error'}
-        '504': {$ref: '#/components/responses/Error'}
-  /v1/permits:
-    post:
-      operationId: unsupportedPermit
-      responses:
-        '501': {$ref: '#/components/responses/Error'}
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[a-zA-Z0-9._-]+$
   /mcp:
     post:
-      operationId: mcpSkeleton
-      description: Stateless 2026-07-28 transport. With localMcp enabled, discovery returns only applicable installed client definitions and ALLOW calls wait for the next client poll and bounded result. ASK blocks. Without a relay, discovery is empty and execution is unsupported. JSON-RPC and mirrored metadata headers required.
+      operationId: mcpIngress
+      description: Stateless 2026-07-28 ingress. Discovery uses current group grants
+        and installed profiles. Calls preserve original arguments. ASK returns a durable
+        pending invocation; approved calls enter the same device-bound permit pipeline.
+        Mirrored metadata headers required.
       requestBody:
         required: true
         content:
           application/json:
-            schema: {type: object}
+            schema:
+              type: object
       parameters:
-        - {in: header, name: MCP-Protocol-Version, required: true, schema: {type: string, const: '2026-07-28'}}
-        - {in: header, name: Mcp-Method, required: true, schema: {type: string}}
-        - {in: header, name: Mcp-Name, schema: {type: string}}
-        - {in: header, name: Accept, required: true, schema: {type: string}}
+      - in: header
+        name: MCP-Protocol-Version
+        required: true
+        schema:
+          type: string
+          const: '2026-07-28'
+      - in: header
+        name: Mcp-Method
+        required: true
+        schema:
+          type: string
+      - in: header
+        name: Mcp-Name
+        schema:
+          type: string
+      - in: header
+        name: Accept
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: JSON-RPC result or explicit authorization/unsupported error
-          content: {application/json: {schema: {type: object}}}
+          content:
+            application/json:
+              schema:
+                type: object
         '400':
           description: Invalid frame, parameters, unsupported version or header mismatch
-        '401': {$ref: '#/components/responses/Error'}
-        '403': {$ref: '#/components/responses/Error'}
-        '404': {description: Unsupported RPC method}
-        '406': {description: JSON and SSE acceptance required}
-        '413': {$ref: '#/components/responses/Error'}
-        '503': {$ref: '#/components/responses/Error'}
-        '504': {$ref: '#/components/responses/Error'}
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          description: Unsupported RPC method
+        '406':
+          description: JSON and SSE acceptance required
+        '413':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        '504':
+          $ref: '#/components/responses/Error'
   /v1/health/live:
     get:
       operationId: liveness
-      servers: [{url: 'http://127.0.0.1:9091'}]
+      servers:
+      - url: http://127.0.0.1:9091
       security: []
       responses:
-        '200': {description: Process is serving management traffic}
+        '200':
+          description: Process is serving management traffic
   /v1/health/ready:
     get:
       operationId: readiness
-      servers: [{url: 'http://127.0.0.1:9091'}]
+      servers:
+      - url: http://127.0.0.1:9091
       security: []
       responses:
-        '200': {description: Policy, credentials and audit usable; not draining}
-        '503': {description: Unsafe for new traffic}
+        '200':
+          description: Current authority observed within five seconds; at least one
+            unexpired workload credential; not draining
+          credentials and audit usable; not draining: null
+        '503':
+          description: Unsafe for new traffic
   /v1/metrics:
     get:
       operationId: metrics
-      servers: [{url: 'http://127.0.0.1:9091'}]
+      servers:
+      - url: http://127.0.0.1:9091
       security: []
       responses:
         '200':
           description: Fixed-cardinality Prometheus metrics
-          content: {text/plain: {schema: {type: string}}}
+          content:
+            text/plain:
+              schema:
+                type: string
 components:
   securitySchemes:
     runtimeBearer:
       type: http
       scheme: bearer
-      description: Administrator-provisioned high-entropy runtime token with exact identity and expiry binding
+      description: Administrator-provisioned high-entropy runtime token with exact
+        identity and expiry binding
   responses:
     Error:
       description: Stable sanitized error code and server-generated request ID

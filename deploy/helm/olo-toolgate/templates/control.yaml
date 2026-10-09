@@ -28,6 +28,17 @@ data:
   TOOLGATE_CONTROL_TRACE_EXPORT_ENABLED: {{ $g.tracing.enabled | quote }}
   QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: {{ printf "https://%s:%v" $g.tracing.host $g.tracing.port | quote }}
   QUARKUS_OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: {{ $g.tracing.protocol | quote }}
+  TOOLGATE_CONTROL_EFFECT_ENABLED: {{ $g.effect.enabled | quote }}
+  {{- if $g.effect.enabled }}
+  TOOLGATE_CONTROL_EFFECT_PRIVATE_KEY_PATH: /etc/toolgate/effect-signing/private.pem
+  TOOLGATE_CONTROL_EFFECT_KEY_ID: {{ $g.effect.keyId | quote }}
+  TOOLGATE_CONTROL_EFFECT_ISSUER: {{ $g.effect.issuer | quote }}
+  TOOLGATE_CONTROL_EFFECT_AUDIENCE: {{ $g.effect.audience | quote }}
+  {{- end }}
+  {{- if $g.recovery.enabled }}
+  TOOLGATE_CONTROL_RECOVERY_PACKET_PATH: /etc/toolgate/recovery-packet/reviewed-recovery.json
+  TOOLGATE_CONTROL_RECOVERY_TRUST_PATH: /etc/toolgate/recovery-trust/reviewer-keys.json
+  {{- end }}
   TOOLGATE_CONTROL_APPROVAL_ENABLED: {{ $g.approval.enabled | quote }}
   TOOLGATE_CONTROL_FLEET_ENABLED: {{ $g.fleet.enabled | quote }}
   {{- if $g.fleet.enabled }}
@@ -169,6 +180,13 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 2
           volumeMounts:
+            {{- if $g.effect.enabled }}
+            - {name: effect-signing, mountPath: /etc/toolgate/effect-signing, readOnly: true}
+            {{- end }}
+            {{- if $g.recovery.enabled }}
+            - {name: recovery-packet, mountPath: /etc/toolgate/recovery-packet, readOnly: true}
+            - {name: recovery-trust, mountPath: /etc/toolgate/recovery-trust, readOnly: true}
+            {{- end }}
             {{- if $g.fleet.enabled }}
             - {name: fleet-signing, mountPath: /etc/toolgate/fleet-signing, readOnly: true}
             - {name: fleet-trust, mountPath: /etc/toolgate/fleet-trust, readOnly: true}
@@ -190,6 +208,25 @@ spec:
             - {name: database-ca, mountPath: /etc/toolgate/database, readOnly: true}
             {{- end }}
       volumes:
+        {{- if $g.effect.enabled }}
+        - name: effect-signing
+          secret:
+            secretName: {{ required "control.effect.signingSecret required" $g.effect.signingSecret | quote }}
+            defaultMode: 0440
+            items: [{key: {{ $g.effect.signingKey | quote }}, path: private.pem}]
+        {{- end }}
+        {{- if $g.recovery.enabled }}
+        - name: recovery-packet
+          secret:
+            secretName: {{ required "control.recovery.packetSecret required" $g.recovery.packetSecret | quote }}
+            defaultMode: 0440
+            items: [{key: {{ $g.recovery.packetKey | quote }}, path: reviewed-recovery.json}]
+        - name: recovery-trust
+          secret:
+            secretName: {{ required "control.recovery.trustSecret required" $g.recovery.trustSecret | quote }}
+            defaultMode: 0440
+            items: [{key: {{ $g.recovery.trustKey | quote }}, path: reviewer-keys.json}]
+        {{- end }}
         {{- if $g.fleet.enabled }}
         - name: fleet-signing
           secret:

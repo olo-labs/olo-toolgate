@@ -3,21 +3,9 @@
 {{- $g := .Values.gateway }}
 {{- $name := include "olo-toolgate.gatewayName" . }}
 {{- $config := deepCopy $g.config }}
-{{- if $g.localMcp.enabled }}
-{{- if not $g.bundle.enabled }}{{ fail "client MCP relay requires signed bundle mode" }}{{ end }}
-{{- if lt (int $g.config.limits.requestTimeoutMs) 10000 }}{{ fail "client MCP relay requires at least a ten second request timeout" }}{{ end }}
-{{- $_ := set $config "localMcp" (dict "url" $g.localMcp.url "tokenPath" "/etc/toolgate/relay-auth/access-token" "developmentLoopbackHttp" false) }}
-{{- end }}
-{{- if $g.bundle.enabled }}
-{{- $_ := unset $config "policy" }}
-{{- $_ := set $config "bundleSource" (dict "url" $g.bundle.url "tenantId" $g.bundle.tenantId "issuer" $g.bundle.issuer "audience" $g.bundle.audience "keyringPath" "/etc/toolgate/bundle-keys/keyring.json" "tokenPath" "/etc/toolgate/bundle-auth/access-token" "minimumSequence" $g.bundle.minimumSequence "maxGraceMs" $g.bundle.maxGraceMs "pollIntervalMs" $g.bundle.pollIntervalMs "fetchTimeoutMs" $g.bundle.fetchTimeoutMs "developmentLoopbackHttp" false) }}
-{{- if and $g.networkPolicy.enabled (or (not $g.networkPolicy.controlTo) (not $g.networkPolicy.dnsTo)) }}{{ fail "signed bundle mode requires explicit controlTo and dnsTo egress peers" }}{{ end }}
-{{- end }}
-{{- if $g.approval.enabled }}
-{{- if not $g.bundle.enabled }}{{ fail "approval mode requires signed bundle mode" }}{{ end }}
-{{- if ge (int $g.approval.requestTimeoutMs) (int $g.config.limits.requestTimeoutMs) }}{{ fail "approval timeout must leave time within ingress deadline" }}{{ end }}
-{{- $_ := set $config "approval" (dict "url" $g.approval.url "tokenPath" "/etc/toolgate/approval-auth/access-token" "privateKeyPath" "/etc/toolgate/permit-signing/private.pem" "keyId" $g.approval.keyId "issuer" $g.approval.issuer "audience" $g.approval.audience "requestTimeoutMs" $g.approval.requestTimeoutMs "permitLifetimeMs" $g.approval.permitLifetimeMs "developmentLoopbackHttp" false) }}
-{{- end }}
+{{- if lt (int $g.config.limits.requestTimeoutMs) 10000 }}{{ fail "online authority requires at least a ten second ingress deadline" }}{{ end }}
+{{- $_ := set $config "control" (dict "url" $g.control.url "tokenPath" "/etc/toolgate/control-auth/access-token" "developmentLoopbackHttp" false) }}
+{{- if and $g.networkPolicy.enabled (or (not $g.networkPolicy.controlTo) (not $g.networkPolicy.dnsTo)) }}{{ fail "online authority requires explicit controlTo and dnsTo egress peers" }}{{ end }}
 {{- if or (ne $g.config.listen "0.0.0.0:8081") (ne $g.config.managementListen "0.0.0.0:9091") }}
 {{- fail "Helm requires the fixed internal runtime/management listeners" }}
 {{- end }}
@@ -131,17 +119,7 @@ spec:
           volumeMounts:
             - {name: config, mountPath: /etc/toolgate/config, readOnly: true}
             - {name: credentials, mountPath: /etc/toolgate/credentials, readOnly: true}
-            {{- if $g.localMcp.enabled }}
-            - {name: relay-auth, mountPath: /etc/toolgate/relay-auth, readOnly: true}
-            {{- end }}
-            {{- if $g.bundle.enabled }}
-            - {name: bundle-keys, mountPath: /etc/toolgate/bundle-keys, readOnly: true}
-            - {name: bundle-auth, mountPath: /etc/toolgate/bundle-auth, readOnly: true}
-            {{- end }}
-            {{- if $g.approval.enabled }}
-            - {name: approval-auth, mountPath: /etc/toolgate/approval-auth, readOnly: true}
-            - {name: permit-signing, mountPath: /etc/toolgate/permit-signing, readOnly: true}
-            {{- end }}
+            - {name: control-auth, mountPath: /etc/toolgate/control-auth, readOnly: true}
       volumes:
         - name: config
           configMap:
@@ -153,37 +131,12 @@ spec:
             items:
               - key: {{ $g.credentialsKey | quote }}
                 path: credentials.json
-        {{- if $g.bundle.enabled }}
-        - name: bundle-keys
+        - name: control-auth
           secret:
-            secretName: {{ required "gateway.bundle.keyringSecret required" $g.bundle.keyringSecret | quote }}
-            defaultMode: 0444
-            items: [{key: {{ $g.bundle.keyringKey | quote }}, path: keyring.json}]
-        - name: bundle-auth
-          secret:
-            secretName: {{ required "gateway.bundle.tokenSecret required" $g.bundle.tokenSecret | quote }}
-            defaultMode: 0444
-            items: [{key: {{ $g.bundle.tokenKey | quote }}, path: access-token}]
-        {{- end }}
-        {{- if $g.localMcp.enabled }}
-        - name: relay-auth
-          secret:
-            secretName: {{ required "gateway.localMcp.tokenSecret required" $g.localMcp.tokenSecret | quote }}
+            secretName: {{ required "gateway.control.tokenSecret required" $g.control.tokenSecret | quote }}
             defaultMode: 0440
-            items: [{key: {{ $g.localMcp.tokenKey | quote }}, path: access-token}]
-        {{- end }}
-        {{- if $g.approval.enabled }}
-        - name: approval-auth
-          secret:
-            secretName: {{ required "gateway.approval.tokenSecret required" $g.approval.tokenSecret | quote }}
-            defaultMode: 0440
-            items: [{key: {{ $g.approval.tokenKey | quote }}, path: access-token}]
-        - name: permit-signing
-          secret:
-            secretName: {{ required "gateway.approval.signingSecret required" $g.approval.signingSecret | quote }}
-            defaultMode: 0440
-            items: [{key: {{ $g.approval.signingKey | quote }}, path: private.pem}]
-        {{- end }}
+            items: [{key: {{ $g.control.tokenKey | quote }}, path: access-token}]
+
 ---
 apiVersion: v1
 kind: Service
@@ -222,24 +175,13 @@ spec:
     matchLabels:
       {{- include "olo-toolgate.gatewaySelector" . | nindent 6 }}
   policyTypes: [Ingress, Egress]
-  {{- if $g.bundle.enabled }}
   egress:
-    - ports:
-        - {protocol: TCP, port: {{ $g.bundle.controlPort }}}
-        {{- if and $g.localMcp.enabled (ne (int $g.localMcp.controlPort) (int $g.bundle.controlPort)) }}
-        - {protocol: TCP, port: {{ $g.localMcp.controlPort }}}
-        {{- end }}
-        {{- if and $g.approval.enabled (ne (int $g.approval.controlPort) (int $g.bundle.controlPort)) }}
-        - {protocol: TCP, port: {{ $g.approval.controlPort }}}
-        {{- end }}
+    - ports: [{protocol: TCP, port: {{ $g.control.controlPort }}}]
       to:
         {{- toYaml $g.networkPolicy.controlTo | nindent 8 }}
     - ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
       to:
         {{- toYaml $g.networkPolicy.dnsTo | nindent 8 }}
-  {{- else }}
-  egress: []
-  {{- end }}
   {{- if or $g.networkPolicy.runtimeFrom $g.networkPolicy.managementFrom }}
   ingress:
     {{- if $g.networkPolicy.runtimeFrom }}

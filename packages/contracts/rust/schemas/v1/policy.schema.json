@@ -42,6 +42,12 @@
         },
         "argumentsDigest": {
           "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "toolDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "packageDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
         }
       },
       "required": [
@@ -49,7 +55,9 @@
         "toolId",
         "action",
         "resource",
-        "argumentsDigest"
+        "argumentsDigest",
+        "toolDigest",
+        "packageDigest"
       ]
     },
     "PolicyDecision": {

@@ -57,6 +57,7 @@ public class PostgresStore implements Store {
         private final Connection connection;
         private final String tenant;
         JdbcSession(Connection connection, String tenant) { this.connection = connection; this.tenant = tenant; }
+        public io.ololabs.toolgate.control.application.EnterpriseStore enterprise() {return new PostgresEnterpriseStore(connection,tenant,codec);}
         public io.ololabs.toolgate.control.application.FleetStore fleet() { return new PostgresFleetStore(connection, tenant); }
         public io.ololabs.toolgate.control.application.BuilderStore builder() { return new PostgresBuilderStore(connection, tenant); }
         private EnrollmentRecord enrollmentRows(java.sql.PreparedStatement statement) throws SQLException {
@@ -153,67 +154,10 @@ public class PostgresStore implements Store {
                 statement.executeUpdate();
             } catch (SQLException e) { throw Failure.unavailable(); }
         }
-        public ApprovalRecord approval(String id) {
-            try (var statement = statement("SELECT approval_id,binding_digest,document,expires_at FROM control_approvals WHERE tenant_id=? AND approval_id=?", id);
-                 var rows = statement.executeQuery()) {
-                return rows.next() ? approvalRow(rows) : null;
-            } catch (SQLException e) { throw Failure.unavailable(); }
-        }
-        public ApprovalRecord approvalBinding(String digest, long now) {
-            try (var statement = statement("SELECT approval_id,binding_digest,document,expires_at FROM control_approvals WHERE tenant_id=? AND binding_digest=? AND expires_at>? ORDER BY approval_id DESC LIMIT 1", digest, now);
-                 var rows = statement.executeQuery()) {
-                return rows.next() ? approvalRow(rows) : null;
-            } catch (SQLException e) { throw Failure.unavailable(); }
-        }
-        private ApprovalRecord approvalRow(java.sql.ResultSet rows) throws SQLException {
-            return new ApprovalRecord(rows.getString(1), rows.getString(2), rows.getString(3), rows.getLong(4));
-        }
-        public java.util.List<ApprovalRecord> approvals(String after, int limit) {
-            try (var statement = statement("SELECT approval_id,binding_digest,document,expires_at FROM control_approvals WHERE tenant_id=? AND approval_id>? ORDER BY approval_id LIMIT ?", after, limit);
-                 var rows = statement.executeQuery()) {
-                var result = new java.util.ArrayList<ApprovalRecord>();
-                while (rows.next()) result.add(approvalRow(rows)); return java.util.List.copyOf(result);
-            } catch (SQLException e) { throw Failure.unavailable(); }
-        }
-        public long activeApprovals(long now) {
-            try (var statement = statement("SELECT count(*) FROM control_approvals WHERE tenant_id=? AND expires_at>?", now); var rows = statement.executeQuery()) {
-                rows.next(); return rows.getLong(1);
-            } catch (SQLException e) { throw Failure.unavailable(); }
-        }
-        public void saveApproval(ApprovalRecord approval) {
-            try (var statement = statement("INSERT INTO control_approvals (tenant_id,approval_id,binding_digest,document,expires_at) VALUES (?,?,?,?,?) ON CONFLICT (tenant_id,approval_id) DO UPDATE SET document=excluded.document,expires_at=excluded.expires_at WHERE control_approvals.binding_digest=excluded.binding_digest AND (control_approvals.document::jsonb->>'revision')::bigint < (excluded.document::jsonb->>'revision')::bigint",
-                approval.id(), approval.bindingDigest(), approval.document(), approval.expiresAt())) {
-                if (statement.executeUpdate()!=1) throw Failure.conflict();
-            }
-            catch (SQLException e) { throw Failure.unavailable(); }
-        }
-        public PermitLease permit(String jti) {
-            try (var statement = statement("SELECT approval_id,binding_digest,request_id,issued_at,expires_at,consumed_at FROM control_permit_leases WHERE tenant_id=? AND jti=?", jti); var rows = statement.executeQuery()) {
-                if (!rows.next()) return null;
-                var consumed = rows.getLong(6); Long consumedAt = rows.wasNull() ? null : consumed;
-                return new PermitLease(jti, rows.getString(1), rows.getString(2), rows.getString(3), rows.getLong(4), rows.getLong(5), consumedAt);
-            } catch (SQLException e) { throw Failure.unavailable(); }
-        }
-        public void lease(PermitLease permit) {
-            try (var statement = statement("INSERT INTO control_permit_leases (tenant_id,jti,approval_id,binding_digest,request_id,issued_at,expires_at) VALUES (?,?,?,?,?,?,?)",
-                permit.jti(), permit.approvalId(), permit.bindingDigest(), permit.requestId(), permit.issuedAt(), permit.expiresAt())) { statement.executeUpdate(); }
-            catch (SQLException e) { throw Failure.unavailable(); }
-        }
-        public void consumePermit(String jti, long consumedAt) {
-            try (var statement = connection.prepareStatement("UPDATE control_permit_leases SET consumed_at=? WHERE tenant_id=? AND jti=? AND consumed_at IS NULL")) {
-                statement.setLong(1, consumedAt); statement.setString(2, tenant); statement.setString(3, jti);
-                if (statement.executeUpdate() != 1) throw Failure.conflict();
-            } catch (SQLException e) { throw Failure.unavailable(); }
-        }
         public long approvalClock(long now) {
             try (var statement = statement("INSERT INTO control_approval_clocks (tenant_id,observed_at) VALUES (?,?) ON CONFLICT (tenant_id) DO UPDATE SET observed_at=GREATEST(control_approval_clocks.observed_at,excluded.observed_at) RETURNING observed_at", now);
                  var rows = statement.executeQuery()) { rows.next(); return rows.getLong(1); }
             catch (SQLException e) { throw Failure.unavailable(); }
-        }
-        public long activePermits(long now) {
-            try (var statement = statement("SELECT count(*) FROM control_permit_leases WHERE tenant_id=? AND expires_at>?", now); var rows = statement.executeQuery()) {
-                rows.next(); return rows.getLong(1);
-            } catch (SQLException e) { throw Failure.unavailable(); }
         }
         private java.sql.PreparedStatement statement(String sql, Object... params) throws SQLException {
             var statement = connection.prepareStatement(SqliteState.sql(connection, sql)); statement.setString(1, tenant);
@@ -234,15 +178,25 @@ public class PostgresStore implements Store {
                 return new Directory(revision, entries);
             } catch (SQLException e) { throw Failure.unavailable(); }
         }
+        public void observeIdentity(io.ololabs.toolgate.contracts.ControlIdentityBinding next){
+            var entry=load().entries().get(Kind.IDENTITY_BINDING.id(next.id()));if(entry==null)throw Failure.conflict();var old=codec.model(entry.document(),io.ololabs.toolgate.contracts.ControlIdentityBinding.class);
+            var normalized=new io.ololabs.toolgate.contracts.ControlIdentityBinding(next.id(),next.name(),next.enabled(),old.revision(),next.userId(),next.issuer(),next.subject(),next.sessionEpoch(),next.firstSeenUnixMs(),old.lastAttemptUnixMs(),old.attemptCount(),next.registrationReason(),next.sessionsValidAfterUnixMs());
+            if(!old.equals(normalized)||next.revision()!=old.revision()+1||next.lastAttemptUnixMs()<old.lastAttemptUnixMs()||next.attemptCount()<old.attemptCount())throw Failure.conflict();
+            try(var s=connection.prepareStatement(SqliteState.sql(connection,"UPDATE control_records SET revision=?,document=?::jsonb WHERE tenant_id=? AND kind='IDENTITY_BINDING' AND record_id=? AND revision=?"))){s.setLong(1,next.revision());s.setString(2,codec.json(next));s.setString(3,tenant);s.setString(4,next.id());s.setLong(5,old.revision());if(s.executeUpdate()!=1)throw Failure.conflict();}catch(SQLException failure){throw Failure.unavailable();}
+        }
         public void save(Directory before, Directory after) {
             try {
-                try (var statement = statement("INSERT INTO control_tenants (tenant_id,revision) VALUES (?,?) ON CONFLICT (tenant_id) DO UPDATE SET revision=excluded.revision", after.revision())) {
+                if(after.equals(before))return;
+                if(after.revision()<before.revision() || !after.entries().equals(before.entries())&&after.revision()<=before.revision())throw Failure.conflict();
+                try (var statement = statement("INSERT INTO control_tenants (tenant_id,revision,authorization_epoch,cutover_revision) VALUES (?,?,?,?) ON CONFLICT (tenant_id) DO UPDATE SET revision=excluded.revision,authorization_epoch=GREATEST(control_tenants.authorization_epoch+1,excluded.authorization_epoch)", after.revision(),after.revision(),after.revision())) {
                     statement.executeUpdate();
                 }
+                if(after.revision()!=before.revision())try(var statement=statement("WITH current_auth AS (SELECT tenant_id,revision,authorization_epoch FROM control_tenants WHERE tenant_id=?) INSERT INTO control_authorization_outbox(tenant_id,revision,authorization_epoch,occurred_at) SELECT tenant_id,revision,authorization_epoch,? FROM current_auth",System.currentTimeMillis())) {statement.executeUpdate();}
                 for (var id : before.entries().keySet()) if (!after.entries().containsKey(id)) {
                     try (var statement = statement("DELETE FROM control_records WHERE tenant_id=? AND kind=? AND record_id=?", id.kind().name(), id.value())) { statement.executeUpdate(); }
                 }
                 for (var entry : after.entries().values()) if (!entry.equals(before.entries().get(entry.id()))) {
+                    if(entry.id().kind()==Kind.WORKLOAD_BINDING)enterprise().rememberCredential(codec.model(entry.document(),io.ololabs.toolgate.contracts.ControlWorkloadBinding.class).credentialSha256());
                     try (var statement = statement("INSERT INTO control_record_ids (tenant_id,kind,record_id) VALUES (?,?,?) ON CONFLICT DO NOTHING", entry.id().kind().name(), entry.id().value())) { statement.executeUpdate(); }
                     try (var statement = statement("INSERT INTO control_records (tenant_id,kind,record_id,revision,document) VALUES (?,?,?,?,?::jsonb) ON CONFLICT (tenant_id,kind,record_id) DO UPDATE SET revision=excluded.revision,document=excluded.document",
                             entry.id().kind().name(), entry.id().value(), entry.revision(), entry.document())) { statement.executeUpdate(); }

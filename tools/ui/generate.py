@@ -23,6 +23,8 @@ def output():
             operations.append(f"  {operation['operationId']}: {{ method: '{method.upper()}', path: '{path}' }},")
             if method == 'get' and operation['operationId'].startswith('listControl'):
                 kind = path.rsplit('/', 1)[1]
+                words = kind.split('-')
+                kind = words[0] + ''.join(word.title() for word in words[1:])
                 if kind == 'audit': continue
                 page = operation['responses']['200']['content']['application/json']['schema']['$ref'].split('/')[-1]
                 records[kind] = page.removesuffix('Page')

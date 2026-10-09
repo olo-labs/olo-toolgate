@@ -138,10 +138,10 @@ async fn handle<S: AsyncWrite + Unpin>(
             }
         };
         let result = match request.operation {
-            BuiltinOperation::Catalog if request.invocation.is_none() => {
-                response.tools = Some(state.tool_catalog(request.agent_id.as_deref()));
-                Ok(())
-            }
+            BuiltinOperation::Catalog if request.invocation.is_none() => state
+                .tool_catalog(request.agent_id.as_deref())
+                .await
+                .map(|tools| response.tools = Some(tools)),
             BuiltinOperation::Call => match request.invocation {
                 Some(invocation) => {
                     let span = tracing::info_span!("builtin_call",request_id=%response.request_id,tool_id=%invocation.tool_id);

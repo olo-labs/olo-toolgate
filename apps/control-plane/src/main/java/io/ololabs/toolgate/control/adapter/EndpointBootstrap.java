@@ -18,6 +18,7 @@ public class EndpointBootstrap {
     @Inject Config config;
     @Inject ContractCodec codec;
     @Inject PostgresStore store;
+    @Inject EnterpriseOperations operations;
     private EndpointService service;
     void start(@Observes StartupEvent ignored){if(service==null)service=load();}
     private String setting(String name){return config.getValue("toolgate.control.endpoint."+name,String.class);}
@@ -47,7 +48,7 @@ public class EndpointBootstrap {
             }
             tenant=Ids.valid(setting("tenant-id"));server=Ids.valid(setting("server-id"));organization=setting("organization");control=setting("control-url");gateway=setting("gateway-url");
         }catch(Exception failure){throw new IllegalStateException("Endpoint enrollment requires dedicated external CA and direct HTTPS with requested client certificates");}
-        return new EndpointService(store,codec,issuer,java.time.Clock.systemUTC(),enabled,tenant,server,organization,control,gateway);
+        return new EndpointService(store,codec,issuer,java.time.Clock.systemUTC(),enabled,tenant,server,organization,control,gateway).operations(operations);
     }
     @Produces @ApplicationScoped EndpointService endpoint(){if(service==null)service=load();return service;}
 }

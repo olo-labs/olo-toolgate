@@ -42,7 +42,7 @@ public class ContractCodec implements Codec {
         mapper = JsonMapper.builder(factory).enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).build();
         try {
             var definitions = mapper.createObjectNode();
-            for (var file : java.util.List.of("common", "identifiers", "error", "resource", "tool", "policy", "package", "client", "deployment", "runtime", "control", "bundle", "approval", "endpoint", "builtins", "execution", "fleet", "builder")) {
+            for (var file : java.util.List.of("common", "identifiers", "error", "resource", "tool", "policy", "package", "client", "deployment", "runtime", "control", "bundle", "approval", "endpoint", "builtins", "execution", "fleet", "builder", "enterprise")) {
                 var path = "/io/ololabs/toolgate/contracts/schemas/v1/" + file + ".schema.json";
                 try (var input = io.ololabs.toolgate.contracts.ContractSet.class.getResourceAsStream(path)) {
                     if (input == null) throw new IllegalStateException("Shared schema artifact is incomplete");
@@ -101,18 +101,21 @@ public class ContractCodec implements Codec {
         var refs = new HashSet<RecordId>();
         if (kind == Kind.TEAM) {
             add(refs, Kind.USER, node.get("userIds"));
-            if (node.has("deviceIds")) add(refs,Kind.DEVICE,node.get("deviceIds"));
+            add(refs, Kind.ROLE, node.get("roleIds"));
         }
-        if (kind == Kind.TEAM && node.has("roleIds")) add(refs,Kind.ROLE,node.get("roleIds"));
-        if (kind == Kind.USER && node.has("access") && node.get("access").has("roleIds")) add(refs,Kind.ROLE,node.get("access").get("roleIds"));
+        if (kind == Kind.DEVICE_GROUP) add(refs,Kind.DEVICE,node.get("deviceIds"));
+        if (kind == Kind.AGENT_GROUP) { add(refs,Kind.AGENT,node.get("agentIds")); add(refs,Kind.ROLE,node.get("roleIds")); }
+        if (kind == Kind.TOOL_GROUP) add(refs,Kind.TOOL,node.get("toolIds"));
         if (kind == Kind.ROLE) {
-            var rules=node.get("rules");
-            add(refs,Kind.TEAM,rules.get("deviceGroupIds")); add(refs,Kind.TOOL,rules.get("toolIds"));
-            if (rules.get("deviceScope").asText().equals("GROUPS") != !rules.get("deviceGroupIds").isEmpty()) throw Failure.validation();
+            for (var rule : node.get("managementRules")) {
+                var groupKind=Kind.valueOf(rule.get("groupType").asText());
+                add(refs,groupKind,rule.get("groups").get("ids"));
+                for(var scope:rule.get("grantableScopes")) scopeReferences(refs,scope);
+            }
         }
-        if (kind == Kind.USER && node.has("access")) add(refs,Kind.TEAM,node.get("access").get("deviceGroupIds"));
         if (kind == Kind.AGENT || kind == Kind.DEVICE) refs.add(new Ids.UserId(node.get("ownerUserId").asText()));
         if (kind == Kind.TOOL) {
+            refs.add(Kind.EXTRACTOR.id(node.get("extractorId").asText()));
             var definition = node.get("definition");
             if (!id.value().equals(definition.get("id").asText())) throw Failure.validation();
             var actions = new HashSet<String>();
@@ -121,11 +124,16 @@ public class ContractCodec implements Codec {
             schemaData(definition.get("inputSchema")); schemaData(definition.get("outputSchema"));
         }
         if (kind == Kind.POLICY) {
-            refs.add(new Ids.ToolId(node.get("toolId").asText()));
-            add(refs, Kind.USER, node.get("userIds")); add(refs, Kind.TEAM, node.get("teamIds"));
-            add(refs, Kind.AGENT, node.get("agentIds")); add(refs, Kind.DEVICE, node.get("deviceIds"));
-            if (refs.size() == 1) throw Failure.validation();
+            scopeReferences(refs,node.get("scope")); add(refs,Kind.TEAM,node.get("teams").get("ids"));
+            add(refs,Kind.AGENT_GROUP,node.get("agentGroups").get("ids")); add(refs,Kind.TEAM,node.get("approverTeams").get("ids"));
         }
+        if(kind==Kind.GRANT) { refs.add(Kind.valueOf(node.get("sourceType").asText()).id(node.get("sourceId").asText())); scopeReferences(refs,node.get("scope")); }
+        if(kind==Kind.DELEGATION) { reference(refs,Kind.TEAM,node,"teamId"); reference(refs,Kind.AGENT_GROUP,node,"agentGroupId"); scopeReferences(refs,node.get("scope")); }
+        if(kind==Kind.AGENT_DELEGATION) { reference(refs,Kind.AGENT_GROUP,node,"fromAgentGroupId"); reference(refs,Kind.AGENT_GROUP,node,"toAgentGroupId"); scopeReferences(refs,node.get("scope")); }
+        if(kind==Kind.BINDING) { reference(refs,Kind.TOOL_GROUP,node,"toolGroupId"); reference(refs,Kind.DEVICE_GROUP,node,"deviceGroupId"); }
+        if(kind==Kind.WORKLOAD_BINDING) { reference(refs,Kind.AGENT,node,"agentId"); reference(refs,Kind.USER,node,"delegatedUserId"); reference(refs,Kind.WORKLOAD_BINDING,node,"parentBindingId"); }
+        if(kind==Kind.IDENTITY_BINDING) reference(refs,Kind.USER,node,"userId");
+        if(kind==Kind.DEVICE_EVIDENCE) reference(refs,Kind.DEVICE,node,"deviceId");
         return new Directory.Entry(id, node.get("enabled").asBoolean(), node.get("revision").asLong(), json(node), refs);
     }
     private void schemaData(JsonNode node) {
@@ -134,6 +142,13 @@ public class ContractCodec implements Codec {
     }
     private void add(java.util.Set<RecordId> refs, Kind kind, JsonNode ids) {
         ids.forEach(id -> refs.add(kind.id(id.asText())));
+    }
+    private void reference(java.util.Set<RecordId> refs,Kind kind,JsonNode node,String field) {
+        if(node.has(field)) refs.add(kind.id(node.get(field).asText()));
+    }
+    private void scopeReferences(java.util.Set<RecordId> refs,JsonNode scope) {
+        add(refs,Kind.TOOL_GROUP,scope.get("toolGroups").get("ids"));
+        add(refs,Kind.DEVICE_GROUP,scope.get("deviceGroups").get("ids"));
     }
     public Directory.Entry revision(Directory.Entry entry, long revision) {
         var node = (ObjectNode) parse(entry.document(), false); node.put("revision", revision);
@@ -144,16 +159,16 @@ public class ContractCodec implements Codec {
         var snapshot = input.get("snapshot");
         if (!snapshot.get("tenantId").asText().equals(tenant.value())) throw Failure.validation();
         var entries = new HashMap<RecordId, Directory.Entry>();
-        for (var kind : Kind.values()) for (var node : snapshot.path(kind.path())) {
+        for (var kind : Kind.values()) for (var node : snapshot.path(kind.snapshotKey())) {
             var entry = entry(kind, json(node));
             if (entries.put(entry.id(), entry) != null) throw Failure.validation();
         }
         return new Import(new Directory(snapshot.get("revision").asLong(), entries), input.get("mode").asText().equals("REPLACE"), input.get("dryRun").asBoolean());
     }
     public String snapshot(TenantId tenant, Directory directory, boolean yaml) {
-        var node = mapper.createObjectNode(); node.put("formatVersion", 1); node.put("tenantId", tenant.value()); node.put("revision", directory.revision());
+        var node = mapper.createObjectNode(); node.put("formatVersion", 2); node.put("tenantId", tenant.value()); node.put("revision", directory.revision());
         for (var kind : Kind.values()) {
-            var values = node.putArray(kind.path()); directory.entries().values().stream().filter(e -> e.id().kind() == kind)
+            var values = node.putArray(kind.snapshotKey()); directory.entries().values().stream().filter(e -> e.id().kind() == kind)
                 .sorted(java.util.Comparator.comparing(e -> e.id().value())).forEach(e -> values.add(parse(e.document(), false)));
         }
         try { return yaml ? new YAMLMapper().writeValueAsString(sorted(node)) : json(node); }
@@ -170,17 +185,7 @@ public class ContractCodec implements Codec {
         catch (java.io.IOException | IllegalArgumentException e) { throw Failure.validation(); }
     }
     public void validatePolicies(Directory directory) {
-        for (var entry : directory.entries().values()) if (entry.id().kind() == Kind.POLICY) {
-            var policy = parse(entry.document(), false);
-            var tool = directory.entries().get(new Ids.ToolId(policy.get("toolId").asText()));
-            if (tool == null) throw new IllegalArgumentException("Missing policy tool");
-            var definition = parse(tool.document(), false).get("definition");
-            boolean declared = false;
-            for (var action : definition.get("actions")) if (action.get("name").asText().equals(policy.get("action").asText())) {
-                for (var resource : action.get("resourceKinds")) if (resource.asText().equals(policy.get("resource").get("kind").asText())) declared = true;
-            }
-            if (!declared) throw new IllegalArgumentException("Undeclared tool action or resource kind");
-        }
+        io.ololabs.toolgate.control.application.GroupGraph.validate(directory,this);
     }
     /** Serve a self-contained OpenAPI document assembled from canonical sources, without duplicate models. */
     public String openapi() {

@@ -40,7 +40,7 @@ final class BuilderTest {
         try(var connection=java.sql.DriverManager.getConnection(base,"control_migrator",password);var statement=connection.createStatement()){statement.execute("CREATE DATABASE "+database);}
         var url=base.replace("/control?","/"+database+"?");var migrations=org.flywaydb.core.Flyway.configure().dataSource(url,"control_migrator",password).load();migrations.migrate();migrations.validate();
         var source=new org.postgresql.ds.PGSimpleDataSource();source.setURL(url);source.setUser("control_app");source.setPassword(password);
-        var store=new PostgresStore(source,codec);var tenant=new Ids.TenantId("builder");var admin=new DirectoryService.Actor(tenant,"a".repeat(64),true);
+        var store=new PostgresStore(source,codec);var tenant=new Ids.TenantId("builder");var admin=TestSupport.seed(store,codec,tenant,"root");
         var service=new BuilderService(store,codec,null,null,null,Clock.fixed(Instant.ofEpochMilli(1700000000000L),ZoneOffset.UTC),true,"builder","server");
         var definition=definition();var create=codec.json(new BuilderDraftRequest("draft",0L,definition));var first=service.save(admin,create,"create","request");assertEquals(first,service.save(admin,create,"create","request"));
         assertThrows(Failure.class,()->service.save(new DirectoryService.Actor(tenant,"b".repeat(64),false),create,"wrong-role","request"));

@@ -17,7 +17,7 @@ class GatewayAssetsTests(unittest.TestCase):
         api=yaml.safe_load((ROOT/'packages/contracts/openapi/gateway-v1.yaml').read_text())
         self.assertEqual('3.1.0',api['openapi'])
         self.assertEqual((ROOT/'VERSION').read_text().strip(),api['info']['version'])
-        ref=api['paths']['/v1/authorize']['post']['requestBody']['content']['application/json']['schema']['$ref']
+        ref=api['paths']['/access/invocations']['post']['requestBody']['content']['application/json']['schema']['$ref']
         self.assertTrue(ref.endswith('runtime.schema.json#/$defs/AuthorizationRequest'))
         self.assertEqual('bearer',api['components']['securitySchemes']['runtimeBearer']['scheme'])
         self.assertNotIn('AuthorizationRequest',api['components'].get('schemas',{}))
@@ -26,7 +26,11 @@ class GatewayAssetsTests(unittest.TestCase):
         chart=ROOT/'deploy/helm/olo-toolgate'; schema=json.loads((chart/'values.schema.json').read_text()); values=yaml.safe_load((chart/'values.yaml').read_text())
         values['gateway']['enabled']=True
         with self.assertRaises(ValidationError): Draft7Validator(schema).validate(values)
-        values['gateway']['credentialsSecret']='gateway-runtime'; Draft7Validator(schema).validate(values)
+        values['gateway']['credentialsSecret']='gateway-runtime'
+        with self.assertRaises(ValidationError): Draft7Validator(schema).validate(values)
+        values['gateway']['control']['tokenSecret']='gateway-authority'
+        values['gateway']['networkPolicy'].update(controlTo=[{'podSelector':{'matchLabels':{'app':'control'}}}],dnsTo=[{'namespaceSelector':{'matchLabels':{'kubernetes.io/metadata.name':'kube-system'}}}])
+        Draft7Validator(schema).validate(values)
         values['gateway']['securityContext']['allowPrivilegeEscalation']=True
         with self.assertRaises(ValidationError): Draft7Validator(schema).validate(values)
 

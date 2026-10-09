@@ -9,15 +9,13 @@ package io.ololabs.toolgate.contracts;
  * @param name canonical name value
  * @param enabled canonical enabled value
  * @param revision canonical revision value
- * @param access canonical access value
  */
 @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
 public record ControlUser(
     @com.fasterxml.jackson.annotation.JsonProperty(value = "id", required = true) String id,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "name", required = true) String name,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "enabled", required = true) Boolean enabled,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "revision", required = true) Long revision,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "access", required = false) UserAccess access
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "revision", required = true) Long revision
 ) {
     /** Reject absent required references and copy collections to retain value semantics.
      *
@@ -25,7 +23,6 @@ public record ControlUser(
      * @param name canonical name value
      * @param enabled canonical enabled value
      * @param revision canonical revision value
-     * @param access canonical access value
      */
     public ControlUser {
         java.util.Objects.requireNonNull(id, "id");

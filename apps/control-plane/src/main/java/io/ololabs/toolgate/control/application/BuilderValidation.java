@@ -36,6 +36,10 @@ public final class BuilderValidation {
         if(runnable&&!definition.credentialRequirements().isEmpty())throw new Failure(ErrorCode.UNSUPPORTED,400,"Credential binding is unavailable for isolated compute tools");
         if(definition.platforms().isEmpty()||definition.architectures().isEmpty()||definition.examples().isEmpty()||!definition.tool().runtimeId().equals(definition.runtime().id()))throw Failure.validation();
         source(definition.runtime(),definition.tool());
+        InstalledProfiles.validate(definition.tool(),definition.runtime());
+        var profile=definition.tool().authorizationProfile();
+        if(!profile.tool().version().equals(definition.version())||profile.extractor().extractorKind()!=EnterpriseExtractorKind.FIELDS||!profile.extractor().fields().isEmpty()
+            ||!profile.extractor().fixedResources().equals(List.of(definition.resource()))||profile.extractor().amountPointer()!=null||profile.extractor().operationPointer()!=null)throw Failure.validation();
         var factory=com.networknt.schema.JsonSchemaFactory.getInstance(com.networknt.schema.SpecVersion.VersionFlag.V202012);
         for(var field:List.of("inputSchema","outputSchema")){
             var value=tree.path("tool").path(field);if(!value.path("type").asText().equals("object")||!value.has("additionalProperties")||value.path("additionalProperties").asBoolean(true)||codec.json(value).length()>8192)throw Failure.validation();schema(value,0);

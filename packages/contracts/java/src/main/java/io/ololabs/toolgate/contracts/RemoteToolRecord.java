@@ -21,7 +21,7 @@ package io.ololabs.toolgate.contracts;
 public record RemoteToolRecord(
     @com.fasterxml.jackson.annotation.JsonProperty(value = "requestId", required = true) String requestId,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "deviceId", required = true) String deviceId,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "agentId", required = true) String agentId,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "agentId", required = false) String agentId,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "toolId", required = true) String toolId,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "state", required = true) RemoteToolState state,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "receivedAtUnixMs", required = true) Long receivedAtUnixMs,
@@ -48,7 +48,6 @@ public record RemoteToolRecord(
     public RemoteToolRecord {
         java.util.Objects.requireNonNull(requestId, "requestId");
         java.util.Objects.requireNonNull(deviceId, "deviceId");
-        java.util.Objects.requireNonNull(agentId, "agentId");
         java.util.Objects.requireNonNull(toolId, "toolId");
         java.util.Objects.requireNonNull(state, "state");
         java.util.Objects.requireNonNull(receivedAtUnixMs, "receivedAtUnixMs");

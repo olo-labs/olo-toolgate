@@ -11,8 +11,8 @@ use axum::{
 };
 use base64::Engine;
 use olo_toolgate_contracts::{
-    AuthorizationRequest, Decision, ErrorCode, PolicyInput, RemoteToolState, RemoteToolSubmission,
-    ResourceKind,
+    AuthorizationRequest, EnterpriseInvocationState, ErrorCode, RemoteToolState,
+    RemoteToolSubmission,
 };
 use serde_json::{json, Value};
 use std::sync::{atomic::Ordering, Arc};
@@ -144,12 +144,10 @@ pub(crate) async fn ingress(State(s): State<Arc<AppState>>, request: Request) ->
         "ping" => success(id, json!({})),
         "server/discover" => success(
             id,
-            json!({"supportedVersions":["2026-07-28"],"capabilities":if s.relay.is_some(){json!({"tools":{}})}else{json!({})},"ttlMs":0,"cacheScope":"private"}),
+            json!({"supportedVersions":["2026-07-28"],"capabilities":json!({"tools":{}}),"ttlMs":0,"cacheScope":"private"}),
         ),
         "tools/list" => {
-            let Some(relay) = &s.relay else {
-                return success(id, json!({"tools":[],"ttlMs":0,"cacheScope":"private"}));
-            };
+            let relay = &s.gateway.authority;
             match relay.catalog(&context).await {
                 Ok(catalog) => success(
                     id,
@@ -166,38 +164,26 @@ pub(crate) async fn ingress(State(s): State<Arc<AppState>>, request: Request) ->
         }
         "tools/call" => {
             let name = params["name"].as_str().unwrap_or("");
-            let action = if let Some(relay) = &s.relay {
-                let catalog = match relay.catalog(&context).await {
-                    Ok(catalog) => catalog,
-                    Err(code) => return error(code, &correlation.request_id),
-                };
-                let matches: Vec<_> = catalog
-                    .tools
-                    .into_iter()
-                    .filter(|tool| tool.enabled && tool.tool_id == name)
-                    .collect();
-                if matches.len() != 1 {
-                    return rpc_error(
-                        StatusCode::FORBIDDEN,
-                        id,
-                        -32602,
-                        "Tool unavailable for this agent and client",
-                        Value::Null,
-                    );
-                }
-                matches[0].action.clone()
-            } else {
-                let Some(action) = s.gateway.extractors.mcp_action(name) else {
-                    return rpc_error(
-                        StatusCode::BAD_REQUEST,
-                        id,
-                        -32602,
-                        "Unknown or ambiguous tool",
-                        Value::Null,
-                    );
-                };
-                action.to_owned()
+            let relay = &s.gateway.authority;
+            let catalog = match relay.catalog(&context).await {
+                Ok(c) => c,
+                Err(code) => return error(code, &correlation.request_id),
             };
+            let matches: Vec<_> = catalog
+                .tools
+                .into_iter()
+                .filter(|t| t.enabled && t.tool_id == name)
+                .collect();
+            if matches.len() != 1 {
+                return rpc_error(
+                    StatusCode::FORBIDDEN,
+                    id,
+                    -32602,
+                    "Tool unavailable for this actor and device",
+                    Value::Null,
+                );
+            }
+            let action = matches[0].action.clone();
             if params.as_object().is_none_or(|p| {
                 p.keys()
                     .any(|k| !["name", "arguments", "_meta"].contains(&k.as_str()))
@@ -234,191 +220,109 @@ pub(crate) async fn ingress(State(s): State<Arc<AppState>>, request: Request) ->
                 return error(ErrorCode::DependencyUnavailable, &correlation.request_id);
             };
             let mut context = context;
-            let mut authorized = request.clone();
-            let mut managed_runtime = false;
-            if s.relay.is_some() {
-                let builtins: Value = serde_json::from_str(include_str!(
-                    "../../../packages/contracts/tools/builtins.json"
-                ))
-                .unwrap_or(Value::Null);
-                let builtin = builtins["tools"].as_array().is_some_and(|tools| {
-                    tools.iter().any(|tool| tool["toolId"] == request.tool_id)
-                });
-                if builtin {
-                    authorized
-                        .arguments
-                        .entry("path".into())
-                        .or_insert(json!("hotfolder"));
-                } else {
-                    managed_runtime = true;
-                    authorized.arguments=serde_json::from_value(json!({"path":format!("runtime/{}",request.tool_id),"input":request.arguments})).unwrap_or_default();
-                }
-                context.request_id = format!(
-                    "mcp-{}",
-                    &crate::digest(
-                        &serde_json::to_vec(&(
-                            &context.tenant_id,
-                            &context.user_id,
-                            &context.agent_id,
-                            &context.device_id,
-                            &id,
-                            &request
-                        ))
-                        .unwrap_or_default()
-                    )[..48]
-                );
-            }
-            let input = if managed_runtime {
-                let binding = crate::extraction::ExtractorBinding {
-                    tool_id: authorized.tool_id.clone(),
-                    action: authorized.action.clone(),
-                    pointer: "/path".into(),
-                    kind: ResourceKind::Custom,
-                };
-                let resource = match crate::extraction::ResourceExtractor::extract(
-                    &binding,
-                    &serde_json::to_value(&authorized.arguments).unwrap_or_default(),
-                ) {
-                    Ok(resource) => resource,
-                    Err(_) => return error(ErrorCode::Validation, &correlation.request_id),
-                };
-                Ok(PolicyInput {
-                    context: context.clone(),
-                    tool_id: authorized.tool_id.clone(),
-                    action: authorized.action.clone(),
-                    resource,
-                    arguments_digest: crate::digest(
-                        &serde_json::to_vec(&authorized.arguments).unwrap_or_default(),
-                    ),
-                })
-            } else {
-                s.gateway.normalize(authorized, context.clone())
-            };
-            let input = match input {
-                Ok(input) => input,
-                Err(code) => return error(code, &correlation.request_id),
-            };
-            match s
-                .gateway
-                .authorize_input(input.clone(), correlation.trace_id, now)
-                .await
-            {
-                Ok(decision) if decision.decision == Decision::Allow => {
-                    s.metrics.allow.fetch_add(1, Ordering::Relaxed);
-                    if let Some(relay) = &s.relay {
-                        let expires = credential_deadline.min(now.saturating_add(
-                            s.config.limits.request_timeout_ms.saturating_sub(1000),
-                        ));
-                        if expires <= now.saturating_add(2000) {
-                            return error(ErrorCode::Timeout, &correlation.request_id);
-                        }
-                        let submission = RemoteToolSubmission {
-                            input,
-                            request,
-                            expires_at_unix_ms: expires,
-                        };
-                        let mut response = match relay.submit(&submission).await {
-                            Ok(response) => response,
-                            Err(code) => {
-                                return rpc_error(
-                                    status(&code),
-                                    id,
-                                    -32000,
-                                    "Local tool request rejected",
-                                    json!({"code":code}),
-                                )
-                            }
-                        };
-                        loop {
-                            if response.record.request_id != context.request_id
-                                || response.record.device_id
-                                    != context.device_id.clone().unwrap_or_default()
-                                || response.record.agent_id != context.agent_id
-                                || response.record.tool_id != submission.request.tool_id
-                            {
-                                return error(ErrorCode::Validation, &correlation.request_id);
-                            }
-                            if unix_ms().is_none_or(|time| time >= expires) {
-                                return error(ErrorCode::Timeout, &correlation.request_id);
-                            }
-                            match response.record.state {
-                                RemoteToolState::Done => {
-                                    let Some(result) = response.result else {
-                                        return error(
-                                            ErrorCode::Validation,
-                                            &correlation.request_id,
-                                        );
-                                    };
-                                    if result.request_id != context.request_id
-                                        || result.error.is_some()
-                                    {
-                                        return error(
-                                            ErrorCode::Validation,
-                                            &correlation.request_id,
-                                        );
-                                    }
-                                    let Some(output) = result.output else {
-                                        return error(
-                                            ErrorCode::Validation,
-                                            &correlation.request_id,
-                                        );
-                                    };
-                                    return success(
-                                        id,
-                                        json!({"content":[{"type":"text","text":serde_json::to_string(&output).unwrap_or_default()}],"structuredContent":output,"isError":false}),
-                                    );
-                                }
-                                RemoteToolState::Failed | RemoteToolState::Expired => {
-                                    return rpc_error(
-                                        StatusCode::OK,
-                                        id,
-                                        -32000,
-                                        "Local tool execution failed",
-                                        json!({"code":response.record.error.unwrap_or(ErrorCode::Timeout),"requestId":context.request_id}),
-                                    )
-                                }
-                                _ => {}
-                            }
-                            tokio::time::sleep(std::time::Duration::from_millis(250)).await;
-                            response = match relay.response(&context).await {
-                                Ok(response) => response,
-                                Err(code) => {
-                                    return rpc_error(
-                                        status(&code),
-                                        id,
-                                        -32000,
-                                        "Local tool response unavailable",
-                                        json!({"code":code}),
-                                    )
-                                }
-                            };
-                        }
-                    }
-                    rpc_error(
-                        StatusCode::OK,
-                        id,
-                        -32601,
-                        "Execution unsupported",
-                        json!({"code":"UNSUPPORTED"}),
-                    )
-                }
-                Ok(_) => {
-                    s.metrics.block.fetch_add(1, Ordering::Relaxed);
-                    rpc_error(
-                        StatusCode::OK,
+            context.request_id = crate::http::invocation_id(&context, &id.to_string());
+            let outcome = match s.gateway.authorize(request.clone(), context.clone()).await {
+                Ok(v) => v,
+                Err(code) => {
+                    return rpc_error(
+                        status(&code),
                         id,
                         -32000,
-                        "Authorization blocked",
-                        json!({"code":"FORBIDDEN"}),
+                        "Authorization failed",
+                        json!({"code":code}),
                     )
                 }
-                Err(code) => rpc_error(
-                    status(&code),
+            };
+            if outcome.invocation.state == EnterpriseInvocationState::PendingApproval {
+                return success(
                     id,
-                    -32000,
-                    "Authorization failed",
-                    json!({"code":code}),
-                ),
+                    json!({"content":[{"type":"text","text":"Approval required"}],"structuredContent":{"invocationId":outcome.invocation.id,"state":"PENDING_APPROVAL"},"isError":true}),
+                );
+            }
+            if !matches!(
+                outcome.invocation.state,
+                EnterpriseInvocationState::Queued
+                    | EnterpriseInvocationState::Reserved
+                    | EnterpriseInvocationState::Executing
+                    | EnterpriseInvocationState::Succeeded
+            ) {
+                return error(ErrorCode::Forbidden, &correlation.request_id);
+            }
+            s.metrics.allow.fetch_add(1, Ordering::Relaxed);
+            let expires = credential_deadline
+                .min(now.saturating_add(s.config.limits.request_timeout_ms.saturating_sub(1000)));
+            if expires <= now.saturating_add(2000) {
+                return error(ErrorCode::Timeout, &correlation.request_id);
+            }
+            let submission = RemoteToolSubmission {
+                context: context.clone(),
+                invocation_id: outcome.invocation.id,
+                request,
+                expires_at_unix_ms: expires,
+            };
+            let mut response = match relay.submit(&submission).await {
+                Ok(response) => response,
+                Err(code) => {
+                    return rpc_error(
+                        status(&code),
+                        id,
+                        -32000,
+                        "Local tool request rejected",
+                        json!({"code":code}),
+                    )
+                }
+            };
+            loop {
+                if response.record.request_id != context.request_id
+                    || response.record.device_id != context.device_id
+                    || response.record.agent_id != context.agent_id
+                    || response.record.tool_id != submission.request.tool_id
+                {
+                    return error(ErrorCode::Validation, &correlation.request_id);
+                }
+                if unix_ms().is_none_or(|time| time >= expires) {
+                    return error(ErrorCode::Timeout, &correlation.request_id);
+                }
+                match response.record.state {
+                    RemoteToolState::Done => {
+                        let Some(result) = response.result else {
+                            return error(ErrorCode::Validation, &correlation.request_id);
+                        };
+                        if result.request_id != context.request_id || result.error.is_some() {
+                            return error(ErrorCode::Validation, &correlation.request_id);
+                        }
+                        let Some(output) = result.output else {
+                            return error(ErrorCode::Validation, &correlation.request_id);
+                        };
+                        return success(
+                            id,
+                            json!({"content":[{"type":"text","text":serde_json::to_string(&output).unwrap_or_default()}],"structuredContent":output,"isError":false}),
+                        );
+                    }
+                    RemoteToolState::Failed | RemoteToolState::Expired => {
+                        return rpc_error(
+                            StatusCode::OK,
+                            id,
+                            -32000,
+                            "Local tool execution failed",
+                            json!({"code":response.record.error.unwrap_or(ErrorCode::Timeout),"requestId":context.request_id}),
+                        )
+                    }
+                    _ => {}
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+                response = match relay.response(&context).await {
+                    Ok(response) => response,
+                    Err(code) => {
+                        return rpc_error(
+                            status(&code),
+                            id,
+                            -32000,
+                            "Local tool response unavailable",
+                            json!({"code":code}),
+                        )
+                    }
+                };
             }
         }
         _ => rpc_error(

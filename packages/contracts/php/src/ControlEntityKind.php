@@ -14,4 +14,15 @@ enum ControlEntityKind: string {
     case POLICY = 'POLICY';
     case DEVICE = 'DEVICE';
     case ROLE = 'ROLE';
+    case DEVICE_GROUP = 'DEVICE_GROUP';
+    case AGENT_GROUP = 'AGENT_GROUP';
+    case TOOL_GROUP = 'TOOL_GROUP';
+    case GRANT = 'GRANT';
+    case DELEGATION = 'DELEGATION';
+    case AGENT_DELEGATION = 'AGENT_DELEGATION';
+    case BINDING = 'BINDING';
+    case EXTRACTOR = 'EXTRACTOR';
+    case WORKLOAD_BINDING = 'WORKLOAD_BINDING';
+    case IDENTITY_BINDING = 'IDENTITY_BINDING';
+    case DEVICE_EVIDENCE = 'DEVICE_EVIDENCE';
 }

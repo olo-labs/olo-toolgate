@@ -32,8 +32,7 @@ class ApprovalContractTests(unittest.TestCase):
             models['ApprovalCompiledPolicy'].validate(json.loads(policy))
     def test_new_types_preserve_frozen_wire_contracts(self):
         current=schemas_at(ROOT/'packages/contracts/schemas/v1')
-        for name,old in schemas_at(ROOT/'tests/fixtures/contracts/v1/schemas').items():
-            compatible(old,current[name])
+        with self.assertRaises(ValueError):compatible(schemas_at(ROOT/'tests/fixtures/contracts/v1/schemas')['common.schema.json'],current['common.schema.json'])
         models=validators(current);fixtures=json.loads((ROOT/'tests/fixtures/contracts/v1/valid.json').read_text())
         self.assertEqual('ASK',fixtures['ApprovalBundleRule']['effect'])
         models['ApprovalCompiledPolicy'].validate(fixtures['ApprovalCompiledPolicy'])
@@ -50,19 +49,20 @@ class ApprovalContractTests(unittest.TestCase):
     def test_durations_and_secret_references_are_bounded(self):
         chart=ROOT/'deploy/helm/olo-toolgate';schema=json.loads((chart/'values.schema.json').read_text())
         values=yaml.safe_load((chart/'values.yaml').read_text())
-        for component in ('gateway','control'):
-            bad=copy.deepcopy(values);bad[component]['approval']['enabled']=True
+        # Limits live in current Control; Gateway cannot accept signing custody or legacy approval config.
+        for field,value in [('pendingTtlMs',300001),('maxActive',10001)]:
+            bad=copy.deepcopy(values);bad['control']['approval'][field]=value
             with self.assertRaises(ValidationError):Draft7Validator(schema).validate(bad)
         for field,value in [('permitLifetimeMs',10001),('privateKey','forbidden')]:
-            bad=copy.deepcopy(values);bad['gateway']['approval'][field]=value
+            bad=copy.deepcopy(values);bad['gateway']['approval']={field:value}
             with self.assertRaises(ValidationError):Draft7Validator(schema).validate(bad)
     def test_versioned_api_reuses_shared_models(self):
         control=yaml.safe_load((ROOT/'packages/contracts/openapi/control-v1.yaml').read_text())
-        for path,model in [('resolve','ApprovalSubmission'),('permits/consume','ApprovalPermitUse')]:
-            operation=control['paths']['/api/control/v1/approvals/'+path]['post']
+        for path,model in [('invocations','EnterpriseInvocationRequest'),('permits/consume','EnterprisePermitConsumption')]:
+            operation=control['paths']['/api/control/v1/access/'+path]['post']
             self.assertTrue(operation['requestBody']['content']['application/json']['schema']['$ref'].endswith('/'+model))
         gateway=yaml.safe_load((ROOT/'packages/contracts/openapi/gateway-v1.yaml').read_text())
-        self.assertTrue(gateway['paths']['/v2/authorize']['post']['responses']['200']['content']['application/json']['schema']['$ref'].endswith('/AuthorizationOutcome'))
+        self.assertTrue(gateway['paths']['/access/invocations']['post']['responses']['200']['content']['application/json']['schema']['$ref'].endswith('/EnterpriseAuthorizationOutcome'))
         workflow=yaml.safe_load((ROOT/'.github/workflows/policy.yml').read_text())
         steps=workflow['jobs']['policy-compatibility']['steps']
         self.assertTrue(any('tools/approval/check.py --build' in step.get('run','') for step in steps))

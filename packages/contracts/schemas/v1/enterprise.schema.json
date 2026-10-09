@@ -1,0 +1,2733 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ololabs.io/toolgate/v1/enterprise.schema.json",
+  "$comment": "Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0",
+  "title": "EnterpriseDecision",
+  "$ref": "#/$defs/EnterpriseDecision",
+  "$defs": {
+    "EnterpriseRoleType": {
+      "type": "string",
+      "enum": [
+        "HUMAN",
+        "ACTOR_SERVICE",
+        "MANAGEMENT"
+      ],
+      "description": "Reviewed configuration workflow bound to the exact group graph revision."
+    },
+    "EnterpriseRequestMode": {
+      "type": "string",
+      "enum": [
+        "HUMAN",
+        "DELEGATED",
+        "SERVICE"
+      ],
+      "description": "Reviewed configuration workflow bound to the exact group graph revision."
+    },
+    "EnterpriseGroupType": {
+      "type": "string",
+      "enum": [
+        "TEAM",
+        "AGENT_GROUP",
+        "TOOL_GROUP",
+        "DEVICE_GROUP"
+      ],
+      "description": "Reviewed configuration workflow bound to the exact group graph revision."
+    },
+    "EnterpriseSourceType": {
+      "type": "string",
+      "enum": [
+        "TEAM",
+        "AGENT_GROUP",
+        "ROLE"
+      ],
+      "description": "Reviewed configuration workflow bound to the exact group graph revision."
+    },
+    "EnterpriseGrantPurpose": {
+      "type": "string",
+      "enum": [
+        "HUMAN",
+        "CAPABILITY",
+        "SERVICE",
+        "SECRET"
+      ],
+      "description": "Reviewed configuration workflow bound to the exact group graph revision."
+    },
+    "EnterpriseResourceMatch": {
+      "type": "string",
+      "enum": [
+        "EXACT",
+        "PREFIX",
+        "ANY"
+      ],
+      "description": "Reviewed configuration workflow bound to the exact group graph revision."
+    },
+    "EnterpriseExtractorKind": {
+      "type": "string",
+      "enum": [
+        "FIXED",
+        "FIELDS",
+        "FILESYSTEM",
+        "NETWORK",
+        "SQL",
+        "SHELL"
+      ],
+      "description": "Reviewed configuration workflow bound to the exact group graph revision."
+    },
+    "EnterpriseDecisionReason": {
+      "type": "string",
+      "enum": [
+        "MATCHED",
+        "NO_GRANT",
+        "IDENTITY_DISABLED",
+        "INVALID_CONTEXT",
+        "GROUP_UNAVAILABLE",
+        "NO_BINDING",
+        "DEVICE_UNTRUSTED",
+        "RESOURCE_REJECTED",
+        "BLOCKED",
+        "APPROVAL_REQUIRED",
+        "EVIDENCE_MISSING",
+        "EXPIRED",
+        "STALE_AUTHORITY",
+        "QUOTA_EXCEEDED",
+        "VERSION_MISMATCH",
+        "MANAGEMENT_DENIED"
+      ],
+      "description": "Reviewed configuration workflow bound to the exact group graph revision."
+    },
+    "EnterpriseInvocationState": {
+      "type": "string",
+      "enum": [
+        "PENDING_APPROVAL",
+        "QUEUED",
+        "RESERVED",
+        "DISPATCHED",
+        "EXECUTING",
+        "SUCCEEDED",
+        "FAILED",
+        "CANCELLED",
+        "EXPIRED",
+        "PARTIAL",
+        "OUTCOME_UNKNOWN"
+      ],
+      "description": "Reviewed configuration workflow bound to the exact group graph revision."
+    },
+    "GroupSelection": {
+      "type": "object",
+      "description": "Empty means none; all is explicit, tenant-scoped and requires privileged authoring.",
+      "additionalProperties": false,
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "maxItems": 512,
+          "uniqueItems": true
+        },
+        "all": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ids",
+        "all"
+      ]
+    },
+    "EnterpriseResourceRule": {
+      "type": "object",
+      "description": "Canonical complete resource constraint; ANY is explicit privileged scope.",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "resource.schema.json#/$defs/ResourceKind"
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 4096
+        },
+        "match": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseResourceMatch"
+        }
+      },
+      "required": [
+        "kind",
+        "locator",
+        "match"
+      ]
+    },
+    "EnterpriseHours": {
+      "type": "object",
+      "description": "Trusted UTC window; end must exceed start.",
+      "additionalProperties": false,
+      "properties": {
+        "dayOfWeek": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 6
+        },
+        "startMinute": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1439
+        },
+        "endMinute": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1440
+        }
+      },
+      "required": [
+        "dayOfWeek",
+        "startMinute",
+        "endMinute"
+      ]
+    },
+    "EnterpriseConditions": {
+      "type": "object",
+      "description": "All present conditions accumulate. Missing trusted evidence denies.",
+      "additionalProperties": false,
+      "properties": {
+        "notBeforeUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "networkCidrs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 64
+          },
+          "maxItems": 32,
+          "uniqueItems": true
+        },
+        "devicePosture": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "maxItems": 32,
+          "uniqueItems": true
+        },
+        "regions": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "maxItems": 32,
+          "uniqueItems": true
+        },
+        "hoursUtc": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/EnterpriseHours"
+          },
+          "maxItems": 32,
+          "uniqueItems": true
+        },
+        "requireOnline": {
+          "type": "boolean"
+        },
+        "highRisk": {
+          "type": "boolean"
+        },
+        "maxAmountMinorUnits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxInvocationsPerMinute": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000
+        }
+      },
+      "required": [
+        "notBeforeUnixMs",
+        "expiresAtUnixMs",
+        "networkCidrs",
+        "devicePosture",
+        "regions",
+        "hoursUtc",
+        "requireOnline",
+        "highRisk"
+      ]
+    },
+    "EnterpriseScope": {
+      "type": "object",
+      "description": "A complete group/action/device/resource tuple; independent scopes are never multiplied.",
+      "additionalProperties": false,
+      "properties": {
+        "toolGroups": {
+          "$ref": "enterprise.schema.json#/$defs/GroupSelection"
+        },
+        "deviceGroups": {
+          "$ref": "enterprise.schema.json#/$defs/GroupSelection"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "allActions": {
+          "type": "boolean"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/EnterpriseResourceRule"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "conditions": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseConditions"
+        }
+      },
+      "required": [
+        "toolGroups",
+        "deviceGroups",
+        "actions",
+        "allActions",
+        "resources",
+        "conditions"
+      ]
+    },
+    "EnterpriseManagementRule": {
+      "type": "object",
+      "description": "Management grants belong to group-assigned Management Roles only.",
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "groupType": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseGroupType"
+        },
+        "groups": {
+          "$ref": "enterprise.schema.json#/$defs/GroupSelection"
+        },
+        "grantableScopes": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/EnterpriseScope"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "conditions": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseConditions"
+        }
+      },
+      "required": [
+        "actions",
+        "groupType",
+        "groups",
+        "grantableScopes",
+        "conditions"
+      ]
+    },
+    "ControlAgentGroup": {
+      "type": "object",
+      "description": "Tenant-scoped Agent membership and compatible actor/management role assignments.",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "agentIds": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "maxItems": 512,
+          "uniqueItems": true
+        },
+        "roleIds": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "maxItems": 32,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "enabled",
+        "revision",
+        "agentIds",
+        "roleIds"
+      ]
+    },
+    "ControlToolGroup": {
+      "type": "object",
+      "description": "Exactly one primary membership for each Tool; execution bindings are group-level.",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "toolIds": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "maxItems": 512,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "enabled",
+        "revision",
+        "toolIds"
+      ]
+    },
+    "ControlAccessGrant": {
+      "type": "object",
+      "description": "Group/typed-role sourced complete runtime capability; never an individual ACL.",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "sourceType": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseSourceType"
+        },
+        "sourceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "purpose": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseGrantPurpose"
+        },
+        "scope": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseScope"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "enabled",
+        "revision",
+        "sourceType",
+        "sourceId",
+        "purpose",
+        "scope"
+      ]
+    },
+    "ControlDelegation": {
+      "type": "object",
+      "description": "Delegated human operation requires grant and delegation through this same Team and capability through this same Agent Group.",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "teamId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "agentGroupId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "scope": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseScope"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "enabled",
+        "revision",
+        "teamId",
+        "agentGroupId",
+        "scope"
+      ]
+    },
+    "ControlAgentDelegation": {
+      "type": "object",
+      "description": "Bounded downstream Agent Group delegation; every hop narrows capability.",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "fromAgentGroupId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "toAgentGroupId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "scope": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseScope"
+        },
+        "maximumDepth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "enabled",
+        "revision",
+        "fromAgentGroupId",
+        "toAgentGroupId",
+        "scope",
+        "maximumDepth"
+      ]
+    },
+    "ControlExecutionBinding": {
+      "type": "object",
+      "description": "Explicit Tool Group to Device Group binding; one binding is selected per invocation.",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "toolGroupId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "deviceGroupId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "allowedPackageDigests": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Sha256"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "requireOnline": {
+          "type": "boolean"
+        },
+        "ownerDependency": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "enabled",
+        "revision",
+        "toolGroupId",
+        "deviceGroupId",
+        "actions",
+        "allowedPackageDigests",
+        "requireOnline",
+        "ownerDependency"
+      ]
+    },
+    "ExtractorField": {
+      "type": "object",
+      "description": "Reviewed JSON pointer to resources, including every batch member or source/destination.",
+      "additionalProperties": false,
+      "properties": {
+        "pointer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "kind": {
+          "$ref": "resource.schema.json#/$defs/ResourceKind"
+        },
+        "multiple": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "pointer",
+        "kind",
+        "multiple"
+      ]
+    },
+    "ControlResourceExtractor": {
+      "type": "object",
+      "description": "Reviewed immutable versioned extraction definition; changing it invalidates operation bindings.",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "extractorKind": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseExtractorKind"
+        },
+        "version": {
+          "$ref": "identifiers.schema.json#/$defs/SemanticVersion"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/ExtractorField"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "fixedResources": {
+          "type": "array",
+          "items": {
+            "$ref": "resource.schema.json#/$defs/ResourceDescriptor"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "maxResources": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        },
+        "amountPointer": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 256
+        },
+        "operationPointer": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "enabled",
+        "revision",
+        "extractorKind",
+        "version",
+        "fields",
+        "fixedResources",
+        "maxResources"
+      ]
+    },
+    "ControlWorkloadBinding": {
+      "type": "object",
+      "description": "Individual identity binding is authentication only; permissions derive from Agent Groups.",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "agentId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "mode": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseRequestMode"
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "audience": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "credentialSha256": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "credentialEpoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "delegatedUserId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "parentBindingId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "delegatedSessionEpoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "enabled",
+        "revision",
+        "agentId",
+        "mode",
+        "issuer",
+        "subject",
+        "audience",
+        "credentialSha256",
+        "credentialEpoch",
+        "expiresAtUnixMs"
+      ]
+    },
+    "ControlIdentityBinding": {
+      "type": "object",
+      "description": "Stable verified tenant/issuer/subject identity; email never determines identity.",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "userId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "sessionEpoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "firstSeenUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "lastAttemptUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "attemptCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "registrationReason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "sessionsValidAfterUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "enabled",
+        "revision",
+        "userId",
+        "issuer",
+        "subject",
+        "sessionEpoch",
+        "firstSeenUnixMs",
+        "lastAttemptUnixMs",
+        "attemptCount",
+        "registrationReason",
+        "sessionsValidAfterUnixMs"
+      ]
+    },
+    "ControlDeviceEvidence": {
+      "type": "object",
+      "description": "Administrator/attestation sourced facts; callers cannot supply authoritative evidence.",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "posture": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "maxItems": 32,
+          "uniqueItems": true
+        },
+        "region": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 128
+        },
+        "verifiedNetworkAddress": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 128
+        },
+        "verifiedAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "enabled",
+        "revision",
+        "deviceId",
+        "posture",
+        "region",
+        "verifiedNetworkAddress",
+        "verifiedAtUnixMs",
+        "expiresAtUnixMs"
+      ]
+    },
+    "GroupMembership": {
+      "type": "object",
+      "description": "Atomic complete mandatory membership replacement guarded by directory revision.",
+      "additionalProperties": false,
+      "properties": {
+        "entityType": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseMemberType"
+        },
+        "entityId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "groupIds": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "maxItems": 512,
+          "uniqueItems": true,
+          "minItems": 1
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "entityType",
+        "entityId",
+        "groupIds",
+        "revision"
+      ]
+    },
+    "EnterpriseMemberType": {
+      "type": "string",
+      "enum": [
+        "USER",
+        "AGENT",
+        "TOOL",
+        "DEVICE"
+      ],
+      "description": "Reviewed configuration workflow bound to the exact group graph revision."
+    },
+    "EnterpriseActorHop": {
+      "type": "object",
+      "description": "Verified identity/delegation chain entry; not caller-asserted authority.",
+      "additionalProperties": false,
+      "properties": {
+        "agentId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "workloadBindingId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "agentId",
+        "workloadBindingId"
+      ]
+    },
+    "EnterpriseContext": {
+      "type": "object",
+      "description": "Trusted complete runtime identity. Authentication adapters construct it; ordinary arguments cannot change it.",
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "tenantId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "mode": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseRequestMode"
+        },
+        "userId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "agentId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "workloadBindingId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "chain": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/EnterpriseActorHop"
+          },
+          "maxItems": 8,
+          "uniqueItems": true
+        },
+        "sessionEpoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "credentialEpoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "bindingId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "requestId",
+        "tenantId",
+        "mode",
+        "chain",
+        "bindingId",
+        "deviceId"
+      ]
+    },
+    "EnterpriseEvaluation": {
+      "type": "object",
+      "description": "Side-effect-free complete request for simulation or trusted enforcement.",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseContext"
+        },
+        "toolId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "action": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "argumentsDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "resource.schema.json#/$defs/ResourceDescriptor"
+          },
+          "maxItems": 256,
+          "uniqueItems": true
+        },
+        "toolDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "packageDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "nowUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "authorityRevision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "online": {
+          "type": "boolean"
+        },
+        "amountMinorUnits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "operation": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "context",
+        "toolId",
+        "action",
+        "argumentsDigest",
+        "resources",
+        "toolDigest",
+        "packageDigest",
+        "nowUnixMs",
+        "authorityRevision",
+        "online"
+      ]
+    },
+    "EnterpriseWitness": {
+      "type": "object",
+      "description": "One complete path; Team and Agent Group identifiers cannot be mixed between witnesses.",
+      "additionalProperties": false,
+      "properties": {
+        "teamId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "grantId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "agentGroupId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "capabilityId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "delegationId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "serviceGrantId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "bindingId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "provenance": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "bindingId",
+        "provenance"
+      ]
+    },
+    "EnterpriseDecision": {
+      "type": "object",
+      "description": "Deterministic decision, safe reasons, complete witnesses and accumulated obligations.",
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "$ref": "policy.schema.json#/$defs/Decision"
+        },
+        "reason": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseDecisionReason"
+        },
+        "witnesses": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/EnterpriseWitness"
+          },
+          "maxItems": 512,
+          "uniqueItems": true
+        },
+        "obligations": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "maxItems": 512,
+          "uniqueItems": true
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "authorizationEpoch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "validUntilUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "diagnosticId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "decision",
+        "reason",
+        "witnesses",
+        "obligations",
+        "revision",
+        "authorizationEpoch",
+        "validUntilUnixMs",
+        "diagnosticId"
+      ]
+    },
+    "EnterpriseInvocation": {
+      "type": "object",
+      "description": "Durable exact binding and outcome state. OUTCOME_UNKNOWN never authorizes a blind retry.",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "requestDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "evaluation": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseEvaluation"
+        },
+        "state": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseInvocationState"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "authorizationEpoch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "reservedNonce": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "completedResources": {
+          "type": "array",
+          "items": {
+            "$ref": "resource.schema.json#/$defs/ResourceDescriptor"
+          },
+          "maxItems": 256,
+          "uniqueItems": true
+        },
+        "downstreamIdempotencyKey": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "resultDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "diagnosticId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "id",
+        "requestDigest",
+        "evaluation",
+        "state",
+        "revision",
+        "authorizationEpoch",
+        "expiresAtUnixMs",
+        "completedResources",
+        "diagnosticId"
+      ]
+    },
+    "EnterpriseSignedPermit": {
+      "type": "object",
+      "description": "Signed enterprise effect permit; claims are bound and consumption is durably atomic.",
+      "additionalProperties": false,
+      "properties": {
+        "jws": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        }
+      },
+      "required": [
+        "jws"
+      ]
+    },
+    "EnterprisePermitClaims": {
+      "type": "object",
+      "description": "Short-lived audience-bound permit for one exact invocation and target.",
+      "additionalProperties": false,
+      "properties": {
+        "issuer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "audience": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "nonce": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "invocationId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "requestDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "evaluationDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "authorizationEpoch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "directoryRevision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "issuedAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "toolDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "packageDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "bindingId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "approvalIds": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "issuer",
+        "audience",
+        "nonce",
+        "invocationId",
+        "requestDigest",
+        "evaluationDigest",
+        "authorizationEpoch",
+        "directoryRevision",
+        "issuedAtUnixMs",
+        "expiresAtUnixMs",
+        "toolDigest",
+        "packageDigest",
+        "bindingId",
+        "deviceId",
+        "approvalIds"
+      ]
+    },
+    "ControlAgentGroupPage": {
+      "type": "object",
+      "description": "Bounded canonical directory cursor page.",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/ControlAgentGroup"
+          },
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "nextCursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "items"
+      ]
+    },
+    "ControlToolGroupPage": {
+      "type": "object",
+      "description": "Bounded canonical directory cursor page.",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/ControlToolGroup"
+          },
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "nextCursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "items"
+      ]
+    },
+    "ControlAccessGrantPage": {
+      "type": "object",
+      "description": "Bounded canonical directory cursor page.",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/ControlAccessGrant"
+          },
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "nextCursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "items"
+      ]
+    },
+    "ControlDelegationPage": {
+      "type": "object",
+      "description": "Bounded canonical directory cursor page.",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/ControlDelegation"
+          },
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "nextCursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "items"
+      ]
+    },
+    "ControlAgentDelegationPage": {
+      "type": "object",
+      "description": "Bounded canonical directory cursor page.",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/ControlAgentDelegation"
+          },
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "nextCursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "items"
+      ]
+    },
+    "ControlExecutionBindingPage": {
+      "type": "object",
+      "description": "Bounded canonical directory cursor page.",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/ControlExecutionBinding"
+          },
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "nextCursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "items"
+      ]
+    },
+    "ControlResourceExtractorPage": {
+      "type": "object",
+      "description": "Bounded canonical directory cursor page.",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/ControlResourceExtractor"
+          },
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "nextCursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "items"
+      ]
+    },
+    "ControlWorkloadBindingPage": {
+      "type": "object",
+      "description": "Bounded canonical directory cursor page.",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/ControlWorkloadBinding"
+          },
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "nextCursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "items"
+      ]
+    },
+    "ControlIdentityBindingPage": {
+      "type": "object",
+      "description": "Bounded canonical directory cursor page.",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/ControlIdentityBinding"
+          },
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "nextCursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "items"
+      ]
+    },
+    "ControlDeviceEvidencePage": {
+      "type": "object",
+      "description": "Bounded canonical directory cursor page.",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/ControlDeviceEvidence"
+          },
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "nextCursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "items"
+      ]
+    },
+    "EnterpriseSnapshotPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Signed group graph for discovery and adoption. It is never an execution permit.",
+      "properties": {
+        "formatVersion": {
+          "type": "integer",
+          "const": 3
+        },
+        "issuer": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "audience": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "tenantId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "policyVersion": {
+          "$ref": "identifiers.schema.json#/$defs/SemanticVersion"
+        },
+        "directoryRevision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "authorizationEpoch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "issuedAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "graphSha256": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "graphBase64": {
+          "type": "string",
+          "maxLength": 1400000,
+          "minLength": 1
+        },
+        "rollbackOf": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "formatVersion",
+        "issuer",
+        "audience",
+        "tenantId",
+        "sequence",
+        "policyVersion",
+        "directoryRevision",
+        "authorizationEpoch",
+        "issuedAtUnixMs",
+        "expiresAtUnixMs",
+        "graphSha256",
+        "graphBase64"
+      ]
+    },
+    "EnterpriseApprovalType": {
+      "type": "string",
+      "enum": [
+        "OPERATION",
+        "CONFIGURATION"
+      ],
+      "description": "Reviewed configuration workflow bound to the exact group graph revision."
+    },
+    "EnterpriseApprovalState": {
+      "type": "string",
+      "enum": [
+        "PENDING",
+        "APPROVED",
+        "DENIED",
+        "CANCELLED",
+        "EXPIRED",
+        "REVOKED"
+      ],
+      "description": "Reviewed configuration workflow bound to the exact group graph revision."
+    },
+    "EnterpriseReviewDecision": {
+      "type": "string",
+      "enum": [
+        "APPROVE",
+        "DENY",
+        "REVOKE"
+      ],
+      "description": "Reviewed configuration workflow bound to the exact group graph revision."
+    },
+    "EnterpriseApprovalReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Audited independent review of one bound obligation.",
+      "properties": {
+        "obligationId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "reviewerUserId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "decision": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseReviewDecision"
+        },
+        "decidedAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "obligationId",
+        "reviewerUserId",
+        "decision",
+        "decidedAtUnixMs"
+      ]
+    },
+    "EnterpriseApproval": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Separate exact-operation and configuration approval records. Reviewers cannot expand the approved binding.",
+      "properties": {
+        "id": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "approvalType": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseApprovalType"
+        },
+        "invocationId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "requestDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "authorizationEpoch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "directoryRevision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "obligationIds": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          },
+          "maxItems": 512
+        },
+        "reviews": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/EnterpriseApprovalReview"
+          },
+          "maxItems": 512
+        },
+        "state": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseApprovalState"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "id",
+        "approvalType",
+        "invocationId",
+        "requestDigest",
+        "authorizationEpoch",
+        "directoryRevision",
+        "obligationIds",
+        "reviews",
+        "state",
+        "revision",
+        "expiresAtUnixMs"
+      ]
+    },
+    "EnterpriseApprovalDecisionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Independent decision for one exact operation obligation and approval revision.",
+      "properties": {
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "obligationId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "decision": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseReviewDecision"
+        }
+      },
+      "required": [
+        "expectedRevision",
+        "obligationId",
+        "decision"
+      ]
+    },
+    "EnterpriseInvocationRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Exact authenticated invocation with original arguments and installed code digests.",
+      "properties": {
+        "context": {
+          "$ref": "common.schema.json#/$defs/RequestContext"
+        },
+        "request": {
+          "$ref": "runtime.schema.json#/$defs/AuthorizationRequest"
+        },
+        "toolDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "packageDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "downstreamIdempotencyKey": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "context",
+        "request",
+        "toolDigest",
+        "packageDigest"
+      ]
+    },
+    "EnterpriseReservationRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Compare-and-swap reservation for a queued invocation.",
+      "properties": {
+        "invocationId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "invocationId",
+        "expectedRevision"
+      ]
+    },
+    "EnterpriseReservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Durable invocation reservation and its exact signed capability.",
+      "properties": {
+        "invocation": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseInvocation"
+        },
+        "permit": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseSignedPermit"
+        }
+      },
+      "required": [
+        "invocation",
+        "permit"
+      ]
+    },
+    "EnterprisePermitConsumption": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Certificate-bound single-use consumption of an exact effect capability.",
+      "properties": {
+        "invocationId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "permit": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseSignedPermit"
+        },
+        "argumentsDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "resource.schema.json#/$defs/ResourceDescriptor"
+          },
+          "maxItems": 256
+        },
+        "toolDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "packageDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        }
+      },
+      "required": [
+        "invocationId",
+        "permit",
+        "argumentsDigest",
+        "resources",
+        "toolDigest",
+        "packageDigest"
+      ]
+    },
+    "EnterpriseEffectReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Device-bound durable effect outcome and completed resource subset.",
+      "properties": {
+        "invocationId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "state": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseInvocationState"
+        },
+        "completedResources": {
+          "type": "array",
+          "items": {
+            "$ref": "resource.schema.json#/$defs/ResourceDescriptor"
+          },
+          "maxItems": 256
+        },
+        "resultDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        }
+      },
+      "required": [
+        "invocationId",
+        "expectedRevision",
+        "state",
+        "completedResources"
+      ]
+    },
+    "EnterprisePermitHeader": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Purpose-specific RS256 effect capability header.",
+      "properties": {
+        "alg": {
+          "type": "string",
+          "const": "RS256"
+        },
+        "typ": {
+          "type": "string",
+          "const": "toolgate-effect-permit+jws"
+        },
+        "kid": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "alg",
+        "typ",
+        "kid"
+      ]
+    },
+    "EnterpriseApprovalPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Current scoped operation approval queue.",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/EnterpriseApproval"
+          },
+          "maxItems": 100
+        },
+        "nextCursor": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "items"
+      ]
+    },
+    "EnterpriseAuthorizationOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Online authoritative invocation status. Only a reserved signed permit can proceed to device-authenticated consumption.",
+      "properties": {
+        "invocation": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseInvocation"
+        },
+        "reservation": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseReservation"
+        }
+      },
+      "required": [
+        "invocation"
+      ]
+    },
+    "InstalledAuthorizationProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reviewed deployment metadata, never a grant. Local executors independently verify the installed package and resource extraction definition.",
+      "properties": {
+        "tool": {
+          "$ref": "control.schema.json#/$defs/ControlTool"
+        },
+        "extractor": {
+          "$ref": "enterprise.schema.json#/$defs/ControlResourceExtractor"
+        }
+      },
+      "required": [
+        "tool",
+        "extractor"
+      ]
+    },
+    "EnterpriseRecoveryAuthorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "formatVersion": {
+          "const": 1,
+          "type": "integer"
+        },
+        "tenantId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "snapshot": {
+          "$ref": "control.schema.json#/$defs/ControlSnapshot"
+        },
+        "reasonDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "issuedAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "formatVersion",
+        "tenantId",
+        "expectedRevision",
+        "snapshot",
+        "reasonDigest",
+        "issuedAtUnixMs",
+        "expiresAtUnixMs"
+      ],
+      "description": "Protected operator review for group-only bootstrap or bounded recovery."
+    },
+    "EnterpriseRecoveryProof": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "keyId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "signature": {
+          "type": "string",
+          "minLength": 300,
+          "maxLength": 1400,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      },
+      "required": [
+        "keyId",
+        "signature"
+      ],
+      "description": "Protected operator review for group-only bootstrap or bounded recovery."
+    },
+    "EnterpriseReviewedRecovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "authorization": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseRecoveryAuthorization"
+        },
+        "proofs": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/EnterpriseRecoveryProof"
+          },
+          "minItems": 1,
+          "maxItems": 4
+        }
+      },
+      "required": [
+        "authorization",
+        "proofs"
+      ],
+      "description": "Initial tenant installation has one pinned installation authority. Existing tenant recovery requires at least two distinct pinned independent signing authorities."
+    },
+    "EnterpriseConfigurationState": {
+      "type": "string",
+      "enum": [
+        "DRAFT",
+        "PENDING",
+        "APPROVED",
+        "DENIED",
+        "CANCELLED",
+        "EXPIRED",
+        "REVOKED",
+        "APPLIED",
+        "STALE"
+      ],
+      "description": "Reviewed configuration workflow bound to the exact group graph revision."
+    },
+    "EnterpriseConfigurationCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseConfigurationOperation"
+        },
+        "kind": {
+          "$ref": "control.schema.json#/$defs/ControlEntityKind"
+        },
+        "entityId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "document": {
+          "type": "string",
+          "maxLength": 1048576
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "operation",
+        "kind",
+        "entityId",
+        "document",
+        "expectedRevision"
+      ],
+      "description": "Reviewed configuration workflow bound to the exact group graph revision."
+    },
+    "EnterpriseConfigurationImpact": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "control.schema.json#/$defs/ControlEntityKind"
+        },
+        "entityId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "operation": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseConfigurationImpactOperation"
+        },
+        "beforeDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "afterDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        }
+      },
+      "required": [
+        "kind",
+        "entityId",
+        "operation",
+        "beforeDigest",
+        "afterDigest"
+      ],
+      "description": "Reviewed configuration workflow bound to the exact group graph revision."
+    },
+    "EnterpriseConfigurationReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reviewerUserId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "decision": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseReviewDecision"
+        },
+        "reviewedAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "reviewerUserId",
+        "decision",
+        "reviewedAtUnixMs"
+      ],
+      "description": "Reviewed configuration workflow bound to the exact group graph revision."
+    },
+    "EnterpriseConfigurationChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "requesterUserId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "command": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseConfigurationCommand"
+        },
+        "requestDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "directoryRevision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "authorizationEpoch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "state": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseConfigurationState"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "createdAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "requiredReviews": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2
+        },
+        "impact": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/EnterpriseConfigurationImpact"
+          },
+          "maxItems": 512
+        },
+        "affectedGroups": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]+$"
+          },
+          "maxItems": 512
+        },
+        "affectedIndividuals": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]+$"
+          },
+          "maxItems": 512
+        },
+        "reviews": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/EnterpriseConfigurationReview"
+          },
+          "maxItems": 2
+        }
+      },
+      "required": [
+        "id",
+        "requesterUserId",
+        "command",
+        "requestDigest",
+        "directoryRevision",
+        "authorizationEpoch",
+        "state",
+        "revision",
+        "createdAtUnixMs",
+        "expiresAtUnixMs",
+        "requiredReviews",
+        "impact",
+        "affectedGroups",
+        "affectedIndividuals",
+        "reviews"
+      ],
+      "description": "Reviewed configuration workflow bound to the exact group graph revision."
+    },
+    "EnterpriseConfigurationPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/EnterpriseConfigurationChange"
+          },
+          "maxItems": 100
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "description": "Reviewed configuration workflow bound to the exact group graph revision."
+    },
+    "EnterpriseConfigurationTransition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "action": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseConfigurationAction"
+        }
+      },
+      "required": [
+        "expectedRevision",
+        "action"
+      ],
+      "description": "Reviewed configuration workflow bound to the exact group graph revision."
+    },
+    "EnterpriseConfigurationOperation": {
+      "type": "string",
+      "enum": [
+        "CREATE",
+        "UPDATE",
+        "DELETE",
+        "MEMBERSHIPS",
+        "IMPORT"
+      ],
+      "description": "Canonical configuration workflow action."
+    },
+    "EnterpriseConfigurationImpactOperation": {
+      "type": "string",
+      "enum": [
+        "CREATE",
+        "UPDATE",
+        "DELETE"
+      ],
+      "description": "Canonical configuration workflow action."
+    },
+    "EnterpriseConfigurationAction": {
+      "type": "string",
+      "enum": [
+        "SUBMIT",
+        "APPROVE",
+        "DENY",
+        "REVOKE",
+        "CANCEL",
+        "APPLY"
+      ],
+      "description": "Canonical configuration workflow action."
+    },
+    "EnterpriseHumanRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Verified human selects an exact execution binding and target. User and session facts are always supplied by the authenticated adapter.",
+      "properties": {
+        "bindingId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "request": {
+          "$ref": "runtime.schema.json#/$defs/AuthorizationRequest"
+        }
+      },
+      "required": [
+        "bindingId",
+        "deviceId",
+        "request"
+      ]
+    },
+    "EnterpriseHumanTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Target for current verified-human discovery.",
+      "properties": {
+        "bindingId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "bindingId",
+        "deviceId"
+      ]
+    },
+    "EnterpriseHumanOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Pending approvals carry no queued task or effect capability. Dispatched operations include the durable relay status.",
+      "properties": {
+        "invocation": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseInvocation"
+        },
+        "dispatch": {
+          "$ref": "endpoint.schema.json#/$defs/RemoteToolResponse"
+        }
+      },
+      "required": [
+        "invocation"
+      ]
+    },
+    "EnterpriseVaultWrite": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Encrypted secret custody bound to explicit Tool and Device Groups; plaintext never appears in directory export or audit.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9/-]{0,127}$",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32768
+        },
+        "toolGroupId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "deviceGroupId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "name",
+        "value",
+        "toolGroupId",
+        "deviceGroupId"
+      ]
+    },
+    "EnterpriseVaultReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Visible secret name and group boundary; no plaintext or verifier bytes.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9/-]{0,127}$",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "toolGroupId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "deviceGroupId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "name",
+        "toolGroupId",
+        "deviceGroupId"
+      ]
+    },
+    "EnterpriseVaultPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Only references covered by the current group management authority are returned.",
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/EnterpriseVaultReference"
+          }
+        }
+      },
+      "required": [
+        "items"
+      ]
+    },
+    "EnterpriseVaultStored": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Acknowledgement after authorized encrypted custody and redacted audit commit.",
+      "properties": {
+        "stored": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "stored"
+      ]
+    },
+    "EnterpriseEffectiveMembership": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Current group membership provenance with intact grants; candidate grants still require the complete request evaluation.",
+      "properties": {
+        "groupType": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseGroupType"
+        },
+        "groupId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "roleIds": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Identifier"
+          }
+        },
+        "grants": {
+          "type": "array",
+          "maxItems": 512,
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/ControlAccessGrant"
+          }
+        }
+      },
+      "required": [
+        "groupType",
+        "groupId",
+        "enabled",
+        "roleIds",
+        "grants"
+      ]
+    },
+    "EnterpriseEffectiveAccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Read-only inherited access provenance at the current authority revision. No direct individual access mapping is created. Bindings and candidate grants do not constitute execution authorization.",
+      "properties": {
+        "entityId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "kind": {
+          "$ref": "control.schema.json#/$defs/ControlEntityKind"
+        },
+        "directoryRevision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "authorizationEpoch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "memberships": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/EnterpriseEffectiveMembership"
+          }
+        },
+        "bindings": {
+          "type": "array",
+          "maxItems": 512,
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/ControlExecutionBinding"
+          }
+        },
+        "managementRoles": {
+          "type": "array",
+          "maxItems": 512,
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/ControlRole"
+          }
+        }
+      },
+      "required": [
+        "entityId",
+        "kind",
+        "directoryRevision",
+        "authorizationEpoch",
+        "memberships",
+        "bindings",
+        "managementRoles"
+      ]
+    },
+    "EnterpriseAdoptionStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Certificate-authenticated current device acknowledgement. Acknowledgement is metadata, never an execution capability.",
+      "properties": {
+        "deviceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "directoryRevision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "authorizationEpoch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "graphDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "observedAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "deviceId",
+        "directoryRevision",
+        "authorizationEpoch",
+        "graphDigest",
+        "observedAtUnixMs"
+      ]
+    },
+    "EnterpriseAuthorityStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Saved authority, explicitly published signed snapshot and independently acknowledged device adoption are distinct states.",
+      "properties": {
+        "directoryRevision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "authorizationEpoch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "snapshotSequence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "publishedRevision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "adoptions": {
+          "type": "array",
+          "maxItems": 512,
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/EnterpriseAdoptionStatus"
+          }
+        }
+      },
+      "required": [
+        "directoryRevision",
+        "authorizationEpoch",
+        "snapshotSequence",
+        "adoptions"
+      ]
+    }
+  }
+}

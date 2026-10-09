@@ -12,12 +12,14 @@ final readonly class BuiltinToolInfo implements \JsonSerializable {
         public string $action,
         public string $description,
         public bool $enabled,
-        public \stdClass $inputSchema
+        public \stdClass $inputSchema,
+        public string $toolDigest,
+        public string $packageDigest
     ) {}
 
     /** Decode a structural model; canonical schema validation is also required. */
     public static function fromArray(array $data): self {
-        if (array_diff(array_keys($data), ['toolId', 'action', 'description', 'enabled', 'inputSchema']) || array_diff(['toolId', 'action', 'description', 'enabled', 'inputSchema'], array_keys($data))) {
+        if (array_diff(array_keys($data), ['toolId', 'action', 'description', 'enabled', 'inputSchema', 'toolDigest', 'packageDigest']) || array_diff(['toolId', 'action', 'description', 'enabled', 'inputSchema', 'toolDigest', 'packageDigest'], array_keys($data))) {
             throw new \InvalidArgumentException('Unknown or missing contract fields');
         }
         return new self(
@@ -25,7 +27,9 @@ final readonly class BuiltinToolInfo implements \JsonSerializable {
             $data['action'],
             $data['description'],
             $data['enabled'],
-            (object) $data['inputSchema']
+            (object) $data['inputSchema'],
+            $data['toolDigest'],
+            $data['packageDigest']
         );
     }
 

@@ -61,6 +61,8 @@ fn settings(dir: &Directory) -> Settings {
         gateway_token_path: dir.0.join("token"),
         gateway_ca_path: None,
         device_id: "device-test".into(),
+        authorization_profiles: olo_toolgate_client::authorization_profile::builtin_profiles()
+            .unwrap(),
         web_search_token_path: None,
         web_search_allowed_domains: Vec::new(),
     }
@@ -201,9 +203,9 @@ async fn every_call_requires_online_policy_and_copy_binds_both_paths() {
         .await
         .unwrap();
     let requests = allow.requests.lock().unwrap();
-    assert_eq!(requests.len(), 3);
+    assert_eq!(requests.len(), 2);
     assert_eq!(requests[1].arguments["path"], "a.txt");
-    assert_eq!(requests[2].arguments["path"], "b.txt");
+    assert_eq!(requests[1].arguments["destination"], "b.txt");
 }
 #[tokio::test]
 async fn concurrent_append_is_serialized_and_inputs_are_closed() {

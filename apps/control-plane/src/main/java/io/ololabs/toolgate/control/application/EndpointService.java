@@ -25,7 +25,9 @@ public final class EndpointService {
     private final Ids.TenantId tenant;
     private final String server,organization,control,gateway;
     private final boolean enabled;
-    public McpService relay(){available();return new McpService(store,codec,this,clock,tenant,server);}
+    private EnterpriseOperations operations;
+    public EndpointService operations(EnterpriseOperations value){operations=java.util.Objects.requireNonNull(value);return this;}
+    public McpService relay(){available();if(operations==null)throw Failure.unavailable();return new McpService(store,codec,this,operations,clock,tenant,server);}
     public EndpointService(Store store,Codec codec,DeviceIssuer issuer,Clock clock,boolean enabled,
                            String tenant,String server,String organization,String control,String gateway) {
         this.store=store;this.codec=codec;this.issuer=issuer;this.clock=clock;this.enabled=enabled;
@@ -61,7 +63,12 @@ public final class EndpointService {
     }
     private static long approvalRevision(EndpointDeviceRecord device){return device.approvalRevision()==null?1:device.approvalRevision();}
     private void human(DirectoryService.Actor actor,String user,Store.Session tx) {
-        if(!actor.tenant().equals(tenant)||user==null)throw forbidden();Ids.valid(user);enabledUser(tx,user);
+        if(!actor.tenant().equals(tenant)||user==null||!user.equals(actor.userId()))throw forbidden();Ids.valid(user);enabledUser(tx,user);
+    }
+    public void management(Store.Session tx,DirectoryService.Actor actor,String action,String deviceId){
+        actor.requireAdmin();if(!actor.tenant().equals(tenant)||actor.userId()==null)throw forbidden();
+        var entry=tx.load().entries().get(Ids.Kind.DEVICE.id(deviceId));var access=new ManagementAccess(codec);
+        if(entry==null)access.require(tx.load(),actor.userId(),action,Ids.Kind.DEVICE_GROUP,"default-devices",clock.millis());else access.requireEntry(tx.load(),actor.userId(),action,entry,clock.millis());
     }
     private Store.Reply reply(Object body,long revision){return new Store.Reply(200,codec.json(body),revision);}
     private static String random(int bytes){byte[] value=new byte[bytes];new java.security.SecureRandom().nextBytes(value);return HexFormat.of().formatHex(value);}
@@ -95,6 +102,7 @@ public final class EndpointService {
         return transaction((tx,now)->{human(actor,user,tx);var row=tx.enrollmentCode(DirectoryService.digest(code));
             if(row==null)throw new Failure(ErrorCode.NOT_FOUND,404,"Enrollment not found");
             var review=codec.model(row.document(),EndpointEnrollmentReview.class);
+            management(tx,actor,"read",review.deviceId());
             if(row.expiresAt()<=now)return reply(withState(review,EnrollmentState.EXPIRED),1);
             return reply(review,1);
         });
@@ -102,7 +110,7 @@ public final class EndpointService {
     public Store.Reply pending(DirectoryService.Actor actor,String user) {
         return transaction((tx,now)->{human(actor,user,tx);
             var items=tx.enrollments(now).stream().map(row->codec.model(row.document(),EndpointEnrollmentReview.class))
-                .filter(review->review.state()==EnrollmentState.PENDING).toList();
+                .filter(review->review.state()==EnrollmentState.PENDING).filter(review->{try{management(tx,actor,"read",review.deviceId());return true;}catch(Failure denied){if(denied.status()==403)return false;throw denied;}}).toList();
             return reply(new EndpointEnrollmentPage(items),0);
         });
     }
@@ -110,9 +118,10 @@ public final class EndpointService {
     public Store.Reply decide(DirectoryService.Actor actor,String user,String body,String key,String requestId) {
         var decision=codec.model(body,EndpointEnrollmentDecision.class);Ids.valid(key);Ids.valid(requestId);var digest=DirectoryService.digest(body);
         return transaction((tx,now)->{
-            human(actor,user,tx);var replay=tx.replay(actor.id(),key,digest);if(replay!=null)return replay;
-            var row=tx.enrollmentCode(DirectoryService.digest(decision.userCode()));if(row==null||row.expiresAt()<=now)throw Failure.conflict();
+            human(actor,user,tx);var row=tx.enrollmentCode(DirectoryService.digest(decision.userCode()));if(row==null)throw Failure.conflict();
             var review=codec.model(row.document(),EndpointEnrollmentReview.class);
+            management(tx,actor,"approve-device",review.deviceId());var replay=tx.replay(actor.id(),key,digest);if(replay!=null)return replay;
+            if(row.expiresAt()<=now)throw Failure.conflict();
             if(review.state()!=EnrollmentState.PENDING||!review.keyFingerprint().equals(decision.keyFingerprint()))throw Failure.conflict();
             boolean approve=decision.choice()==EnrollmentChoice.APPROVE;
             Long connectionExpires=approve?connectionDeadline(decision.connectionExpiresAtUnixMs(),decision.unlimitedConnection(),now):null;
@@ -127,8 +136,8 @@ public final class EndpointService {
                 if(previous==null){
                     if(tx.used(id))throw Failure.conflict();
                     var entry=codec.entry(Ids.Kind.DEVICE,codec.json(new ControlDevice(review.deviceId(),"Enrolled "+review.platform(),true,1L,user)));
-                    var entries=new HashMap<>(before.entries());entries.put(id,entry);var after=new Directory(before.revision()+1,entries);after.validate(512,1048576);tx.save(before,after);
-                }else if(!user.equals(codec.model(previous.document(),ControlDevice.class).ownerUserId()))throw Failure.conflict();
+                    var entries=new HashMap<>(before.entries());entries.put(id,entry);DeviceGroups.addDefault(entries,codec,review.deviceId());var after=new Directory(before.revision()+1,entries);after.validate(512,1048576);tx.save(before,after);
+                }
             }
             var updated=new EndpointEnrollmentReview(review.enrollmentId(),review.userCode(),review.deviceId(),review.platform(),review.keyFingerprint(),state,review.expiresAtUnixMs(),connectionExpires,approve?connectionExpires==null:null);tx.saveEnrollment(new Store.EnrollmentRecord(row.id(),row.codeDigest(),row.deviceDigest(),codec.json(updated),row.csr(),approve?user:null,certificate,row.expiresAt(),row.lastPoll()));
             tx.audit(actor.id(),approve?"ENROLLMENT_APPROVE":"ENROLLMENT_DENY","endpoint:"+review.deviceId(),1,requestId,digest);
@@ -167,7 +176,7 @@ public final class EndpointService {
         // Preserve exact recent replies, but a lost response recovered after a long outage must
         // not reinstall an expired certificate or fail the client's current clock-skew check.
         long serverTime=now-ack.serverTimeUnixMs()>300000?now:ack.serverTimeUnixMs();
-        var negotiated=new EndpointCheckInAck(ack.deviceId(),ack.sequence(),serverTime,ack.nextIntervalSeconds(),milliseconds?500L:null,identity,ack.configuration(),ack.task());
+        var negotiated=new EndpointCheckInAck(ack.deviceId(),ack.sequence(),serverTime,ack.nextIntervalSeconds(),milliseconds?500L:null,identity,ack.adoption(),ack.task());
         return new Store.Reply(reply.status(),codec.json(negotiated),reply.revision());
     }
     public Store.Reply checkIn(java.security.cert.X509Certificate peer,String body,String requestId,boolean milliseconds) {
@@ -190,7 +199,7 @@ public final class EndpointService {
             // A certificate already capped at the approved deadline needs no repeated renewal.
             long connectionExpires=device.connectionExpiresAtUnixMs()==null?Long.MAX_VALUE:device.connectionExpiresAtUnixMs();
             DeviceIdentity renewed=null;if(peer.getNotAfter().getTime()-now<43200000&&peer.getNotAfter().getTime()<connectionExpires/1000*1000)renewed=issuer.issue(row.csr(),device.deviceId(),tenant.value(),device.userId(),server,now,connectionExpires);
-            var configuration=new EndpointPermissions(codec).poll(tx,device,server,check.configurationDigest(),check.localTools());
+            var configuration=new EndpointAdoptions(codec).poll(tx,device,server,check.adoptionDigest(),check.localTools());
             var task=relay().poll(tx,device,now,requestId);
             var ack=new EndpointCheckInAck(device.deviceId(),check.sequence(),now,2L,null,renewed,configuration,task);
             var updated=new EndpointDeviceRecord(device.deviceId(),tenant.value(),device.userId(),fingerprint,EndpointState.ACTIVE,device.revision()+1,now,check.sequence(),check.report(),device.connectionExpiresAtUnixMs(),device.connectionApproved(),device.approvalRevision(),systemName==null?device.systemName():systemName,ipAddress==null?device.ipAddress():ipAddress);
@@ -204,26 +213,20 @@ public final class EndpointService {
     }
     public void active(Store.Session tx,EndpointDeviceRecord device){
         if(device.state()!=EndpointState.ACTIVE)throw forbidden();
-        if(Boolean.FALSE.equals(device.connectionApproved())||(device.connectionExpiresAtUnixMs()!=null&&device.connectionExpiresAtUnixMs()<=clock.millis()))throw suspended();enabledUser(tx,device.userId());
+        if(Boolean.FALSE.equals(device.connectionApproved())||(device.connectionExpiresAtUnixMs()!=null&&device.connectionExpiresAtUnixMs()<=clock.millis()))throw suspended();
         var entry=tx.load().entries().get(Ids.Kind.DEVICE.id(device.deviceId()));
-        if(entry==null||!device.userId().equals(codec.model(entry.document(),ControlDevice.class).ownerUserId()))throw forbidden();
+        if(entry==null)throw forbidden();
         if(!entry.enabled())throw suspended();
     }
-    /** Composition devices control their own execution paths without impersonating client identities. */
-    public void requireServerExecutor(Store.Session tx,String id){
-        if(!tenant.value().equals("quickstart")||!server.equals("quickstart-server"))return;
-        var entry=tx.load().entries().get(Ids.Kind.DEVICE.id(id));
-        if(entry==null||!entry.enabled()||!codec.model(entry.document(),ControlDevice.class).ownerUserId().equals("local-tools"))throw forbidden();
-        enabledUser(tx,"local-tools");
-    }
     public Store.Reply device(DirectoryService.Actor actor,String id) {
-        actor.requireAdmin();if(!actor.tenant().equals(tenant))throw forbidden();return transaction((tx,now)->{var row=tx.endpoint(Ids.valid(id));if(row==null)throw new Failure(ErrorCode.NOT_FOUND,404,"Device not found");return reply(codec.value(row.document()),0);});
+        actor.requireAdmin();if(!actor.tenant().equals(tenant))throw forbidden();return transaction((tx,now)->{management(tx,actor,"read",id);var row=tx.endpoint(Ids.valid(id));if(row==null)throw new Failure(ErrorCode.NOT_FOUND,404,"Device not found");return reply(codec.value(row.document()),0);});
     }
     public Store.Reply devices(DirectoryService.Actor actor) {
         actor.requireAdmin();if(!actor.tenant().equals(tenant))throw forbidden();
         return transaction((tx,now)->{
             var items=new TreeMap<String,EndpointManagedDevice>();var entries=tx.load().entries();
             for(var entry:entries.values())if(entry.id().kind()==Ids.Kind.DEVICE){
+                try{management(tx,actor,"read",entry.id().value());}catch(Failure denied){if(denied.status()==403)continue;throw denied;}
                 var directory=codec.model(entry.document(),ControlDevice.class);var row=tx.endpoint(directory.id());
                 var kind=tenant.value().equals("quickstart")&&server.equals("quickstart-server")&&directory.ownerUserId().equals("local-tools")?switch(directory.id()){
                     case "local-builtins"->SystemExecutorKind.BUILTINS;case "local-hotfolder"->SystemExecutorKind.HOTFOLDER;case "local-rest-forwarding"->SystemExecutorKind.REST_FORWARDING;default->null;
@@ -233,6 +236,7 @@ public final class EndpointService {
             }
             for(var row:tx.enrollments(now)){
                 var review=codec.model(row.document(),EndpointEnrollmentReview.class);if(review.state()!=EnrollmentState.PENDING||tx.endpoint(review.deviceId())!=null)continue;
+                try{management(tx,actor,"read",review.deviceId());}catch(Failure denied){if(denied.status()==403)continue;throw denied;}
                 var previous=items.get(review.deviceId());
                 items.put(review.deviceId(),new EndpointManagedDevice(review.deviceId(),false,previous==null?null:previous.directoryDevice(),null,review,previous==null?null:previous.registeredUser(),null,null,null,null));
             }
@@ -242,12 +246,11 @@ public final class EndpointService {
     public Store.Reply approval(DirectoryService.Actor actor,String user,String id,String body,String key,String requestId) {
         actor.requireAdmin();Ids.valid(id);Ids.valid(key);Ids.valid(requestId);
         var request=codec.model(body,EndpointApprovalRequest.class);var digest=DirectoryService.digest("approval\n"+id+"\n"+body);
-        return transaction((tx,now)->{human(actor,user,tx);var replay=tx.replay(actor.id(),key,digest);if(replay!=null)return replay;
+        return transaction((tx,now)->{human(actor,user,tx);management(tx,actor,"approve-device",id);var replay=tx.replay(actor.id(),key,digest);if(replay!=null)return replay;
             var row=tx.endpoint(id);if(row==null)throw Failure.conflict();var device=codec.model(row.document(),EndpointDeviceRecord.class);
             if(request.expectedApprovalRevision()!=approvalRevision(device)||device.state()==EndpointState.REVOKED)throw Failure.conflict();
             // Administrative reapproval never reassigns the identity or reenables directory access.
-            enabledUser(tx,device.userId());var entry=tx.load().entries().get(Ids.Kind.DEVICE.id(id));
-            if(entry==null||!device.userId().equals(codec.model(entry.document(),ControlDevice.class).ownerUserId()))throw Failure.conflict();
+            var entry=tx.load().entries().get(Ids.Kind.DEVICE.id(id));if(entry==null)throw Failure.conflict();
             Long expires=request.approved()?connectionDeadline(request.connectionExpiresAtUnixMs(),request.unlimitedConnection(),now):device.connectionExpiresAtUnixMs();
             var updated=new EndpointDeviceRecord(id,tenant.value(),device.userId(),device.keyFingerprint(),device.state(),device.revision()+1,device.lastSeenUnixMs(),device.reportSequence(),device.report(),expires,request.approved(),approvalRevision(device)+1,device.systemName(),device.ipAddress());
             tx.saveEndpoint(new Store.EndpointRecord(id,row.fingerprint(),codec.json(updated),row.csr(),row.reportDigest(),row.acknowledgment()));
@@ -258,7 +261,7 @@ public final class EndpointService {
     public Store.Reply enabled(DirectoryService.Actor actor,String user,String id,String body,String key,String requestId) {
         actor.requireAdmin();Ids.valid(id);Ids.valid(key);Ids.valid(requestId);
         var request=codec.model(body,EndpointEnabledRequest.class);var digest=DirectoryService.digest("enabled\n"+id+"\n"+body);
-        return transaction((tx,now)->{human(actor,user,tx);var replay=tx.replay(actor.id(),key,digest);if(replay!=null)return replay;
+        return transaction((tx,now)->{human(actor,user,tx);management(tx,actor,request.enabled()?"enable":"disable",id);var replay=tx.replay(actor.id(),key,digest);if(replay!=null)return replay;
             var before=tx.load();var recordId=Ids.Kind.DEVICE.id(id);var entry=before.entries().get(recordId);
             ControlDevice directory;
             if(entry==null){
@@ -270,6 +273,7 @@ public final class EndpointService {
                 directory=new ControlDevice(id,current.name(),request.enabled(),current.revision()+1,current.ownerUserId());
             }
             var entries=new HashMap<>(before.entries());entries.put(recordId,codec.entry(Ids.Kind.DEVICE,codec.json(directory)));
+            if(entry==null)DeviceGroups.addDefault(entries,codec,id);
             var after=new Directory(before.revision()+1,entries);after.validate(512,1048576);tx.save(before,after);
             tx.audit(actor.id(),request.enabled()?"DEVICE_ENABLE":"DEVICE_DISABLE","endpoint:"+id,directory.revision(),requestId,digest);
             var result=reply(directory,directory.revision());tx.remember(actor.id(),key,digest,result);return result;
@@ -278,7 +282,7 @@ public final class EndpointService {
     public Store.Reply revoke(DirectoryService.Actor actor,String id,String body,String key,String requestId) {
         actor.requireAdmin();if(!actor.tenant().equals(tenant))throw forbidden();Ids.valid(id);Ids.valid(key);Ids.valid(requestId);
         var request=codec.model(body,EndpointRevokeRequest.class);var digest=DirectoryService.digest(id+"\n"+body);
-        return transaction((tx,now)->{var replay=tx.replay(actor.id(),key,digest);if(replay!=null)return replay;
+        return transaction((tx,now)->{management(tx,actor,"revoke-device",id);var replay=tx.replay(actor.id(),key,digest);if(replay!=null)return replay;
             var row=tx.endpoint(id);if(row==null)throw Failure.conflict();var device=codec.model(row.document(),EndpointDeviceRecord.class);
             if(!request.expectedRevision().equals(device.revision())||device.state()==EndpointState.REVOKED)throw Failure.conflict();
             var updated=new EndpointDeviceRecord(id,tenant.value(),device.userId(),row.fingerprint(),EndpointState.REVOKED,device.revision()+1,device.lastSeenUnixMs(),device.reportSequence(),device.report(),device.connectionExpiresAtUnixMs(),false,approvalRevision(device)+1,device.systemName(),device.ipAddress());

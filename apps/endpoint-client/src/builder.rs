@@ -79,6 +79,7 @@ async fn run_cancellable(
     let gateway = config.tools.as_ref().ok_or(Failure::Unsupported)?;
     let auth = Arc::new(crate::tool_gateway::HttpsGateway::new(
         gateway,
+        config,
         Arc::new(crate::contracts::Contracts::new()?),
     )?);
     let mut sandbox = execution::Manager::new(settings, auth)?;

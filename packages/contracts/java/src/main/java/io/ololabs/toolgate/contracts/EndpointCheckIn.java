@@ -7,21 +7,21 @@ package io.ololabs.toolgate.contracts;
  *
  * @param sequence canonical sequence value
  * @param report canonical report value
- * @param configurationDigest canonical configurationDigest value
+ * @param adoptionDigest canonical adoptionDigest value
  * @param localTools canonical localTools value
  */
 @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
 public record EndpointCheckIn(
     @com.fasterxml.jackson.annotation.JsonProperty(value = "sequence", required = true) Long sequence,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "report", required = true) ClientReport report,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "configurationDigest", required = false) String configurationDigest,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "adoptionDigest", required = false) String adoptionDigest,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "localTools", required = false) java.util.List<BuiltinToolInfo> localTools
 ) {
     /** Reject absent required references and copy collections to retain value semantics.
      *
      * @param sequence canonical sequence value
      * @param report canonical report value
-     * @param configurationDigest canonical configurationDigest value
+     * @param adoptionDigest canonical adoptionDigest value
      * @param localTools canonical localTools value
      */
     public EndpointCheckIn {

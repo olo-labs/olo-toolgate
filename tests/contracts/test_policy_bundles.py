@@ -30,7 +30,9 @@ class PolicyContractsTests(unittest.TestCase):
             models['CompiledPolicy'].validate(json.loads(decode(payload['policy'])))
         # The original closed v1 contracts still accept the frozen foundation corpus.
         frozen=json.loads((ROOT/'tests/fixtures/contracts/v1/compatibility.json').read_text())
-        for model,fixture in frozen['fixtures'].items():models[model].validate(fixture)
+        archival=validators(schemas_at(ROOT/'tests/fixtures/contracts/v1/schemas'))
+        for model,fixture in frozen['fixtures'].items():archival[model].validate(fixture)
+        with self.assertRaises(ValidationError):models['EnterpriseSnapshotPayload'].validate(json.loads(decode(corpus['bundles']['allow']['jws'].split('.')[1])))
     def test_trust_domains_and_algorithms_are_not_interchangeable(self):
         models=validators(schemas_at(ROOT/'packages/contracts/schemas/v1'))
         fixtures=json.loads((ROOT/'tests/fixtures/contracts/v1/valid.json').read_text())
@@ -40,12 +42,12 @@ class PolicyContractsTests(unittest.TestCase):
             with self.assertRaises(ValidationError):models['BundleHeader'].validate({**fixtures['BundleHeader'],field:value})
     def test_external_keys_required_and_raw_secrets_forbidden_in_values(self):
         path=ROOT/'deploy/helm/olo-toolgate';values=yaml.safe_load((path/'values.yaml').read_text());schema=json.loads((path/'values.schema.json').read_text())
-        for component,secret in [('gateway','keyringSecret'),('control','signingSecret')]:
+        for component,secret in [('control','signingSecret')]:
             bad=copy.deepcopy(values);bad[component]['bundle']['enabled']=True
             with self.assertRaises(ValidationError):Draft7Validator(schema).validate(bad)
         bad=copy.deepcopy(values);bad['control']['bundle']['privateKey']='forbidden'
         with self.assertRaises(ValidationError):Draft7Validator(schema).validate(bad)
-        bad=copy.deepcopy(values);bad['gateway']['bundle']['maxGraceMs']=300001
+        bad=copy.deepcopy(values);bad['gateway']['bundle']={'enabled':True,'maxGraceMs':300001}
         with self.assertRaises(ValidationError):Draft7Validator(schema).validate(bad)
     def test_openapi_publish_and_rollback_reuse_shared_contracts(self):
         api=yaml.safe_load((ROOT/'packages/contracts/openapi/control-v1.yaml').read_text())

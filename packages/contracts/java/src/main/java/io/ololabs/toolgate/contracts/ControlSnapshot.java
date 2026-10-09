@@ -3,7 +3,7 @@
 // GENERATED FILE — DO NOT EDIT DIRECTLY; tools/contracts/generate.py
 package io.ololabs.toolgate.contracts;
 
-/** Versioned configuration data. Contains no credentials or executable code.
+/** Enterprise group graph. Individual ACLs and retired snapshot formats are rejected.
  *
  * @param formatVersion canonical formatVersion value
  * @param tenantId canonical tenantId value
@@ -15,6 +15,17 @@ package io.ololabs.toolgate.contracts;
  * @param policies canonical policies value
  * @param devices canonical devices value
  * @param roles canonical roles value
+ * @param deviceGroups canonical deviceGroups value
+ * @param agentGroups canonical agentGroups value
+ * @param toolGroups canonical toolGroups value
+ * @param grants canonical grants value
+ * @param delegations canonical delegations value
+ * @param agentDelegations canonical agentDelegations value
+ * @param bindings canonical bindings value
+ * @param extractors canonical extractors value
+ * @param workloadBindings canonical workloadBindings value
+ * @param identityBindings canonical identityBindings value
+ * @param deviceEvidence canonical deviceEvidence value
  */
 @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
 public record ControlSnapshot(
@@ -27,7 +38,18 @@ public record ControlSnapshot(
     @com.fasterxml.jackson.annotation.JsonProperty(value = "tools", required = true) java.util.List<ControlTool> tools,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "policies", required = true) java.util.List<ControlPolicy> policies,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "devices", required = true) java.util.List<ControlDevice> devices,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "roles", required = false) java.util.List<ControlRole> roles
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "roles", required = true) java.util.List<ControlRole> roles,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "deviceGroups", required = true) java.util.List<ControlDeviceGroup> deviceGroups,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "agentGroups", required = true) java.util.List<ControlAgentGroup> agentGroups,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "toolGroups", required = true) java.util.List<ControlToolGroup> toolGroups,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "grants", required = true) java.util.List<ControlAccessGrant> grants,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "delegations", required = true) java.util.List<ControlDelegation> delegations,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "agentDelegations", required = true) java.util.List<ControlAgentDelegation> agentDelegations,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "bindings", required = true) java.util.List<ControlExecutionBinding> bindings,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "extractors", required = true) java.util.List<ControlResourceExtractor> extractors,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "workloadBindings", required = true) java.util.List<ControlWorkloadBinding> workloadBindings,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "identityBindings", required = true) java.util.List<ControlIdentityBinding> identityBindings,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "deviceEvidence", required = true) java.util.List<ControlDeviceEvidence> deviceEvidence
 ) {
     /** Reject absent required references and copy collections to retain value semantics.
      *
@@ -41,6 +63,17 @@ public record ControlSnapshot(
      * @param policies canonical policies value
      * @param devices canonical devices value
      * @param roles canonical roles value
+     * @param deviceGroups canonical deviceGroups value
+     * @param agentGroups canonical agentGroups value
+     * @param toolGroups canonical toolGroups value
+     * @param grants canonical grants value
+     * @param delegations canonical delegations value
+     * @param agentDelegations canonical agentDelegations value
+     * @param bindings canonical bindings value
+     * @param extractors canonical extractors value
+     * @param workloadBindings canonical workloadBindings value
+     * @param identityBindings canonical identityBindings value
+     * @param deviceEvidence canonical deviceEvidence value
      */
     public ControlSnapshot {
         java.util.Objects.requireNonNull(formatVersion, "formatVersion");
@@ -58,6 +91,29 @@ public record ControlSnapshot(
         policies = policies == null ? null : java.util.List.copyOf(policies);
         java.util.Objects.requireNonNull(devices, "devices");
         devices = devices == null ? null : java.util.List.copyOf(devices);
+        java.util.Objects.requireNonNull(roles, "roles");
         roles = roles == null ? null : java.util.List.copyOf(roles);
+        java.util.Objects.requireNonNull(deviceGroups, "deviceGroups");
+        deviceGroups = deviceGroups == null ? null : java.util.List.copyOf(deviceGroups);
+        java.util.Objects.requireNonNull(agentGroups, "agentGroups");
+        agentGroups = agentGroups == null ? null : java.util.List.copyOf(agentGroups);
+        java.util.Objects.requireNonNull(toolGroups, "toolGroups");
+        toolGroups = toolGroups == null ? null : java.util.List.copyOf(toolGroups);
+        java.util.Objects.requireNonNull(grants, "grants");
+        grants = grants == null ? null : java.util.List.copyOf(grants);
+        java.util.Objects.requireNonNull(delegations, "delegations");
+        delegations = delegations == null ? null : java.util.List.copyOf(delegations);
+        java.util.Objects.requireNonNull(agentDelegations, "agentDelegations");
+        agentDelegations = agentDelegations == null ? null : java.util.List.copyOf(agentDelegations);
+        java.util.Objects.requireNonNull(bindings, "bindings");
+        bindings = bindings == null ? null : java.util.List.copyOf(bindings);
+        java.util.Objects.requireNonNull(extractors, "extractors");
+        extractors = extractors == null ? null : java.util.List.copyOf(extractors);
+        java.util.Objects.requireNonNull(workloadBindings, "workloadBindings");
+        workloadBindings = workloadBindings == null ? null : java.util.List.copyOf(workloadBindings);
+        java.util.Objects.requireNonNull(identityBindings, "identityBindings");
+        identityBindings = identityBindings == null ? null : java.util.List.copyOf(identityBindings);
+        java.util.Objects.requireNonNull(deviceEvidence, "deviceEvidence");
+        deviceEvidence = deviceEvidence == null ? null : java.util.List.copyOf(deviceEvidence);
     }
 }

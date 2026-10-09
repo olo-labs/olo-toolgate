@@ -10,7 +10,7 @@ import yaml
 
 def checks():
     base = ['helm','template','endpoint','deploy/helm/olo-toolgate']
-    settings = {'control.enabled':'true','control.publicKeySecret':'idp','control.database.credentialsSecret':'db',
+    settings = {'control.enabled':'true','control.effect.signingSecret':'effect-custody','control.publicKeySecret':'idp','control.database.credentialsSecret':'db',
         'control.database.caSecret':'db-ca','control.endpoint.enabled':'true','control.endpoint.tenantId':'tenant',
         'control.endpoint.serverId':'server','control.endpoint.organization':'Organization',
         'control.endpoint.controlUrl':'https://control.example.test','control.endpoint.gatewayUrl':'https://gateway.example.test',

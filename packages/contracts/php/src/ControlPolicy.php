@@ -5,26 +5,23 @@
 declare(strict_types=1);
 namespace OloLabs\ToolGate\Contracts;
 
-/** Tenant-scoped policies configuration record. Not a runtime credential or policy grant. */
+/** Group-scoped guardrails. ALLOW does not create a grant; BLOCK overrides and ASK accumulates. */
 final readonly class ControlPolicy implements \JsonSerializable {
     public function __construct(
         public string $id,
         public string $name,
         public bool $enabled,
         public int $revision,
-        public string $toolId,
-        public string $action,
-        public ResourceDescriptor $resource,
         public Decision $decision,
-        public array $userIds,
-        public array $teamIds,
-        public array $agentIds,
-        public array $deviceIds
+        public EnterpriseScope $scope,
+        public GroupSelection $teams,
+        public GroupSelection $agentGroups,
+        public GroupSelection $approverTeams
     ) {}
 
     /** Decode a structural model; canonical schema validation is also required. */
     public static function fromArray(array $data): self {
-        if (array_diff(array_keys($data), ['id', 'name', 'enabled', 'revision', 'toolId', 'action', 'resource', 'decision', 'userIds', 'teamIds', 'agentIds', 'deviceIds']) || array_diff(['id', 'name', 'enabled', 'revision', 'toolId', 'action', 'resource', 'decision', 'userIds', 'teamIds', 'agentIds', 'deviceIds'], array_keys($data))) {
+        if (array_diff(array_keys($data), ['id', 'name', 'enabled', 'revision', 'decision', 'scope', 'teams', 'agentGroups', 'approverTeams']) || array_diff(['id', 'name', 'enabled', 'revision', 'decision', 'scope', 'teams', 'agentGroups', 'approverTeams'], array_keys($data))) {
             throw new \InvalidArgumentException('Unknown or missing contract fields');
         }
         return new self(
@@ -32,14 +29,11 @@ final readonly class ControlPolicy implements \JsonSerializable {
             $data['name'],
             $data['enabled'],
             $data['revision'],
-            $data['toolId'],
-            $data['action'],
-            ResourceDescriptor::fromArray($data['resource']),
             Decision::from($data['decision']),
-            array_map(static fn ($item) => $item, $data['userIds']),
-            array_map(static fn ($item) => $item, $data['teamIds']),
-            array_map(static fn ($item) => $item, $data['agentIds']),
-            array_map(static fn ($item) => $item, $data['deviceIds'])
+            EnterpriseScope::fromArray($data['scope']),
+            GroupSelection::fromArray($data['teams']),
+            GroupSelection::fromArray($data['agentGroups']),
+            GroupSelection::fromArray($data['approverTeams'])
         );
     }
 

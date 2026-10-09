@@ -12,12 +12,15 @@ final readonly class ControlTool implements \JsonSerializable {
         public string $name,
         public bool $enabled,
         public int $revision,
-        public ToolDefinition $definition
+        public ToolDefinition $definition,
+        public string $extractorId,
+        public string $version,
+        public string $packageDigest
     ) {}
 
     /** Decode a structural model; canonical schema validation is also required. */
     public static function fromArray(array $data): self {
-        if (array_diff(array_keys($data), ['id', 'name', 'enabled', 'revision', 'definition']) || array_diff(['id', 'name', 'enabled', 'revision', 'definition'], array_keys($data))) {
+        if (array_diff(array_keys($data), ['id', 'name', 'enabled', 'revision', 'definition', 'extractorId', 'version', 'packageDigest']) || array_diff(['id', 'name', 'enabled', 'revision', 'definition', 'extractorId', 'version', 'packageDigest'], array_keys($data))) {
             throw new \InvalidArgumentException('Unknown or missing contract fields');
         }
         return new self(
@@ -25,7 +28,10 @@ final readonly class ControlTool implements \JsonSerializable {
             $data['name'],
             $data['enabled'],
             $data['revision'],
-            ToolDefinition::fromArray($data['definition'])
+            ToolDefinition::fromArray($data['definition']),
+            $data['extractorId'],
+            $data['version'],
+            $data['packageDigest']
         );
     }
 

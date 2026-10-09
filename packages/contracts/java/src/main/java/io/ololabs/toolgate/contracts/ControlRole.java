@@ -3,14 +3,15 @@
 // GENERATED FILE — DO NOT EDIT DIRECTLY; tools/contracts/generate.py
 package io.ololabs.toolgate.contracts;
 
-/** Named tenant role with fixed templates and bounded permission rules.
+/** Typed role assigned only to compatible groups. Management rules cannot confer runtime access.
  *
  * @param id canonical id value
  * @param name canonical name value
  * @param enabled canonical enabled value
  * @param revision canonical revision value
  * @param portalRole canonical portalRole value
- * @param rules canonical rules value
+ * @param roleType canonical roleType value
+ * @param managementRules canonical managementRules value
  */
 @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
 public record ControlRole(
@@ -19,7 +20,8 @@ public record ControlRole(
     @com.fasterxml.jackson.annotation.JsonProperty(value = "enabled", required = true) Boolean enabled,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "revision", required = true) Long revision,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "portalRole", required = true) UserRole portalRole,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "rules", required = true) RoleRules rules
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "roleType", required = true) EnterpriseRoleType roleType,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "managementRules", required = true) java.util.List<EnterpriseManagementRule> managementRules
 ) {
     /** Reject absent required references and copy collections to retain value semantics.
      *
@@ -28,7 +30,8 @@ public record ControlRole(
      * @param enabled canonical enabled value
      * @param revision canonical revision value
      * @param portalRole canonical portalRole value
-     * @param rules canonical rules value
+     * @param roleType canonical roleType value
+     * @param managementRules canonical managementRules value
      */
     public ControlRole {
         java.util.Objects.requireNonNull(id, "id");
@@ -36,6 +39,8 @@ public record ControlRole(
         java.util.Objects.requireNonNull(enabled, "enabled");
         java.util.Objects.requireNonNull(revision, "revision");
         java.util.Objects.requireNonNull(portalRole, "portalRole");
-        java.util.Objects.requireNonNull(rules, "rules");
+        java.util.Objects.requireNonNull(roleType, "roleType");
+        java.util.Objects.requireNonNull(managementRules, "managementRules");
+        managementRules = managementRules == null ? null : java.util.List.copyOf(managementRules);
     }
 }

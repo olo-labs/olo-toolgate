@@ -47,6 +47,13 @@ impl Settings {
         }
         for tool in &self.tools {
             contracts.encode("LocalToolRegistration", tool)?;
+            crate::authorization_profile::managed_info(
+                tool,
+                self.runtimes
+                    .iter()
+                    .find(|r| r.id == tool.runtime_id)
+                    .ok_or(Failure::Validation)?,
+            )?;
             if !tools.insert(tool.tool_id.as_str())
                 || !runtimes.contains(tool.runtime_id.as_str())
                 || tool.tool_id.starts_with("hotfolder.")
@@ -132,12 +139,12 @@ impl Manager {
                 self.states.get(&tool.runtime_id) == Some(&LocalRuntimeState::Ready)
                     && !self.engine.dirty()
             })
-            .map(|tool| BuiltinToolInfo {
-                tool_id: tool.tool_id.clone(),
-                action: tool.action.clone(),
-                description: format!("Local tool {}", tool.tool_id),
-                enabled: true,
-                input_schema: tool.input_schema.clone(),
+            .filter_map(|tool| {
+                self.settings
+                    .runtimes
+                    .iter()
+                    .find(|r| r.id == tool.runtime_id)
+                    .and_then(|r| crate::authorization_profile::managed_info(tool, r).ok())
             })
             .collect()
     }
@@ -374,31 +381,8 @@ impl Manager {
             self.failed_state(&runtime.id, e);
             return Err(e);
         }
-        // Bind semantic input and immutable image, not the transport nonce:
-        // ASK retries must retain their operation scope while correlation IDs change.
-        let mut arguments = BTreeMap::from([
-            (
-                "path".into(),
-                serde_json::json!(format!("runtime/{}", tool.tool_id)),
-            ),
-            (
-                "input".into(),
-                serde_json::to_value(&invocation.arguments).map_err(|_| Failure::Validation)?,
-            ),
-            ("runtimeImage".into(), serde_json::json!(runtime.image)),
-        ]);
-        // Inline code can change while the reviewed base image stays identical.
-        // Bind ASK/permit scope to the entire immutable registration, without sending source.
-        if tool.source.is_some() {
-            let registration =
-                serde_json::to_vec(&(&runtime, &tool)).map_err(|_| Failure::Validation)?;
-            let digest = ring::digest::digest(&ring::digest::SHA256, &registration)
-                .as_ref()
-                .iter()
-                .map(|byte| format!("{byte:02x}"))
-                .collect::<String>();
-            arguments.insert("registrationDigest".into(), serde_json::json!(digest));
-        }
+        // The reviewed profile pins image/source versions; extraction sees the exact original arguments.
+        let arguments = invocation.arguments.clone();
         if crate::now().saturating_add(20000) >= valid_until {
             return Err(Failure::Expired);
         }
@@ -433,6 +417,16 @@ impl Manager {
         {
             return Err(Failure::Validation);
         }
+        self.authorization
+            .complete(
+                AuthorizationRequest {
+                    tool_id: tool.tool_id.clone(),
+                    action: tool.action.clone(),
+                    arguments: invocation.arguments.clone(),
+                },
+                output.output.clone(),
+            )
+            .await?;
         Ok(output)
     }
 }

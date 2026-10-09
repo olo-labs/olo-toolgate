@@ -12,12 +12,14 @@ final readonly class PolicyInput implements \JsonSerializable {
         public string $toolId,
         public string $action,
         public ResourceDescriptor $resource,
-        public string $argumentsDigest
+        public string $argumentsDigest,
+        public string $toolDigest,
+        public string $packageDigest
     ) {}
 
     /** Decode a structural model; canonical schema validation is also required. */
     public static function fromArray(array $data): self {
-        if (array_diff(array_keys($data), ['context', 'toolId', 'action', 'resource', 'argumentsDigest']) || array_diff(['context', 'toolId', 'action', 'resource', 'argumentsDigest'], array_keys($data))) {
+        if (array_diff(array_keys($data), ['context', 'toolId', 'action', 'resource', 'argumentsDigest', 'toolDigest', 'packageDigest']) || array_diff(['context', 'toolId', 'action', 'resource', 'argumentsDigest', 'toolDigest', 'packageDigest'], array_keys($data))) {
             throw new \InvalidArgumentException('Unknown or missing contract fields');
         }
         return new self(
@@ -25,7 +27,9 @@ final readonly class PolicyInput implements \JsonSerializable {
             $data['toolId'],
             $data['action'],
             ResourceDescriptor::fromArray($data['resource']),
-            $data['argumentsDigest']
+            $data['argumentsDigest'],
+            $data['toolDigest'],
+            $data['packageDigest']
         );
     }
 

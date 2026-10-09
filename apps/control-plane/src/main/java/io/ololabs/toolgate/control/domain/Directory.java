@@ -29,12 +29,9 @@ public record Directory(long revision, Map<RecordId, Entry> entries) {
             size += entry.document().getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
             for (var ref : entry.references()) {
                 var target = entries.get(ref);
-                boolean membership = entry.id().kind() == Ids.Kind.TEAM && (ref.kind() == Ids.Kind.USER || ref.kind() == Ids.Kind.DEVICE)
-                    || entry.id().kind() == Ids.Kind.USER && ref.kind() == Ids.Kind.TEAM
-                    || (entry.id().kind() == Ids.Kind.USER || entry.id().kind() == Ids.Kind.TEAM) && ref.kind() == Ids.Kind.ROLE
-                    || entry.id().kind() == Ids.Kind.ROLE;
-                if (target == null || (entry.enabled() && !target.enabled() && !membership)) {
-                    throw new IllegalArgumentException("Missing or disabled dependency");
+                // Disabled objects remain referencable for review. The evaluator never treats them as authority.
+                if (target == null) {
+                    throw new IllegalArgumentException("Missing dependency");
                 }
             }
         }

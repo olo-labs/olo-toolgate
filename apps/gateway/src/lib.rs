@@ -2,17 +2,12 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
 pub mod application;
-pub mod approvals;
-pub mod audit;
 pub mod auth;
-pub mod bundles;
 pub mod config;
 mod diagnostics;
-pub mod extraction;
 pub mod http;
 pub mod limits;
 mod mcp;
-pub mod policy;
 pub mod relay;
 pub mod server;
 pub mod validation;

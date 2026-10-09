@@ -69,65 +69,123 @@ pub struct HttpsGateway {
     origin: String,
     token: String,
     contracts: Arc<Contracts>,
-}
-/// TLS authenticates Gateway; its response header and canonical decision must agree.
-/// A pending ASK or malformed lease never grants permission.
-fn grant(
-    outcome: AuthorizationOutcome,
-    response_id: &str,
-) -> Result<Option<SignedExecutionPermit>> {
-    if outcome.decision.request_id != response_id || outcome.decision.decision != Decision::Allow {
-        return Err(Failure::Unauthorized);
-    }
-    match (outcome.approval_id, outcome.permit) {
-        (Some(_), Some(permit)) => Ok(Some(permit)),
-        (None, None) => Ok(None),
-        _ => Err(Failure::Unauthorized),
-    }
+    config: crate::config::Config,
+    settings: Settings,
+    executing: tokio::sync::Mutex<Option<EnterpriseInvocation>>,
 }
 impl HttpsGateway {
-    pub fn new(settings: &Settings, contracts: Arc<Contracts>) -> Result<Self> {
+    pub async fn catalog(&self, agent: Option<&str>) -> Result<LocalToolCatalog> {
+        self.device()?;
+        let query = agent
+            .map(|id| serde_json::json!({"agentId":id}))
+            .unwrap_or_else(|| serde_json::json!({}));
+        let response = self
+            .client
+            .post(format!("{}/access/catalog", self.origin))
+            .bearer_auth(&self.token)
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+            .body(serde_json::to_vec(&query).map_err(|_| Failure::Validation)?)
+            .send()
+            .await
+            .map_err(|_| Failure::Unavailable)?;
+        self.contracts
+            .decode("LocalToolCatalog", &body(response).await?)
+    }
+    pub fn new(
+        settings: &Settings,
+        config: &crate::config::Config,
+        contracts: Arc<Contracts>,
+    ) -> Result<Self> {
         settings.validate()?;
         Ok(Self {
             client: client(settings.gateway_ca_path.as_deref())?,
             origin: crate::config::origin(&settings.gateway_url)?,
             token: secret(&settings.gateway_token_path)?,
             contracts,
+            config: config.clone(),
+            settings: settings.clone(),
+            executing: tokio::sync::Mutex::new(None),
         })
     }
-    async fn post<T: serde::de::DeserializeOwned>(
+    fn device(
         &self,
-        path: &str,
-        bytes: Vec<u8>,
-        correlation: &str,
-        model: &str,
-    ) -> Result<(T, String)> {
-        let response = self
-            .client
-            .post(format!("{}{path}", self.origin))
-            .bearer_auth(&self.token)
-            .header("Content-Type", "application/json")
-            .header("Accept", "application/json")
-            .header("X-Request-ID", correlation)
-            .header(
-                "traceparent",
-                format!("00-{correlation}-{}-01", &correlation[..16]),
-            )
-            .body(bytes)
-            .send()
-            .await
-            .map_err(|_| Failure::Unavailable)?;
-        let request_id = response
-            .headers()
-            .get("x-request-id")
-            .and_then(|v| v.to_str().ok())
-            .filter(|v| !v.is_empty() && v.len() <= 128)
-            .ok_or(Failure::Unauthorized)?
-            .to_owned();
+    ) -> Result<(
+        DeviceIdentity,
+        crate::transport::HttpsControl,
+        crate::storage::ProtectedStore,
+    )> {
+        let store = crate::storage::ProtectedStore::open(self.config.state_directory.clone())?;
+        if store.read("device-key")?.is_none() {
+            return Err(Failure::Unauthorized);
+        }
+        let key = Arc::new(crate::identity::DeviceKey::load_or_create(&store)?);
+        let bytes = store.read("journal.json")?.ok_or(Failure::Unauthorized)?;
+        let journal: serde_json::Value =
+            serde_json::from_slice(&bytes).map_err(|_| Failure::Validation)?;
+        if journal["revoked"] != false {
+            return Err(Failure::Unauthorized);
+        }
+        let identity: DeviceIdentity = serde_json::from_value(journal["identity"].clone())
+            .map_err(|_| Failure::Unauthorized)?;
+        let manifest: ClientDiscovery = serde_json::from_value(journal["manifest"].clone())
+            .map_err(|_| Failure::Unauthorized)?;
+        if crate::config::origin(&manifest.control_url)?
+            != crate::config::origin(&self.config.server_url)?
+            || identity.device_id != self.settings.device_id
+        {
+            return Err(Failure::Unauthorized);
+        }
+        crate::identity::verify_identity(
+            &identity,
+            &manifest,
+            &key,
+            &identity.device_id,
+            crate::now(),
+        )?;
         Ok((
-            self.contracts.decode(model, &body(response).await?)?,
-            request_id,
+            identity,
+            crate::transport::HttpsControl::new(self.config.clone(), key, self.contracts.clone())?,
+            store,
         ))
+    }
+    fn installed(&self, request: &AuthorizationRequest) -> Result<BuiltinToolInfo> {
+        if let Some(execution) = &self.config.execution {
+            if let Some(tool) = execution
+                .tools
+                .iter()
+                .find(|t| t.tool_id == request.tool_id && t.action == request.action)
+            {
+                let runtime = execution
+                    .runtimes
+                    .iter()
+                    .find(|r| r.id == tool.runtime_id)
+                    .ok_or(Failure::Validation)?;
+                return crate::authorization_profile::managed_info(tool, runtime);
+            }
+        }
+        let catalog: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../packages/contracts/tools/builtins.json"
+        ))
+        .map_err(|_| Failure::Validation)?;
+        let item = catalog["tools"]
+            .as_array()
+            .and_then(|v| {
+                v.iter()
+                    .find(|t| t["toolId"] == request.tool_id && t["action"] == request.action)
+            })
+            .ok_or(Failure::Unauthorized)?;
+        let profile = self
+            .settings
+            .authorization_profiles
+            .iter()
+            .find(|p| p.tool.id == request.tool_id)
+            .ok_or(Failure::Unauthorized)?;
+        crate::authorization_profile::builtin_info(
+            item,
+            profile,
+            &crate::authorization_profile::builtin_package_digest()?,
+        )
     }
 }
 impl AuthorizationPort for HttpsGateway {
@@ -136,80 +194,132 @@ impl AuthorizationPort for HttpsGateway {
     }
     fn authorize_bound(&self, request: AuthorizationRequest) -> Call<'_, Option<u64>> {
         Box::pin(async move {
+            use crate::transport::ControlPort;
+            let mut executing = self.executing.lock().await;
+            if executing.is_some() {
+                return Err(Failure::Conflict);
+            }
+            let (identity, control, store) = self.device()?;
+            if let Some(bytes) = store.read("effect-journal.json")? {
+                let previous: EnterpriseInvocation =
+                    self.contracts.decode("EnterpriseInvocation", &bytes)?;
+                if matches!(
+                    previous.state,
+                    EnterpriseInvocationState::Reserved | EnterpriseInvocationState::Executing
+                ) {
+                    return Err(Failure::Conflict);
+                }
+            }
+            let installed = self.installed(&request)?;
             let correlation = crate::identity::nonce()?;
-            let (outcome, response_id): (AuthorizationOutcome, String) = self
-                .post(
-                    "/v2/authorize",
-                    self.contracts.encode("AuthorizationRequest", &request)?,
-                    &correlation,
-                    "AuthorizationOutcome",
+            let response = self
+                .client
+                .post(format!("{}/access/invocations", self.origin))
+                .bearer_auth(&self.token)
+                .header("Accept", "application/json")
+                .header("Content-Type", "application/json")
+                .header("Idempotency-Key", &correlation)
+                .body(self.contracts.encode("AuthorizationRequest", &request)?)
+                .send()
+                .await
+                .map_err(|_| Failure::Unavailable)?;
+            let outcome: EnterpriseAuthorizationOutcome = self
+                .contracts
+                .decode("EnterpriseAuthorizationOutcome", &body(response).await?)?;
+            let reservation = outcome.reservation.ok_or(Failure::Unauthorized)?;
+            let i = reservation.invocation;
+            let e = &i.evaluation;
+            if i != outcome.invocation
+                || i.state != EnterpriseInvocationState::Reserved
+                || e.context.device_id != identity.device_id
+                || e.context.tenant_id != identity.tenant_id
+                || e.tool_id != request.tool_id
+                || e.action != request.action
+                || e.arguments_digest
+                    != crate::digest(
+                        &serde_json::to_vec(&request.arguments).map_err(|_| Failure::Validation)?,
+                    )
+                || e.tool_digest != installed.tool_digest
+                || e.package_digest != installed.package_digest
+            {
+                return Err(Failure::Unauthorized);
+            }
+            // Persist BEFORE consuming. An ambiguous transport failure cannot cause an effect retry.
+            store.write(
+                "effect-journal.json",
+                &self.contracts.encode("EnterpriseInvocation", &i)?,
+            )?;
+            let next = control
+                .consume_effect(
+                    identity,
+                    EnterprisePermitConsumption {
+                        invocation_id: i.id.clone(),
+                        permit: reservation.permit,
+                        arguments_digest: e.arguments_digest.clone(),
+                        resources: e.resources.clone(),
+                        tool_digest: e.tool_digest.clone(),
+                        package_digest: e.package_digest.clone(),
+                    },
                 )
                 .await?;
-            tracing::info!(event="gateway_authorization",request_id=%correlation,tool_id=%request.tool_id,decision=?outcome.decision.decision);
-            let mut deadline = None;
-            if let Some(permit) = grant(outcome, &response_id)? {
-                use base64::Engine;
-                let parts: Vec<_> = permit.jws.split('.').collect();
-                if parts.len() != 3 {
-                    return Err(Failure::Unauthorized);
-                }
-                let payload = base64::engine::general_purpose::URL_SAFE_NO_PAD
-                    .decode(parts[1])
-                    .map_err(|_| Failure::Unauthorized)?;
-                let claims: ExecutionPermitClaims =
-                    self.contracts.decode("ExecutionPermitClaims", &payload)?;
-                let use_request = ExecutionPermitUseRequest { permit, request };
-                let (decision, response_id): (PolicyDecision, String) = self
-                    .post(
-                        "/v1/permits/consume",
-                        self.contracts
-                            .encode("ExecutionPermitUseRequest", &use_request)?,
-                        &correlation,
-                        "PolicyDecision",
-                    )
-                    .await?;
-                if decision.request_id != response_id || decision.decision != Decision::Allow {
-                    return Err(Failure::Unauthorized);
-                }
-                // The authenticated Gateway has just cryptographically verified and
-                // consumed these exact claims. Parsing alone never grants permission.
-                if claims.expires_at_unix_ms <= crate::now() {
-                    return Err(Failure::Expired);
-                }
-                deadline = Some(claims.expires_at_unix_ms);
+            if next.id != i.id
+                || next.evaluation != i.evaluation
+                || next.state != EnterpriseInvocationState::Executing
+                || next.revision != i.revision + 1
+            {
+                return Err(Failure::Unauthorized);
             }
-            Ok(deadline)
+            store.write(
+                "effect-journal.json",
+                &self.contracts.encode("EnterpriseInvocation", &next)?,
+            )?;
+            let until = next.expires_at_unix_ms;
+            *executing = Some(next);
+            Ok(Some(until))
         })
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn pending_ask_and_malformed_grants_fail_closed() {
-        let fixtures: serde_json::Value = serde_json::from_str(include_str!(
-            "../../../tests/fixtures/contracts/v1/valid.json"
-        ))
-        .unwrap();
-        let mut outcome = fixtures["AuthorizationOutcome"].clone();
-        let decode =
-            |v: serde_json::Value| serde_json::from_value::<AuthorizationOutcome>(v).unwrap();
-        assert!(grant(decode(outcome.clone()), "request-1").is_err());
-        outcome["decision"]["decision"] = serde_json::json!("ASK");
-        assert!(grant(decode(outcome.clone()), "request-1").is_err());
-        outcome["decision"]["decision"] = serde_json::json!("ALLOW");
-        assert!(grant(decode(outcome.clone()), "other-request").is_err());
-        assert!(grant(decode(outcome.clone()), "request-1")
-            .unwrap()
-            .is_none());
-        outcome["approvalId"] = serde_json::json!("approval-1");
-        assert!(grant(decode(outcome.clone()), "request-1").is_err());
-        outcome["permit"] = fixtures["SignedExecutionPermit"].clone();
-        assert!(grant(decode(outcome.clone()), "request-1")
-            .unwrap()
-            .is_some());
-        outcome.as_object_mut().unwrap().remove("approvalId");
-        assert!(grant(decode(outcome), "request-1").is_err());
+    fn complete(
+        &self,
+        request: AuthorizationRequest,
+        output: std::collections::BTreeMap<String, serde_json::Value>,
+    ) -> Call<'_, ()> {
+        Box::pin(async move {
+            use crate::transport::ControlPort;
+            let mut executing = self.executing.lock().await;
+            let i = executing.as_ref().ok_or(Failure::Unauthorized)?;
+            if i.evaluation.arguments_digest
+                != crate::digest(
+                    &serde_json::to_vec(&request.arguments).map_err(|_| Failure::Validation)?,
+                )
+                || i.evaluation.tool_id != request.tool_id
+                || i.evaluation.action != request.action
+            {
+                return Err(Failure::Unauthorized);
+            }
+            let (identity, control, store) = self.device()?;
+            let next = control
+                .report_effect(
+                    identity,
+                    EnterpriseEffectReport {
+                        invocation_id: i.id.clone(),
+                        expected_revision: i.revision,
+                        state: EnterpriseInvocationState::Succeeded,
+                        completed_resources: i.evaluation.resources.clone(),
+                        result_digest: Some(crate::digest(
+                            &serde_json::to_vec(&output).map_err(|_| Failure::Validation)?,
+                        )),
+                    },
+                )
+                .await?;
+            if next.id != i.id || next.state != EnterpriseInvocationState::Succeeded {
+                return Err(Failure::Unauthorized);
+            }
+            store.write(
+                "effect-journal.json",
+                &self.contracts.encode("EnterpriseInvocation", &next)?,
+            )?;
+            *executing = None;
+            Ok(())
+        })
     }
 }

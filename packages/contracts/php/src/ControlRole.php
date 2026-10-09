@@ -5,7 +5,7 @@
 declare(strict_types=1);
 namespace OloLabs\ToolGate\Contracts;
 
-/** Named tenant role with fixed templates and bounded permission rules. */
+/** Typed role assigned only to compatible groups. Management rules cannot confer runtime access. */
 final readonly class ControlRole implements \JsonSerializable {
     public function __construct(
         public string $id,
@@ -13,12 +13,13 @@ final readonly class ControlRole implements \JsonSerializable {
         public bool $enabled,
         public int $revision,
         public UserRole $portalRole,
-        public RoleRules $rules
+        public EnterpriseRoleType $roleType,
+        public array $managementRules
     ) {}
 
     /** Decode a structural model; canonical schema validation is also required. */
     public static function fromArray(array $data): self {
-        if (array_diff(array_keys($data), ['id', 'name', 'enabled', 'revision', 'portalRole', 'rules']) || array_diff(['id', 'name', 'enabled', 'revision', 'portalRole', 'rules'], array_keys($data))) {
+        if (array_diff(array_keys($data), ['id', 'name', 'enabled', 'revision', 'portalRole', 'roleType', 'managementRules']) || array_diff(['id', 'name', 'enabled', 'revision', 'portalRole', 'roleType', 'managementRules'], array_keys($data))) {
             throw new \InvalidArgumentException('Unknown or missing contract fields');
         }
         return new self(
@@ -27,7 +28,8 @@ final readonly class ControlRole implements \JsonSerializable {
             $data['enabled'],
             $data['revision'],
             UserRole::from($data['portalRole']),
-            RoleRules::fromArray($data['rules'])
+            EnterpriseRoleType::from($data['roleType']),
+            array_map(static fn ($item) => EnterpriseManagementRule::fromArray($item), $data['managementRules'])
         );
     }
 

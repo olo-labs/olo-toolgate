@@ -3,20 +3,17 @@
 // GENERATED FILE — DO NOT EDIT DIRECTLY; tools/contracts/generate.py
 package io.ololabs.toolgate.contracts;
 
-/** Tenant-scoped policies configuration record. Not a runtime credential or policy grant.
+/** Group-scoped guardrails. ALLOW does not create a grant; BLOCK overrides and ASK accumulates.
  *
  * @param id canonical id value
  * @param name canonical name value
  * @param enabled canonical enabled value
  * @param revision canonical revision value
- * @param toolId canonical toolId value
- * @param action canonical action value
- * @param resource canonical resource value
  * @param decision canonical decision value
- * @param userIds canonical userIds value
- * @param teamIds canonical teamIds value
- * @param agentIds canonical agentIds value
- * @param deviceIds canonical deviceIds value
+ * @param scope canonical scope value
+ * @param teams canonical teams value
+ * @param agentGroups canonical agentGroups value
+ * @param approverTeams canonical approverTeams value
  */
 @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
 public record ControlPolicy(
@@ -24,14 +21,11 @@ public record ControlPolicy(
     @com.fasterxml.jackson.annotation.JsonProperty(value = "name", required = true) String name,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "enabled", required = true) Boolean enabled,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "revision", required = true) Long revision,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "toolId", required = true) String toolId,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "action", required = true) String action,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "resource", required = true) ResourceDescriptor resource,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "decision", required = true) Decision decision,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "userIds", required = true) java.util.List<String> userIds,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "teamIds", required = true) java.util.List<String> teamIds,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "agentIds", required = true) java.util.List<String> agentIds,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "deviceIds", required = true) java.util.List<String> deviceIds
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "scope", required = true) EnterpriseScope scope,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "teams", required = true) GroupSelection teams,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "agentGroups", required = true) GroupSelection agentGroups,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "approverTeams", required = true) GroupSelection approverTeams
 ) {
     /** Reject absent required references and copy collections to retain value semantics.
      *
@@ -39,31 +33,21 @@ public record ControlPolicy(
      * @param name canonical name value
      * @param enabled canonical enabled value
      * @param revision canonical revision value
-     * @param toolId canonical toolId value
-     * @param action canonical action value
-     * @param resource canonical resource value
      * @param decision canonical decision value
-     * @param userIds canonical userIds value
-     * @param teamIds canonical teamIds value
-     * @param agentIds canonical agentIds value
-     * @param deviceIds canonical deviceIds value
+     * @param scope canonical scope value
+     * @param teams canonical teams value
+     * @param agentGroups canonical agentGroups value
+     * @param approverTeams canonical approverTeams value
      */
     public ControlPolicy {
         java.util.Objects.requireNonNull(id, "id");
         java.util.Objects.requireNonNull(name, "name");
         java.util.Objects.requireNonNull(enabled, "enabled");
         java.util.Objects.requireNonNull(revision, "revision");
-        java.util.Objects.requireNonNull(toolId, "toolId");
-        java.util.Objects.requireNonNull(action, "action");
-        java.util.Objects.requireNonNull(resource, "resource");
         java.util.Objects.requireNonNull(decision, "decision");
-        java.util.Objects.requireNonNull(userIds, "userIds");
-        userIds = userIds == null ? null : java.util.List.copyOf(userIds);
-        java.util.Objects.requireNonNull(teamIds, "teamIds");
-        teamIds = teamIds == null ? null : java.util.List.copyOf(teamIds);
-        java.util.Objects.requireNonNull(agentIds, "agentIds");
-        agentIds = agentIds == null ? null : java.util.List.copyOf(agentIds);
-        java.util.Objects.requireNonNull(deviceIds, "deviceIds");
-        deviceIds = deviceIds == null ? null : java.util.List.copyOf(deviceIds);
+        java.util.Objects.requireNonNull(scope, "scope");
+        java.util.Objects.requireNonNull(teams, "teams");
+        java.util.Objects.requireNonNull(agentGroups, "agentGroups");
+        java.util.Objects.requireNonNull(approverTeams, "approverTeams");
     }
 }

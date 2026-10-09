@@ -1,0 +1,26 @@
+// Copyright 2026 OLO Labs
+// SPDX-License-Identifier: Apache-2.0
+package io.ololabs.toolgate.control.application;
+import io.ololabs.toolgate.control.domain.*;
+import io.ololabs.toolgate.contracts.*;
+import java.util.*;
+/** Group-scoped secret custody. Current authorization, ciphertext write and audit share one transaction. */
+public final class VaultService {
+    private final Store store;private final Codec codec;private final javax.crypto.spec.SecretKeySpec key;
+    public VaultService(Store store,Codec codec,byte[] key){if(key.length!=32)throw new IllegalArgumentException();this.store=store;this.codec=codec;this.key=new javax.crypto.spec.SecretKeySpec(key.clone(),"AES");}
+    private void access(Store.Session tx,DirectoryService.Actor actor,String action,String name,String tg,String dg){
+        var graph=tx.load();for(var id:List.of(Ids.Kind.TOOL_GROUP.id(tg),Ids.Kind.DEVICE_GROUP.id(dg))){var group=graph.entries().get(id);if(group==null||!group.enabled())throw ManagementAccess.denied();}
+        var management=new ManagementAccess(codec);long now=System.currentTimeMillis();management.require(graph,actor.userId(),action,Ids.Kind.TOOL_GROUP,tg,now);management.require(graph,actor.userId(),action,Ids.Kind.DEVICE_GROUP,dg,now);
+        var conditions=new EnterpriseConditions(0L,0L,List.of(),List.of(),List.of(),List.of(),true,false,null,null);
+        var scope=new EnterpriseScope(new GroupSelection(List.of(tg),false),new GroupSelection(List.of(dg),false),List.of(action),false,List.of(new EnterpriseResourceRule(ResourceKind.CUSTOM,"secret://"+name,EnterpriseResourceMatch.EXACT)),conditions);
+        if(management.access(graph,actor.userId()).grants().stream().noneMatch(rule->rule.actions().contains(action)&&ManagementAccess.current(rule.conditions(),now)&&rule.grantableScopes().stream().anyMatch(ceiling->ManagementAccess.contains(ceiling,scope))))throw ManagementAccess.denied();
+    }
+    public Store.Reply list(DirectoryService.Actor actor){return store.transaction(actor.tenant(),false,tx->{var visible=new ArrayList<EnterpriseVaultReference>();for(var s:tx.enterprise().secrets())try{access(tx,actor,"vault-read",s.name(),s.toolGroupId(),s.deviceGroupId());visible.add(new EnterpriseVaultReference(s.name(),s.toolGroupId(),s.deviceGroupId()));}catch(Failure denied){if(denied.status()!=403)throw denied;}return new Store.Reply(200,codec.json(new EnterpriseVaultPage(visible)),tx.load().revision());});}
+    public Store.Reply write(DirectoryService.Actor actor,String document,String requestId){var value=codec.model(document,EnterpriseVaultWrite.class);Ids.valid(requestId);if(value.value().getBytes(java.nio.charset.StandardCharsets.UTF_8).length>32768)throw Failure.validation();
+        // A keyed digest binds exact retries without recording a dictionary-testable secret hash.
+        String digest;try{var mac=javax.crypto.Mac.getInstance("HmacSHA256");mac.init(new javax.crypto.spec.SecretKeySpec(key.getEncoded(),"HmacSHA256"));digest=HexFormat.of().formatHex(mac.doFinal(codec.json(value).getBytes(java.nio.charset.StandardCharsets.UTF_8)));}catch(java.security.GeneralSecurityException invalid){throw Failure.unavailable();}
+        return store.transaction(actor.tenant(),true,tx->{access(tx,actor,"vault-write",value.name(),value.toolGroupId(),value.deviceGroupId());var previous=tx.enterprise().secret(value.name());if(previous!=null)access(tx,actor,"vault-write",previous.name(),previous.toolGroupId(),previous.deviceGroupId());var replay=tx.replay(actor.id(),requestId,digest);if(replay!=null)return replay;if(previous==null&&tx.enterprise().secrets().size()>=256)throw Failure.conflict();
+            byte[] nonce=new byte[12];new java.security.SecureRandom().nextBytes(nonce);try{var cipher=javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");cipher.init(javax.crypto.Cipher.ENCRYPT_MODE,key,new javax.crypto.spec.GCMParameterSpec(128,nonce));cipher.updateAAD((actor.tenant().value()+"\n"+value.name()+"\n"+value.toolGroupId()+"\n"+value.deviceGroupId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));byte[] encrypted=cipher.doFinal(value.value().getBytes(java.nio.charset.StandardCharsets.UTF_8));byte[] packet=new byte[nonce.length+encrypted.length];System.arraycopy(nonce,0,packet,0,nonce.length);System.arraycopy(encrypted,0,packet,nonce.length,encrypted.length);tx.enterprise().saveSecret(new EnterpriseStore.Secret(value.name(),value.toolGroupId(),value.deviceGroupId(),Base64.getEncoder().encodeToString(packet)));}catch(java.security.GeneralSecurityException invalid){throw Failure.unavailable();}
+            tx.audit(actor.id(),"SECRET_CUSTODY_PUT","secret:"+value.name(),tx.load().revision(),requestId,DirectoryService.digest(codec.json(new EnterpriseVaultReference(value.name(),value.toolGroupId(),value.deviceGroupId()))));var reply=new Store.Reply(201,codec.json(new EnterpriseVaultStored(true)),tx.load().revision());tx.remember(actor.id(),requestId,digest,reply);return reply;});
+    }
+}

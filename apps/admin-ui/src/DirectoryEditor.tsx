@@ -1,57 +1,82 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
-import { useEffect, useRef, useState, type FormEvent } from 'react';
-import type { DirectoryKind, DirectoryRecords } from './operations.generated';
-import { ControlClient } from './api';
-import type { UserRole, UserPrivilegeTemplate } from '@olo-labs/toolgate-contracts';
-import { Failure } from './Failure';
+import {useEffect,useRef,useState,type FormEvent} from 'react';
+import type {DirectoryKind,DirectoryRecords} from './operations.generated';
+import type {EnterpriseScope,GroupSelection,EnterpriseManagementRule} from '@olo-labs/toolgate-contracts';
+import {ControlClient} from './api';
+import {Failure} from './Failure';
+import {ScopePicker} from './ScopePicker';
+import {EnterpriseScopeEditor,GroupSelector,emptyScope} from './EnterpriseScopeEditor';
+import {GroupMembershipEditor} from './AccessMapping';
+import {ManagementRulesEditor} from './ManagementRulesEditor';
 
-type Kind = Exclude<DirectoryKind,'users'>;
-const titles:Record<Kind,string>={teams:'team',roles:'role',tools:'tool',policies:'policy',agents:'agent',devices:'client'};
-/** Field editing only; Control remains responsible for schema, references and permissions. */
+type Kind=Exclude<DirectoryKind,'users'>;
+export const entityTitles:Record<Kind,string>={teams:'team',roles:'role',tools:'tool',policies:'policy',agents:'agent',devices:'device',deviceGroups:'device group',agentGroups:'agent group',toolGroups:'tool group',grants:'grant',delegations:'delegation',agentDelegations:'agent delegation',bindings:'execution binding',extractors:'resource extractor',workloadBindings:'workload binding',identityBindings:'identity binding',deviceEvidence:'device evidence'};
+const defaults:Record<Kind,Record<string,unknown>>={
+  teams:{userIds:[],roleIds:[]},agentGroups:{agentIds:[],roleIds:[]},toolGroups:{toolIds:[]},deviceGroups:{deviceIds:[]},agents:{ownerUserId:''},devices:{ownerUserId:''},
+  tools:{definition:{id:'',name:'',description:'',actions:[{name:'invoke',resourceKinds:['CUSTOM']}],inputSchema:{type:'object'},outputSchema:{type:'object'}},extractorId:'',version:'1.0.0',packageDigest:''},
+  roles:{portalRole:'BASIC',roleType:'HUMAN',managementRules:[]},
+  grants:{sourceType:'TEAM',sourceId:'',purpose:'HUMAN',scope:emptyScope},
+  policies:{decision:'BLOCK',scope:emptyScope,teams:{ids:[],all:false},agentGroups:{ids:[],all:false},approverTeams:{ids:[],all:false}},
+  delegations:{teamId:'',agentGroupId:'',scope:emptyScope},agentDelegations:{fromAgentGroupId:'',toAgentGroupId:'',maximumDepth:1,scope:emptyScope},
+  bindings:{toolGroupId:'',deviceGroupId:'',actions:[],allowedPackageDigests:[],requireOnline:true,ownerDependency:false},
+  extractors:{extractorKind:'FIELDS',version:'1.0.0',fields:[],fixedResources:[],maxResources:32},
+  workloadBindings:{agentId:'',mode:'SERVICE',issuer:'',subject:'',audience:'',credentialSha256:'',credentialEpoch:1,expiresAtUnixMs:0},
+  identityBindings:{userId:'',issuer:'',subject:'',sessionEpoch:1,firstSeenUnixMs:0,lastAttemptUnixMs:0,attemptCount:1,registrationReason:'REVIEWED_IDENTITY_BINDING',sessionsValidAfterUnixMs:0},
+  deviceEvidence:{deviceId:'',posture:[],region:'',verifiedNetworkAddress:'',verifiedAtUnixMs:0,expiresAtUnixMs:0},
+};
+// Form shape guards keep incomplete advanced drafts editable; Control owns semantic validation.
+function formShape(template:unknown,value:unknown):boolean {
+  if(Array.isArray(template))return Array.isArray(value)&&value.every(item=>item!==null);
+  if(template!==null&&typeof template==='object')return value!==null&&typeof value==='object'&&!Array.isArray(value)&&Object.entries(template).every(([key,item])=>formShape(item,(value as Record<string,unknown>)[key]));
+  return typeof template===typeof value;
+}
+const extra=(record:DirectoryRecords[Kind])=>Object.fromEntries(Object.entries(record).filter(([k])=>!['id','name','enabled','revision'].includes(k)));
+/** All permission edits target group records, typed Roles, grants or bindings. */
 export function DirectoryEditor({client,kind,record,close,saved}:{client:ControlClient;kind:Kind;record?:DirectoryRecords[Kind];close:()=>void;saved:()=>void}) {
-  const [id,setId]=useState(record?.id??''),[name,setName]=useState(record?.name??''),[enabled,setEnabled]=useState(record?.enabled??false);
-  const [owner,setOwner]=useState(record&&'ownerUserId' in record?record.ownerUserId:''),[members,setMembers]=useState(record&&'userIds' in record?record.userIds.join(', '):'');
-  const [roles,setRoles]=useState(record&&'roleIds' in record?(record.roleIds??[]).join(', '):'');
-  const [portalRole,setPortalRole]=useState<UserRole>(record&&'portalRole' in record?record.portalRole:'BASIC');
-  const [templates,setTemplates]=useState<ReadonlyArray<UserPrivilegeTemplate>>(record&&'rules' in record?record.rules.templateIds:[]);
-  const defaults=kind==='tools'?{definition:{id:'',name:'',description:'',actions:[{name:'invoke',resourceKinds:['CUSTOM']}],inputSchema:{type:'object'},outputSchema:{type:'object'}}}:kind==='policies'?{toolId:'',action:'invoke',resource:{kind:'CUSTOM',locator:''},decision:'BLOCK',userIds:[],teamIds:[],agentIds:[],deviceIds:[]}:kind==='roles'?{deviceScope:'NONE',deviceGroupIds:[],toolIds:[]}:{};
-  const [config,setConfig]=useState(JSON.stringify(record&&'rules' in record?Object.fromEntries(Object.entries(record.rules).filter(([key])=>key!=='templateIds')):record?Object.fromEntries(Object.entries(record).filter(([key])=>!['id','name','enabled','revision','ownerUserId','userIds'].includes(key))):defaults,null,2));
-  const [busy,setBusy]=useState(false),[error,setError]=useState<unknown>(),[confirm,setConfirm]=useState(false);
-  const [current,setCurrent]=useState(record);
-  const [devices,setDevices]=useState(record&&'deviceIds' in record?(record.deviceIds??[]).join(', '):'');
-  const heading=useRef<HTMLHeadingElement>(null);
+  const [current,setCurrent]=useState(record);const [id,setId]=useState(record?.id??''),[name,setName]=useState(record?.name??''),[enabled,setEnabled]=useState(record?.enabled??false);
+  const [config,setConfig]=useState(JSON.stringify(record?extra(record):defaults[kind],null,2));
+  const [error,setError]=useState<unknown>(),[busy,setBusy]=useState(false),[confirm,setConfirm]=useState(false);
+  const heading=useRef<HTMLHeadingElement>(null),pending=useRef<{body:string;key:string}>(undefined);
   useEffect(()=>{heading.current?.focus();},[]);
-  const pending=useRef<{body:string;key:string}|undefined>(undefined);
-  function mutationKey(body:string){if(pending.current?.body!==body)pending.current={body,key:crypto.randomUUID()};return pending.current.key;}
-  async function save(event:FormEvent) {event.preventDefault();if(busy)return;setBusy(true);setError(undefined);
-    try {
-      const extra=kind==='tools'||kind==='policies'||kind==='roles'?JSON.parse(config):{};
-      if(!extra||typeof extra!=='object'||Array.isArray(extra))throw new Error('Object required');
-      if(kind==='tools') extra.definition={...extra.definition,id,name};
-      const body={...(kind==='roles'?{portalRole,rules:{...extra,templateIds:templates}}:extra),id,name,enabled,revision:current?.revision??1,...(kind==='teams'?{userIds:members.split(',').map(v=>v.trim()).filter(Boolean),deviceIds:devices.split(',').map(v=>v.trim()).filter(Boolean),roleIds:roles.split(',').map(v=>v.trim()).filter(Boolean)}:kind==='agents'||kind==='devices'?{ownerUserId:owner}:kind==='policies'?{userIds:members.split(',').map(v=>v.trim()).filter(Boolean)}:{})} as DirectoryRecords[Kind];
-      await client.saveRecord(kind,body,!!current,mutationKey(JSON.stringify(body)));saved();
-    }catch(failure){setError(failure);}finally{setBusy(false);}
-  }
-  async function reload(){if(!current)return;setBusy(true);setError(undefined);try{const value=await client.record(kind,current.id);setCurrent(value);setName(value.name);setEnabled(value.enabled);if('ownerUserId' in value)setOwner(value.ownerUserId);if('userIds' in value)setMembers(value.userIds.join(', '));if('roleIds' in value)setRoles((value.roleIds??[]).join(', '));if('rules' in value){setPortalRole(value.portalRole);setTemplates(value.rules.templateIds);}if('deviceIds' in value)setDevices((value.deviceIds??[]).join(', '));setConfig(JSON.stringify('rules' in value?Object.fromEntries(Object.entries(value.rules).filter(([key])=>key!=='templateIds')):Object.fromEntries(Object.entries(value).filter(([key])=>!['id','name','enabled','revision','ownerUserId','userIds'].includes(key))),null,2));}catch(failure){setError(failure);}finally{setBusy(false);}}
+  let draft:Record<string,unknown>|undefined;try{const value:unknown=JSON.parse(config);if(formShape(defaults[kind],value))draft=value as Record<string,unknown>;}catch{/* Advanced editing can contain an incomplete draft. */}
+  const update=(field:string,value:unknown)=>{if(draft)setConfig(JSON.stringify({...draft,[field]:value},null,2));};
+  const picker=(field:string,target:DirectoryKind,label:string,multiple=false)=><ScopePicker key={field} client={client} kind={target} label={label} single={!multiple} value={multiple?(draft?.[field] as readonly string[]??[]):draft?.[field]?[String(draft[field])]:[]} onChange={ids=>update(field,multiple?ids:ids[0]??'')} disabled={busy||!draft}/>;
+  const mutationKey=(body:string)=>{if(pending.current?.body!==body)pending.current={body,key:crypto.randomUUID()};return pending.current.key;};
+  async function save(event:FormEvent){event.preventDefault();if(busy)return;setBusy(true);setError(undefined);try{
+    const fields:Record<string,unknown>=JSON.parse(config);if(!fields||typeof fields!=='object'||Array.isArray(fields))throw new Error('Configuration must be an object');
+    if(kind==='tools')fields.definition={...(fields.definition as Record<string,unknown>),id,name};
+    const body={...fields,id,name,enabled,revision:current?.revision??1} as DirectoryRecords[Kind];await client.saveRecord(kind,body,!!current,mutationKey(JSON.stringify(body)));saved();
+  }catch(failure){setError(failure);}finally{setBusy(false);}}
+  async function reload(){if(!current)return;setBusy(true);setError(undefined);try{const value=await client.record(kind,current.id);setCurrent(value);setName(value.name);setEnabled(value.enabled);setConfig(JSON.stringify(extra(value),null,2));pending.current=undefined;}catch(failure){setError(failure);}finally{setBusy(false);}}
   async function remove(){if(!current||busy)return;setBusy(true);setError(undefined);try{await client.deleteRecord(kind,current,mutationKey(`delete:${current.id}:${current.revision}`));saved();}catch(failure){setError(failure);}finally{setBusy(false);}}
-  const title=titles[kind];
+  const title=entityTitles[kind];const protectedDefault=['team-default','default-agents','default-tools','default-devices'].includes(id);
   return <section className="detail" aria-label={`${title} editor`}><div className="page-heading"><h2 ref={heading} tabIndex={-1}>{current?`Edit ${title}`:`Add ${title}`}</h2><button disabled={busy} onClick={close}>Close editor</button></div>
-    {current&&'decision' in current&&<dl className="policy-details"><dt>Who</dt><dd>{[...current.userIds,...current.teamIds,...current.agentIds,...current.deviceIds].join(', ')}</dd><dt>Can use</dt><dd>{current.toolId} · {current.action}</dd><dt>Where</dt><dd><code>{JSON.stringify(current.resource)}</code></dd><dt>Stored decision</dt><dd>{current.decision}</dd></dl>}
     {error!==undefined&&<Failure error={error}/>}
     <form className="user-form" onSubmit={save}>
-      <label htmlFor="entity-id">Identifier</label><input id="entity-id" required maxLength={128} disabled={busy||!!current} value={id} onChange={e=>setId(e.target.value)}/>
-      <label htmlFor="entity-name">Display name</label><input id="entity-name" required maxLength={128} disabled={busy} value={name} onChange={e=>setName(e.target.value)}/>
-      {(kind==='teams'||kind==='policies')&&<><label htmlFor="entity-members">User IDs, separated by commas</label><textarea id="entity-members" value={members} disabled={busy} onChange={e=>setMembers(e.target.value)}/></>}
-      {kind==='teams'&&<><label htmlFor="entity-devices">Device IDs, separated by commas</label><textarea id="entity-devices" value={devices} disabled={busy} onChange={e=>setDevices(e.target.value)}/></>}
-      {kind==='teams'&&<><label htmlFor="entity-roles">Role IDs, separated by commas</label><input id="entity-roles" value={roles} disabled={busy} onChange={e=>setRoles(e.target.value)}/><p className="hint">Enabled roles apply to enabled members of this team.</p></>}
-      {kind==='roles'&&<><label htmlFor="role-portal">Portal classification</label><select id="role-portal" value={portalRole} disabled={busy} onChange={e=>setPortalRole(e.target.value as UserRole)}><option value="BASIC">Basic user</option><option value="ADMINISTRATOR">Administrator</option><option value="SUPER_ADMIN">Super Admin</option></select><fieldset disabled={busy}><legend>Fixed privilege templates</legend>{(['TOOL_USER','IT_CLOUD_ADMIN','APPROVER'] as const).map(template=><label className="checkbox" key={template}><input type="checkbox" checked={templates.includes(template)} onChange={e=>setTemplates(e.target.checked?[...templates,template]:templates.filter(value=>value!==template))}/>{template==='TOOL_USER'?'Tool user':template==='IT_CLOUD_ADMIN'?'IT Cloud Admin': 'Approval reviewer'}</label>)}</fieldset><label htmlFor="role-rules">Permission scope (JSON)</label><textarea id="role-rules" rows={12} maxLength={65536} value={config} disabled={busy} onChange={e=>setConfig(e.target.value)}/><p className="hint">deviceScope is NONE, ALL or GROUPS. GROUPS requires deviceGroupIds. An empty toolIds list uses the tools allowed by policy. Templates are fixed; scope only narrows their permissions. Only Super Admin can manage roles.</p></>}
-      {(kind==='agents'||kind==='devices')&&<><label htmlFor="entity-owner">Owner user ID</label><input id="entity-owner" required value={owner} disabled={busy} onChange={e=>setOwner(e.target.value)}/></>}
-      {(kind==='tools'||kind==='policies')&&<><label htmlFor="entity-config">{kind==='tools'?'Tool definition':'Policy scope and decision'} (JSON)</label><textarea id="entity-config" rows={12} maxLength={65536} value={config} disabled={busy} onChange={e=>setConfig(e.target.value)}/></>}
-      <label className="checkbox"><input type="checkbox" checked={enabled} disabled={busy} onChange={e=>setEnabled(e.target.checked)}/>Enabled in directory</label>
-      <p className="hint">New records start disabled. Enabling is not a policy grant; publish the applicable policy bundle before runtime access.</p>
-      <div className="actions"><button disabled={busy} className="primary">Save {title}</button>{current&&<button type="button" disabled={busy} onClick={()=>void reload()}>Reload current record</button>}</div>
+      <label>Identifier<input required maxLength={128} disabled={busy||!!current} value={id} onChange={e=>setId(e.target.value)}/></label>
+      <label>Display name<input required maxLength={128} disabled={busy} value={name} onChange={e=>setName(e.target.value)}/></label>
+      <label className="checkbox"><input type="checkbox" checked={enabled} disabled={busy||protectedDefault} onChange={e=>setEnabled(e.target.checked)}/>Enabled</label>
+      {(kind==='agents'||kind==='devices')&&picker('ownerUserId','users','Administrative owner')}
+      {kind==='teams'&&picker('userIds','users','Member users',true)}{kind==='agentGroups'&&picker('agentIds','agents','Member agents',true)}{kind==='toolGroups'&&picker('toolIds','tools','Member tools',true)}{kind==='deviceGroups'&&picker('deviceIds','devices','Member devices',true)}
+      {(kind==='teams'||kind==='agentGroups')&&<>{picker('roleIds','roles','Group roles',true)}<p className="hint">Teams accept Human and Management Roles. Agent Groups accept Actor/Service Roles.</p></>}
+      {kind==='roles'&&draft&&<><label>Role type<select disabled={busy} value={String(draft.roleType)} onChange={e=>setConfig(JSON.stringify({...draft,roleType:e.target.value,portalRole:'BASIC',managementRules:[]},null,2))}><option value="HUMAN">Human runtime role</option><option value="ACTOR_SERVICE">Actor / Service runtime role</option><option value="MANAGEMENT">Management role</option></select></label>
+        {draft.roleType==='MANAGEMENT'&&<><label>Portal classification<select value={String(draft.portalRole)} onChange={e=>update('portalRole',e.target.value)}><option value="BASIC">No portal administration</option><option value="ADMINISTRATOR">Scoped administrator</option><option value="SUPER_ADMIN">Recovery administrator</option></select></label><ManagementRulesEditor client={client} value={draft.managementRules as EnterpriseManagementRule[]} change={rules=>update('managementRules',rules)} disabled={busy}/><p className="hint">Classification alone grants no management operation.</p></>}
+        <p className="hint">Runtime grants are separate records referencing a Human or Actor/Service Role. Individuals cannot receive Roles directly.</p></>}
+      {kind==='grants'&&draft&&<><label>Grant source<select value={String(draft.sourceType)} onChange={e=>setConfig(JSON.stringify({...draft,sourceType:e.target.value,sourceId:'',purpose:e.target.value==='TEAM'?'HUMAN':'CAPABILITY'},null,2))}><option value="TEAM">Team</option><option value="AGENT_GROUP">Agent Group</option><option value="ROLE">Typed Role</option></select></label>
+        {picker('sourceId',draft.sourceType==='TEAM'?'teams':draft.sourceType==='AGENT_GROUP'?'agentGroups':'roles','Grant source')}
+        <label>Purpose<select value={String(draft.purpose)} onChange={e=>update('purpose',e.target.value)}>{(draft.sourceType==='TEAM'?['HUMAN','SECRET']:draft.sourceType==='AGENT_GROUP'?['CAPABILITY','SERVICE','SECRET']:['HUMAN','CAPABILITY','SERVICE','SECRET']).map(p=><option key={p}>{p}</option>)}</select></label></>}
+      {kind==='delegations'&&<>{picker('teamId','teams','Delegating Team')}{picker('agentGroupId','agentGroups','Authorized Agent Group')}</>}
+      {kind==='agentDelegations'&&<>{picker('fromAgentGroupId','agentGroups','Delegating Agent Group')}{picker('toAgentGroupId','agentGroups','Receiving Agent Group')}<label>Maximum chain depth<input type="number" min={1} max={8} value={Number(draft?.maximumDepth??1)} onChange={e=>update('maximumDepth',Number(e.target.value))}/></label></>}
+      {draft&&'scope' in draft&&<EnterpriseScopeEditor client={client} value={draft.scope as EnterpriseScope} change={value=>update('scope',value)} disabled={busy}/>}
+      {kind==='policies'&&draft&&<><label>Decision<select value={String(draft.decision)} onChange={e=>update('decision',e.target.value)}><option value="BLOCK">Block</option><option value="ASK">Ask for approval</option><option value="ALLOW">Allow guardrail (requires grants)</option></select></label>{(['teams','agentGroups','approverTeams'] as const).map(f=><GroupSelector key={f} client={client} kind={f==='agentGroups'?'agentGroups':'teams'} label={f==='teams'?'Human Teams':f==='agentGroups'?'Actor Groups':'Eligible approver Teams'} value={draft[f] as GroupSelection} change={v=>update(f,v)} disabled={busy}/>)}</>}
+      {kind==='bindings'&&<>{picker('toolGroupId','toolGroups','Bound Tool Group')}{picker('deviceGroupId','deviceGroups','Bound Device Group')}<label>Actions<input value={(draft?.actions as string[]??[]).join(', ')} onChange={e=>update('actions',e.target.value.split(',').map(v=>v.trim()).filter(Boolean))}/></label><label>Allowed package digests<input value={(draft?.allowedPackageDigests as string[]??[]).join(', ')} onChange={e=>update('allowedPackageDigests',e.target.value.split(',').map(v=>v.trim()).filter(Boolean))}/></label><label className="checkbox"><input type="checkbox" checked={Boolean(draft?.requireOnline)} onChange={e=>update('requireOnline',e.target.checked)}/>Require online authority</label><label className="checkbox"><input type="checkbox" checked={Boolean(draft?.ownerDependency)} onChange={e=>update('ownerDependency',e.target.checked)}/>Require an enabled administrative owner</label></>}
+      {kind==='tools'&&<>{picker('extractorId','extractors','Reviewed resource extractor')}<label>Tool version<input required value={String(draft?.version??'')} onChange={e=>update('version',e.target.value)}/></label><label>Package SHA-256<input required pattern="[a-f0-9]{64}" value={String(draft?.packageDigest??'')} onChange={e=>update('packageDigest',e.target.value)}/></label></>}
+      {kind==='workloadBindings'&&picker('agentId','agents','Authenticated Agent')}{kind==='identityBindings'&&picker('userId','users','Verified User')}{kind==='deviceEvidence'&&picker('deviceId','devices','Attested Device')}
+      <details><summary>Advanced canonical configuration</summary><label>Configuration (JSON)<textarea rows={18} maxLength={131072} value={config} disabled={busy} onChange={e=>setConfig(e.target.value)}/></label><p className="hint">This is the same record edited above. Control validates references, role types, ceilings and mandatory group membership.</p></details>
+      {!draft&&<p role="alert">Complete the JSON object before using guided fields.</p>}<div className="actions"><button className="primary" disabled={busy||!draft}>{busy?'Saving…':`Save ${title}`}</button>{current&&<button type="button" disabled={busy} onClick={()=>void reload()}>Reload current record</button>}</div>
     </form>
-    {current&&<div className="delete-area">{confirm?<><p>Delete this record? Referenced records cannot be deleted, and identifiers cannot be reused.</p><button disabled={busy} onClick={()=>void remove()} className="danger">Confirm delete</button><button disabled={busy} onClick={()=>setConfirm(false)}>Cancel delete</button></>:<button disabled={busy} className="danger" onClick={()=>setConfirm(true)}>Delete {title}</button>}</div>}
+    {current&&(kind==='agents'||kind==='tools'||kind==='devices')&&<GroupMembershipEditor client={client} entity={kind} id={current.id} saved={saved}/>}
+    {current&&!protectedDefault&&<div className="delete-area">{confirm?<><p>Delete this record? References, required memberships and recovery access must remain valid. Its identifier cannot be reused.</p><button className="danger" disabled={busy} onClick={()=>void remove()}>Confirm delete</button><button disabled={busy} onClick={()=>setConfirm(false)}>Cancel delete</button></>:<button className="danger" disabled={busy} onClick={()=>setConfirm(true)}>Delete {title}</button>}</div>}
   </section>;
 }

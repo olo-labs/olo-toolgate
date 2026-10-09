@@ -8,20 +8,22 @@ namespace OloLabs\ToolGate\Contracts;
 /** Dedicated Gateway-authenticated request for one device-local tool. */
 final readonly class RemoteToolSubmission implements \JsonSerializable {
     public function __construct(
-        public PolicyInput $input,
         public AuthorizationRequest $request,
-        public int $expiresAtUnixMs
+        public int $expiresAtUnixMs,
+        public RequestContext $context,
+        public string $invocationId
     ) {}
 
     /** Decode a structural model; canonical schema validation is also required. */
     public static function fromArray(array $data): self {
-        if (array_diff(array_keys($data), ['input', 'request', 'expiresAtUnixMs']) || array_diff(['input', 'request', 'expiresAtUnixMs'], array_keys($data))) {
+        if (array_diff(array_keys($data), ['request', 'expiresAtUnixMs', 'context', 'invocationId']) || array_diff(['request', 'expiresAtUnixMs', 'context', 'invocationId'], array_keys($data))) {
             throw new \InvalidArgumentException('Unknown or missing contract fields');
         }
         return new self(
-            PolicyInput::fromArray($data['input']),
             AuthorizationRequest::fromArray($data['request']),
-            $data['expiresAtUnixMs']
+            $data['expiresAtUnixMs'],
+            RequestContext::fromArray($data['context']),
+            $data['invocationId']
         );
     }
 

@@ -150,7 +150,10 @@ def render():
                 if optional:
                     rust += ['    #[serde(default, skip_serializing_if = "Option::is_none")]']
                     rt = f'Option<{rt}>'
-                rust += [f'    pub {snake(key)}: {rt},']
+                rust_key = snake(key)
+                if rust_key in {'as','async','await','break','const','continue','crate','dyn','else','enum','extern','false','fn','for','if','impl','in','let','loop','match','mod','move','mut','pub','ref','return','self','Self','static','struct','super','trait','true','type','unsafe','use','where','while','yield'}:
+                    rust_key = 'r#' + rust_key
+                rust += [f'    pub {rust_key}: {rt},']
                 ts += [f'  readonly {key}{"?" if optional else ""}: {field_type(prop, "ts", defs)};']
             for key in ordered:
                 pt = field_type(props[key], 'php', defs)

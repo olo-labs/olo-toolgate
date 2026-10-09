@@ -1,10 +1,10 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
-import type { FleetReleasePage, FleetRolloutPage, FleetRolloutRequest, FleetRolloutRecord, FleetPackageRelease, ApprovalDecisionRequest, ApprovalPage, ApprovalRecord, ControlUser, ErrorEnvelope, EndpointEnrollmentReview, EndpointEnrollmentDecision } from '@olo-labs/toolgate-contracts';
+import type { FleetReleasePage, FleetRolloutPage, FleetRolloutRequest, FleetRolloutRecord, FleetPackageRelease, EnterpriseApprovalDecisionRequest, EnterpriseApprovalPage, EnterpriseApproval, ControlUser, ErrorEnvelope, EndpointEnrollmentReview, EndpointEnrollmentDecision } from '@olo-labs/toolgate-contracts';
 import { listOperations, getOperations, createOperations, updateOperations, deleteOperations, operations, type DirectoryKind, type DirectoryPages, type DirectoryRecords } from './operations.generated';
 import type { BuilderDraft, BuilderDraftPage, BuilderDraftRequest, BuilderTestPage, BuilderTestRequest, BuilderTestRecord, BuilderDefinition } from '@olo-labs/toolgate-contracts';
 import type { AdminSession, ControlAuditPage } from '@olo-labs/toolgate-contracts';
-import type {RemoteToolPage,RemoteToolInspection} from '@olo-labs/toolgate-contracts';
+import type {RemoteToolPage,RemoteToolInspection,GroupMembership,ControlSnapshot,SignedPolicyBundle,BundlePublishRequest,EnterpriseEvaluation,EnterpriseDecision} from '@olo-labs/toolgate-contracts';
 
 /** Human-safe messages never render server text, exception bodies or credentials. */
 export class ApiError extends Error {
@@ -48,7 +48,11 @@ async function readBody(response: Response): Promise<unknown> {
  * A session disposal clears credentials and aborts all outstanding requests.
  * Mutations are never automatically retried; callers retain a key for an exact retry.
  */
+export class ConfigurationPending extends Error {constructor(readonly changeId:string){super('Draft created. Review its impact, submit it for independent approval, then apply the reviewed change.');}}
 export class ControlClient {
+  authorityStatus(signal?:AbortSignal):Promise<import('@olo-labs/toolgate-contracts').EnterpriseAuthorityStatus>{return this.send(operations.accessAuthorityStatus,{signal});}
+  effectiveAccess(entity:'users'|'agents'|'tools'|'devices',id:string,signal?:AbortSignal):Promise<import('@olo-labs/toolgate-contracts').EnterpriseEffectiveAccess>{const op={users:operations.effectiveUsers,agents:operations.effectiveAgents,tools:operations.effectiveTools,devices:operations.effectiveDevices}[entity];return this.send(op,{id,signal});}
+  humanToolResult(id:string):Promise<import('@olo-labs/toolgate-contracts').RemoteToolResponse>{return this.send(operations.humanToolResult,{id});}
   remoteRequests(signal?:AbortSignal):Promise<RemoteToolPage>{return this.send(operations.listLocalMcpRequests,{signal});}
   remoteRequest(id:string,signal?:AbortSignal):Promise<RemoteToolInspection>{return this.send(operations.inspectLocalMcpRequest,{id,signal});}
   private token: string;
@@ -56,8 +60,8 @@ export class ControlClient {
   constructor(token: string, private readonly onUnauthorized: () => void, private readonly transport: typeof fetch = (input, init) => fetch(input, init)) {
     this.token = token;
   }
-  quickstart<T>(path: 'tools' | 'invoke' | 'vault', body?: unknown): Promise<T> {
-    return this.send<T>({method: body === undefined ? 'GET' : 'POST', path: `/api/quickstart/v1/${path}`}, body === undefined ? {} : {body});
+  quickstart<T>(path: 'tools' | 'invoke' | 'vault', body?: unknown, key?:string): Promise<T> {
+    return this.send<T>({method: body === undefined ? 'GET' : 'POST', path: `/api/quickstart/v1/${path}`}, body === undefined ? {} : {body,key});
   }
   dispose(): void { this.token = ''; this.lifetime.abort(); }
 
@@ -84,14 +88,18 @@ export class ControlClient {
         const requestId = response.headers.get('X-Request-ID') ?? envelope?.requestId;
         throw new ApiError(response.status, code, typeof requestId === 'string' && /^[a-zA-Z0-9._:/-]{1,128}$/.test(requestId) ? requestId : undefined);
       }
+      if(response.status===202&&body&&typeof body==='object'&&'state' in body&&typeof body.state==='string'&&'id' in body&&typeof body.id==='string'&&/^config-[a-f0-9]{40}$/.test(body.id))throw new ConfigurationPending(body.id);
       return body as T;
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError || error instanceof ConfigurationPending) throw error;
       if (this.lifetime.signal.aborted || options.signal?.aborted) throw new DOMException('Request cancelled', 'AbortError');
       throw new ApiError(0, timeout.aborted ? 'TIMEOUT' : 'NETWORK');
     }
   }
 
+  configurationChanges(after?:string,signal?:AbortSignal):Promise<import('@olo-labs/toolgate-contracts').EnterpriseConfigurationPage>{const query=new URLSearchParams();if(after)query.set('after',after);return this.send(operations.listConfigurationChanges,{query,signal});}
+  configurationChange(id:string,signal?:AbortSignal):Promise<import('@olo-labs/toolgate-contracts').EnterpriseConfigurationChange>{return this.send(operations.getConfigurationChange,{id,signal});}
+  transitionConfiguration(id:string,body:import('@olo-labs/toolgate-contracts').EnterpriseConfigurationTransition,key:string):Promise<import('@olo-labs/toolgate-contracts').EnterpriseConfigurationChange>{return this.send(operations.transitionConfigurationChange,{id,body,key});}
   fleetReleases(cursor?:string,signal?:AbortSignal):Promise<FleetReleasePage>{const query=new URLSearchParams();if(cursor)query.set('cursor',cursor);return this.send(operations.listFleetReleases,{query,signal});}
   builderDrafts(cursor?:string,signal?:AbortSignal):Promise<BuilderDraftPage>{const query=new URLSearchParams();if(cursor)query.set('cursor',cursor);return this.send(operations.listBuilderDrafts,{query,signal});}
   builderTests(cursor?:string,signal?:AbortSignal):Promise<BuilderTestPage>{const query=new URLSearchParams();if(cursor)query.set('cursor',cursor);return this.send(operations.listBuilderTests,{query,signal});}
@@ -112,6 +120,18 @@ export class ControlClient {
   adminSession():Promise<AdminSession>{return this.send(operations.getAdminSession);}
   audit(cursor:string,signal?:AbortSignal):Promise<ControlAuditPage>{return this.send(operations.listAudit,{query:new URLSearchParams({cursor,limit:'50'}),signal});}
   record<K extends DirectoryKind>(kind:K,id:string):Promise<DirectoryRecords[K]> {return this.send(getOperations[kind],{id});}
+  async all<K extends DirectoryKind>(kind:K,signal?:AbortSignal):Promise<DirectoryRecords[K][]> {
+    const rows:DirectoryRecords[K][]=[];const seen=new Set<string>();let cursor:string|undefined;
+    do {const page=await this.list(kind,cursor,signal);rows.push(...page.items as DirectoryRecords[K][]);cursor=page.nextCursor;
+      if(rows.length>512 || cursor&&seen.has(cursor))throw new ApiError(502,'RESPONSE_LIMIT');if(cursor)seen.add(cursor);
+    } while(cursor);return rows;
+  }
+  memberships(entity:'users'|'agents'|'tools'|'devices',id:string,signal?:AbortSignal):Promise<GroupMembership>{const operation={users:operations.getUserGroupMembership,agents:operations.getAgentGroupMembership,tools:operations.getToolGroupMembership,devices:operations.getDeviceGroupMembership}[entity];return this.send(operation,{id,signal});}
+  saveMemberships(entity:'users'|'agents'|'tools'|'devices',body:GroupMembership,key:string):Promise<GroupMembership>{const operation={users:operations.updateUserGroupMembership,agents:operations.updateAgentGroupMembership,tools:operations.updateToolGroupMembership,devices:operations.updateDeviceGroupMembership}[entity];return this.send(operation,{id:body.entityId,body,revision:body.revision,key});}
+  simulateAccess(body:EnterpriseEvaluation):Promise<EnterpriseDecision>{return this.send(operations.simulateEnterpriseAccess,{body});}
+  exportConfig():Promise<ControlSnapshot>{return this.send(operations.exportConfig);}
+  currentBundle():Promise<SignedPolicyBundle>{return this.send(operations.getCurrentPolicyBundle);}
+  publishAccess(body:BundlePublishRequest,key:string):Promise<SignedPolicyBundle>{return this.send(operations.publishPolicyBundle,{body,key});}
   saveRecord<K extends DirectoryKind>(kind:K,record:DirectoryRecords[K],existing:boolean,key:string):Promise<DirectoryRecords[K]> {
     return this.send(existing?updateOperations[kind]:createOperations[kind],{id:record.id,body:record,key,revision:existing?record.revision:undefined});
   }
@@ -124,12 +144,14 @@ export class ControlClient {
   deleteUser(user: ControlUser, key: string): Promise<void> {
     return this.send(operations.deleteControlUser, { id: user.id, revision: user.revision, key });
   }
-  approvals(cursor?: string, signal?: AbortSignal): Promise<ApprovalPage> {
+  invocation(id:string,signal?:AbortSignal):Promise<import("@olo-labs/toolgate-contracts").EnterpriseInvocation>{return this.send(operations.getEnterpriseInvocation,{id,signal});}
+  cancelInvocation(id:string,revision:number):Promise<import("@olo-labs/toolgate-contracts").EnterpriseInvocation>{return this.send(operations.cancelEnterpriseInvocation,{id,revision});}
+  approvals(cursor?: string, signal?: AbortSignal): Promise<EnterpriseApprovalPage> {
     const query = new URLSearchParams({ limit: '50' }); if (cursor) query.set('cursor', cursor);
     return this.send(operations.listApprovals, { query, signal });
   }
-  approval(id: string, signal?: AbortSignal): Promise<ApprovalRecord> { return this.send(operations.getApproval, { id, signal }); }
-  decideApproval(id: string, decision: ApprovalDecisionRequest, key: string): Promise<ApprovalRecord> {
+  approval(id: string, signal?: AbortSignal): Promise<EnterpriseApproval> { return this.send(operations.getApproval, { id, signal }); }
+  decideApproval(id: string, decision: EnterpriseApprovalDecisionRequest, key: string): Promise<EnterpriseApproval> {
     return this.send(operations.decideApproval, { id, body: decision, key });
   }
   pendingEnrollments(signal?:AbortSignal):Promise<import('@olo-labs/toolgate-contracts').EndpointEnrollmentPage>{return this.send(operations.listEndpointEnrollments,{signal});}

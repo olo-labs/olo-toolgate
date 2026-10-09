@@ -1,0 +1,22 @@
+// Copyright 2026 OLO Labs
+// SPDX-License-Identifier: Apache-2.0
+package io.ololabs.toolgate.control.application;
+import io.ololabs.toolgate.control.domain.*;
+import io.ololabs.toolgate.contracts.*;
+import java.util.*;
+/** Direct human operations preserve verified caller identity through the ordinary durable device relay. */
+public final class HumanRuntime {
+    private final Store store;private final Codec codec;private final EnterpriseOperations operations;private final McpService relay;
+    public HumanRuntime(Store store,Codec codec,EnterpriseOperations operations,McpService relay){this.store=store;this.codec=codec;this.operations=operations;this.relay=relay;}
+    private RequestContext context(DirectoryService.Actor actor,long epoch,String key,String binding,String device){if(actor.userId()==null||epoch<1)throw ManagementAccess.denied();return new RequestContext("human-"+DirectoryService.digest(actor.id()+"\n"+Ids.valid(key)).substring(0,40),actor.tenant().value(),EnterpriseRequestMode.HUMAN,actor.userId(),null,null,List.of(),epoch,null,binding,device,null);}
+    private DirectoryService.Actor internal(DirectoryService.Actor actor){return new DirectoryService.Actor(actor.tenant(),actor.id(),false);}
+    public Store.Reply catalog(DirectoryService.Actor actor,long epoch,String body){var target=codec.model(body,EnterpriseHumanTarget.class);return relay.catalog(internal(actor),true,codec.json(context(actor,epoch,"human-discovery",target.bindingId(),target.deviceId())));}
+    public Store.Reply invoke(DirectoryService.Actor actor,long epoch,String body,String key){var request=codec.model(body,EnterpriseHumanRequest.class);var context=context(actor,epoch,key,request.bindingId(),request.deviceId());var catalog=codec.model(relay.catalog(internal(actor),true,codec.json(context)).body(),LocalToolCatalog.class);var tools=catalog.tools().stream().filter(t->t.enabled()&&t.toolId().equals(request.request().toolId())&&t.action().equals(request.request().action())).toList();if(tools.size()!=1)throw ManagementAccess.denied();var tool=tools.getFirst();
+        var invocation=codec.model(operations.submitHuman(actor,new EnterpriseInvocationRequest(context,request.request(),tool.toolDigest(),tool.packageDigest(),null)).body(),EnterpriseInvocation.class);
+        if(invocation.state()==EnterpriseInvocationState.PENDING_APPROVAL)return new Store.Reply(202,codec.json(new EnterpriseHumanOutcome(invocation,null)),invocation.revision());
+        var dispatch=codec.model(relay.submit(internal(actor),true,codec.json(new RemoteToolSubmission(request.request(),Math.min(invocation.expiresAtUnixMs(),System.currentTimeMillis()+30000),context,invocation.id())),context.requestId()).body(),RemoteToolResponse.class);
+        var current=codec.model(operations.get(actor,invocation.id()).body(),EnterpriseInvocation.class);
+        return new Store.Reply(200,codec.json(new EnterpriseHumanOutcome(current,dispatch)),current.revision());
+    }
+    public Store.Reply result(DirectoryService.Actor actor,long epoch,String id){var invocation=codec.model(operations.get(actor,id).body(),EnterpriseInvocation.class);var e=invocation.evaluation();if(!actor.userId().equals(e.context().userId())||e.context().mode()!=EnterpriseRequestMode.HUMAN||e.context().sessionEpoch()!=epoch)throw ManagementAccess.denied();var c=new RequestContext(id,actor.tenant().value(),EnterpriseRequestMode.HUMAN,actor.userId(),null,null,List.of(),epoch,null,e.context().bindingId(),e.context().deviceId(),null);return relay.response(internal(actor),true,codec.json(c),id);}
+}

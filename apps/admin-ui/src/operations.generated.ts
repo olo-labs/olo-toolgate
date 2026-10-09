@@ -1,7 +1,7 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
 // GENERATED FILE â€” DO NOT EDIT; python tools/ui/generate.py
-import type { ControlAgent, ControlAgentPage, ControlDevice, ControlDevicePage, ControlPolicy, ControlPolicyPage, ControlRole, ControlRolePage, ControlTeam, ControlTeamPage, ControlTool, ControlToolPage, ControlUser, ControlUserPage } from '@olo-labs/toolgate-contracts';
+import type { ControlAccessGrant, ControlAccessGrantPage, ControlAgent, ControlAgentDelegation, ControlAgentDelegationPage, ControlAgentGroup, ControlAgentGroupPage, ControlAgentPage, ControlDelegation, ControlDelegationPage, ControlDevice, ControlDeviceEvidence, ControlDeviceEvidencePage, ControlDeviceGroup, ControlDeviceGroupPage, ControlDevicePage, ControlExecutionBinding, ControlExecutionBindingPage, ControlIdentityBinding, ControlIdentityBindingPage, ControlPolicy, ControlPolicyPage, ControlResourceExtractor, ControlResourceExtractorPage, ControlRole, ControlRolePage, ControlTeam, ControlTeamPage, ControlTool, ControlToolGroup, ControlToolGroupPage, ControlToolPage, ControlUser, ControlUserPage, ControlWorkloadBinding, ControlWorkloadBindingPage } from '@olo-labs/toolgate-contracts';
 export const operations = {
   getAdminSession: { method: 'GET', path: '/api/control/v1/admin-session' },
   publicClientInstallers: { method: 'GET', path: '/api/public/v1/installers' },
@@ -26,8 +26,6 @@ export const operations = {
   listApprovals: { method: 'GET', path: '/api/control/v1/approvals' },
   getApproval: { method: 'GET', path: '/api/control/v1/approvals/{id}' },
   decideApproval: { method: 'POST', path: '/api/control/v1/approvals/{id}/decision' },
-  resolveApproval: { method: 'POST', path: '/api/control/v1/approvals/resolve' },
-  consumeApprovalPermit: { method: 'POST', path: '/api/control/v1/approvals/permits/consume' },
   getCurrentPolicyBundle: { method: 'GET', path: '/api/control/v1/bundles/current' },
   getPolicyBundleVersion: { method: 'GET', path: '/api/control/v1/bundles/versions/{sequence}' },
   publishPolicyBundle: { method: 'POST', path: '/api/control/v1/bundles/publish' },
@@ -96,68 +94,228 @@ export const operations = {
   receiveLocalMcpResponse: { method: 'POST', path: '/api/control/v1/mcp/responses' },
   authorizeClientMcpRequest: { method: 'POST', path: '/api/control/v1/mcp/authorize' },
   submitClientMcpResult: { method: 'POST', path: '/api/control/v1/mcp/results' },
+  listControlDeviceGroup: { method: 'GET', path: '/api/control/v1/device-groups' },
+  createControlDeviceGroup: { method: 'POST', path: '/api/control/v1/device-groups' },
+  getControlDeviceGroup: { method: 'GET', path: '/api/control/v1/device-groups/{id}' },
+  updateControlDeviceGroup: { method: 'PUT', path: '/api/control/v1/device-groups/{id}' },
+  deleteControlDeviceGroup: { method: 'DELETE', path: '/api/control/v1/device-groups/{id}' },
+  listControlAgentGroup: { method: 'GET', path: '/api/control/v1/agent-groups' },
+  createControlAgentGroup: { method: 'POST', path: '/api/control/v1/agent-groups' },
+  getControlAgentGroup: { method: 'GET', path: '/api/control/v1/agent-groups/{id}' },
+  updateControlAgentGroup: { method: 'PUT', path: '/api/control/v1/agent-groups/{id}' },
+  deleteControlAgentGroup: { method: 'DELETE', path: '/api/control/v1/agent-groups/{id}' },
+  listControlToolGroup: { method: 'GET', path: '/api/control/v1/tool-groups' },
+  createControlToolGroup: { method: 'POST', path: '/api/control/v1/tool-groups' },
+  getControlToolGroup: { method: 'GET', path: '/api/control/v1/tool-groups/{id}' },
+  updateControlToolGroup: { method: 'PUT', path: '/api/control/v1/tool-groups/{id}' },
+  deleteControlToolGroup: { method: 'DELETE', path: '/api/control/v1/tool-groups/{id}' },
+  listControlAccessGrant: { method: 'GET', path: '/api/control/v1/grants' },
+  createControlAccessGrant: { method: 'POST', path: '/api/control/v1/grants' },
+  getControlAccessGrant: { method: 'GET', path: '/api/control/v1/grants/{id}' },
+  updateControlAccessGrant: { method: 'PUT', path: '/api/control/v1/grants/{id}' },
+  deleteControlAccessGrant: { method: 'DELETE', path: '/api/control/v1/grants/{id}' },
+  listControlDelegation: { method: 'GET', path: '/api/control/v1/delegations' },
+  createControlDelegation: { method: 'POST', path: '/api/control/v1/delegations' },
+  getControlDelegation: { method: 'GET', path: '/api/control/v1/delegations/{id}' },
+  updateControlDelegation: { method: 'PUT', path: '/api/control/v1/delegations/{id}' },
+  deleteControlDelegation: { method: 'DELETE', path: '/api/control/v1/delegations/{id}' },
+  listControlAgentDelegation: { method: 'GET', path: '/api/control/v1/agent-delegations' },
+  createControlAgentDelegation: { method: 'POST', path: '/api/control/v1/agent-delegations' },
+  getControlAgentDelegation: { method: 'GET', path: '/api/control/v1/agent-delegations/{id}' },
+  updateControlAgentDelegation: { method: 'PUT', path: '/api/control/v1/agent-delegations/{id}' },
+  deleteControlAgentDelegation: { method: 'DELETE', path: '/api/control/v1/agent-delegations/{id}' },
+  listControlExecutionBinding: { method: 'GET', path: '/api/control/v1/bindings' },
+  createControlExecutionBinding: { method: 'POST', path: '/api/control/v1/bindings' },
+  getControlExecutionBinding: { method: 'GET', path: '/api/control/v1/bindings/{id}' },
+  updateControlExecutionBinding: { method: 'PUT', path: '/api/control/v1/bindings/{id}' },
+  deleteControlExecutionBinding: { method: 'DELETE', path: '/api/control/v1/bindings/{id}' },
+  listControlResourceExtractor: { method: 'GET', path: '/api/control/v1/extractors' },
+  createControlResourceExtractor: { method: 'POST', path: '/api/control/v1/extractors' },
+  getControlResourceExtractor: { method: 'GET', path: '/api/control/v1/extractors/{id}' },
+  updateControlResourceExtractor: { method: 'PUT', path: '/api/control/v1/extractors/{id}' },
+  deleteControlResourceExtractor: { method: 'DELETE', path: '/api/control/v1/extractors/{id}' },
+  listControlWorkloadBinding: { method: 'GET', path: '/api/control/v1/workload-bindings' },
+  createControlWorkloadBinding: { method: 'POST', path: '/api/control/v1/workload-bindings' },
+  getControlWorkloadBinding: { method: 'GET', path: '/api/control/v1/workload-bindings/{id}' },
+  updateControlWorkloadBinding: { method: 'PUT', path: '/api/control/v1/workload-bindings/{id}' },
+  deleteControlWorkloadBinding: { method: 'DELETE', path: '/api/control/v1/workload-bindings/{id}' },
+  listControlIdentityBinding: { method: 'GET', path: '/api/control/v1/identity-bindings' },
+  createControlIdentityBinding: { method: 'POST', path: '/api/control/v1/identity-bindings' },
+  getControlIdentityBinding: { method: 'GET', path: '/api/control/v1/identity-bindings/{id}' },
+  updateControlIdentityBinding: { method: 'PUT', path: '/api/control/v1/identity-bindings/{id}' },
+  deleteControlIdentityBinding: { method: 'DELETE', path: '/api/control/v1/identity-bindings/{id}' },
+  listControlDeviceEvidence: { method: 'GET', path: '/api/control/v1/device-evidence' },
+  createControlDeviceEvidence: { method: 'POST', path: '/api/control/v1/device-evidence' },
+  getControlDeviceEvidence: { method: 'GET', path: '/api/control/v1/device-evidence/{id}' },
+  updateControlDeviceEvidence: { method: 'PUT', path: '/api/control/v1/device-evidence/{id}' },
+  deleteControlDeviceEvidence: { method: 'DELETE', path: '/api/control/v1/device-evidence/{id}' },
+  getUserGroupMembership: { method: 'GET', path: '/api/control/v1/users/{id}/groups' },
+  updateUserGroupMembership: { method: 'PUT', path: '/api/control/v1/users/{id}/groups' },
+  getAgentGroupMembership: { method: 'GET', path: '/api/control/v1/agents/{id}/groups' },
+  updateAgentGroupMembership: { method: 'PUT', path: '/api/control/v1/agents/{id}/groups' },
+  getToolGroupMembership: { method: 'GET', path: '/api/control/v1/tools/{id}/groups' },
+  updateToolGroupMembership: { method: 'PUT', path: '/api/control/v1/tools/{id}/groups' },
+  getDeviceGroupMembership: { method: 'GET', path: '/api/control/v1/devices/{id}/groups' },
+  updateDeviceGroupMembership: { method: 'PUT', path: '/api/control/v1/devices/{id}/groups' },
+  simulateEnterpriseAccess: { method: 'POST', path: '/api/control/v1/access/simulate' },
+  submitEnterpriseInvocation: { method: 'POST', path: '/api/control/v1/access/invocations' },
+  reserveEnterprisePermit: { method: 'POST', path: '/api/control/v1/access/invocations/reserve' },
+  getEnterpriseInvocation: { method: 'GET', path: '/api/control/v1/access/invocations/{id}' },
+  cancelEnterpriseInvocation: { method: 'POST', path: '/api/control/v1/access/invocations/{id}/cancel' },
+  consumeEnterprisePermit: { method: 'POST', path: '/api/control/v1/access/permits/consume' },
+  reportEnterpriseEffect: { method: 'POST', path: '/api/control/v1/access/effects/report' },
+  listConfigurationChanges: { method: 'GET', path: '/api/control/v1/configuration-changes' },
+  getConfigurationChange: { method: 'GET', path: '/api/control/v1/configuration-changes/{id}' },
+  transitionConfigurationChange: { method: 'POST', path: '/api/control/v1/configuration-changes/{id}/transition' },
+  humanToolCatalog: { method: 'POST', path: '/api/control/v1/access/human/catalog' },
+  invokeHumanTool: { method: 'POST', path: '/api/control/v1/access/human/invocations' },
+  humanToolResult: { method: 'GET', path: '/api/control/v1/access/human/invocations/{id}/result' },
+  listVaultReferences: { method: 'GET', path: '/api/control/v1/vault' },
+  storeVaultSecret: { method: 'POST', path: '/api/control/v1/vault' },
+  effectiveUsers: { method: 'GET', path: '/api/control/v1/users/{id}/effective-access' },
+  effectiveAgents: { method: 'GET', path: '/api/control/v1/agents/{id}/effective-access' },
+  effectiveTools: { method: 'GET', path: '/api/control/v1/tools/{id}/effective-access' },
+  effectiveDevices: { method: 'GET', path: '/api/control/v1/devices/{id}/effective-access' },
+  accessAuthorityStatus: { method: 'GET', path: '/api/control/v1/access/status' },
 } as const;
 export interface DirectoryRecords {
+  agentDelegations: ControlAgentDelegation;
+  agentGroups: ControlAgentGroup;
   agents: ControlAgent;
+  bindings: ControlExecutionBinding;
+  delegations: ControlDelegation;
+  deviceEvidence: ControlDeviceEvidence;
+  deviceGroups: ControlDeviceGroup;
   devices: ControlDevice;
+  extractors: ControlResourceExtractor;
+  grants: ControlAccessGrant;
+  identityBindings: ControlIdentityBinding;
   policies: ControlPolicy;
   roles: ControlRole;
   teams: ControlTeam;
+  toolGroups: ControlToolGroup;
   tools: ControlTool;
   users: ControlUser;
+  workloadBindings: ControlWorkloadBinding;
 }
 export interface DirectoryPages {
+  agentDelegations: ControlAgentDelegationPage;
+  agentGroups: ControlAgentGroupPage;
   agents: ControlAgentPage;
+  bindings: ControlExecutionBindingPage;
+  delegations: ControlDelegationPage;
+  deviceEvidence: ControlDeviceEvidencePage;
+  deviceGroups: ControlDeviceGroupPage;
   devices: ControlDevicePage;
+  extractors: ControlResourceExtractorPage;
+  grants: ControlAccessGrantPage;
+  identityBindings: ControlIdentityBindingPage;
   policies: ControlPolicyPage;
   roles: ControlRolePage;
   teams: ControlTeamPage;
+  toolGroups: ControlToolGroupPage;
   tools: ControlToolPage;
   users: ControlUserPage;
+  workloadBindings: ControlWorkloadBindingPage;
 }
 export type DirectoryKind = keyof DirectoryRecords;
 export const listOperations = {
+  agentDelegations: operations.listControlAgentDelegation,
+  agentGroups: operations.listControlAgentGroup,
   agents: operations.listControlAgent,
+  bindings: operations.listControlExecutionBinding,
+  delegations: operations.listControlDelegation,
+  deviceEvidence: operations.listControlDeviceEvidence,
+  deviceGroups: operations.listControlDeviceGroup,
   devices: operations.listControlDevice,
+  extractors: operations.listControlResourceExtractor,
+  grants: operations.listControlAccessGrant,
+  identityBindings: operations.listControlIdentityBinding,
   policies: operations.listControlPolicy,
   roles: operations.listControlRole,
   teams: operations.listControlTeam,
+  toolGroups: operations.listControlToolGroup,
   tools: operations.listControlTool,
   users: operations.listControlUser,
+  workloadBindings: operations.listControlWorkloadBinding,
 } as const;
 export const getOperations = {
+  agentDelegations: operations.getControlAgentDelegation,
+  agentGroups: operations.getControlAgentGroup,
   agents: operations.getControlAgent,
+  bindings: operations.getControlExecutionBinding,
+  delegations: operations.getControlDelegation,
+  deviceEvidence: operations.getControlDeviceEvidence,
+  deviceGroups: operations.getControlDeviceGroup,
   devices: operations.getControlDevice,
+  extractors: operations.getControlResourceExtractor,
+  grants: operations.getControlAccessGrant,
+  identityBindings: operations.getControlIdentityBinding,
   policies: operations.getControlPolicy,
   roles: operations.getControlRole,
   teams: operations.getControlTeam,
+  toolGroups: operations.getControlToolGroup,
   tools: operations.getControlTool,
   users: operations.getControlUser,
+  workloadBindings: operations.getControlWorkloadBinding,
 } as const;
 export const createOperations = {
+  agentDelegations: operations.createControlAgentDelegation,
+  agentGroups: operations.createControlAgentGroup,
   agents: operations.createControlAgent,
+  bindings: operations.createControlExecutionBinding,
+  delegations: operations.createControlDelegation,
+  deviceEvidence: operations.createControlDeviceEvidence,
+  deviceGroups: operations.createControlDeviceGroup,
   devices: operations.createControlDevice,
+  extractors: operations.createControlResourceExtractor,
+  grants: operations.createControlAccessGrant,
+  identityBindings: operations.createControlIdentityBinding,
   policies: operations.createControlPolicy,
   roles: operations.createControlRole,
   teams: operations.createControlTeam,
+  toolGroups: operations.createControlToolGroup,
   tools: operations.createControlTool,
   users: operations.createControlUser,
+  workloadBindings: operations.createControlWorkloadBinding,
 } as const;
 export const updateOperations = {
+  agentDelegations: operations.updateControlAgentDelegation,
+  agentGroups: operations.updateControlAgentGroup,
   agents: operations.updateControlAgent,
+  bindings: operations.updateControlExecutionBinding,
+  delegations: operations.updateControlDelegation,
+  deviceEvidence: operations.updateControlDeviceEvidence,
+  deviceGroups: operations.updateControlDeviceGroup,
   devices: operations.updateControlDevice,
+  extractors: operations.updateControlResourceExtractor,
+  grants: operations.updateControlAccessGrant,
+  identityBindings: operations.updateControlIdentityBinding,
   policies: operations.updateControlPolicy,
   roles: operations.updateControlRole,
   teams: operations.updateControlTeam,
+  toolGroups: operations.updateControlToolGroup,
   tools: operations.updateControlTool,
   users: operations.updateControlUser,
+  workloadBindings: operations.updateControlWorkloadBinding,
 } as const;
 export const deleteOperations = {
+  agentDelegations: operations.deleteControlAgentDelegation,
+  agentGroups: operations.deleteControlAgentGroup,
   agents: operations.deleteControlAgent,
+  bindings: operations.deleteControlExecutionBinding,
+  delegations: operations.deleteControlDelegation,
+  deviceEvidence: operations.deleteControlDeviceEvidence,
+  deviceGroups: operations.deleteControlDeviceGroup,
   devices: operations.deleteControlDevice,
+  extractors: operations.deleteControlResourceExtractor,
+  grants: operations.deleteControlAccessGrant,
+  identityBindings: operations.deleteControlIdentityBinding,
   policies: operations.deleteControlPolicy,
   roles: operations.deleteControlRole,
   teams: operations.deleteControlTeam,
+  toolGroups: operations.deleteControlToolGroup,
   tools: operations.deleteControlTool,
   users: operations.deleteControlUser,
+  workloadBindings: operations.deleteControlWorkloadBinding,
 } as const;

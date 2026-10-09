@@ -23,13 +23,16 @@ pub struct Settings {
     pub gateway_token_path: PathBuf,
     pub gateway_ca_path: Option<PathBuf>,
     pub device_id: String,
+    #[serde(default)]
+    pub authorization_profiles: Vec<InstalledAuthorizationProfile>,
     pub web_search_token_path: Option<PathBuf>,
     #[serde(default)]
     pub web_search_allowed_domains: Vec<String>,
 }
 impl Settings {
     pub fn validate(&self) -> Result<()> {
-        if self.web_search_allowed_domains.len() > 16
+        if self.authorization_profiles.len() > 64
+            || self.web_search_allowed_domains.len() > 16
             || self.web_search_allowed_domains.iter().any(|host| {
                 host.len() > 253
                     || !host.contains('.')
@@ -70,6 +73,13 @@ pub trait AuthorizationPort: Send + Sync {
     fn authorize_bound(&self, _request: AuthorizationRequest) -> Call<'_, Option<u64>> {
         Box::pin(async { Err(Failure::Unsupported) })
     }
+    fn complete(
+        &self,
+        _request: AuthorizationRequest,
+        _output: BTreeMap<String, Value>,
+    ) -> Call<'_, ()> {
+        Box::pin(async { Ok(()) })
+    }
 }
 
 pub struct Executor {
@@ -93,14 +103,22 @@ impl Executor {
         .map_err(|_| Failure::Validation)?;
         let mut catalog = Vec::new();
         let mut validators = BTreeMap::new();
+        let package = crate::authorization_profile::builtin_package_digest()?;
         for item in data["tools"].as_array().ok_or(Failure::Validation)? {
-            let mut item = item.clone();
-            item["enabled"] = json!(
-                item["toolId"] != "client.read_log_entry"
-                    && (item["toolId"] != "web.search" || settings.web_search_token_path.is_some())
-            );
-            let tool: BuiltinToolInfo =
-                serde_json::from_value(item).map_err(|_| Failure::Validation)?;
+            let matches: Vec<_> = settings
+                .authorization_profiles
+                .iter()
+                .filter(|p| p.tool.id == item["toolId"])
+                .collect();
+            if matches.is_empty() {
+                continue;
+            }
+            if matches.len() != 1 {
+                return Err(Failure::Validation);
+            }
+            let mut tool = crate::authorization_profile::builtin_info(item, matches[0], &package)?;
+            tool.enabled = tool.tool_id != "client.read_log_entry"
+                && (tool.tool_id != "web.search" || settings.web_search_token_path.is_some());
             validators.insert(
                 tool.tool_id.clone(),
                 jsonschema::validator_for(
@@ -176,24 +194,12 @@ impl Executor {
         if let Some(destination) = args.get("destination").and_then(Value::as_str) {
             crate::hotfolder::components(destination)?;
         }
-        let mut arguments = invocation.arguments.clone();
-        arguments.insert("path".into(), json!(path));
         let request = AuthorizationRequest {
             tool_id: tool.tool_id.clone(),
             action: tool.action.clone(),
-            arguments,
+            arguments: invocation.arguments.clone(),
         };
         self.authorization.authorize(request.clone()).await?;
-        if let Some(destination) = args.get("destination").and_then(Value::as_str) {
-            let mut destination_request = request.clone();
-            destination_request
-                .arguments
-                .insert("path".into(), json!(destination));
-            destination_request
-                .arguments
-                .insert("source".into(), json!(path));
-            self.authorization.authorize(destination_request).await?;
-        }
         let string = |name: &str| args[name].as_str().ok_or(Failure::Validation);
         if std::time::Instant::now() >= deadline {
             return Err(Failure::Expired);
@@ -292,7 +298,10 @@ impl Executor {
             return Err(Failure::Validation);
         }
         tracing::info!(event="builtin_execution",tool_id=%tool.tool_id,arguments_digest=%crate::digest(&serde_json::to_vec(&request.arguments).map_err(|_|Failure::Validation)?),result="success");
-        serde_json::from_value(result).map_err(|_| Failure::Validation)
+        let output: BTreeMap<String, Value> =
+            serde_json::from_value(result).map_err(|_| Failure::Validation)?;
+        self.authorization.complete(request, output.clone()).await?;
+        Ok(output)
     }
     fn event(&mut self, path: &str, kind: &str) {
         self.sequence = self.sequence.saturating_add(1);

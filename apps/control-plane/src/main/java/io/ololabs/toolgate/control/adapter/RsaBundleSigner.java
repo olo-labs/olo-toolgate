@@ -23,8 +23,7 @@ public final class RsaBundleSigner implements BundleSigner {
     }
     public SignedPolicyBundle sign(Object payload) {
         var document = codec.json(payload);
-        if (payload instanceof BundlePayload) codec.model(document, BundlePayload.class);
-        else if (payload instanceof ApprovalBundlePayload) codec.model(document, ApprovalBundlePayload.class);
+        if (payload instanceof EnterpriseSnapshotPayload) codec.model(document, EnterpriseSnapshotPayload.class);
         else throw Failure.validation();
         var message = header + "." + encode(document);
         try {

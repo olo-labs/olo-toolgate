@@ -25,7 +25,7 @@
     },
     "RequestContext": {
       "type": "object",
-      "description": "Safe correlation and principal identifiers; contains no credentials.",
+      "description": "Authenticated Gateway runtime context. All mode, chain, session, workload, binding and target fields are explicit. Legacy contexts are rejected.",
       "additionalProperties": false,
       "properties": {
         "requestId": {
@@ -34,21 +34,53 @@
         "tenantId": {
           "$ref": "identifiers.schema.json#/$defs/Identifier"
         },
+        "mode": {
+          "$ref": "enterprise.schema.json#/$defs/EnterpriseRequestMode"
+        },
         "userId": {
           "$ref": "identifiers.schema.json#/$defs/Identifier"
         },
         "agentId": {
           "$ref": "identifiers.schema.json#/$defs/Identifier"
         },
+        "workloadBindingId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "chain": {
+          "type": "array",
+          "items": {
+            "$ref": "enterprise.schema.json#/$defs/EnterpriseActorHop"
+          },
+          "maxItems": 8,
+          "uniqueItems": true
+        },
+        "sessionEpoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "credentialEpoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "bindingId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
         "deviceId": {
           "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "credentialSha256": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
         }
       },
       "required": [
         "requestId",
         "tenantId",
-        "userId",
-        "agentId"
+        "mode",
+        "chain",
+        "bindingId",
+        "deviceId"
       ]
     }
   }

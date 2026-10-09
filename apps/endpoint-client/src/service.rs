@@ -38,7 +38,7 @@ struct RemoteJournal {
 pub struct ClientService {
     remote_job: Option<crate::remote::Job>,
     remote_result: Option<RemoteToolResult>,
-    permissions: Option<EndpointPermissionConfiguration>,
+    adoption: Option<EndpointAdoption>,
     builder_job: Option<crate::builder::Job>,
     builder_result: Option<BuilderTestResult>,
     deployment: crate::deployment::State,
@@ -106,7 +106,9 @@ impl ClientService {
             Some(
                 crate::builtins::Executor::new(
                     settings,
-                    Arc::new(crate::tool_gateway::HttpsGateway::new(settings, contracts)?),
+                    Arc::new(crate::tool_gateway::HttpsGateway::new(
+                        settings, &config, contracts,
+                    )?),
                 )?
                 .with_packet_log(crate::diagnostics::PacketLog::open(
                     config.state_directory.clone(),
@@ -120,6 +122,7 @@ impl ClientService {
                 settings.clone(),
                 Arc::new(crate::tool_gateway::HttpsGateway::new(
                     tools,
+                    &config,
                     Arc::new(crate::contracts::Contracts::new()?),
                 )?),
             )?)
@@ -134,11 +137,10 @@ impl ClientService {
         Ok(Self {
             remote_job: None,
             remote_result: None,
-            permissions: match store.read("permissions.json")? {
-                Some(bytes) => Some(
-                    crate::contracts::Contracts::new()?
-                        .decode("EndpointPermissionConfiguration", &bytes)?,
-                ),
+            adoption: match store.read("adoption.json")? {
+                Some(bytes) => {
+                    Some(crate::contracts::Contracts::new()?.decode("EndpointAdoption", &bytes)?)
+                }
                 None => None,
             },
             builder_job: None,
@@ -181,11 +183,7 @@ impl ClientService {
         Ok(now)
     }
     fn local_catalog(&self) -> Vec<BuiltinToolInfo> {
-        let mut tools = self
-            .tools
-            .as_ref()
-            .map(|e| e.catalog())
-            .unwrap_or_else(crate::remote::builtin_catalog);
+        let mut tools = self.tools.as_ref().map(|e| e.catalog()).unwrap_or_default();
         if let Some(manager) = &self.execution {
             tools.extend(manager.catalog());
         }
@@ -194,33 +192,23 @@ impl ClientService {
         tools.dedup_by(|a, b| a.tool_id == b.tool_id);
         tools
     }
-    pub fn tool_catalog(&self, agent: Option<&str>) -> Vec<BuiltinToolInfo> {
+    pub async fn tool_catalog(&self, agent: Option<&str>) -> Result<Vec<BuiltinToolInfo>> {
         if !self.health().ready {
-            return vec![];
+            return Err(Failure::Unavailable);
         }
-        let Some(permissions) = &self.permissions else {
-            return vec![];
-        };
-        let Some(identity) = &self.journal.identity else {
-            return vec![];
-        };
-        let Some(manifest) = &self.journal.manifest else {
-            return vec![];
-        };
-        if permissions.server_id != manifest.server_id
-            || permissions.device_id != identity.device_id
-            || permissions.user_id != identity.user_id
-        {
-            return vec![];
-        }
-        let mut tools = self.local_catalog();
-        tools.retain(|tool| {
-            tool.enabled
-                && crate::permissions::visible(permissions, agent, &tool.tool_id, &tool.action)
-        });
-        tools.sort_by(|a, b| a.tool_id.cmp(&b.tool_id));
-        tools.dedup_by(|a, b| a.tool_id == b.tool_id);
-        tools
+        let settings = self.config.tools.as_ref().ok_or(Failure::Unavailable)?;
+        let gateway = crate::tool_gateway::HttpsGateway::new(
+            settings,
+            &self.config,
+            Arc::new(crate::contracts::Contracts::new()?),
+        )?;
+        let visible = gateway.catalog(agent).await?;
+        let installed = self.local_catalog();
+        Ok(visible
+            .tools
+            .into_iter()
+            .filter(|t| installed.iter().any(|i| i == t))
+            .collect())
     }
     pub async fn execute_tool(
         &mut self,
@@ -371,6 +359,7 @@ impl ClientService {
         let gateway_settings = self.config.tools.as_ref().ok_or(Failure::Unsupported)?;
         let authorization = Arc::new(crate::tool_gateway::HttpsGateway::new(
             gateway_settings,
+            &self.config,
             Arc::new(crate::contracts::Contracts::new()?),
         )?);
         // Fence old assigned tools immediately, preserving only administrator-local registrations.
@@ -507,13 +496,12 @@ impl ClientService {
         Ok(())
     }
     fn receive_remote(&mut self, identity: &DeviceIdentity, task: RemoteToolTask) -> Result<()> {
-        let context = &task.input.context;
+        let context = &task.invocation.evaluation.context;
         if context.tenant_id != identity.tenant_id
-            || context.user_id != identity.user_id
-            || context.device_id.as_ref() != Some(&identity.device_id)
+            || context.device_id != identity.device_id
             || task.request_id != context.request_id
-            || task.request.tool_id != task.input.tool_id
-            || task.request.action != task.input.action
+            || task.request.tool_id != task.invocation.evaluation.tool_id
+            || task.request.action != task.invocation.evaluation.action
             || task.expires_at_unix_ms <= crate::now()
             || task.expires_at_unix_ms > crate::now().saturating_add(30000)
         {
@@ -547,15 +535,6 @@ impl ClientService {
                 }));
                 return Ok(());
             }
-        }
-        let configuration = self.permissions.as_ref().ok_or(Failure::Unauthorized)?;
-        if !crate::permissions::visible(
-            configuration,
-            Some(&context.agent_id),
-            &task.request.tool_id,
-            &task.request.action,
-        ) {
-            return Err(Failure::Unauthorized);
         }
         let journal = RemoteJournal {
             server_url: self.config.server_url.clone(),
@@ -837,12 +816,11 @@ impl ClientService {
                     applied_revision: self.deployment.status.generation,
                     packages: self.deployment.status.packages.clone(),
                 },
-                configuration_digest: self
-                    .permissions
+                adoption_digest: self
+                    .adoption
                     .as_ref()
                     .filter(|p| {
                         p.device_id == identity.device_id
-                            && p.user_id == identity.user_id
                             && self
                                 .journal
                                 .manifest
@@ -887,7 +865,7 @@ impl ClientService {
             )?;
             self.journal.identity = Some(identity);
         }
-        if let Some(configuration) = ack.configuration {
+        if let Some(configuration) = ack.adoption {
             let identity = self
                 .journal
                 .identity
@@ -900,29 +878,28 @@ impl ClientService {
                 .ok_or(Failure::Unauthorized)?
                 .server_id;
             if configuration.device_id != identity.device_id
-                || configuration.user_id != identity.user_id
                 || &configuration.server_id != server
-                || self.permissions.as_ref().is_some_and(|old| {
+                || self.adoption.as_ref().is_some_and(|old| {
                     old.server_id == configuration.server_id
-                        && old.revision > configuration.revision
+                        && (old.revision > configuration.revision
+                            || old.authorization_epoch > configuration.authorization_epoch)
                 })
             {
                 return Err(Failure::Unauthorized);
             }
-            let bytes = crate::contracts::Contracts::new()?
-                .encode("EndpointPermissionConfiguration", &configuration)?;
-            self.store.write("permissions.json", &bytes)?;
-            self.permissions = Some(configuration);
-            if let Some(job) = &self.remote_job {
-                if !crate::permissions::visible(
-                    self.permissions.as_ref().ok_or(Failure::Unauthorized)?,
-                    Some(&job.task.input.context.agent_id),
-                    &job.task.request.tool_id,
-                    &job.task.request.action,
-                ) {
+            let bytes =
+                crate::contracts::Contracts::new()?.encode("EndpointAdoption", &configuration)?;
+            self.store.write("adoption.json", &bytes)?;
+            if self
+                .adoption
+                .as_ref()
+                .is_some_and(|old| old.authorization_epoch != configuration.authorization_epoch)
+            {
+                if let Some(job) = &self.remote_job {
                     job.cancel();
                 }
             }
+            self.adoption = Some(configuration);
         }
         self.journal.sequence = request.sequence;
         self.journal.pending_report = None;
@@ -986,8 +963,35 @@ mod tests {
         authorizations: AtomicU64,
         deadline: AtomicU64,
         interval_ms: AtomicU64,
+        consumption: std::sync::Mutex<Option<EnterpriseInvocation>>,
     }
     impl ControlPort for Gateway {
+        fn consume_effect(
+            &self,
+            identity: DeviceIdentity,
+            request: EnterprisePermitConsumption,
+        ) -> Call<'_, EnterpriseInvocation> {
+            Box::pin(async move {
+                if self.revoked.load(Ordering::SeqCst) {
+                    return Err(Failure::Revoked);
+                }
+                let mut value = self
+                    .consumption
+                    .lock()
+                    .unwrap()
+                    .take()
+                    .ok_or(Failure::Unauthorized)?;
+                assert_eq!(value.id, request.invocation_id);
+                assert_eq!(value.evaluation.context.device_id, identity.device_id);
+                assert_eq!(value.evaluation.arguments_digest, request.arguments_digest);
+                assert_eq!(value.evaluation.resources, request.resources);
+                assert_eq!(value.evaluation.tool_digest, request.tool_digest);
+                assert_eq!(value.evaluation.package_digest, request.package_digest);
+                value.state = EnterpriseInvocationState::Executing;
+                value.revision += 1;
+                Ok(value)
+            })
+        }
         fn discovery(&self) -> Call<'_, SignedClientDiscovery> {
             Box::pin(async { Err(Failure::Unsupported) })
         }
@@ -1026,7 +1030,7 @@ mod tests {
                         interval => Some(interval),
                     },
                     identity: None,
-                    configuration: None,
+                    adoption: None,
                     task: None,
                 })
             })
@@ -1104,6 +1108,7 @@ mod tests {
             authorizations: AtomicU64::new(0),
             deadline: AtomicU64::new(crate::now() + 29000),
             interval_ms: AtomicU64::new(500),
+            consumption: std::sync::Mutex::new(None),
         });
         let service = ClientService::open(config, store, key, gateway.clone()).unwrap();
         (service, gateway, directory)
@@ -1117,12 +1122,12 @@ mod tests {
     fn remote_task(identity: &DeviceIdentity, deadline: u64) -> RemoteToolTask {
         let mut task: RemoteToolTask =
             serde_json::from_value(fixtures()["RemoteToolTask"].clone()).unwrap();
-        task.input.context.tenant_id = identity.tenant_id.clone();
-        task.input.context.user_id = identity.user_id.clone();
-        task.input.context.device_id = Some(identity.device_id.clone());
-        task.input.context.request_id = task.request_id.clone();
-        task.input.tool_id = task.request.tool_id.clone();
-        task.input.action = task.request.action.clone();
+        task.invocation.evaluation.context.tenant_id = identity.tenant_id.clone();
+        task.invocation.evaluation.context.user_id = Some(identity.user_id.clone());
+        task.invocation.evaluation.context.device_id = identity.device_id.clone();
+        task.invocation.evaluation.context.request_id = task.request_id.clone();
+        task.invocation.evaluation.tool_id = task.request.tool_id.clone();
+        task.invocation.evaluation.action = task.request.action.clone();
         task.expires_at_unix_ms = deadline;
         task
     }
@@ -1183,8 +1188,37 @@ mod tests {
         task.request.arguments =
             serde_json::from_value(serde_json::json!({"path":"test.txt","text":"allowed"}))
                 .unwrap();
+        let mut config = service.config.clone();
+        let mut settings = crate::remote::builtin_settings(&config);
+        settings.authorization_profiles = crate::authorization_profile::builtin_profiles().unwrap();
+        config.tools = Some(settings);
+        let bind = |task: &mut RemoteToolTask| {
+            let settings = config.tools.as_ref().unwrap();
+            let profile = settings
+                .authorization_profiles
+                .iter()
+                .find(|p| p.tool.id == task.request.tool_id)
+                .unwrap();
+            let e = &mut task.invocation.evaluation;
+            e.tool_id = task.request.tool_id.clone();
+            e.action = task.request.action.clone();
+            e.tool_digest = crate::authorization_profile::tool_digest(profile).unwrap();
+            e.package_digest = profile.tool.package_digest.clone();
+            e.arguments_digest =
+                crate::digest(&serde_json::to_vec(&task.request.arguments).unwrap());
+            e.resources = vec![ResourceDescriptor {
+                kind: ResourceKind::File,
+                locator: "test.txt".into(),
+            }];
+            *gateway.consumption.lock().unwrap() = Some(task.invocation.clone());
+        };
+        gateway
+            .deadline
+            .store(crate::now() + 60000, Ordering::SeqCst);
+        task.expires_at_unix_ms = gateway.deadline.load(Ordering::SeqCst);
+        bind(&mut task);
         let mut job = crate::remote::Job::start(
-            service.config.clone(),
+            config.clone(),
             None,
             gateway.clone(),
             identity.clone(),
@@ -1202,7 +1236,8 @@ mod tests {
             .await
             .unwrap()
         };
-        assert!(completed(&mut job).await.output.is_some());
+        let outcome = completed(&mut job).await;
+        assert!(outcome.output.is_some(), "{outcome:?}");
         assert_eq!(
             std::fs::read_to_string(directory.join("hotfolder/test.txt")).unwrap(),
             "allowed"
@@ -1211,8 +1246,9 @@ mod tests {
         task.request
             .arguments
             .insert("text".into(), serde_json::json!("revoked"));
+        bind(&mut task);
         let mut denied = crate::remote::Job::start(
-            service.config.clone(),
+            config.clone(),
             None,
             gateway.clone(),
             identity,
@@ -1222,7 +1258,7 @@ mod tests {
             completed(&mut denied).await.error,
             Some(ErrorCode::Forbidden)
         );
-        assert_eq!(gateway.authorizations.load(Ordering::SeqCst), 2);
+        assert_eq!(gateway.authorizations.load(Ordering::SeqCst), 1);
         assert_eq!(
             std::fs::read_to_string(directory.join("hotfolder/test.txt")).unwrap(),
             "allowed"
@@ -1231,8 +1267,9 @@ mod tests {
         task.request
             .arguments
             .insert("text".into(), serde_json::json!("a".repeat(65536)));
+        bind(&mut task);
         let mut large_write = crate::remote::Job::start(
-            service.config.clone(),
+            config.clone(),
             None,
             gateway.clone(),
             serde_json::from_value(fixtures()["DeviceIdentity"].clone()).unwrap(),
@@ -1242,8 +1279,9 @@ mod tests {
         task.request.tool_id = "hotfolder.read_text".into();
         task.request.action = "read".into();
         task.request.arguments.remove("text");
+        bind(&mut task);
         let mut large_read = crate::remote::Job::start(
-            service.config.clone(),
+            config.clone(),
             None,
             gateway.clone(),
             serde_json::from_value(fixtures()["DeviceIdentity"].clone()).unwrap(),

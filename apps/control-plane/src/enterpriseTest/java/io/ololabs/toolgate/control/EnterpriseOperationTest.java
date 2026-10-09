@@ -1,0 +1,55 @@
+// Copyright 2026 OLO Labs
+// SPDX-License-Identifier: Apache-2.0
+package io.ololabs.toolgate.control;
+
+import io.ololabs.toolgate.control.adapter.*;
+import io.ololabs.toolgate.control.application.*;
+import io.ololabs.toolgate.control.domain.*;
+import io.ololabs.toolgate.control.domain.Ids.Kind;
+import io.ololabs.toolgate.contracts.*;
+import java.time.*;
+import java.util.*;
+import java.util.concurrent.*;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.io.TempDir;
+import static org.junit.jupiter.api.Assertions.*;
+
+class EnterpriseOperationTest {
+    @TempDir java.nio.file.Path temp;
+    static java.security.interfaces.RSAPrivateCrtKey key;
+    EnterpriseConformanceTest graph;PostgresStore store;EnterpriseOperations operations;EffectSigner signer;Clock clock;
+    DirectoryService.Actor gateway,reviewer;
+    @BeforeAll static void signingKey()throws Exception{var generator=java.security.KeyPairGenerator.getInstance("RSA");generator.initialize(2048);key=(java.security.interfaces.RSAPrivateCrtKey)generator.generateKeyPair().getPrivate();}
+    @BeforeEach void setup(){
+        graph=new EnterpriseConformanceTest();graph.graph();clock=Clock.fixed(Instant.ofEpochMilli(EnterpriseConformanceTest.NOW),ZoneOffset.UTC);
+        var rules=List.of(new EnterpriseManagementRule(List.of("approve-operation","read","cancel-operation"),EnterpriseGroupType.TOOL_GROUP,new GroupSelection(List.of("tools-a"),false),List.of(),graph.conditions()),new EnterpriseManagementRule(List.of("approve-operation","read","cancel-operation"),EnterpriseGroupType.DEVICE_GROUP,new GroupSelection(List.of("devices-a"),false),List.of(),graph.conditions()));
+        graph.add(Kind.ROLE,new ControlRole("reviewer-role","Reviewer",true,1L,UserRole.ADMINISTRATOR,EnterpriseRoleType.MANAGEMENT,rules));
+        graph.add(Kind.TEAM,new ControlTeam("team-b","Reviewers",true,1L,List.of("alice","admin"),List.of("reviewer-role")));
+        store=new PostgresStore(SqliteState.open(temp.resolve("operations.sqlite")),graph.codec);store.transaction(EnterpriseConformanceTest.TENANT,true,tx->{tx.save(tx.load(),graph.directory());return null;});
+        signer=new RsaEffectSigner(key,"permit-key",graph.codec);operations=new EnterpriseOperations(store,graph.codec,signer,clock,"control","toolgate-client",60000,100);
+        gateway=new DirectoryService.Actor(EnterpriseConformanceTest.TENANT,"a".repeat(64),false);reviewer=new DirectoryService.Actor(EnterpriseConformanceTest.TENANT,"c".repeat(64),true,false,"admin");
+    }
+    void saveGraph(){store.transaction(EnterpriseConformanceTest.TENANT,true,tx->{var d=tx.load();tx.save(d,new Directory(d.revision()+1,graph.entries));return null;});}
+    EnterpriseInvocationRequest request(String id,String path){var context=new RequestContext(id,EnterpriseConformanceTest.TENANT.value(),EnterpriseRequestMode.DELEGATED,"alice","agent","workload",List.of(),1L,1L,"binding-a","device",EnterpriseConformanceTest.PROOF);var request=graph.codec.model("{\"toolId\":\"tool\",\"action\":\"read\",\"arguments\":{\"path\":\""+path+"\"}}",AuthorizationRequest.class);var tool=graph.codec.model(graph.entries.get(Kind.TOOL.id("tool")).document(),ControlTool.class);return new EnterpriseInvocationRequest(context,request,new EnterpriseEvaluator(graph.codec).toolDigest(graph.directory(),tool),EnterpriseConformanceTest.DIGEST,null);}
+    EnterpriseInvocation submit(String id){return graph.codec.model(operations.submit(gateway,graph.codec.json(request(id,"data/report.txt"))).body(),EnterpriseInvocation.class);}
+    EnterpriseReservation reserve(EnterpriseInvocation i){return graph.codec.model(operations.reserve(gateway,graph.codec.json(new EnterpriseReservationRequest(i.id(),i.revision()))).body(),EnterpriseReservation.class);}
+    String consumption(EnterpriseReservation r){var e=r.invocation().evaluation();return graph.codec.json(new EnterprisePermitConsumption(r.invocation().id(),r.permit(),e.argumentsDigest(),e.resources(),e.toolDigest(),e.packageDigest()));}
+    EnterpriseInvocation consume(EnterpriseReservation r){return graph.codec.model(operations.consume(EnterpriseConformanceTest.TENANT,"device",consumption(r)).body(),EnterpriseInvocation.class);}
+    EnterpriseApproval approval(EnterpriseInvocation i){return store.transaction(EnterpriseConformanceTest.TENANT,false,tx->tx.enterprise().approval("operation-"+DirectoryService.digest(i.id()).substring(0,40)));}
+    EnterpriseApproval approve(EnterpriseApproval a,String obligation){return graph.codec.model(operations.decide(reviewer,a.id(),graph.codec.json(new EnterpriseApprovalDecisionRequest(a.revision(),obligation,EnterpriseReviewDecision.APPROVE)),"review-"+obligation).body(),EnterpriseApproval.class);}
+
+    @Test void exactInvocationIsDurableAndIdempotentWithoutStoringArguments(){var i=submit("request");assertEquals(EnterpriseInvocationState.QUEUED,i.state());assertEquals(i,submit("request"));assertThrows(Failure.class,()->operations.submit(gateway,graph.codec.json(request("request","data/other.txt"))));assertFalse(graph.codec.json(i).contains("credentialSha256"));}
+    @Test void signedPermitBindsTargetVersionsArgumentsAndFullResourceSet(){var r=reserve(submit("request"));var claims=signer.verify(r.permit());assertEquals("binding-a",claims.bindingId());assertEquals("device",claims.deviceId());var e=r.invocation().evaluation();var other=new EnterprisePermitConsumption("request",r.permit(),e.argumentsDigest(),List.of(new ResourceDescriptor(ResourceKind.FILE,"data/other.txt")),e.toolDigest(),e.packageDigest());assertThrows(Failure.class,()->operations.consume(EnterpriseConformanceTest.TENANT,"device",graph.codec.json(other)));assertEquals(EnterpriseInvocationState.EXECUTING,consume(r).state());}
+    @Test void wrongCertificateDeviceAndTenantCannotConsume(){var r=reserve(submit("request"));assertThrows(Failure.class,()->operations.consume(EnterpriseConformanceTest.TENANT,"different",consumption(r)));assertThrows(Failure.class,()->operations.consume(new Ids.TenantId("other"),"device",consumption(r)));}
+    @Test void permitCannotBeConsumedTwiceOrReservedAgainAfterConsumption(){var r=reserve(submit("request"));var i=consume(r);assertThrows(Failure.class,()->consume(r));assertThrows(Failure.class,()->reserve(i));}
+    @Test void parallelReplicasOnlyConsumeOneNonce()throws Exception{var r=reserve(submit("request"));var pool=Executors.newFixedThreadPool(4);try{var jobs=new ArrayList<Future<Boolean>>();for(int n=0;n<4;n++)jobs.add(pool.submit(()->{try{consume(r);return true;}catch(Failure rejected){return false;}}));int successful=0;for(var job:jobs)if(job.get())successful++;assertEquals(1,successful);}finally{pool.shutdownNow();}}
+    @Test void tamperedSignatureNeverConsumes(){var r=reserve(submit("request"));String jws=r.permit().jws();var altered=new EnterpriseReservation(r.invocation(),new EnterpriseSignedPermit(jws.substring(0,jws.length()-8)+"aaaaaaaa"));assertThrows(Failure.class,()->consume(altered));assertEquals(EnterpriseInvocationState.EXECUTING,consume(r).state());}
+    @Test void directoryRevocationBetweenReservationAndEffectDenies(){var r=reserve(submit("request"));graph.remove(Kind.GRANT,"human");saveGraph();assertThrows(Failure.class,()->consume(r));}
+    @Test void everyAskObligationNeedsIndependentReview(){graph.policy("ask-a",Decision.ASK);graph.policy("ask-b",Decision.ASK);saveGraph();var i=submit("request");assertEquals(EnterpriseInvocationState.PENDING_APPROVAL,i.state());assertThrows(Failure.class,()->reserve(i));var a=approve(approval(i),"ask-a");assertEquals(EnterpriseApprovalState.PENDING,a.state());a=approve(a,"ask-b");assertEquals(EnterpriseApprovalState.APPROVED,a.state());var queued=store.transaction(EnterpriseConformanceTest.TENANT,false,tx->tx.enterprise().invocation(i.id()));assertEquals(EnterpriseInvocationState.EXECUTING,consume(reserve(queued)).state());}
+    @Test void requesterCannotReviewOwnOperationEvenWithManagementRole(){graph.policy("ask",Decision.ASK);saveGraph();var i=submit("request");var a=approval(i);var self=new DirectoryService.Actor(EnterpriseConformanceTest.TENANT,"d".repeat(64),true,false,"alice");assertThrows(Failure.class,()->operations.decide(self,a.id(),graph.codec.json(new EnterpriseApprovalDecisionRequest(a.revision(),"ask",EnterpriseReviewDecision.APPROVE)),"self"));}
+    @Test void approvedOperationNeverManufacturesMissingGrant(){graph.policy("ask",Decision.ASK);saveGraph();var i=submit("request");approve(approval(i),"ask");graph.remove(Kind.GRANT,"human");saveGraph();var queued=store.transaction(EnterpriseConformanceTest.TENANT,false,tx->tx.enterprise().invocation(i.id()));assertThrows(Failure.class,()->reserve(queued));}
+    @Test void approvalRevocationAfterReservationStopsConsumption(){graph.policy("ask",Decision.ASK);saveGraph();var i=submit("request");var a=approve(approval(i),"ask");var queued=store.transaction(EnterpriseConformanceTest.TENANT,false,tx->tx.enterprise().invocation(i.id()));var r=reserve(queued);operations.decide(reviewer,a.id(),graph.codec.json(new EnterpriseApprovalDecisionRequest(a.revision(),"ask",EnterpriseReviewDecision.REVOKE)),"revoke");assertThrows(Failure.class,()->consume(r));}
+    @Test void unknownExternalOutcomeCannotTriggerBlindRetry(){var i=consume(reserve(submit("request")));var report=new EnterpriseEffectReport(i.id(),i.revision(),EnterpriseInvocationState.OUTCOME_UNKNOWN,List.of(),null);var unknown=graph.codec.model(operations.report(EnterpriseConformanceTest.TENANT,"device",graph.codec.json(report)).body(),EnterpriseInvocation.class);assertEquals(EnterpriseInvocationState.OUTCOME_UNKNOWN,unknown.state());assertThrows(Failure.class,()->reserve(unknown));assertEquals(unknown,submit("request"));}
+    @Test void successRequiresEveryResourceAndAResultDigest(){var i=consume(reserve(submit("request")));assertThrows(Failure.class,()->operations.report(EnterpriseConformanceTest.TENANT,"device",graph.codec.json(new EnterpriseEffectReport(i.id(),i.revision(),EnterpriseInvocationState.SUCCEEDED,List.of(),EnterpriseConformanceTest.DIGEST))));var success=new EnterpriseEffectReport(i.id(),i.revision(),EnterpriseInvocationState.SUCCEEDED,i.evaluation().resources(),EnterpriseConformanceTest.DIGEST);assertEquals(EnterpriseInvocationState.SUCCEEDED,graph.codec.model(operations.report(EnterpriseConformanceTest.TENANT,"device",graph.codec.json(success)).body(),EnterpriseInvocation.class).state());}
+    @Test void responseRetrievalChecksRevokedAuthorization(){var i=consume(reserve(submit("request")));assertEquals(200,operations.get(gateway,i.id()).status());graph.remove(Kind.GRANT,"human");saveGraph();assertThrows(Failure.class,()->operations.get(gateway,i.id()));}
+}

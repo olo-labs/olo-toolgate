@@ -623,3 +623,11 @@ fieldset:disabled { opacity:.65; }
   .app-frame .workspace { overflow-wrap:anywhere; }
   .app-frame .navigation-collapsed .stats { grid-template-columns:minmax(0,1fr); }
 }
+/* Access selectors keep large directories searchable without hiding retained selections. */
+.scope-field { margin: 1rem 0; }
+.scope-dialog { width: min(38rem, calc(100vw - 3rem)); max-height: 85vh; overflow: auto; border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; color: var(--text); background: var(--surface); }
+.scope-dialog::backdrop { background: rgb(0 0 0 / 45%); }
+.scope-options { margin: 1rem 0; max-height: 24rem; overflow: auto; }
+.scope-option { display: flex; align-items: flex-start; gap: .75rem; padding: .65rem; border-bottom: 1px solid var(--border); }
+.scope-option input { width: auto; margin-top: .25rem; }
+.scope-option small { display: block; overflow-wrap: anywhere; opacity: .75; }

@@ -21,11 +21,10 @@ public class Bootstrap {
     @Produces @ApplicationScoped
     DirectoryService service(PostgresStore store, ContractCodec codec) {
         var limits = limits();
-        return new DirectoryService(store, codec, limits.records(), limits.bytes(),
-            config.getValue("toolgate.control.default-team-id", String.class),
-            java.util.Arrays.stream(config.getOptionalValue("toolgate.control.default-policy-ids", String.class).orElse("").split(","))
-                .map(String::trim).filter(value -> !value.isEmpty()).toList());
+        return new DirectoryService(store, codec, limits.records(), limits.bytes());
     }
+    @Produces @ApplicationScoped
+    io.ololabs.toolgate.control.application.ConfigurationChanges configurationChanges(PostgresStore store,ContractCodec codec){var l=limits();return new io.ololabs.toolgate.control.application.ConfigurationChanges(store,codec,java.time.Clock.systemUTC(),l.records(),l.bytes());}
     private record Limits(int records, int bytes) {}
     private Limits limits() {
         var records = config.getValue("toolgate.control.max-records", Integer.class);

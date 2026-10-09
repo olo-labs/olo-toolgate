@@ -65,7 +65,7 @@
         "networkPolicy",
         "ingress",
         "serviceMonitor",
-        "bundle"
+        "control"
       ],
       "properties": {
         "enabled": {
@@ -130,9 +130,7 @@
             "managementListen",
             "trustedTlsProxy",
             "allowedOrigins",
-            "limits",
-            "policy",
-            "extractors"
+            "limits"
           ],
           "properties": {
             "listen": {
@@ -215,154 +213,6 @@
                   "maximum": 4096
                 }
               }
-            },
-            "policy": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "version",
-                "expiresAtUnixMs",
-                "emergencyBlock",
-                "rules"
-              ],
-              "properties": {
-                "version": {
-                  "type": "string",
-                  "maxLength": 128,
-                  "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$"
-                },
-                "expiresAtUnixMs": {
-                  "type": "integer",
-                  "minimum": 0
-                },
-                "emergencyBlock": {
-                  "type": "boolean"
-                },
-                "rules": {
-                  "type": "array",
-                  "maxItems": 4096,
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "tenantId",
-                      "toolId",
-                      "action",
-                      "resource",
-                      "effect"
-                    ],
-                    "properties": {
-                      "tenantId": {
-                        "type": "string",
-                        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$",
-                        "maxLength": 128
-                      },
-                      "toolId": {
-                        "type": "string",
-                        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$",
-                        "maxLength": 128
-                      },
-                      "action": {
-                        "type": "string",
-                        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$",
-                        "maxLength": 128
-                      },
-                      "userId": {
-                        "type": [
-                          "string",
-                          "null"
-                        ],
-                        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$",
-                        "maxLength": 128
-                      },
-                      "agentId": {
-                        "type": [
-                          "string",
-                          "null"
-                        ],
-                        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$",
-                        "maxLength": 128
-                      },
-                      "deviceId": {
-                        "type": [
-                          "string",
-                          "null"
-                        ],
-                        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$",
-                        "maxLength": 128
-                      },
-                      "resource": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "kind",
-                          "locator"
-                        ],
-                        "properties": {
-                          "kind": {
-                            "enum": [
-                              "FILE",
-                              "URL",
-                              "DATABASE",
-                              "DEVICE",
-                              "CUSTOM"
-                            ]
-                          },
-                          "locator": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 2048
-                          }
-                        }
-                      },
-                      "effect": {
-                        "enum": [
-                          "ALLOW",
-                          "BLOCK"
-                        ]
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "extractors": {
-              "type": "array",
-              "maxItems": 1024,
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "toolId",
-                  "action",
-                  "pointer",
-                  "kind"
-                ],
-                "properties": {
-                  "toolId": {
-                    "type": "string",
-                    "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$",
-                    "maxLength": 128
-                  },
-                  "action": {
-                    "type": "string",
-                    "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$",
-                    "maxLength": 128
-                  },
-                  "pointer": {
-                    "type": "string",
-                    "pattern": "^/",
-                    "maxLength": 256
-                  },
-                  "kind": {
-                    "enum": [
-                      "CUSTOM",
-                      "FILE"
-                    ]
-                  }
-                }
-              },
-              "minItems": 1
             }
           }
         },
@@ -664,253 +514,16 @@
             }
           }
         },
-        "bundle": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "enabled": {
-              "type": "boolean"
-            },
-            "url": {
-              "type": "string",
-              "maxLength": 512,
-              "pattern": "^https://[A-Za-z0-9.-]+(:[0-9]+)?/api/control/v1/bundles/current$"
-            },
-            "tenantId": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128,
-              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
-            },
-            "issuer": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128,
-              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
-            },
-            "audience": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128,
-              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
-            },
-            "keyringSecret": {
-              "type": "string",
-              "maxLength": 253,
-              "pattern": "^$|^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$"
-            },
-            "keyringKey": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 253,
-              "pattern": "^[A-Za-z0-9._-]+$"
-            },
-            "tokenSecret": {
-              "type": "string",
-              "maxLength": 253,
-              "pattern": "^$|^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$"
-            },
-            "tokenKey": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 253,
-              "pattern": "^[A-Za-z0-9._-]+$"
-            },
-            "trustRevision": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128,
-              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
-            },
-            "minimumSequence": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 9007199254740991
-            },
-            "maxGraceMs": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 300000
-            },
-            "pollIntervalMs": {
-              "type": "integer",
-              "minimum": 100,
-              "maximum": 60000
-            },
-            "fetchTimeoutMs": {
-              "type": "integer",
-              "minimum": 100,
-              "maximum": 30000
-            },
-            "controlPort": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 65535
-            }
-          },
-          "required": [
-            "enabled",
-            "url",
-            "tenantId",
-            "issuer",
-            "audience",
-            "keyringSecret",
-            "keyringKey",
-            "tokenSecret",
-            "tokenKey",
-            "trustRevision",
-            "minimumSequence",
-            "maxGraceMs",
-            "pollIntervalMs",
-            "fetchTimeoutMs",
-            "controlPort"
-          ],
-          "allOf": [
-            {
-              "if": {
-                "properties": {
-                  "enabled": {
-                    "const": true
-                  }
-                }
-              },
-              "then": {
-                "properties": {
-                  "keyringSecret": {
-                    "minLength": 1
-                  },
-                  "tokenSecret": {
-                    "minLength": 1
-                  }
-                }
-              }
-            }
-          ]
-        },
-        "approval": {
+        "control": {
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "enabled",
-            "url",
-            "tokenSecret",
-            "tokenKey",
-            "signingSecret",
-            "signingKey",
-            "keyId",
-            "issuer",
-            "audience",
-            "keyRevision",
-            "requestTimeoutMs",
-            "permitLifetimeMs",
-            "controlPort"
-          ],
-          "properties": {
-            "enabled": {
-              "type": "boolean"
-            },
-            "url": {
-              "type": "string",
-              "pattern": "^https://[A-Za-z0-9.-]+(?::[0-9]+)?$"
-            },
-            "tokenSecret": {
-              "type": "string",
-              "maxLength": 253,
-              "pattern": "^$|^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$"
-            },
-            "tokenKey": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 253,
-              "pattern": "^[A-Za-z0-9._-]+$"
-            },
-            "signingSecret": {
-              "type": "string",
-              "maxLength": 253,
-              "pattern": "^$|^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$"
-            },
-            "signingKey": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 253,
-              "pattern": "^[A-Za-z0-9._-]+$"
-            },
-            "keyId": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128,
-              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
-            },
-            "issuer": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128,
-              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
-            },
-            "audience": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128,
-              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
-            },
-            "keyRevision": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128,
-              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
-            },
-            "requestTimeoutMs": {
-              "type": "integer",
-              "minimum": 10,
-              "maximum": 10000
-            },
-            "permitLifetimeMs": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 10000
-            },
-            "controlPort": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 65535
-            }
-          },
-          "allOf": [
-            {
-              "if": {
-                "properties": {
-                  "enabled": {
-                    "const": true
-                  }
-                }
-              },
-              "then": {
-                "properties": {
-                  "tokenSecret": {
-                    "minLength": 1
-                  },
-                  "signingSecret": {
-                    "minLength": 1
-                  }
-                }
-              }
-            }
-          ]
-        },
-        "localMcp": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "enabled",
             "url",
             "tokenSecret",
             "tokenKey",
             "controlPort"
           ],
           "properties": {
-            "enabled": {
-              "type": "boolean"
-            },
             "url": {
               "type": "string",
               "pattern": "^https://[A-Za-z0-9.-]+(?::[0-9]+)?$"
@@ -931,25 +544,7 @@
               "minimum": 1,
               "maximum": 65535
             }
-          },
-          "allOf": [
-            {
-              "if": {
-                "properties": {
-                  "enabled": {
-                    "const": true
-                  }
-                }
-              },
-              "then": {
-                "properties": {
-                  "tokenSecret": {
-                    "minLength": 1
-                  }
-                }
-              }
-            }
-          ]
+          }
         }
       },
       "allOf": [
@@ -959,81 +554,57 @@
               "enabled": {
                 "const": true
               }
-            }
+            },
+            "required": [
+              "enabled"
+            ]
           },
           "then": {
             "properties": {
               "credentialsSecret": {
                 "minLength": 1
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "approval": {
-                "properties": {
-                  "enabled": {
-                    "const": true
-                  }
-                },
-                "required": [
-                  "enabled"
-                ]
-              }
-            },
-            "required": [
-              "approval"
-            ]
-          },
-          "then": {
-            "properties": {
-              "bundle": {
-                "properties": {
-                  "enabled": {
-                    "const": true
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "localMcp": {
-                "properties": {
-                  "enabled": {
-                    "const": true
-                  }
-                },
-                "required": [
-                  "enabled"
-                ]
-              }
-            },
-            "required": [
-              "localMcp"
-            ]
-          },
-          "then": {
-            "properties": {
-              "bundle": {
-                "properties": {
-                  "enabled": {
-                    "const": true
-                  }
-                }
               },
-              "config": {
+              "control": {
                 "properties": {
-                  "limits": {
-                    "properties": {
-                      "requestTimeoutMs": {
-                        "minimum": 10000
-                      }
-                    }
+                  "tokenSecret": {
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": true
+              },
+              "networkPolicy": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "enabled"
+                ]
+              }
+            },
+            "required": [
+              "enabled",
+              "networkPolicy"
+            ]
+          },
+          "then": {
+            "properties": {
+              "networkPolicy": {
+                "properties": {
+                  "controlTo": {
+                    "minItems": 1
+                  },
+                  "dnsTo": {
+                    "minItems": 1
                   }
                 }
               }
@@ -1070,7 +641,9 @@
         "limits",
         "tracing",
         "bundle",
-        "fleet"
+        "fleet",
+        "effect",
+        "recovery"
       ],
       "properties": {
         "enabled": {
@@ -1843,6 +1416,75 @@
               }
             }
           ]
+        },
+        "effect": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "signingSecret": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "signingKey": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "keyId": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "issuer": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "audience": {
+              "type": "string",
+              "maxLength": 512
+            }
+          },
+          "required": [
+            "enabled",
+            "signingSecret",
+            "signingKey",
+            "keyId",
+            "issuer",
+            "audience"
+          ]
+        },
+        "recovery": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "packetSecret": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "packetKey": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "trustSecret": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "trustKey": {
+              "type": "string",
+              "maxLength": 512
+            }
+          },
+          "required": [
+            "enabled",
+            "packetSecret",
+            "packetKey",
+            "trustSecret",
+            "trustKey"
+          ]
         }
       },
       "allOf": [
@@ -1980,6 +1622,46 @@
                 "properties": {
                   "artifactTo": {
                     "minItems": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": true
+              },
+              "effect": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "enabled"
+                ]
+              }
+            },
+            "required": [
+              "enabled",
+              "effect"
+            ]
+          },
+          "then": {
+            "properties": {
+              "effect": {
+                "properties": {
+                  "signingSecret": {
+                    "minLength": 1
+                  },
+                  "signingKey": {
+                    "minLength": 1
+                  },
+                  "keyId": {
+                    "minLength": 1
                   }
                 }
               }

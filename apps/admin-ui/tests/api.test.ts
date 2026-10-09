@@ -14,7 +14,7 @@ describe('Control transport contract', () => {
     expect(new Headers(transport.mock.calls[0][1]?.headers).get('Authorization')).toBe('Bearer test-token');
   });
   it('uses canonical team CRUD routes with membership, revisions and idempotency', async () => {
-    const team={id:'team:default',name:'Default',enabled:true,revision:3,userIds:['alice','bob']};
+    const team={id:'team:default',name:'Default',enabled:true,revision:3,userIds:['alice','bob'],roleIds:[]};
     const transport=vi.fn<typeof fetch>().mockImplementation(async (_url,options)=>options?.method==='DELETE'?new Response(null,{status:204}):new Response(JSON.stringify(team)));
     const client=new ControlClient('token',vi.fn(),transport);
     await client.record('teams',team.id);await client.saveRecord('teams',team,true,'update-team');await client.saveRecord('teams',{...team,revision:1},false,'create-team');await client.deleteRecord('teams',team,'delete-team');
@@ -81,7 +81,7 @@ describe('Control transport contract', () => {
     const transport = vi.fn<typeof fetch>().mockImplementation(async () => new Response(JSON.stringify({items:[]})));
     const client = new ControlClient('token',vi.fn(),transport);
     await client.approvals('approval/+'); await client.approval('approval:user/item');
-    const decision = {decision:'APPROVE_TEMPORARY' as const,expectedRevision:3,durationMs:600000};
+    const decision = {decision:'APPROVE' as const,expectedRevision:3,obligationId:'policy'};
     await client.decideApproval('approval:user/item',decision,'approval-retry');
     expect(transport.mock.calls[0][0]).toBe('/api/control/v1/approvals?limit=50&cursor=approval%2F%2B');
     expect(transport.mock.calls[1][0]).toBe('/api/control/v1/approvals/approval%3Auser%2Fitem');

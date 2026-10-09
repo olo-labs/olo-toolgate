@@ -13,42 +13,6 @@ gateway:
     pullPolicy: IfNotPresent
   credentialsSecret: ''
   credentialsKey: credentials.json
-  localMcp:
-    enabled: false
-    url: https://control.example.invalid
-    tokenSecret: ''
-    tokenKey: access-token
-    controlPort: 443
-  bundle:
-    enabled: false
-    url: https://control.example.invalid/api/control/v1/bundles/current
-    tenantId: example
-    issuer: control
-    audience: gateway
-    keyringSecret: ''
-    keyringKey: keyring.json
-    tokenSecret: ''
-    tokenKey: access-token
-    trustRevision: '1'
-    minimumSequence: 0
-    maxGraceMs: 0
-    pollIntervalMs: 5000
-    fetchTimeoutMs: 3000
-    controlPort: 443
-  approval:
-    enabled: false
-    url: https://control.example.invalid
-    tokenSecret: ''
-    tokenKey: access-token
-    signingSecret: ''
-    signingKey: private.pem
-    keyId: permit-key-1
-    issuer: gateway
-    audience: endpoint
-    keyRevision: '1'
-    requestTimeoutMs: 1000
-    permitLifetimeMs: 10000
-    controlPort: 443
   config:
     listen: 0.0.0.0:8081
     managementListen: 0.0.0.0:9091
@@ -60,20 +24,10 @@ gateway:
       maxConcurrentRequests: 128
       maxConnections: 256
       requestsPerSecond: 1000
-      requestTimeoutMs: 2000
-      connectionTimeoutMs: 10000
-      shutdownTimeoutMs: 15000
+      requestTimeoutMs: 20000
+      connectionTimeoutMs: 35000
+      shutdownTimeoutMs: 35000
       auditQueueCapacity: 256
-    policy:
-      version: 0.1.0-dev
-      expiresAtUnixMs: 4102444800000
-      emergencyBlock: false
-      rules: []
-    extractors:
-    - toolId: files.read
-      action: read
-      pointer: /path
-      kind: FILE
   resources:
     requests:
       cpu: 100m
@@ -94,7 +48,7 @@ gateway:
     capabilities:
       drop:
       - ALL
-  terminationGracePeriodSeconds: 30
+  terminationGracePeriodSeconds: 45
   nodeSelector: {}
   tolerations: []
   affinity: {}
@@ -123,6 +77,11 @@ gateway:
     enabled: false
     labels: {}
     interval: 30s
+  control:
+    url: https://control.example.invalid
+    tokenSecret: ''
+    tokenKey: access-token
+    controlPort: 443
 control:
   enabled: false
   approval:
@@ -237,3 +196,16 @@ control:
     artifactOrigin: ''
     artifactSecret: ''
     artifactPort: 443
+  effect:
+    enabled: true
+    signingSecret: ''
+    signingKey: private.pem
+    keyId: effect-key-1
+    issuer: control
+    audience: toolgate-client
+  recovery:
+    enabled: false
+    packetSecret: ''
+    packetKey: reviewed-recovery.json
+    trustSecret: ''
+    trustKey: reviewer-keys.json

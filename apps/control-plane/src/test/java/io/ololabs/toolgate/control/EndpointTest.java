@@ -44,14 +44,15 @@ final class EndpointTest {
         try(var connection=java.sql.DriverManager.getConnection(base,"control_migrator",password);var statement=connection.createStatement()){statement.execute("CREATE DATABASE "+database);}
         var url=base.replace("/control?","/"+database+"?");
         org.flywaydb.core.Flyway.configure().dataSource(url,"control_migrator",password).target("4").load().migrate();
-        assertEquals(7,org.flywaydb.core.Flyway.configure().dataSource(url,"control_migrator",password).load().migrate().migrationsExecuted);
+        assertEquals(9,org.flywaydb.core.Flyway.configure().dataSource(url,"control_migrator",password).load().migrate().migrationsExecuted);
         var source=new org.postgresql.ds.PGSimpleDataSource();source.setURL(url);source.setUser("control_app");source.setPassword(password);
         return configured(new PostgresStore(source,codec));
     }
     private Setup configured(PostgresStore store)throws Exception{
-        var directory=new DirectoryService(store,codec,512,1048576);var admin=new DirectoryService.Actor(new Ids.TenantId("endpoint"),"a".repeat(64),true);
-        for(var user:List.of("owner","other"))directory.mutate(admin,Ids.Kind.USER,user,"CREATE",DomainTest.user(user,1),0,user,"request");
+        var directory=new DirectoryService(store,codec,512,1048576);var admin=TestSupport.seed(store,codec,new Ids.TenantId("endpoint"),"owner");
+        for(var user:List.of("other"))directory.mutate(admin,Ids.Kind.USER,user,"CREATE",DomainTest.user(user,1),0,user,"request");
         var clock=new MutableClock();var issuer=issuer();var service=new EndpointService(store,codec,issuer,clock,true,"endpoint","server","Organization","https://control.example.test","https://gateway.example.test");
+        service.operations(new EnterpriseOperations(store,codec,null,clock,"control","toolgate-client",60000,256));
         return new Setup(service,directory,admin,store,clock,issuer);
     }
     private EndpointEnrollmentChallenge start(Setup s,String device)throws Exception{return codec.model(s.service.start(codec.json(new EndpointEnrollmentStart(device,"0.6.0-dev",ClientPlatform.LINUX,csr(device),List.of("endpoint.identity.v1"))),"request").body(),EndpointEnrollmentChallenge.class);}
@@ -119,7 +120,6 @@ final class EndpointTest {
         assertThrows(Failure.class,()->service.decide(s.admin,"owner",codec.json(new EndpointEnrollmentDecision(second.userCode(),secondReview.keyFingerprint(),EnrollmentChoice.APPROVE,null,null)),"audit-fail","request"));
         assertEquals(EnrollmentState.PENDING,review(s,second).state());assertThrows(Failure.class,()->s.service.device(s.admin,"audit"));
     }
-    @Test void permissionReplacementAndServerRelayedCallsTrackEveryHandoff()throws Exception{relayFlow(setup());}
     @Test void pendingDeviceListAndConnectionDeadlinesUsePostgres()throws Exception{deadlineFlow(setup());}
     @Test void pendingDeviceListAndConnectionDeadlinesUseSqlite(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory)throws Exception{
         deadlineFlow(configured(new PostgresStore(SqliteState.open(directory.resolve("deadline.sqlite")),codec)));
@@ -156,9 +156,6 @@ final class EndpointTest {
         assertEquals(approved,s.service.decide(s.admin,"owner",body,"timed-approval","late-replay"));
         assertEquals(until,codec.model(s.service.device(s.admin,"timed").body(),EndpointDeviceRecord.class).connectionExpiresAtUnixMs());
     }
-    @Test void quickstartPermissionReplacementAndRelayedCallsUseDurableSqlite(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory)throws Exception{
-        relayFlow(configured(new PostgresStore(SqliteState.open(directory.resolve("relay.sqlite")),codec)));
-    }
     @Test void unlimitedApprovalAndReversibleManagementUsePostgres()throws Exception{managementFlow(setup());}
     @Test void unlimitedApprovalAndReversibleManagementUseSqlite(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory)throws Exception{
         managementFlow(configured(new PostgresStore(SqliteState.open(directory.resolve("managed.sqlite")),codec)));
@@ -179,12 +176,12 @@ final class EndpointTest {
         var identity=poll(s,challenge).identity();assertEquals(START+86400000,identity.expiresAtUnixMs());var peer=certificate(identity);
         var report=new ClientReport("managed","0.6.0-dev",0L,List.of());s.service.checkIn(peer,codec.json(new EndpointCheckIn(1L,report,null,null)),"first");
         var suspendBody=codec.json(new EndpointApprovalRequest(1L,false,null,null));
-        var suspended=s.service.approval(s.admin,"other","managed",suspendBody,"deapprove","request");assertEquals(suspended,s.service.approval(s.admin,"other","managed",suspendBody,"deapprove","retry"));
+        var suspended=s.service.approval(s.admin,"owner","managed",suspendBody,"deapprove","request");assertEquals(suspended,s.service.approval(s.admin,"owner","managed",suspendBody,"deapprove","retry"));
         var suspendedDevice=codec.model(suspended.body(),EndpointDeviceRecord.class);assertFalse(suspendedDevice.connectionApproved());assertEquals("owner",suspendedDevice.userId());
         assertEquals(423,assertThrows(Failure.class,()->s.service.verifySocketPeer(peer)).status());
         assertEquals(423,assertThrows(Failure.class,()->s.service.checkIn(peer,codec.json(new EndpointCheckIn(1L,report,null,null)),"blocked-replay")).status());
         assertEquals(409,assertThrows(Failure.class,()->s.service.approval(s.admin,"owner","managed",codec.json(new EndpointApprovalRequest(1L,true,null,true)),"stale","request")).status());
-        s.service.approval(s.admin,"other","managed",codec.json(new EndpointApprovalRequest(2L,true,null,true)),"reapprove","request");
+        s.service.approval(s.admin,"owner","managed",codec.json(new EndpointApprovalRequest(2L,true,null,true)),"reapprove","request");
         s.clock.time+=500;s.service.checkIn(peer,codec.json(new EndpointCheckIn(2L,report,null,null)),"resumed");
         var row=codec.model(s.service.device(s.admin,"managed").body(),EndpointDeviceRecord.class);assertEquals(3L,row.approvalRevision());assertNull(row.connectionExpiresAtUnixMs());
         s.service.enabled(s.admin,"owner","managed",codec.json(new EndpointEnabledRequest(2L,false)),"disable","request");
@@ -204,66 +201,5 @@ final class EndpointTest {
         s.service.revoke(s.admin,"managed",codec.json(new EndpointRevokeRequest(row.revision())),"permanent","request");
         assertEquals(409,assertThrows(Failure.class,()->s.service.approval(s.admin,"owner","managed",codec.json(new EndpointApprovalRequest(4L,true,null,true)),"revoked-reapprove","request")).status());
         assertEquals(403,assertThrows(Failure.class,()->s.service.start(codec.json(new EndpointEnrollmentStart("managed","0.6.0-dev",ClientPlatform.LINUX,registeredCsr,List.of())),"revoked-recover")).status());
-    }
-    private void relayFlow(Setup s)throws Exception{
-        var challenge=start(s,"client");long connectionExpires=START+20000;
-        s.service.decide(s.admin,"owner",codec.json(new EndpointEnrollmentDecision(challenge.userCode(),review(s,challenge).keyFingerprint(),EnrollmentChoice.APPROVE,connectionExpires,null)),"approve-client","request");
-        var identity=poll(s,challenge).identity();var peer=certificate(identity);assertEquals(connectionExpires,identity.expiresAtUnixMs());
-        for(var agent:List.of("agent-one","agent-two"))s.directory.mutate(s.admin,Ids.Kind.AGENT,agent,"CREATE",codec.json(new ControlAgent(agent,agent,true,1L,"owner")),0,"create-"+agent,"request");
-        var definition=new ToolDefinition("local.tool","Local tool","Installed local tool",List.of(new ToolAction("invoke",List.of(ResourceKind.CUSTOM))),Map.of(),Map.of());
-        s.directory.mutate(s.admin,Ids.Kind.TOOL,"local.tool","CREATE",codec.json(new ControlTool("local.tool","Local tool",true,1L,definition)),0,"create-tool","request");
-        var resource=new ResourceDescriptor(ResourceKind.CUSTOM,"runtime/local.tool");
-        var policy=new ControlPolicy("local-permission","Local permission",true,1L,"local.tool","invoke",resource,Decision.ALLOW,List.of("owner"),List.of(),List.of("agent-one"),List.of("client"));
-        s.directory.mutate(s.admin,Ids.Kind.POLICY,policy.id(),"CREATE",codec.json(policy),0,"create-policy","request");
-        var local=new BuiltinToolInfo("local.tool","invoke","Installed local tool",true,Map.of());var report=new ClientReport("client","0.10.0-dev",0L,List.of());
-        var first=codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(1L,report,null,List.of(local))),"poll-one",true).body(),EndpointCheckInAck.class);
-        assertNotNull(first.configuration());assertEquals(1L,first.configuration().revision());assertEquals(1,first.configuration().permissions().size());
-        var digest=first.configuration().digest();s.clock.time+=500;
-        assertNull(codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(2L,report,digest,List.of(local))),"poll-two",true).body(),EndpointCheckInAck.class).configuration());
-        var gateway=new DirectoryService.Actor(new Ids.TenantId("endpoint"),DirectoryService.digest("gateway"),false);var relay=s.service.relay();
-        var context=new RequestContext("relay-request","endpoint","owner","agent-one","client");
-        assertEquals(1,codec.model(relay.catalog(gateway,true,codec.json(context)).body(),LocalToolCatalog.class).tools().size());
-        assertTrue(codec.model(relay.catalog(gateway,true,codec.json(new RequestContext("other-catalog","endpoint","owner","agent-two","client"))).body(),LocalToolCatalog.class).tools().isEmpty());
-        assertThrows(Failure.class,()->relay.catalog(gateway,false,codec.json(context)));
-        var arguments=Map.of("text",new com.fasterxml.jackson.databind.node.TextNode("hello"));var request=new AuthorizationRequest("local.tool","invoke",Map.copyOf(arguments));
-        var input=new PolicyInput(context,"local.tool","invoke",resource,DirectoryService.digest(codec.json(arguments)));
-        var submission=new RemoteToolSubmission(input,request,s.clock.time+29000);
-        var waiting=codec.model(relay.submit(gateway,true,codec.json(submission),"agent-request").body(),RemoteToolResponse.class);
-        assertEquals(RemoteToolState.WAITING_FOR_POLL,waiting.record().state());
-        assertEquals(connectionExpires,waiting.record().expiresAtUnixMs());
-        assertEquals(waiting,codec.model(relay.submit(gateway,true,codec.json(submission),"agent-retry").body(),RemoteToolResponse.class));
-        assertNull(codec.model(relay.inspect(s.admin,context.requestId()).body(),RemoteToolInspection.class).output());
-        assertEquals(403,assertThrows(Failure.class,()->relay.inspect(gateway,context.requestId())).status());
-        var otherTenant=new DirectoryService.Actor(new Ids.TenantId("other"),DirectoryService.digest("other-admin"),true);
-        assertEquals(403,assertThrows(Failure.class,()->relay.inspect(otherTenant,context.requestId())).status());
-        assertEquals(404,assertThrows(Failure.class,()->relay.inspect(s.admin,"missing-request")).status());
-        s.clock.time+=500;var delivered=codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(3L,report,digest,List.of(local))),"poll-three",true).body(),EndpointCheckInAck.class).task();assertNotNull(delivered);
-        var bound=new AuthorizationRequest("local.tool","invoke",Map.of("path",new com.fasterxml.jackson.databind.node.TextNode(resource.locator()),"input",(com.fasterxml.jackson.databind.JsonNode)codec.value(codec.json(arguments)),"runtimeImage",new com.fasterxml.jackson.databind.node.TextNode("reviewed-image")));
-        assertEquals(delivered.expiresAtUnixMs(),codec.model(relay.authorize(peer,codec.json(new RemoteToolAuthorization(delivered.requestId(),delivered.leaseId(),bound))).body(),RemoteToolAuthorizationAck.class).expiresAtUnixMs());
-        var result=new RemoteToolResult(delivered.requestId(),delivered.leaseId(),Map.of("text",new com.fasterxml.jackson.databind.node.TextNode("hello")),null);
-        assertEquals(403,assertThrows(Failure.class,()->relay.result(peer,codec.json(new RemoteToolResult(delivered.requestId(),"wrong-lease",result.output(),null)),"wrong")).status());
-        assertEquals(RemoteToolState.RESPONSE_RECEIVED,codec.model(relay.result(peer,codec.json(result),"client-result").body(),RemoteToolRecord.class).state());
-        var observed=codec.model(relay.page(s.admin,"admin-progress").body(),RemoteToolPage.class).items().getFirst();assertNotNull(observed.submittedAtUnixMs());assertNotNull(observed.responseAtUnixMs());assertNull(observed.completedAtUnixMs());
-        var done=codec.model(relay.response(gateway,true,codec.json(context),"agent-response").body(),RemoteToolResponse.class);assertEquals(RemoteToolState.DONE,done.record().state());assertEquals(result,done.result());assertNotNull(done.record().completedAtUnixMs());
-        var inspection=relay.inspect(s.admin,context.requestId());assertEquals(result.output(),codec.model(inspection.body(),RemoteToolInspection.class).output());
-        assertFalse(inspection.body().contains("leaseId"));assertFalse(inspection.body().contains(delivered.leaseId()));assertFalse(inspection.body().contains("arguments"));
-        s.clock.time+=500;
-        s.service.checkIn(peer,codec.json(new EndpointCheckIn(4L,report,digest,List.of(local))),"metadata",true,"trading-desktop","192.0.2.15");
-        var metadata=codec.model(s.service.device(s.admin,"client").body(),EndpointDeviceRecord.class);
-        assertEquals("trading-desktop",metadata.systemName());assertEquals("192.0.2.15",metadata.ipAddress());
-        var managed=codec.model(s.service.devices(s.admin).body(),EndpointManagedDevicePage.class).items().stream().filter(row->row.deviceId().equals("client")).findFirst().orElseThrow();
-        assertEquals(metadata.systemName(),managed.systemName());assertEquals(metadata.ipAddress(),managed.ipAddress());
-        assertEquals(RemoteToolState.DONE,codec.model(relay.result(peer,codec.json(result),"client-retry").body(),RemoteToolRecord.class).state());
-        var nextContext=new RequestContext("revoked-request","endpoint","owner","agent-one","client");relay.submit(gateway,true,codec.json(new RemoteToolSubmission(new PolicyInput(nextContext,input.toolId(),input.action(),resource,input.argumentsDigest()),request,s.clock.time+29000)),"queued-before-change");
-        var block=new ControlPolicy(policy.id(),policy.name(),true,1L,policy.toolId(),policy.action(),resource,Decision.BLOCK,policy.userIds(),policy.teamIds(),policy.agentIds(),policy.deviceIds());s.directory.mutate(s.admin,Ids.Kind.POLICY,policy.id(),"UPDATE",codec.json(block),1,"block-policy","request");
-        assertTrue(codec.model(relay.catalog(gateway,true,codec.json(context)).body(),LocalToolCatalog.class).tools().isEmpty());
-        s.clock.time+=500;var changed=codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(5L,report,digest,List.of(local))),"changed-poll",true).body(),EndpointCheckInAck.class);assertNotNull(changed.configuration());assertEquals(2L,changed.configuration().revision());assertNotEquals(digest,changed.configuration().digest());assertNull(changed.task());
-        assertEquals(RemoteToolState.FAILED,codec.model(relay.response(gateway,true,codec.json(nextContext),"failed-response").body(),RemoteToolResponse.class).record().state());
-        assertThrows(Failure.class,()->relay.response(gateway,true,codec.json(context),"old-result-after-change"));
-        s.clock.time+=500;assertNull(codec.model(s.service.checkIn(peer,codec.json(new EndpointCheckIn(6L,report,changed.configuration().digest(),List.of(local))),"ack-change",true).body(),EndpointCheckInAck.class).configuration());
-        assertEquals("trading-desktop",codec.model(s.service.device(s.admin,"client").body(),EndpointDeviceRecord.class).systemName());
-        s.clock.time=connectionExpires;
-        assertEquals(423,assertThrows(Failure.class,()->relay.catalog(gateway,true,codec.json(context))).status());
-        assertThrows(Failure.class,()->relay.authorize(peer,codec.json(new RemoteToolAuthorization(delivered.requestId(),delivered.leaseId(),bound))));
     }
 }

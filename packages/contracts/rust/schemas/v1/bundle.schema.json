@@ -203,7 +203,7 @@
           "type": "string",
           "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$",
           "minLength": 1,
-          "maxLength": 1500000
+          "maxLength": 2000000
         }
       },
       "required": [

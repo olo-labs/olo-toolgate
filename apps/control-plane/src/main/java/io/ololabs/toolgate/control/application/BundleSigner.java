@@ -6,6 +6,6 @@ import io.ololabs.toolgate.contracts.SignedPolicyBundle;
 
 /** Dedicated organization policy signing boundary, replaceable by an external KMS adapter. */
 public interface BundleSigner {
-    /** Accept only the canonical format 1 or format 2 payload; adapters validate before signing. */
+    /** Accept only the canonical format 3 group snapshot; adapters validate before signing. */
     SignedPolicyBundle sign(Object payload);
 }

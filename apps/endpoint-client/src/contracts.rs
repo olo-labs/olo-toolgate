@@ -8,6 +8,13 @@ pub struct Contracts {
     validators: BTreeMap<String, jsonschema::Validator>,
 }
 impl Contracts {
+    pub fn shared() -> Result<&'static Self> {
+        static CONTRACTS: std::sync::OnceLock<Result<Contracts>> = std::sync::OnceLock::new();
+        CONTRACTS
+            .get_or_init(Self::new)
+            .as_ref()
+            .map_err(|error| *error)
+    }
     pub fn new() -> Result<Self> {
         let mut registry = jsonschema::Registry::new();
         let mut definitions = Vec::new();
@@ -23,8 +30,7 @@ impl Contracts {
                 "/fleet.schema.json",
                 "/builder.schema.json",
                 "/runtime.schema.json",
-                "/policy.schema.json",
-                "/approval.schema.json",
+                "/enterprise.schema.json",
             ]
             .iter()
             .any(|suffix| uri.ends_with(suffix))
@@ -44,11 +50,14 @@ impl Contracts {
         for (name, uri) in definitions {
             let schema = serde_json::json!({"$schema":"https://json-schema.org/draft/2020-12/schema","$ref":format!("{uri}#/$defs/{name}")});
             validators.insert(
-                name,
+                name.clone(),
                 jsonschema::options()
                     .with_registry(&registry)
                     .build(&schema)
-                    .map_err(|_| Failure::Validation)?,
+                    .map_err(|error| {
+                        tracing::error!(event="contract_initialization",schema=%name,error=%error);
+                        Failure::Validation
+                    })?,
             );
         }
         Ok(Self { validators })

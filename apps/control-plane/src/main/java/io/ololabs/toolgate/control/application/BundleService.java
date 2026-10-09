@@ -25,6 +25,7 @@ public final class BundleService {
     public Store.Reply get(DirectoryService.Actor actor, long sequence) {
         if (sequence < 0 || sequence > 9007199254740991L) throw Failure.validation();
         return store.transaction(actor.tenant(), false, tx -> {
+            if(actor.userId()!=null)new ManagementAccess(codec).requireAll(tx.load(),actor.userId(),"read",clock.millis());
             var record = tx.bundle(sequence == 0 ? tx.bundleSequence() : sequence);
             if (record == null) throw new Failure(ErrorCode.NOT_FOUND, 404, "Bundle not found");
             return new Store.Reply(200, record.document(), record.sequence());
@@ -35,43 +36,40 @@ public final class BundleService {
         var request = codec.model(document, BundlePublishRequest.class);
         var digest = DirectoryService.digest("BUNDLE\n" + codec.json(request));
         return store.transaction(actor.tenant(), true, tx -> {
+            var directory = tx.load();
+            new ManagementAccess(codec).requireAll(directory,actor.userId(),"publish",clock.millis());
             var replay = tx.replay(actor.id(), key, digest);
             if (replay != null) return replay;
-            var directory = tx.load();
+            if(request.graceMs()!=0 || request.gracePolicyIds()!=null&&!request.gracePolicyIds().isEmpty())throw Failure.validation();
             long previous = tx.bundleSequence();
             if (directory.revision() != request.directoryRevision() || previous != request.expectedSequence()
                     || previous >= 9007199254740991L) throw Failure.conflict();
             String policy;
             long sourceRevision = directory.revision();
-            if (request.rollbackOf() == null) policy = compiler.compile(directory, request.gracePolicyIds() == null ? java.util.List.of() : request.gracePolicyIds());
+            if (request.rollbackOf() == null) policy = compiler.compile(actor.tenant(),directory);
             else {
                 if (request.gracePolicyIds() != null) throw Failure.validation();
                 if (request.rollbackOf() > previous) throw Failure.conflict();
                 var old = tx.bundle(request.rollbackOf());
                 if (old == null) throw new Failure(ErrorCode.NOT_FOUND, 404, "Bundle not found");
-                policy = old.policy(); validateCompiled(policy);
-                sourceRevision = old.directoryRevision();
+                // A rollback is a reviewed newer directory revision. Old graphs cannot revive credentials or grants.
+                if(old.directoryRevision()!=directory.revision())throw Failure.conflict();
+                policy=compiler.compile(actor.tenant(),directory);
             }
             long sequence = previous + 1;
             long issued = clock.millis();
             if (issued < 0 || issued > 9007199254740991L - request.lifetimeMs()) throw Failure.unavailable();
-            boolean approvals=validateCompiled(policy);
             var bytes=Base64.getUrlEncoder().withoutPadding().encodeToString(policy.getBytes(StandardCharsets.UTF_8));
-            Object payload = approvals ? new ApprovalBundlePayload(2L,issuer,audience,actor.tenant().value(),sequence,"2.0."+sequence,
-                sourceRevision,issued,issued+request.lifetimeMs(),request.graceMs(),DirectoryService.digest(policy),bytes,request.rollbackOf())
-                : new BundlePayload(1L, issuer, audience, actor.tenant().value(), sequence, "1.0." + sequence,
-                    sourceRevision, issued, issued + request.lifetimeMs(), request.graceMs(), DirectoryService.digest(policy),bytes,request.rollbackOf());
+            Object payload = new EnterpriseSnapshotPayload(3L,issuer,audience,actor.tenant().value(),sequence,"3.0."+sequence,
+                sourceRevision,tx.enterprise().authorizationEpoch(),issued,issued+request.lifetimeMs(),DirectoryService.digest(policy),bytes,request.rollbackOf());
             var signed = codec.json(signer.sign(payload));
             codec.model(signed, SignedPolicyBundle.class);
             tx.publishBundle(new Store.BundleRecord(sequence, signed, policy, sourceRevision));
+            tx.enterprise().published(sourceRevision,issued);
             tx.audit(actor.id(), request.rollbackOf() == null ? "BUNDLE_PUBLISH" : "BUNDLE_ROLLBACK", "bundle:" + sequence,
                 directory.revision(), requestId, digest);
             var reply = new Store.Reply(201, signed, sequence);
             tx.remember(actor.id(), key, digest, reply); return reply;
         });
-    }
-    private boolean validateCompiled(String policy) {
-        try { codec.model(policy,CompiledPolicy.class); return false; }
-        catch (Failure incompatible) { codec.model(policy,ApprovalCompiledPolicy.class); return true; }
     }
 }

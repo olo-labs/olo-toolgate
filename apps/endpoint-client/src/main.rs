@@ -30,6 +30,16 @@ async fn command(arguments: Vec<String>) -> Result<()> {
         return Err(Failure::Validation);
     };
     match operation {
+        "authorization-profiles" if arguments.len() == 1 => {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(
+                    &olo_toolgate_client::authorization_profile::builtin_profiles()?
+                )
+                .map_err(|_| Failure::Validation)?
+            );
+            Ok(())
+        }
         "runtimes"
             if arguments.len() == 2 && ["status", "prepare"].contains(&arguments[1].as_str()) =>
         {

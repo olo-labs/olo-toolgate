@@ -29,42 +29,25 @@ final class PolicyBundleTest {
     private RsaBundleSigner signer(KeyPair keys, String keyId) {
         return new RsaBundleSigner((java.security.interfaces.RSAPrivateCrtKey) keys.getPrivate(), keyId, codec);
     }
-    private BundlePayload verify(String document, KeyPair keys) throws Exception {
+    private EnterpriseSnapshotPayload verify(String document, KeyPair keys) throws Exception {
         var signed = codec.model(document, SignedPolicyBundle.class); var parts = signed.jws().split("\\.");
         var signature = java.security.Signature.getInstance("SHA256withRSA"); signature.initVerify(keys.getPublic());
         signature.update((parts[0]+"."+parts[1]).getBytes(StandardCharsets.US_ASCII));
         assertTrue(signature.verify(Base64.getUrlDecoder().decode(parts[2])));
-        var payload = codec.model(new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8), BundlePayload.class);
-        var policy = new String(Base64.getUrlDecoder().decode(payload.policy()), StandardCharsets.UTF_8);
-        assertEquals(DirectoryService.digest(policy), payload.policySha256()); codec.model(policy, CompiledPolicy.class); return payload;
+        var payload = codec.model(new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8), EnterpriseSnapshotPayload.class);
+        var policy = new String(Base64.getUrlDecoder().decode(payload.graphBase64()), StandardCharsets.UTF_8);
+        assertEquals(DirectoryService.digest(policy), payload.graphSha256()); codec.model(policy, ControlSnapshot.class); return payload;
     }
-    @Test void compilerIsDeterministicAndEmptyTeamDoesNotBecomeWildcard() throws Exception {
-        var fixtures = fixtures();
-        var tool = codec.model(codec.json(fixtures.get("ControlTool")), ControlTool.class);
-        var resource = codec.model(codec.json(fixtures.get("ResourceDescriptor")), ResourceDescriptor.class);
-        var entries = new HashMap<Ids.RecordId, Directory.Entry>();
-        for (var id : List.of("bob","alice")) { var e = codec.entry(Ids.Kind.USER, DomainTest.user(id,1)); entries.put(e.id(),e); }
-        var t = codec.entry(Ids.Kind.TOOL, codec.json(tool)); entries.put(t.id(),t);
-        var team = codec.entry(Ids.Kind.TEAM, codec.json(new ControlTeam("team","Team",true,1L,List.of("bob","alice"),null,null))); entries.put(team.id(),team);
-        var empty = codec.entry(Ids.Kind.TEAM, codec.json(new ControlTeam("empty","Empty",true,1L,List.of(),null,null))); entries.put(empty.id(),empty);
-        var action = tool.definition().actions().getFirst().name();
-        var allow = new ControlPolicy("allow","Allow",true,1L,tool.id(),action,resource,Decision.ALLOW,List.of("bob"),List.of("team"),List.of(),List.of());
-        var emptyPolicy = new ControlPolicy("empty-policy","Empty",true,1L,tool.id(),action,resource,Decision.ALLOW,List.of(),List.of("empty"),List.of(),List.of());
-        for (var p : List.of(allow,emptyPolicy)) { var e=codec.entry(Ids.Kind.POLICY,codec.json(p)); entries.put(e.id(),e); }
-        var directory = new Directory(0,entries); var compiler = new PolicyCompiler(codec);
-        var compiled = compiler.compile(directory); assertEquals(compiled,compiler.compile(directory));
-        var policy = codec.model(compiled,CompiledPolicy.class);
-        assertEquals(1,policy.rules().size()); assertEquals(List.of("alice","bob"),policy.rules().getFirst().userIds());
-        var disabled = codec.entry(Ids.Kind.USER,DomainTest.user("alice",1).replace("true","false")); entries.put(disabled.id(),disabled);
-        var filtered = codec.model(compiler.compile(new Directory(0,entries)),CompiledPolicy.class);
-        assertEquals(List.of("bob"), filtered.rules().getFirst().userIds());
-        var teamOnly = new ControlPolicy("allow","Allow",true,1L,tool.id(),action,resource,Decision.ALLOW,List.of(),List.of("team"),List.of(),List.of());
-        var replacement = codec.entry(Ids.Kind.POLICY,codec.json(teamOnly)); entries.put(replacement.id(),replacement);
-        var disabledBob = codec.entry(Ids.Kind.USER,DomainTest.user("bob",1).replace("true","false")); entries.put(disabledBob.id(),disabledBob);
-        assertTrue(codec.model(compiler.compile(new Directory(0,entries)),CompiledPolicy.class).rules().isEmpty());
+    @Test void compilerIsDeterministicAndGroupSnapshotDoesNotFlattenIndividuals() {
+        var entries=new HashMap<Ids.RecordId,Directory.Entry>();GroupGraph.defaults(entries,codec);
+        var directory=new Directory(0,entries);var compiler=new PolicyCompiler(codec);var tenant=new Ids.TenantId("tenant");
+        assertEquals(compiler.compile(tenant,directory),compiler.compile(tenant,new Directory(0,new TreeMap<>(Comparator.comparing(Object::toString)){{putAll(entries);}})));
+        var snapshot=codec.model(compiler.compile(tenant,directory),ControlSnapshot.class);
+        assertEquals(2L,snapshot.formatVersion());assertTrue(snapshot.grants().isEmpty());
+        assertTrue(snapshot.users().isEmpty());assertEquals(List.of(),snapshot.teams().getFirst().userIds());
     }
     @Test void signerUsesExactStandardJwsAndSeparateKeyIds() throws Exception {
-        var payload = codec.model(codec.json(fixtures().get("BundlePayload")),BundlePayload.class); var keys=keys();
+        var payload = codec.model(codec.json(fixtures().get("EnterpriseSnapshotPayload")),EnterpriseSnapshotPayload.class); var keys=keys();
         var first=codec.json(signer(keys,"old-key").sign(payload)); assertEquals(payload,verify(first,keys));
         var parts=codec.model(first,SignedPolicyBundle.class).jws().split("\\.");
         assertEquals("old-key",codec.model(new String(Base64.getUrlDecoder().decode(parts[0]),StandardCharsets.UTF_8),BundleHeader.class).kid());
@@ -94,28 +77,28 @@ final class PolicyBundleTest {
         org.flywaydb.core.Flyway.configure().dataSource(url,"control_migrator",password).load().migrate();
         var source=new org.postgresql.ds.PGSimpleDataSource(); source.setURL(url);source.setUser("control_app");source.setPassword(password);
         var store=new PostgresStore(source,codec); var directory=new DirectoryService(store,codec,512,1048576);
-        var actor=new DirectoryService.Actor(new Ids.TenantId("bundle-tenant"),"a".repeat(64),true);
+        var actor=TestSupport.seed(store,codec,new Ids.TenantId("bundle-tenant"),"root");
         var keys=keys(); var service=new BundleService(store,codec,signer(keys,"bundle-key"),"control","gateway",clock);
         assertThrows(Failure.class,()->service.current(actor));
         directory.mutate(actor,Ids.Kind.USER,"alice","CREATE",DomainTest.user("alice",1),0,"user","req");
         var pool=java.util.concurrent.Executors.newFixedThreadPool(6);
         var replies=new ArrayList<java.util.concurrent.Future<Store.Reply>>();
-        try { for(int i=0;i<6;i++) replies.add(pool.submit(()->service.publish(actor,publish(1,0,null),"publish-one","req")));
+        try { for(int i=0;i<6;i++) replies.add(pool.submit(()->service.publish(actor,publish(2,0,null),"publish-one","req")));
             String first=replies.getFirst().get().body();
             for(var reply:replies) assertEquals(first,reply.get().body());
             assertEquals(1,verify(first,keys).sequence());
         } finally { pool.shutdownNow(); }
-        assertThrows(Failure.class,()->service.publish(actor,publish(1,0,null),"stale","req"));
-        assertThrows(Failure.class,()->service.publish(actor,publish(1,1,null),"publish-one","req"));
-        assertThrows(Failure.class,()->service.publish(new DirectoryService.Actor(actor.tenant(),actor.id(),false),publish(1,1,null),"denied","req"));
-        var second=service.publish(actor,publish(1,1,null),"publish-two","req"); assertEquals(2,verify(second.body(),keys).sequence());
+        assertThrows(Failure.class,()->service.publish(actor,publish(2,0,null),"stale","req"));
+        assertThrows(Failure.class,()->service.publish(actor,publish(2,1,null),"publish-one","req"));
+        assertThrows(Failure.class,()->service.publish(new DirectoryService.Actor(actor.tenant(),actor.id(),false),publish(2,1,null),"denied","req"));
+        var second=service.publish(actor,publish(2,1,null),"publish-two","req"); assertEquals(2,verify(second.body(),keys).sequence());
         var rotated=keys(); var rotation=new BundleService(store,codec,signer(rotated,"new-key"),"control","gateway",clock);
-        var third=rotation.publish(actor,publish(1,2,1L),"rollback","req"); var payload=verify(third.body(),rotated);
-        assertEquals(3,payload.sequence());assertEquals(1,payload.rollbackOf());assertEquals(verify(second.body(),keys).policy(),payload.policy());
+        var third=rotation.publish(actor,publish(2,2,1L),"rollback","req"); var payload=verify(third.body(),rotated);
+        assertEquals(3,payload.sequence());assertEquals(1,payload.rollbackOf());assertEquals(verify(second.body(),keys).graphBase64(),payload.graphBase64());
         assertEquals(second.body(),service.get(actor,2).body());
         var other=new DirectoryService.Actor(new Ids.TenantId("other"),actor.id(),true);assertThrows(Failure.class,()->service.get(other,1));
         var failing=new BundleService(store,codec,p->{throw Failure.unavailable();},"control","gateway",clock);
-        assertThrows(Failure.class,()->failing.publish(actor,publish(1,3,null),"failure","req"));assertEquals(3,service.current(actor).revision());
+        assertThrows(Failure.class,()->failing.publish(actor,publish(2,3,null),"failure","req"));assertEquals(3,service.current(actor).revision());
         try(var connection=source.getConnection();var statement=connection.createStatement()) {
             assertThrows(java.sql.SQLException.class,()->statement.executeUpdate("UPDATE control_policy_bundles SET policy='{}'"));
             assertThrows(java.sql.SQLException.class,()->statement.executeUpdate("DELETE FROM control_policy_bundles"));
@@ -123,15 +106,15 @@ final class PolicyBundleTest {
         try(var connection=java.sql.DriverManager.getConnection(url,"control_migrator",password);var statement=connection.createStatement()) {
             statement.execute("ALTER TABLE control_audit ADD CONSTRAINT bundle_audit_failure CHECK (target <> 'bundle:4')");
         }
-        assertThrows(Failure.class,()->service.publish(actor,publish(1,3,null),"failure","req"));assertEquals(3,service.current(actor).revision());
+        assertThrows(Failure.class,()->service.publish(actor,publish(2,3,null),"failure","req"));assertEquals(3,service.current(actor).revision());
         try(var connection=java.sql.DriverManager.getConnection(url,"control_migrator",password);var statement=connection.createStatement()) {
             statement.execute("ALTER TABLE control_audit DROP CONSTRAINT bundle_audit_failure");
         }
-        assertEquals(4,service.publish(actor,publish(1,3,null),"failure","req").revision());
-        try(var connection=source.getConnection();var statement=connection.createStatement();var rows=statement.executeQuery("SELECT count(*) FROM control_audit WHERE operation LIKE 'BUNDLE_%' AND revision=1")) {
+        assertEquals(4,service.publish(actor,publish(2,3,null),"failure","req").revision());
+        try(var connection=source.getConnection();var statement=connection.createStatement();var rows=statement.executeQuery("SELECT count(*) FROM control_audit WHERE operation LIKE 'BUNDLE_%' AND revision=2")) {
             rows.next();assertEquals(4,rows.getLong(1));
         }
         assertThrows(Failure.class,()->service.publish(actor,publish(0,4,null),"stale-directory","req"));
-        assertThrows(Failure.class,()->service.publish(actor,publish(1,4,5L),"future-rollback","req"));
+        assertThrows(Failure.class,()->service.publish(actor,publish(2,4,5L),"future-rollback","req"));
     }
 }

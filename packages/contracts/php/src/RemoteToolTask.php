@@ -10,22 +10,24 @@ final readonly class RemoteToolTask implements \JsonSerializable {
     public function __construct(
         public string $requestId,
         public string $leaseId,
-        public PolicyInput $input,
         public AuthorizationRequest $request,
-        public int $expiresAtUnixMs
+        public int $expiresAtUnixMs,
+        public EnterpriseInvocation $invocation,
+        public EnterpriseSignedPermit $permit
     ) {}
 
     /** Decode a structural model; canonical schema validation is also required. */
     public static function fromArray(array $data): self {
-        if (array_diff(array_keys($data), ['requestId', 'leaseId', 'input', 'request', 'expiresAtUnixMs']) || array_diff(['requestId', 'leaseId', 'input', 'request', 'expiresAtUnixMs'], array_keys($data))) {
+        if (array_diff(array_keys($data), ['requestId', 'leaseId', 'request', 'expiresAtUnixMs', 'invocation', 'permit']) || array_diff(['requestId', 'leaseId', 'request', 'expiresAtUnixMs', 'invocation', 'permit'], array_keys($data))) {
             throw new \InvalidArgumentException('Unknown or missing contract fields');
         }
         return new self(
             $data['requestId'],
             $data['leaseId'],
-            PolicyInput::fromArray($data['input']),
             AuthorizationRequest::fromArray($data['request']),
-            $data['expiresAtUnixMs']
+            $data['expiresAtUnixMs'],
+            EnterpriseInvocation::fromArray($data['invocation']),
+            EnterpriseSignedPermit::fromArray($data['permit'])
         );
     }
 

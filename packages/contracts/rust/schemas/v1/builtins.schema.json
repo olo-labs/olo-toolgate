@@ -33,6 +33,12 @@
         },
         "inputSchema": {
           "type": "object"
+        },
+        "toolDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
+        },
+        "packageDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Sha256"
         }
       },
       "required": [
@@ -40,7 +46,9 @@
         "action",
         "description",
         "enabled",
-        "inputSchema"
+        "inputSchema",
+        "toolDigest",
+        "packageDigest"
       ]
     },
     "BuiltinInvocation": {

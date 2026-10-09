@@ -93,10 +93,8 @@ def helm_checks():
     gateway_helm_checks()
     from control.helm import checks as control_helm_checks
     control_helm_checks()
-    from policy.helm import checks as policy_helm_checks
-    policy_helm_checks()
-    from approval.helm import checks as approval_helm_checks
-    approval_helm_checks()
+    from enterprise.helm import checks as enterprise_helm_checks
+    enterprise_helm_checks()
     from client.helm import checks as endpoint_helm_checks
     endpoint_helm_checks()
     from deployment.helm import checks as fleet_helm_checks

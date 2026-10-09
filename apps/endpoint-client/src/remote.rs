@@ -11,23 +11,7 @@ use crate::{
 use olo_toolgate_contracts::*;
 use std::{collections::BTreeMap, sync::Arc};
 type Output = BTreeMap<String, serde_json::Value>;
-pub(crate) fn builtin_catalog() -> Vec<BuiltinToolInfo> {
-    let value: serde_json::Value = serde_json::from_str(include_str!(
-        "../../../packages/contracts/tools/builtins.json"
-    ))
-    .unwrap_or_default();
-    value["tools"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|item| {
-            let mut item = item.clone();
-            item["enabled"] = serde_json::json!(item["toolId"] != "web.search");
-            serde_json::from_value(item).ok()
-        })
-        .collect()
-}
-fn builtin_settings(config: &Config) -> crate::builtins::Settings {
+pub(crate) fn builtin_settings(config: &Config) -> crate::builtins::Settings {
     crate::builtins::Settings {
         hotfolder: crate::hotfolder::Settings {
             root: config.state_directory.join("hotfolder"),
@@ -39,6 +23,7 @@ fn builtin_settings(config: &Config) -> crate::builtins::Settings {
         gateway_token_path: config.state_directory.join("unused-remote-token"),
         gateway_ca_path: None,
         device_id: "remote".into(),
+        authorization_profiles: vec![],
         web_search_token_path: None,
         web_search_allowed_domains: vec![],
     }
@@ -48,6 +33,7 @@ struct Authorization {
     control: Arc<dyn ControlPort>,
     identity: DeviceIdentity,
     task: RemoteToolTask,
+    consumed: tokio::sync::Mutex<bool>,
 }
 impl AuthorizationPort for Authorization {
     fn authorize(&self, request: AuthorizationRequest) -> Call<'_, ()> {
@@ -55,6 +41,34 @@ impl AuthorizationPort for Authorization {
     }
     fn authorize_bound(&self, request: AuthorizationRequest) -> Call<'_, Option<u64>> {
         Box::pin(async move {
+            if request != self.task.request {
+                return Err(Failure::Unauthorized);
+            }
+            let mut consumed = self.consumed.lock().await;
+            if !*consumed {
+                let e = &self.task.invocation.evaluation;
+                let invocation = self
+                    .control
+                    .consume_effect(
+                        self.identity.clone(),
+                        EnterprisePermitConsumption {
+                            invocation_id: self.task.invocation.id.clone(),
+                            permit: self.task.permit.clone(),
+                            arguments_digest: e.arguments_digest.clone(),
+                            resources: e.resources.clone(),
+                            tool_digest: e.tool_digest.clone(),
+                            package_digest: e.package_digest.clone(),
+                        },
+                    )
+                    .await?;
+                if invocation.id != self.task.invocation.id
+                    || invocation.evaluation != self.task.invocation.evaluation
+                    || invocation.state != EnterpriseInvocationState::Executing
+                {
+                    return Err(Failure::Unauthorized);
+                }
+                *consumed = true;
+            }
             let ack = self
                 .control
                 .remote_authorize(
@@ -92,6 +106,22 @@ async fn execute(
             .iter()
             .any(|t| t.tool_id == task.request.tool_id && t.action == task.request.action)
     }) {
+        let registration = settings
+            .tools
+            .iter()
+            .find(|t| t.tool_id == task.request.tool_id && t.action == task.request.action)
+            .ok_or(Failure::Unauthorized)?;
+        let runtime = settings
+            .runtimes
+            .iter()
+            .find(|r| r.id == registration.runtime_id)
+            .ok_or(Failure::Unauthorized)?;
+        let installed = crate::authorization_profile::managed_info(registration, runtime)?;
+        if installed.tool_digest != task.invocation.evaluation.tool_digest
+            || installed.package_digest != task.invocation.evaluation.package_digest
+        {
+            return Err(Failure::Unauthorized);
+        }
         settings.state_directory = settings.state_directory.join("remote");
         let mut manager = execution::Manager::new(settings, auth)?;
         let input = LocalToolInput {
@@ -114,6 +144,15 @@ async fn execute(
         let mut executor = crate::builtins::Executor::new(&settings, auth)?.with_packet_log(
             crate::diagnostics::PacketLog::open(config.state_directory.clone())?,
         );
+        if !executor.catalog().iter().any(|t| {
+            t.enabled
+                && t.tool_id == task.request.tool_id
+                && t.action == task.request.action
+                && t.tool_digest == task.invocation.evaluation.tool_digest
+                && t.package_digest == task.invocation.evaluation.package_digest
+        }) {
+            return Err(Failure::Unauthorized);
+        }
         let input = BuiltinInvocation {
             tool_id: task.request.tool_id,
             arguments: task.request.arguments,
@@ -143,6 +182,7 @@ impl Job {
             control,
             identity,
             task: task.clone(),
+            consumed: tokio::sync::Mutex::new(false),
         });
         let handle = tokio::spawn(execute(config, settings, auth, receiver));
         Self {

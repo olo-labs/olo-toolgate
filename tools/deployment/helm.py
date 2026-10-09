@@ -9,7 +9,7 @@ sys.path.insert(0, str(ROOT/'tools'))
 from check import run
 
 def checks():
-    settings = {'control.enabled':'true','control.publicKeySecret':'idp','control.database.credentialsSecret':'db',
+    settings = {'control.enabled':'true','control.effect.signingSecret':'effect-custody','control.publicKeySecret':'idp','control.database.credentialsSecret':'db',
         'control.database.caSecret':'db-ca','control.endpoint.enabled':'true','control.endpoint.tenantId':'tenant',
         'control.endpoint.serverId':'server','control.endpoint.organization':'Organization',
         'control.endpoint.controlUrl':'https://control.example.test','control.endpoint.gatewayUrl':'https://gateway.example.test',

@@ -8,33 +8,29 @@ import {App} from '../src/App';
 import {ControlClient} from '../src/api';
 afterEach(()=>{cleanup();vi.unstubAllGlobals();window.location.hash='';});
 
-it('attaches fixed templates and JSON scope to a role, preserving assignments and scope on reload',async()=>{
-  const role={id:'cloud',name:'Cloud operator',enabled:true,revision:2,portalRole:'BASIC' as const,rules:{templateIds:['IT_CLOUD_ADMIN' as const],deviceScope:'GROUPS' as const,deviceGroupIds:['cloud-devices'],toolIds:[]}};
-  const saved=vi.fn();const transport=vi.fn<typeof fetch>().mockImplementation(async(_url,options)=>new Response(JSON.stringify(options?.method==='PUT'?role:{...role,revision:3})));
+it('edits typed management roles through the same canonical guided and advanced record',async()=>{
+  const role={id:'cloud',name:'Cloud operator',enabled:true,revision:2,portalRole:'ADMINISTRATOR' as const,roleType:'MANAGEMENT' as const,managementRules:[]};
+  const saved=vi.fn();const transport=vi.fn<typeof fetch>().mockImplementation(async()=>new Response(JSON.stringify(role)));
   render(<DirectoryEditor client={new ControlClient('token',vi.fn(),transport)} kind="roles" record={role} saved={saved} close={vi.fn()}/>);
-  expect((screen.getByLabelText('IT Cloud Admin') as HTMLInputElement).checked).toBe(true);
-  fireEvent.click(screen.getByLabelText('Approval reviewer'));
-  fireEvent.change(screen.getByLabelText('Permission scope (JSON)'),{target:{value:JSON.stringify({deviceScope:'ALL',deviceGroupIds:[],toolIds:[]})}});
+  expect((screen.getByLabelText('Role type') as HTMLSelectElement).value).toBe('MANAGEMENT');fireEvent.click(screen.getByRole('button',{name:'Add management rule'}));
+  const config=JSON.parse((screen.getByLabelText('Configuration (JSON)') as HTMLTextAreaElement).value);expect(config.managementRules).toHaveLength(1);expect(config.managementRules[0].groups).toEqual({ids:[],all:false});
   fireEvent.click(screen.getByRole('button',{name:'Save role'}));await waitFor(()=>expect(saved).toHaveBeenCalled());
-  const body=JSON.parse(transport.mock.calls[0][1]?.body as string);
-  expect(body.rules).toEqual({templateIds:['IT_CLOUD_ADMIN','APPROVER'],deviceScope:'ALL',deviceGroupIds:[],toolIds:[]});
-  fireEvent.click(screen.getByRole('button',{name:'Reload current record'}));await waitFor(()=>expect((screen.getByLabelText('Approval reviewer') as HTMLInputElement).checked).toBe(false));
-  expect((screen.getByLabelText('Permission scope (JSON)') as HTMLTextAreaElement).value).toContain('cloud-devices');
+  const body=JSON.parse(transport.mock.calls[0][1]?.body as string);expect(body.roleType).toBe('MANAGEMENT');expect(body).not.toHaveProperty('rules');
 });
-it('role scope rejects malformed JSON locally before issuing a mutation',async()=>{
+it('malformed advanced JSON disables guided fields and saving',()=>{
   const transport=vi.fn<typeof fetch>();render(<DirectoryEditor client={new ControlClient('token',vi.fn(),transport)} kind="roles" saved={vi.fn()} close={vi.fn()}/>);
-  fireEvent.change(screen.getByLabelText('Identifier'),{target:{value:'role'}});fireEvent.change(screen.getByLabelText('Display name'),{target:{value:'Role'}});
-  fireEvent.change(screen.getByLabelText('Permission scope (JSON)'),{target:{value:'[]'}});fireEvent.click(screen.getByRole('button',{name:'Save role'}));
-  await screen.findByRole('alert');expect(transport).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText('Configuration (JSON)'),{target:{value:'[]'}});expect(screen.getByRole('alert')).toBeTruthy();expect(screen.getByRole('button',{name:'Save role'}).hasAttribute('disabled')).toBe(true);expect(transport).not.toHaveBeenCalled();
 });
-it('groups all navigation into four expandable submenus and exposes Roles',async()=>{
+it('groups all navigation into five expandable submenus and exposes Roles',async()=>{
   vi.stubGlobal('fetch',vi.fn().mockImplementation(async()=>new Response(JSON.stringify({items:[]}))));render(<App/>);
   fireEvent.change(screen.getByLabelText('Access token'),{target:{value:'token'}});fireEvent.click(screen.getByRole('button',{name:'Connect to workspace'}));
-  await screen.findByRole('navigation');expect(document.querySelectorAll('nav details')).toHaveLength(4);
-  expect([...document.querySelectorAll('nav summary')].map(element=>element.textContent)).toEqual(['Audit','Tools','Devices','Users']);
-  expect(screen.getByRole('link',{name:'Roles'}).closest('details')?.querySelector('summary')?.textContent).toBe('Users');
+  await screen.findByRole('navigation');expect(document.querySelectorAll('nav details')).toHaveLength(5);
+  expect([...document.querySelectorAll('nav summary')].map(element=>element.textContent)).toEqual(['Audit','Tools','Devices','Users','Agents']);
+  expect(screen.getByRole('link',{name:'Typed roles'}).closest('details')?.querySelector('summary')?.textContent).toBe('Users');
   expect(screen.getByRole('link',{name:'Tool builder'}).closest('details')?.querySelector('summary')?.textContent).toBe('Tools');
   expect(screen.getByRole('link',{name:'Enroll device'}).closest('details')?.querySelector('summary')?.textContent).toBe('Devices');
+  expect(screen.getByRole('link',{name:'Agents'}).closest('details')?.querySelector('summary')?.textContent).toBe('Agents');
+  expect(screen.getByRole('link',{name:'Agent Group tool mapping'}).closest('details')?.querySelector('summary')?.textContent).toBe('Agents');
   expect(screen.getByRole('link',{name:'Audit log'}).closest('details')?.querySelector('summary')?.textContent).toBe('Audit');
 });
 it('loads audit metadata, advances the cursor, refreshes and handles errors',async()=>{

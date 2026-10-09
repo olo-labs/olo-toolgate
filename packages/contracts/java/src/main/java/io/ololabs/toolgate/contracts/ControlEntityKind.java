@@ -18,5 +18,27 @@ public enum ControlEntityKind {
     /** Canonical DEVICE value. */
     DEVICE,
     /** Canonical ROLE value. */
-    ROLE
+    ROLE,
+    /** Canonical DEVICE_GROUP value. */
+    DEVICE_GROUP,
+    /** Canonical AGENT_GROUP value. */
+    AGENT_GROUP,
+    /** Canonical TOOL_GROUP value. */
+    TOOL_GROUP,
+    /** Canonical GRANT value. */
+    GRANT,
+    /** Canonical DELEGATION value. */
+    DELEGATION,
+    /** Canonical AGENT_DELEGATION value. */
+    AGENT_DELEGATION,
+    /** Canonical BINDING value. */
+    BINDING,
+    /** Canonical EXTRACTOR value. */
+    EXTRACTOR,
+    /** Canonical WORKLOAD_BINDING value. */
+    WORKLOAD_BINDING,
+    /** Canonical IDENTITY_BINDING value. */
+    IDENTITY_BINDING,
+    /** Canonical DEVICE_EVIDENCE value. */
+    DEVICE_EVIDENCE
 }

@@ -29,7 +29,7 @@ describe('Management shell states', () => {
     localStorage.clear();
     vi.stubGlobal('fetch',vi.fn().mockImplementation(async()=>response()));
     render(<App/>); await connect();
-    expect([...document.querySelectorAll<HTMLDetailsElement>('nav details')].map(group=>group.open)).toEqual([true,false,false,false]);
+    expect([...document.querySelectorAll<HTMLDetailsElement>('nav details')].map(group=>group.open)).toEqual([true,false,false,false,false]);
     const resize = screen.getByRole('separator',{name:'Resize navigation'});
     expect(screen.getByRole('region',{name:'Navigation controls'}).contains(resize)).toBe(true);
     fireEvent.keyDown(resize,{key:'End'}); expect(resize.getAttribute('aria-valuenow')).toBe('420');
@@ -73,10 +73,10 @@ describe('Management shell states', () => {
   });
   it('supports all navigation and bounded dashboard links', async () => {
     vi.stubGlobal('fetch',vi.fn().mockImplementation(async () => response())); render(<App />); await connect();
-    await waitFor(() => expect(screen.getAllByRole('link',{name:/View directory/}).length).toBe(7));
+    await waitFor(() => expect(screen.getAllByRole('link',{name:/View directory/}).length).toBe(18));
     window.location.hash = '#devices'; fireEvent(window,new HashChangeEvent('hashchange'));
     await screen.findByRole('heading',{name:'Clients'}); await screen.findByText('No devices or pending requests.');
-    expect(screen.getByRole('link',{name:'Clients'}).getAttribute('aria-current')).toBe('page');
+    expect(screen.getByRole('link',{name:'Devices'}).getAttribute('aria-current')).toBe('page');
   });
   it('renders directory loading/error/retry states', async () => {
     window.location.hash = '#teams'; const directory = vi.fn().mockResolvedValueOnce(response()).mockResolvedValueOnce(new Response('{}',{status:503})).mockResolvedValue(response()); const fetcher = vi.fn().mockImplementation((url:string) => url.startsWith('/api/public/') ? Promise.resolve(new Response('{}',{status:503})) : directory()); vi.stubGlobal('fetch',fetcher);
@@ -107,7 +107,7 @@ describe('Management shell states', () => {
     fireEvent.click(screen.getByRole('button',{name:'Add user'})); fireEvent.change(screen.getByLabelText('Identifier'),{target:{value:'new-user'}}); fireEvent.change(screen.getByLabelText('Display name'),{target:{value:'New user'}}); fireEvent.click(screen.getByRole('button',{name:'Save user'}));
     expect((await screen.findByRole('alert')).textContent).toContain('permission'); expect(screen.getByRole('heading',{name:'Add directory user'})).toBe(document.activeElement);
   });
-  it('submits managed role assignments without user-level template overrides',async()=>{
+  it('creates disabled users without any individual access assignments',async()=>{
     let submitted:Record<string,unknown>|undefined;
     window.location.hash='#users';
     vi.stubGlobal('fetch',vi.fn().mockImplementation(async (_url,options)=>{
@@ -119,9 +119,9 @@ describe('Management shell states', () => {
     fireEvent.change(screen.getByLabelText('Identifier'),{target:{value:'cloud-user'}});fireEvent.change(screen.getByLabelText('Display name'),{target:{value:'Cloud user'}});
     expect((screen.getByLabelText('Enabled in directory') as HTMLInputElement).checked).toBe(false);
     expect(screen.queryByText('Privilege templates (combine as needed)')).toBeNull();
-    fireEvent.change(screen.getByLabelText('Role IDs, separated by commas'),{target:{value:'cloud-role, reviewer-role'}});
+    expect(screen.queryByLabelText('Role IDs, separated by commas')).toBeNull();
     fireEvent.click(screen.getByRole('button',{name:'Save user'}));await screen.findByRole('alert');
-    expect(submitted?.access).toEqual({role:'BASIC',templateIds:[],deviceGroupIds:[],roleIds:['cloud-role','reviewer-role']});
+    expect(submitted).toEqual({id:'cloud-user',name:'Cloud user',enabled:false,revision:1});
     expect(screen.getByRole('heading',{name:'Add directory user'})).toBeTruthy();
   });
   it('retains an idempotency key for an exact retry and replaces it when values change', async () => {

@@ -79,7 +79,7 @@ class FoundationTests(unittest.TestCase):
 
     def test_all_schemas_and_every_definition_have_valid_fixtures(self):
         self.assertEqual(set(self.validators), set(self.fixtures))
-        self.assertEqual(18, len(self.schemas))
+        self.assertEqual(19, len(self.schemas))
         for name, fixture in self.fixtures.items():
             with self.subTest(model=name):
                 self.validators[name].validate(fixture)
@@ -117,11 +117,14 @@ class FoundationTests(unittest.TestCase):
         baseline = schemas_at(ROOT/'tests/fixtures/contracts/v1/schemas')
         corpus = json.loads((ROOT/'tests/fixtures/contracts/v1/compatibility.json').read_text())
         self.assertEqual(1, corpus['readerMajor'])
-        for name, fixture in corpus['fixtures'].items():
-            self.validators[name].validate(fixture)
-            validators(baseline)[name].validate(fixture)
-        for name, schema in baseline.items():
-            compatible(schema, self.schemas[name], name)
+        archival=validators(baseline)
+        for name,fixture in corpus['fixtures'].items():archival[name].validate(fixture)
+        # Group-only runtime contracts deliberately reject the frozen principal shape.
+        with self.assertRaises(ValidationError):self.validators['RequestContext'].validate(corpus['fixtures']['RequestContext'])
+        with self.assertRaises(ValueError):compatible(baseline['common.schema.json'],self.schemas['common.schema.json'])
+        for name,schema in baseline.items():
+            if name not in ('common.schema.json','policy.schema.json'):
+                compatible(schema,self.schemas[name],name)
 
     def test_compatibility_checker_detects_breaks(self):
         old = self.schemas['policy.schema.json']

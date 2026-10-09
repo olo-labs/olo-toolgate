@@ -41,6 +41,8 @@
 
 ## Security
 
+- [Enterprise access control: Tool Groups, Agent Groups, Teams and Device Groups](security/enterprise-access-control.md)
+
 - `security/threat-model.md`
 - `security/security-invariants.md`
 - `security/authorization.md`

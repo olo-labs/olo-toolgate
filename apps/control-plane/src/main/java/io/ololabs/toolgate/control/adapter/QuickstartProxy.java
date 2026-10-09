@@ -38,7 +38,7 @@ public class QuickstartProxy {
             var authorization=routing.request().getHeader("Authorization");
             if(authorization==null) authorization=routing.get(QuickstartRuntimeAuthentication.BEARER);
             if(authorization!=null){if(authorization.length()>16384)throw Failure.validation();request.header("Authorization",authorization);}
-            for(var header:java.util.List.of("X-Request-ID","traceparent","Accept","MCP-Protocol-Version","MCP-Method","MCP-Name")){
+            for(var header:java.util.List.of("X-Request-ID","Idempotency-Key","traceparent","Accept","MCP-Protocol-Version","MCP-Method","MCP-Name")){
                 var value=routing.request().getHeader(header);
                 if(value!=null){if(value.length()>(header.equals("MCP-Name")?1024:128))throw Failure.validation();request.header(header,value);}
             }
@@ -55,10 +55,10 @@ public class QuickstartProxy {
     public Response get(@PathParam("operation")String operation){return relay("/api/quickstart/v1/"+operation,"GET",null,8080);}
     @POST @Path("api/quickstart/v1/{operation:login|invoke|vault}") @Consumes("application/json")
     public Response post(@PathParam("operation")String operation,String document){return relay("/api/quickstart/v1/"+operation,"POST",document,8080);}
-    @POST @Path("v2/authorize") @Consumes("application/json")
-    public Response authorize(String document){return relay("/v2/authorize","POST",document,8081);}
-    @POST @Path("v1/permits/consume") @Consumes("application/json")
-    public Response consume(String document){return relay("/v1/permits/consume","POST",document,8081);}
+    @POST @Path("access/invocations") @Consumes("application/json")
+    public Response authorize(String document){return relay("/access/invocations","POST",document,8081);}
+    @POST @Path("access/catalog") @Consumes("application/json")
+    public Response catalog(String document){return relay("/access/catalog","POST",document,8081);}
     @POST @Path("mcp") @Consumes("application/json")
     public Response mcp(String document){return relay("/mcp","POST",document,8081);}
 }

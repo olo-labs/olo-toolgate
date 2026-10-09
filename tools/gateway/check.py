@@ -38,7 +38,10 @@ def helm_checks():
     for upgrade in ([], ['--is-upgrade']):
         rendered = run(['helm','template','foundation',chart,*upgrade], capture=True)
         if rendered.stdout.strip(): raise SystemExit('Disabled chart emitted resources')
-    base = ['--set','gateway.enabled=true','--set','gateway.credentialsSecret=gateway-runtime']
+    base = ['--set','gateway.enabled=true','--set','gateway.credentialsSecret=gateway-runtime',
+            '--set','gateway.control.tokenSecret=gateway-authority',
+            '--set','gateway.networkPolicy.controlTo[0].podSelector.matchLabels.app=control',
+            '--set',r'gateway.networkPolicy.dnsTo[0].namespaceSelector.matchLabels.kubernetes\.io/metadata\.name=kube-system']
     variants = {
         'base': [],
         'ha': ['--set','gateway.autoscaling.enabled=true','--set','gateway.replicaCount=3'],
@@ -61,7 +64,9 @@ def helm_checks():
                 raise SystemExit('Gateway security defaults weakened')
             if {p['containerPort'] for p in container['ports']} != {8081,9091}: raise SystemExit('Wrong ports')
             config = json.loads(next(d for d in docs if d['kind'] == 'ConfigMap')['data']['gateway.json'])
-            if config['policy']['rules'] or not config['trustedTlsProxy']: raise SystemExit('Defaults must not grant access')
+            if not config['trustedTlsProxy'] or set(config)!={'listen','managementListen','trustedTlsProxy','allowedOrigins','limits','control'}: raise SystemExit('Closed online authority configuration required')
+            if config['control']['tokenPath']!='/etc/toolgate/control-auth/access-token' or config['control']['developmentLoopbackHttp']:raise SystemExit('Protected service authority required')
+            if any(v['name'] in ('permit-signing','bundle-keys','approval-auth') for v in pod['volumes']):raise SystemExit('Gateway cannot hold effect signing custody')
             monitor = next((d for d in docs if d['kind'] == 'ServiceMonitor'), None)
             if monitor and monitor['spec']['endpoints'][0]['path'] != '/v1/metrics': raise SystemExit('Wrong monitor path')
             if monitor: monitor_schema.validate(monitor)
@@ -71,8 +76,9 @@ def helm_checks():
             # Prometheus CRD is validated against its pinned upstream schema above.
             run(['docker','run','--rm','-v',f'{ROOT.as_posix()}:/work:ro','ghcr.io/yannh/kubeconform:v0.6.7','-strict','-summary','-kubernetes-version','1.32.0','-skip','ServiceMonitor',f'/work/{path.relative_to(ROOT).as_posix()}'])
     for flags in ([], ['--set','gateway.config.limits.maxBodyBytes=0'], ['--set','gateway.securityContext.allowPrivilegeEscalation=true'], ['--set','gateway.config.listen=0.0.0.0:80'], ['--set','gateway.ingress.enabled=true'], ['--set','gateway.autoscaling.enabled=true','--set','gateway.autoscaling.minReplicas=9'], ['--set','gateway.terminationGracePeriodSeconds=1']):
-        args = ['helm','template','invalid',chart,'--set','gateway.enabled=true']
-        if flags: args += ['--set','gateway.credentialsSecret=gateway-runtime',*flags]
+        args = ['helm','template','invalid',chart,*base]
+        if flags: args += flags
+        else: args += ['--set','gateway.credentialsSecret=']
         run(args, expect_failure=True)
     print('Gateway Helm install/upgrade variants, core Kubernetes schemas and negative values passed')
 

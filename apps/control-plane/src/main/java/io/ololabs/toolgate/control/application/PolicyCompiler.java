@@ -2,77 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 package io.ololabs.toolgate.control.application;
 
-import io.ololabs.toolgate.control.domain.Directory;
-import io.ololabs.toolgate.control.domain.Ids;
-import io.ololabs.toolgate.control.domain.Ids.Kind;
-import io.ololabs.toolgate.contracts.*;
-import java.util.ArrayList;
+import io.ololabs.toolgate.control.domain.*;
 import java.util.List;
-import java.util.TreeSet;
 
-/** Deterministic, bounded compilation. No execution, credentials or framework state. */
+/** Canonical group graph publication. A graph snapshot never grants execution from cached scopes. */
 public final class PolicyCompiler {
     private final Codec codec;
-    public PolicyCompiler(Codec codec) { this.codec = codec; }
-    public String compile(Directory directory) {
-        return compile(directory, List.of());
+    public PolicyCompiler(Codec codec) {this.codec=codec;}
+    public String compile(Ids.TenantId tenant,Directory directory) {
+        directory.validate(512,1048576);codec.validatePolicies(directory);
+        var document=codec.snapshot(tenant,directory,false);
+        if(document.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>1048576)throw Failure.validation();
+        return document;
     }
-    /** Grace classifications are explicit administrator assertions, never guessed from names. */
-    public String compile(Directory directory, List<String> gracePolicyIds) {
-        var grace = new TreeSet<>(gracePolicyIds);
-        for (var id : grace) {
-            var selected = codec.model(required(directory, Kind.POLICY, id).document(), ControlPolicy.class);
-            if (selected.decision() != Decision.ALLOW) throw Failure.validation();
-        }
-        directory.validate(512, 1048576); codec.validatePolicies(directory);
-        boolean approvals=directory.entries().values().stream().filter(e->e.enabled() && e.id().kind()==Kind.POLICY)
-            .anyMatch(e->codec.model(e.document(),ControlPolicy.class).decision()==Decision.ASK);
-        var rules = new ArrayList<ApprovalBundleRule>();
-        directory.entries().values().stream().filter(e -> e.enabled() && e.id().kind() == Kind.POLICY)
-            .sorted(java.util.Comparator.comparing(e -> e.id().value())).forEach(entry -> {
-                var policy = codec.model(entry.document(), ControlPolicy.class);
-                var users = new TreeSet<>(policy.userIds());
-                for (var teamId : policy.teamIds()) {
-                    var team = codec.model(required(directory, Kind.TEAM, teamId).document(), ControlTeam.class);
-                    for (var userId : team.userIds()) {
-                        var member = directory.entries().get(Kind.USER.id(userId));
-                        if (member != null && member.enabled()) users.add(userId);
-                    }
-                }
-                if (policy.userIds().isEmpty() && policy.teamIds().isEmpty()) directory.entries().values().stream()
-                    .filter(e -> e.id().kind()==Kind.USER && e.enabled()).forEach(e -> users.add(e.id().value()));
-                // A selected empty team must never broaden into an unrestricted dimension.
-                if ((!policy.userIds().isEmpty() || !policy.teamIds().isEmpty()) && users.isEmpty()) return;
-                users.forEach(id -> required(directory, Kind.USER, id));
-                policy.agentIds().forEach(id -> required(directory, Kind.AGENT, id));
-                policy.deviceIds().forEach(id -> required(directory, Kind.DEVICE, id));
-                required(directory, Kind.TOOL, policy.toolId());
-                var unrestricted = new TreeSet<String>();
-                for (var userId : users) {
-                    var user = codec.model(required(directory,Kind.USER,userId).document(),ControlUser.class);
-                    var resolved=new RoleResolver(codec).devices(directory,user,policy.toolId());
-                    // A capability ceiling cannot erase a policy's explicit denial.
-                    if(policy.decision()==Decision.BLOCK || resolved==null) { unrestricted.add(userId); continue; }
-                    var devices=new TreeSet<>(resolved);
-                    if(!policy.deviceIds().isEmpty()) devices.retainAll(policy.deviceIds());
-                    if(devices.isEmpty()) continue;
-                    String ruleId=policy.id().substring(0,Math.min(96,policy.id().length()))+"."+DirectoryService.digest(policy.id()+"\n"+userId).substring(0,24);
-                    rules.add(new ApprovalBundleRule(ruleId,List.of(userId),sorted(policy.agentIds()),List.copyOf(devices),
-                        policy.toolId(),policy.action(),policy.resource(),grace.contains(policy.id()),policy.decision()));
-                }
-                if(!unrestricted.isEmpty()) rules.add(new ApprovalBundleRule(policy.id(), List.copyOf(unrestricted), sorted(policy.agentIds()), sorted(policy.deviceIds()),
-                    policy.toolId(), policy.action(), policy.resource(), grace.contains(policy.id()), policy.decision()));
-            });
-        if(rules.stream().map(ApprovalBundleRule::policyId).distinct().count()!=rules.size()) throw Failure.validation();
-        var document = approvals ? codec.json(new ApprovalCompiledPolicy(2L,rules)) : codec.json(new CompiledPolicy(1L,
-            rules.stream().map(r->new BundleRule(r.policyId(),r.userIds(),r.agentIds(),r.deviceIds(),r.toolId(),r.action(),r.resource(),r.graceAllowed(),BundleEffect.valueOf(r.effect().name()))).toList()));
-        if (document.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 786432) throw Failure.validation();
-        if (approvals) codec.model(document,ApprovalCompiledPolicy.class); else codec.model(document,CompiledPolicy.class); return document;
-    }
-    private Directory.Entry required(Directory directory, Kind kind, String id) {
-        var entry = directory.entries().get(kind.id(id));
-        if (entry == null || !entry.enabled()) throw Failure.validation();
-        return entry;
-    }
-    private List<String> sorted(List<String> values) { return List.copyOf(new TreeSet<>(values)); }
 }

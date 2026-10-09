@@ -21,10 +21,10 @@ final class DomainTest {
     @Test void identitiesAndGraphFailClosed() {
         assertThrows(IllegalArgumentException.class, () -> new Ids.TenantId("../"));
         assertNotEquals(new Ids.UserId("same"), new Ids.TeamId("same"));
-        var team = codec.entry(Kind.TEAM, "{\"id\":\"team\",\"name\":\"Team\",\"enabled\":true,\"revision\":1,\"userIds\":[\"user\"]}");
+        var team = codec.entry(Kind.TEAM, "{\"id\":\"team\",\"name\":\"Team\",\"enabled\":true,\"revision\":1,\"userIds\":[\"user\"],\"roleIds\":[]}");
         var member = codec.entry(Kind.USER, user("user", 1));
         assertThrows(IllegalArgumentException.class, () -> new Directory(0, Map.of(team.id(), team)).validate(512, 1048576));
-        var directory = new Directory(0, Map.of(team.id(), team, member.id(), member));
+        var entries=new java.util.HashMap<Ids.RecordId,Directory.Entry>();io.ololabs.toolgate.control.application.GroupGraph.defaults(entries,codec);entries.put(team.id(),team);entries.put(member.id(),member);var directory = new Directory(0, entries);
         directory.validate(512, 1048576);
         assertThrows(IllegalArgumentException.class, () -> directory.validate(1, 1048576));
         assertThrows(IllegalArgumentException.class, () -> directory.validate(512, 1));

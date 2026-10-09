@@ -19,8 +19,7 @@ use axum::{
     Json, Router,
 };
 use olo_toolgate_contracts::{
-    AuthorizationRequest, Decision, ErrorCode, ErrorEnvelope, ExecutionPermitUseRequest,
-    RequestContext,
+    AuthorizationRequest, EnterpriseInvocationState, ErrorCode, ErrorEnvelope, RequestContext,
 };
 use serde_json::Value;
 use std::sync::{
@@ -35,7 +34,6 @@ use tracing::Instrument;
 
 /// Per-process safety state; no distributed authorization state is held here.
 pub struct AppState {
-    pub relay: Option<Arc<dyn crate::relay::RelayPort>>,
     pub gateway: Gateway,
     pub auth: Authenticator,
     pub config: Config,
@@ -69,7 +67,6 @@ impl AppState {
             .as_bytes(),
         );
         Self {
-            relay: None,
             admission: Semaphore::new(config.limits.max_concurrent_requests),
             rate: RateLimit::new(config.limits.requests_per_second),
             gateway,
@@ -110,11 +107,9 @@ impl AppState {
 /// Runtime ingress only. Management endpoints are deliberately absent here.
 pub fn runtime_router(state: Arc<AppState>) -> Router {
     Router::new()
-        .route("/v1/authorize", post(authorize))
-        .route("/v2/authorize", post(authorize_v2))
-        .route("/v1/permits/consume", post(consume_permit))
+        .route("/access/invocations", post(authorize))
+        .route("/access/catalog", post(catalog))
         .route("/mcp", post(crate::mcp::ingress))
-        .route("/v1/permits", post(unsupported))
         .fallback(not_found)
         .method_not_allowed_fallback(method_not_allowed)
         .layer(middleware::from_fn_with_state(state.clone(), guard))
@@ -140,15 +135,7 @@ pub fn management_router(state: Arc<AppState>) -> Router {
             get(|State(s): State<Arc<AppState>>| async move {
                 (
                     [("content-type", "text/plain; version=0.0.4")],
-                    format!(
-                        "{}{}{}",
-                        s.metrics.render(),
-                        s.gateway.policy.metrics(unix_ms().unwrap_or(0)),
-                        s.gateway
-                            .approval
-                            .as_ref()
-                            .map_or_else(String::new, |a| a.metrics())
-                    ),
+                    s.metrics.render(),
                 )
             }),
         )
@@ -359,45 +346,28 @@ pub(crate) async fn parse(
     Ok((value, context, correlation, parts.headers))
 }
 
+async fn catalog(State(s): State<Arc<AppState>>, request: Request) -> Response {
+    let (value, context, correlation, _) = match parse(&s, request).await {
+        Ok(v) => v,
+        Err(r) => return r,
+    };
+    if !value.is_object()
+        || value
+            .as_object()
+            .is_some_and(|v| v.keys().any(|k| k != "agentId"))
+        || value
+            .get("agentId")
+            .is_some_and(|v| v.as_str() != context.agent_id.as_deref())
+    {
+        return error(ErrorCode::Validation, &correlation.request_id);
+    }
+    match s.gateway.authority.catalog(&context).await {
+        Ok(c) => Json(c).into_response(),
+        Err(e) => error(e, &correlation.request_id),
+    }
+}
 async fn authorize(State(s): State<Arc<AppState>>, request: Request) -> Response {
-    let (value, context, correlation, _) = match parse(&s, request).await {
-        Ok(v) => v,
-        Err(r) => return r,
-    };
-    if !s.gateway.contracts.valid("AuthorizationRequest", &value) {
-        return error(ErrorCode::Validation, &correlation.request_id);
-    }
-    let request: AuthorizationRequest = match serde_json::from_value(value) {
-        Ok(r) => r,
-        Err(_) => return error(ErrorCode::Validation, &correlation.request_id),
-    };
-    let Some(now) = unix_ms() else {
-        return error(ErrorCode::DependencyUnavailable, &correlation.request_id);
-    };
-    match s
-        .gateway
-        .authorize(request, context, correlation.trace_id, now)
-        .await
-    {
-        Ok(decision) => {
-            match decision.decision {
-                Decision::Allow => &s.metrics.allow,
-                _ => &s.metrics.block,
-            }
-            .fetch_add(1, Ordering::Relaxed);
-            Json(decision).into_response()
-        }
-        Err(code) => error(code, &correlation.request_id),
-    }
-}
-
-async fn authorize_v2(State(s): State<Arc<AppState>>, request: Request) -> Response {
-    let deadline = request
-        .extensions()
-        .get::<CredentialDeadline>()
-        .expect("guard credential expiry")
-        .0;
-    let (value, context, correlation, _) = match parse(&s, request).await {
+    let (value, mut context, correlation, headers) = match parse(&s, request).await {
         Ok(v) => v,
         Err(r) => return r,
     };
@@ -408,79 +378,45 @@ async fn authorize_v2(State(s): State<Arc<AppState>>, request: Request) -> Respo
         Ok(v) => v,
         Err(_) => return error(ErrorCode::Validation, &correlation.request_id),
     };
-    let Some(now) = unix_ms() else {
-        return error(ErrorCode::DependencyUnavailable, &correlation.request_id);
-    };
-    match s
-        .gateway
-        .authorize_v2(request, context, correlation.trace_id, now, deadline)
-        .await
-    {
-        Ok(outcome) => {
-            if outcome.decision.decision == Decision::Allow {
-                &s.metrics.allow
-            } else {
-                &s.metrics.block
-            }
-            .fetch_add(1, Ordering::Relaxed);
-            Json(outcome).into_response()
-        }
-        Err(code) => error(code, &correlation.request_id),
-    }
-}
-
-async fn consume_permit(State(s): State<Arc<AppState>>, request: Request) -> Response {
-    let deadline = request
-        .extensions()
-        .get::<CredentialDeadline>()
-        .expect("guard credential expiry")
-        .0;
-    let (value, context, correlation, _) = match parse(&s, request).await {
-        Ok(v) => v,
-        Err(r) => return r,
-    };
-    if !s
-        .gateway
-        .contracts
-        .valid("ExecutionPermitUseRequest", &value)
-    {
+    let Some(key) = single_header(&headers, "idempotency-key").filter(|v| {
+        !v.is_empty()
+            && v.len() <= 128
+            && v.bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
+    }) else {
         return error(ErrorCode::Validation, &correlation.request_id);
-    }
-    let request: ExecutionPermitUseRequest = match serde_json::from_value(value) {
-        Ok(v) => v,
-        Err(_) => return error(ErrorCode::Validation, &correlation.request_id),
     };
-    let Some(now) = unix_ms() else {
-        return error(ErrorCode::DependencyUnavailable, &correlation.request_id);
-    };
-    match s
-        .gateway
-        .consume_permit(request, context, correlation.trace_id, now, deadline)
-        .await
-    {
-        Ok(decision) => {
-            if decision.decision == Decision::Allow {
-                &s.metrics.allow
-            } else {
-                &s.metrics.block
+    context.request_id = invocation_id(&context, key);
+    match s.gateway.authorize(request, context).await {
+        Ok(outcome) => match s.gateway.reserve(outcome).await {
+            Ok(outcome) => {
+                if matches!(
+                    outcome.invocation.state,
+                    EnterpriseInvocationState::Reserved
+                ) {
+                    &s.metrics.allow
+                } else {
+                    &s.metrics.block
+                }
+                .fetch_add(1, Ordering::Relaxed);
+                Json(outcome).into_response()
             }
-            .fetch_add(1, Ordering::Relaxed);
-            Json(decision).into_response()
-        }
+            Err(code) => error(code, &correlation.request_id),
+        },
         Err(code) => error(code, &correlation.request_id),
     }
 }
 
-async fn unsupported(request: Request) -> Response {
-    error(
-        ErrorCode::Unsupported,
-        &request
-            .extensions()
-            .get::<Correlation>()
-            .expect("guard")
-            .request_id,
+pub(crate) fn invocation_id(context: &RequestContext, key: &str) -> String {
+    let mut identity = context.clone();
+    identity.request_id = "identity".into();
+    identity.credential_sha256 = None;
+    format!(
+        "inv-{}",
+        &digest(&serde_json::to_vec(&(identity, key)).expect("serializable identity"))[..48]
     )
 }
+
 async fn not_found(request: Request) -> Response {
     error(
         ErrorCode::NotFound,

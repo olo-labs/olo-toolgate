@@ -13,7 +13,7 @@ import java.util.Set;
 @ApplicationScoped
 public class QuickstartRuntimeAuthentication {
     static final String BEARER = QuickstartRuntimeAuthentication.class.getName()+".bearer";
-    private static final Set<String> ROUTES = Set.of("/mcp", "/v2/authorize", "/v1/permits/consume");
+    private static final Set<String> ROUTES = Set.of("/mcp", "/access/invocations", "/access/catalog");
     @Inject org.eclipse.microprofile.config.Config config;
     static boolean delegated(boolean enabled, String method, String path) {
         return enabled && "POST".equals(method) && ROUTES.contains(path);

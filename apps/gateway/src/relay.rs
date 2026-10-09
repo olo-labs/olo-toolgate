@@ -1,13 +1,17 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
 //! Optional bounded Control relay. No agent bearer credential crosses this service boundary.
-use crate::{
-    policy::PortFuture,
-    validation::{strict_json, Contracts},
-};
+use crate::validation::{strict_json, Contracts};
 use olo_toolgate_contracts::*;
 use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, time::Duration};
+use std::{
+    future::Future,
+    path::PathBuf,
+    pin::Pin,
+    sync::atomic::{AtomicU64, Ordering},
+    time::Duration,
+};
+pub type PortFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 use tokio::io::AsyncReadExt;
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -55,6 +59,16 @@ impl RelayConfig {
     }
 }
 pub trait RelayPort: Send + Sync {
+    fn invoke<'a>(
+        &'a self,
+        request: &'a EnterpriseInvocationRequest,
+    ) -> PortFuture<'a, Result<EnterpriseInvocation, ErrorCode>>;
+    fn reserve<'a>(
+        &'a self,
+        request: &'a EnterpriseReservationRequest,
+    ) -> PortFuture<'a, Result<EnterpriseReservation, ErrorCode>>;
+    fn ready(&self, now: u64) -> bool;
+    fn health(&self) -> PortFuture<'_, Result<(), ErrorCode>>;
     fn catalog<'a>(
         &'a self,
         context: &'a RequestContext,
@@ -72,6 +86,7 @@ pub struct HttpRelay {
     config: RelayConfig,
     client: reqwest::Client,
     contracts: Contracts,
+    last_success: AtomicU64,
 }
 impl HttpRelay {
     pub fn new(config: RelayConfig) -> Result<Self, &'static str> {
@@ -89,6 +104,7 @@ impl HttpRelay {
             config,
             client,
             contracts: Contracts::new()?,
+            last_success: AtomicU64::new(0),
         })
     }
     async fn post<T: Serialize, R: serde::de::DeserializeOwned>(
@@ -191,10 +207,57 @@ impl HttpRelay {
             Some(200),
             crate::diagnostics::summary(&value),
         );
-        serde_json::from_value(value).map_err(|_| ErrorCode::Validation)
+        let decoded = serde_json::from_value(value).map_err(|_| ErrorCode::Validation)?;
+        self.last_success.store(
+            crate::unix_ms().ok_or(ErrorCode::DependencyUnavailable)?,
+            Ordering::Release,
+        );
+        Ok(decoded)
     }
 }
 impl RelayPort for HttpRelay {
+    fn invoke<'a>(
+        &'a self,
+        request: &'a EnterpriseInvocationRequest,
+    ) -> PortFuture<'a, Result<EnterpriseInvocation, ErrorCode>> {
+        Box::pin(self.post(
+            "/api/control/v1/access/invocations",
+            request,
+            "EnterpriseInvocation",
+        ))
+    }
+    fn reserve<'a>(
+        &'a self,
+        request: &'a EnterpriseReservationRequest,
+    ) -> PortFuture<'a, Result<EnterpriseReservation, ErrorCode>> {
+        Box::pin(self.post(
+            "/api/control/v1/access/invocations/reserve",
+            request,
+            "EnterpriseReservation",
+        ))
+    }
+    fn ready(&self, now: u64) -> bool {
+        let last = self.last_success.load(Ordering::Acquire);
+        last > 0 && now >= last && now - last < 5000
+    }
+    fn health(&self) -> PortFuture<'_, Result<(), ErrorCode>> {
+        Box::pin(async move {
+            let response = self
+                .client
+                .get(format!("{}q/health/ready", self.config.url))
+                .send()
+                .await
+                .map_err(|_| ErrorCode::DependencyUnavailable)?;
+            if !response.status().is_success() {
+                return Err(ErrorCode::DependencyUnavailable);
+            }
+            self.last_success.store(
+                crate::unix_ms().ok_or(ErrorCode::DependencyUnavailable)?,
+                Ordering::Release,
+            );
+            Ok(())
+        })
+    }
     fn catalog<'a>(
         &'a self,
         context: &'a RequestContext,

@@ -1,44 +1,45 @@
 {
   "snapshot": {
-    "formatVersion": 1,
+    "formatVersion": 2,
     "tenantId": "tenant-1",
     "revision": 0,
     "users": [
       {
         "id": "user-1",
-        "name": "User",
-        "enabled": true,
+        "name": "Review before enabling",
+        "enabled": false,
         "revision": 1
       }
     ],
     "teams": [
       {
-        "id": "team-1",
-        "name": "User",
+        "id": "team-default",
+        "name": "Default team",
         "enabled": true,
         "revision": 1,
         "userIds": [
           "user-1"
-        ]
+        ],
+        "roleIds": []
       }
     ],
     "agents": [
       {
         "id": "agent-1",
-        "name": "User",
-        "enabled": true,
+        "name": "Review before enabling",
+        "enabled": false,
         "revision": 1,
         "ownerUserId": "user-1"
       }
     ],
     "tools": [
       {
-        "id": "calculator",
-        "name": "User",
-        "enabled": true,
+        "id": "tool-1",
+        "name": "Review before enabling",
+        "enabled": false,
         "revision": 1,
         "definition": {
-          "id": "calculator",
+          "id": "tool-1",
           "name": "Calculator",
           "description": "Pure calculation",
           "actions": [
@@ -55,39 +56,77 @@
           "outputSchema": {
             "type": "number"
           }
-        }
-      }
-    ],
-    "policies": [
-      {
-        "id": "policy-1",
-        "name": "User",
-        "enabled": true,
-        "revision": 1,
-        "toolId": "calculator",
-        "action": "evaluate",
-        "resource": {
-          "kind": "CUSTOM",
-          "locator": "calculator"
         },
-        "decision": "BLOCK",
-        "userIds": [
-          "user-1"
-        ],
-        "teamIds": [],
-        "agentIds": [],
-        "deviceIds": []
+        "extractorId": "extractor-1",
+        "version": "1.0.0",
+        "packageDigest": "0000000000000000000000000000000000000000000000000000000000000000"
       }
     ],
+    "policies": [],
     "devices": [
       {
         "id": "device-1",
-        "name": "User",
-        "enabled": true,
+        "name": "Review before enabling",
+        "enabled": false,
         "revision": 1,
         "ownerUserId": "user-1"
       }
-    ]
+    ],
+    "roles": [],
+    "deviceGroups": [
+      {
+        "id": "default-devices",
+        "name": "Default device group",
+        "enabled": true,
+        "revision": 1,
+        "deviceIds": [
+          "device-1"
+        ]
+      }
+    ],
+    "agentGroups": [
+      {
+        "id": "default-agents",
+        "name": "Default agent group",
+        "enabled": true,
+        "revision": 1,
+        "agentIds": [
+          "agent-1"
+        ],
+        "roleIds": []
+      }
+    ],
+    "toolGroups": [
+      {
+        "id": "default-tools",
+        "name": "Default tool group",
+        "enabled": true,
+        "revision": 1,
+        "toolIds": [
+          "tool-1"
+        ]
+      }
+    ],
+    "grants": [],
+    "delegations": [],
+    "agentDelegations": [],
+    "bindings": [],
+    "extractors": [
+      {
+        "id": "extractor-1",
+        "name": "Review before enabling",
+        "enabled": false,
+        "revision": 1,
+        "extractorKind": "FIXED",
+        "version": "1.0.0",
+        "fields": [],
+        "fixedResources": [],
+        "maxResources": 1
+      }
+    ],
+    "workloadBindings": [],
+    "identityBindings": [],
+    "deviceEvidence": []
   },
   "mode": "MERGE",
   "dryRun": true

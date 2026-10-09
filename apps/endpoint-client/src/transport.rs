@@ -6,6 +6,20 @@ use olo_toolgate_contracts::*;
 use std::{future::Future, pin::Pin, sync::Arc, time::Duration};
 pub type Call<'a, T> = Pin<Box<dyn Future<Output = Result<T>> + Send + 'a>>;
 pub trait ControlPort: Send + Sync {
+    fn consume_effect(
+        &self,
+        _identity: DeviceIdentity,
+        _request: EnterprisePermitConsumption,
+    ) -> Call<'_, EnterpriseInvocation> {
+        Box::pin(async { Err(Failure::Unsupported) })
+    }
+    fn report_effect(
+        &self,
+        _identity: DeviceIdentity,
+        _request: EnterpriseEffectReport,
+    ) -> Call<'_, EnterpriseInvocation> {
+        Box::pin(async { Err(Failure::Unsupported) })
+    }
     fn remote_authorize(
         &self,
         _identity: DeviceIdentity,
@@ -217,6 +231,47 @@ impl HttpsControl {
     }
 }
 impl ControlPort for HttpsControl {
+    fn consume_effect(
+        &self,
+        identity: DeviceIdentity,
+        request: EnterprisePermitConsumption,
+    ) -> Call<'_, EnterpriseInvocation> {
+        Box::pin(async move {
+            let client = Self::builder(&self.config)?
+                .identity(self.key.tls_identity(&identity)?)
+                .build()
+                .map_err(|_| Failure::Unavailable)?;
+            self.request(
+                &client,
+                "/api/control/v1/access/permits/consume",
+                Some(
+                    self.contracts
+                        .encode("EnterprisePermitConsumption", &request)?,
+                ),
+                "EnterpriseInvocation",
+            )
+            .await
+        })
+    }
+    fn report_effect(
+        &self,
+        identity: DeviceIdentity,
+        request: EnterpriseEffectReport,
+    ) -> Call<'_, EnterpriseInvocation> {
+        Box::pin(async move {
+            let client = Self::builder(&self.config)?
+                .identity(self.key.tls_identity(&identity)?)
+                .build()
+                .map_err(|_| Failure::Unavailable)?;
+            self.request(
+                &client,
+                "/api/control/v1/access/effects/report",
+                Some(self.contracts.encode("EnterpriseEffectReport", &request)?),
+                "EnterpriseInvocation",
+            )
+            .await
+        })
+    }
     fn remote_authorize(
         &self,
         identity: DeviceIdentity,

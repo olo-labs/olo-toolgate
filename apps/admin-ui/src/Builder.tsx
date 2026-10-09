@@ -1,7 +1,7 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
 import {useEffect,useState,type FormEvent} from 'react';
-import type {BuilderDefinition,BuilderDraft,BuilderTestRecord,LocalRuntimeKind,FleetSelfTest,FleetPackageRelease} from '@olo-labs/toolgate-contracts';
+import type {BuilderDefinition,BuilderDraft,BuilderTestRecord,LocalRuntimeKind,FleetSelfTest,FleetPackageRelease,LocalToolRegistration,InstalledAuthorizationProfile} from '@olo-labs/toolgate-contracts';
 import {ControlClient} from './api';
 import {Failure} from './Failure';
 
@@ -11,6 +11,7 @@ const initialExamples=JSON.stringify([{arguments:{text:'hello'},expectedOutput:{
 const entries:Record<string,string>={PYTHON:'/opt/tool/tool.py',NODE:'/opt/tool/tool.mjs',POWERSHELL:'/opt/tool/tool.ps1',SHELL:'/opt/tool/tool.sh',NATIVE:'/opt/tool/run',JAVA_JAR:'/opt/tool/tool.jar',DOTNET:'/opt/tool/tool.dll'};
 function download(value:unknown,name:string){const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)+'\n'],{type:'application/json'}));const anchor=document.createElement('a');anchor.href=url;anchor.download=name;anchor.click();URL.revokeObjectURL(url);}
 async function sha256(code:string){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(code)))].map(byte=>byte.toString(16).padStart(2,'0')).join('');}
+function canonical(value:unknown):unknown {if(Array.isArray(value))return value.map(canonical);if(value!==null&&typeof value==='object')return Object.fromEntries(Object.entries(value).sort(([a],[b])=>a<b?-1:a>b?1:0).map(([key,item])=>[key,canonical(item)]));return value;}
 
 /** All authority, validation, scanning and version immutability belong to Control and the client. */
 export function Builder({client}:{client:ControlClient}){
@@ -31,11 +32,17 @@ export function Builder({client}:{client:ControlClient}){
  async function action(work:()=>Promise<void>){if(busy)return;setBusy(true);setError(undefined);setMessage('');try{await work();setRefresh(v=>v+1);}catch(e){setError(e);}finally{setBusy(false);}}
  function open(draft:BuilderDraft){const d=draft.definition;setSelected(draft);setId(draft.id);setPackageId(d.packageId);setToolId(d.tool.toolId);setVersion(d.version);setName(d.name);setKind(d.runtime.kind);setImage(d.runtime.image);setRuntimeVersion(d.runtime.version);setCode(d.tool.source?.code??'');setDescription(d.description);setUseWhen(d.useWhen);setDoNotUseWhen(d.doNotUseWhen);setInput(JSON.stringify(d.tool.inputSchema,null,2));setOutput(JSON.stringify(d.tool.outputSchema,null,2));setExamples(JSON.stringify(d.examples.map(({arguments:args,expectedOutput})=>({arguments:args,expectedOutput})),null,2));setCredentials(d.credentialRequirements.join(','));setResource(d.resource.locator);setPermission(d.permissions[0]??'COMPUTE');}
  async function save(event:FormEvent){event.preventDefault();void action(async()=>{const source=code?{code,sha256:await sha256(code)}:undefined;const runtimeId=`runtime-${packageId}`;
-  const definition:BuilderDefinition={packageId,version,name,description,useWhen,doNotUseWhen,runtime:{id:runtimeId,kind,image,version:runtimeVersion},tool:{toolId,action:'execute',runtimeId,entryPoint:entries[kind],inputSchema:JSON.parse(input),outputSchema:JSON.parse(output),limits:{timeoutMs:10000,memoryMiB:512,maxInputBytes:8192,maxOutputBytes:8192},...(source?{source}:{})},platforms:['LINUX'],architectures:['x86_64'],examples:(JSON.parse(examples) as Omit<FleetSelfTest,'toolId'>[]).map(e=>({...e,toolId})),permissions:[permission as BuilderDefinition['permissions'][number]],resource:{kind:'CUSTOM',locator:resource},credentialRequirements:credentials.split(',').map(s=>s.trim()).filter(Boolean)};
+  const runtime={id:runtimeId,kind,image,version:runtimeVersion};
+  const registration={toolId,action:'execute',runtimeId,entryPoint:entries[kind],inputSchema:JSON.parse(input),outputSchema:JSON.parse(output),limits:{timeoutMs:10000,memoryMiB:512,maxInputBytes:8192,maxOutputBytes:8192},...(source?{source}:{})};
+  const packageDigest=await sha256(JSON.stringify(canonical({registration,runtime})));
+  const extractorId=`extract-${(await sha256(toolId)).slice(0,32)}`;
+  const authorizationProfile:InstalledAuthorizationProfile={tool:{id:toolId,name,enabled:true,revision:1,version,packageDigest,extractorId,definition:{id:toolId,name,description,actions:[{name:'execute',resourceKinds:['CUSTOM']}],inputSchema:registration.inputSchema,outputSchema:registration.outputSchema}},extractor:{id:extractorId,name:`Resources for ${name}`.slice(0,256),enabled:true,revision:1,extractorKind:'FIELDS',version,fields:[],fixedResources:[{kind:'CUSTOM',locator:resource}],maxResources:1}};
+  const tool:LocalToolRegistration={...registration,authorizationProfile};
+  const definition:BuilderDefinition={packageId,version,name,description,useWhen,doNotUseWhen,runtime,tool,platforms:['LINUX'],architectures:['x86_64'],examples:(JSON.parse(examples) as Omit<FleetSelfTest,'toolId'>[]).map(e=>({...e,toolId})),permissions:[permission as BuilderDefinition['permissions'][number]],resource:{kind:'CUSTOM',locator:resource},credentialRequirements:credentials.split(',').map(s=>s.trim()).filter(Boolean)};
   const draft=await client.saveDraft({id,expectedRevision:selected?.revision??0,definition},crypto.randomUUID());setSelected(draft);setMessage('Draft saved and scanned.');});}
  function clone(){setSelected(undefined);setId(crypto.randomUUID());setVersion('');setMessage('Choose a new immutable version before saving.');}
  const sealed=selected?.sealed??false;
- return <><p className="eyebrow">Local capabilities</p><h1>Custom tool builder</h1><p className="intro">Write a tool, test it on a designated client, and prepare an immutable organization package.</p>
+ return <><p className="eyebrow">Local capabilities</p><h1>Custom tool builder</h1><p className="intro">Write a tool, test it on a designated client, and prepare an immutable organization package. The package pins its code and resource definition. Register the exact Tool and extractor, assign its Tool Group and execution binding, and review group grants before runtime use.</p>
  {error!==undefined&&<Failure error={error} retry={()=>setRefresh(v=>v+1)}/>}<p role="status" aria-live="polite">{message}</p>
  {loading?<p role="status">Loading drafts and tests…</p>:<section><h2>Saved drafts</h2>{drafts.length?<ul>{drafts.map(d=><li key={d.id}><button disabled={busy} onClick={()=>open(d)}>{d.definition.name} {d.definition.version}{d.sealed?' — sealed':''}</button></li>)}</ul>:<p>No drafts yet. Create your first tool below.</p>}</section>}
  <form onSubmit={save}><fieldset disabled={busy||sealed}><legend>Tool definition</legend>

@@ -51,13 +51,15 @@ fn tool(kind: LocalRuntimeKind) -> LocalToolRegistration {
     } else {
         128
     };
-    serde_json::from_value(json!({"toolId":"local.echo","action":"execute","runtimeId":"runtime-test","entryPoint":format!("/opt/tool/{name}"),
+    let mut value = json!({"toolId":"local.echo","action":"execute","runtimeId":"runtime-test","entryPoint":format!("/opt/tool/{name}"),
         "inputSchema":{"type":"object","additionalProperties":false,"properties":{"text":{"type":"string","maxLength":256},"mode":{"type":"string"}},"required":["text","mode"]},
         "outputSchema":{"type":"object","additionalProperties":false,"properties":{"text":{"type":"string"},"isolated":{"type":"boolean"},"threads":{"type":"boolean"}},"required":["text"]},
-        "limits":{"timeoutMs":timeout,"memoryMiB":memory,"maxInputBytes":4096,"maxOutputBytes":4096}})).unwrap()
+        "limits":{"timeoutMs":timeout,"memoryMiB":memory,"maxInputBytes":4096,"maxOutputBytes":4096}});
+    value["authorizationProfile"] = json!({"tool":{"id":"local.echo","name":"Echo","enabled":true,"revision":1,"version":"1.0.0","packageDigest":"a".repeat(64),"extractorId":"extract-echo","definition":{"id":"local.echo","name":"Echo","description":"Fixture compute capability","actions":[{"name":"execute","resourceKinds":["CUSTOM"]}],"inputSchema":value["inputSchema"],"outputSchema":value["outputSchema"]}},"extractor":{"id":"extract-echo","name":"Resources","enabled":true,"revision":1,"extractorKind":"FIELDS","version":"1.0.0","fields":[],"fixedResources":[{"kind":"CUSTOM","locator":"runtime/local.echo"}],"maxResources":1}});
+    serde_json::from_value(value).unwrap()
 }
 fn settings() -> Settings {
-    Settings {
+    let mut settings = Settings {
         engine_path: PathBuf::from(if cfg!(windows) {
             "C:/Program Files/Docker/Docker/resources/bin/docker.exe"
         } else {
@@ -78,6 +80,20 @@ fn settings() -> Settings {
             version: "3.14.0".into(),
         }],
         tools: vec![tool(LocalRuntimeKind::Python)],
+    };
+    repin(&mut settings);
+    settings
+}
+fn repin(settings: &mut Settings) {
+    for tool in &mut settings.tools {
+        let runtime = settings
+            .runtimes
+            .iter()
+            .find(|r| r.id == tool.runtime_id)
+            .unwrap();
+        tool.authorization_profile.tool.package_digest =
+            olo_toolgate_client::authorization_profile::managed_package_digest(tool, runtime)
+                .unwrap();
     }
 }
 fn input(text: &str, mode: &str) -> LocalToolInput {
@@ -224,6 +240,7 @@ async fn real_managed_runtime_security_boundary() {
         settings.runtimes[0].image = descriptor["image"].as_str().unwrap().into();
         settings.runtimes[0].version = descriptor["version"].as_str().unwrap().into();
         settings.tools[0] = tool(kind.clone());
+        repin(&mut settings);
         let policy = Arc::new(Policy {
             result: Ok(()),
             deadline: None,
@@ -255,6 +272,7 @@ async fn real_managed_runtime_security_boundary() {
                 code: code.into(),
                 sha256: hash,
             });
+            repin(&mut inline);
             let mut runner = Manager::new(inline, policy.clone()).unwrap();
             let mut invocation = input("inline-shell", "echo");
             invocation.request_id = "request".into();
@@ -270,11 +288,8 @@ async fn real_managed_runtime_security_boundary() {
             runner.shutdown().await.unwrap();
             let calls = policy.calls.lock().unwrap();
             assert_eq!(
-                calls[0].arguments["registrationDigest"]
-                    .as_str()
-                    .unwrap()
-                    .len(),
-                64
+                calls[0].arguments,
+                serde_json::from_value(json!({"text":"inline-shell","mode":"echo"})).unwrap()
             );
             assert!(!serde_json::to_string(&calls[0]).unwrap().contains(code));
             drop(calls);
@@ -293,12 +308,8 @@ async fn real_managed_runtime_security_boundary() {
             .unwrap();
         assert_eq!(output.output["text"], json!(payload));
         assert_eq!(
-            policy.calls.lock().unwrap()[0].arguments["path"],
-            json!("runtime/local.echo")
-        );
-        assert_eq!(
-            policy.calls.lock().unwrap()[0].arguments["runtimeImage"],
-            json!(settings.runtimes[0].image)
+            policy.calls.lock().unwrap()[0].arguments,
+            serde_json::from_value(json!({"text":payload,"mode":"echo"})).unwrap()
         );
         // A fresh online grant is required even after an image was prepared.
         let mut denied = Manager::new(

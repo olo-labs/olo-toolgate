@@ -3,14 +3,9 @@
 //! Service bootstrap. Secrets/config contents are never included in diagnostics.
 use olo_toolgate_gateway::{
     application::Gateway,
-    approvals::{ApprovalCoordinator, HttpApprovalCoordinator, PermitSigner},
-    audit::JsonAudit,
     auth::{Authenticator, Credential},
-    bundles::{BundleKeyring, BundleVerifier, VerifiedPolicy},
     config::{read_json, Config},
-    extraction::Registry,
     http::{management_router, runtime_router, AppState},
-    policy::PolicyEvaluator,
     server, unix_ms,
     validation::Contracts,
 };
@@ -53,78 +48,34 @@ async fn run() -> Result<(), &'static str> {
     let credentials: Vec<Credential> = read_json(&credentials_path)?;
     let now = unix_ms().ok_or("system clock unavailable")?;
     config.validate(&contracts, now)?;
-    let (approval, permit_signer): (
-        Option<Arc<dyn ApprovalCoordinator>>,
-        Option<Arc<PermitSigner>>,
-    ) = if let Some(approval) = &config.approval {
-        if approval.private_key_path == credentials_path || approval.private_key_path == config_path
-        {
-            return Err("permit key and configuration paths must be separate");
-        }
-        let source = config
-            .bundle_source
-            .as_ref()
-            .ok_or("approvals require signed policy")?;
-        let forbidden: BundleKeyring = read_json(&source.keyring_path)?;
-        (
-            Some(Arc::new(HttpApprovalCoordinator::new(approval.clone())?)),
-            Some(Arc::new(PermitSigner::new(approval.clone(), &forbidden)?)),
-        )
-    } else {
-        (None, None)
-    };
     let auth = Authenticator::new(credentials, &contracts, now)?;
-    let extractors = Registry::new(config.extractors.clone())?;
     let runtime = TcpListener::bind(config.listen)
         .await
         .map_err(|_| "runtime listener bind failed")?;
     let management = TcpListener::bind(config.management_listen)
         .await
         .map_err(|_| "management listener bind failed")?;
-    let (audit, audit_worker) =
-        JsonAudit::new(config.limits.audit_queue_capacity, std::io::stdout());
     let (shutdown, receiver) = watch::channel(false);
-    let mut bundle_receiver = receiver.clone();
-    let (policy, mut bundle_worker): (Arc<dyn PolicyEvaluator>, _) =
-        if let Some(source) = &config.bundle_source {
-            let keyring: BundleKeyring = read_json(&source.keyring_path)?;
-            let verified = Arc::new(VerifiedPolicy::new(BundleVerifier::new(
-                source.clone(),
-                keyring,
-            )?));
-            let polling = verified.clone();
-            (
-                verified,
-                tokio::spawn(olo_toolgate_gateway::bundles::poll(
-                    polling,
-                    bundle_receiver,
-                )),
-            )
-        } else {
-            (
-                Arc::new(config.policy.clone().ok_or("static policy required")?),
-                tokio::spawn(async move {
-                    let _ = bundle_receiver.changed().await;
-                    Ok(())
-                }),
-            )
-        };
+    let authority = Arc::new(olo_toolgate_gateway::relay::HttpRelay::new(
+        config.control.clone(),
+    )?);
     let gateway = Gateway {
         contracts,
-        extractors,
-        policy,
-        audit: Arc::new(audit),
-        approval,
-        permit_signer,
+        authority: authority.clone(),
     };
-    let relay = config
-        .local_mcp
-        .clone()
-        .map(olo_toolgate_gateway::relay::HttpRelay::new)
-        .transpose()?;
-    let mut state = AppState::new(gateway, auth, config.clone());
-    state.relay =
-        relay.map(|relay| Arc::new(relay) as Arc<dyn olo_toolgate_gateway::relay::RelayPort>);
+    let mut health_receiver = receiver.clone();
+    let health_authority = authority.clone();
+    let mut health_worker = tokio::spawn(async move {
+        use olo_toolgate_gateway::relay::RelayPort;
+        loop {
+            let _ = health_authority.health().await;
+            tokio::select! {
+                _=health_receiver.changed()=>break,
+                _=tokio::time::sleep(Duration::from_secs(2))=>{}
+            }
+        }
+    });
+    let state = AppState::new(gateway, auth, config.clone());
     let state = Arc::new(state);
     let runtime_task = tokio::spawn(server::serve(
         runtime,
@@ -152,19 +103,19 @@ async fn run() -> Result<(), &'static str> {
         signal = shutdown_signal() => { if signal.is_err() { failed = true; } },
         _ = &mut runtime_task => { failed = true; },
         _ = &mut management_task => { failed = true; },
-        _ = &mut bundle_worker => { failed = true; },
+        _ = &mut health_worker => { failed = true; },
     }
     state.draining.store(true, Ordering::Release);
     let _ = shutdown.send(true);
-    if !bundle_worker.is_finished()
+    if !health_worker.is_finished()
         && tokio::time::timeout(
             Duration::from_millis(config.limits.shutdown_timeout_ms),
-            &mut bundle_worker,
+            &mut health_worker,
         )
         .await
         .is_err()
     {
-        bundle_worker.abort();
+        health_worker.abort();
     }
     tracing::info!(
         service = "gateway",
@@ -178,18 +129,6 @@ async fn run() -> Result<(), &'static str> {
         let _ = (&mut management_task).await;
     }
     drop(state);
-    // Closing every sender lets the acknowledged audit queue drain naturally.
-    if tokio::time::timeout(
-        Duration::from_millis(config.limits.shutdown_timeout_ms),
-        audit_worker,
-    )
-    .await
-    .is_err()
-    {
-        // Blocking stdout can be held by a failed collector. Bound process exit.
-        tracing::error!(service = "gateway", event = "audit_drain_timeout");
-        std::process::exit(1);
-    }
     tracing::info!(
         service = "gateway",
         version = env!("CARGO_PKG_VERSION"),

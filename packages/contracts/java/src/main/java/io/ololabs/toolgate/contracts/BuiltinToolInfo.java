@@ -10,6 +10,8 @@ package io.ololabs.toolgate.contracts;
  * @param description canonical description value
  * @param enabled canonical enabled value
  * @param inputSchema canonical inputSchema value
+ * @param toolDigest canonical toolDigest value
+ * @param packageDigest canonical packageDigest value
  */
 @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
 public record BuiltinToolInfo(
@@ -17,7 +19,9 @@ public record BuiltinToolInfo(
     @com.fasterxml.jackson.annotation.JsonProperty(value = "action", required = true) String action,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "description", required = true) String description,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "enabled", required = true) Boolean enabled,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "inputSchema", required = true) java.util.Map<String, com.fasterxml.jackson.databind.JsonNode> inputSchema
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "inputSchema", required = true) java.util.Map<String, com.fasterxml.jackson.databind.JsonNode> inputSchema,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "toolDigest", required = true) String toolDigest,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "packageDigest", required = true) String packageDigest
 ) {
     /** Reject absent required references and copy collections to retain value semantics.
      *
@@ -26,6 +30,8 @@ public record BuiltinToolInfo(
      * @param description canonical description value
      * @param enabled canonical enabled value
      * @param inputSchema canonical inputSchema value
+     * @param toolDigest canonical toolDigest value
+     * @param packageDigest canonical packageDigest value
      */
     public BuiltinToolInfo {
         java.util.Objects.requireNonNull(toolId, "toolId");
@@ -34,5 +40,7 @@ public record BuiltinToolInfo(
         java.util.Objects.requireNonNull(enabled, "enabled");
         java.util.Objects.requireNonNull(inputSchema, "inputSchema");
         inputSchema = inputSchema == null ? null : java.util.Map.copyOf(inputSchema);
+        java.util.Objects.requireNonNull(toolDigest, "toolDigest");
+        java.util.Objects.requireNonNull(packageDigest, "packageDigest");
     }
 }

@@ -28,7 +28,7 @@ COPY tools/quickstart/python_notices.py /opt/quickstart-python-notices.py
 RUN /opt/quickstart-python/bin/python /opt/quickstart-python-notices.py
 COPY --from=rust-build /usr/local/bin/olo-toolgate-gateway /usr/local/bin/quickstart-tools /usr/local/bin/
 COPY --from=rust-build /licenses /usr/share/licenses/olo-toolgate/quickstart-rust/
-COPY apps/quickstart/supervisor.py apps/quickstart/seed.json VERSION /opt/quickstart/
+COPY apps/quickstart/supervisor.py apps/quickstart/enterprise_bootstrap.py VERSION /opt/quickstart/
 COPY packages/contracts/tools/builtins.json /opt/quickstart/builtins.json
 COPY docs/getting-started/one-minute-quickstart.md docs/deployment/quickstart.md /usr/share/doc/toolgate-quickstart/
 ARG VERSION
