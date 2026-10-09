@@ -28,6 +28,7 @@ def prepare(data, tenant, issuer, key, atomic, profiles):
     if (data / 'state/control.sqlite').exists():
         raise ValueError('Existing state requires externally reviewed recovery; automatic privilege conversion is unavailable')
     now = int(time.time() * 1000)
+    # Workload bindings require a later reviewed configuration, even when disabled.
     snapshot = dict(formatVersion=2, tenantId=tenant, revision=0, users=[], teams=[], agents=[], tools=[],
                     policies=[], devices=[], roles=[], deviceGroups=[], agentGroups=[], toolGroups=[], grants=[],
                     delegations=[], agentDelegations=[], bindings=[], extractors=[], workloadBindings=[],

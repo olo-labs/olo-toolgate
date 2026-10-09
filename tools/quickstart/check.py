@@ -50,6 +50,15 @@ def ready(container, port):
     raise RuntimeError('Quickstart readiness timeout; see build/quickstart/startup-failure.log')
 
 
+def restart_ready(container):
+    run(['docker','restart','-t','35',container],capture_output=True)
+    # Docker may reassign automatically published host ports when restarting.
+    ports=json.loads(run(['docker','inspect',container],capture_output=True,text=True).stdout)[0]['NetworkSettings']['Ports']
+    ready(container,ports['8080/tcp'][0]['HostPort'])
+    return ports
+
+
+
 def tls(url, context, token=None, body=None, method='GET'):
     headers={'Content-Type':'application/json','Idempotency-Key':secrets.token_hex(16)}
     if token:headers['Authorization']='Bearer '+token
@@ -231,10 +240,8 @@ def smoke(image,browser):
             env=dict(os.environ,UI_TEST_ORIGIN=origin,QUICKSTART_PASSWORD=password)
             run(['npm','--workspace','@olo-labs/toolgate-admin-ui','run','e2e','--','quickstart.spec.ts'],env=env)
             mark('browser login/tools/vault/accessibility')
-        run(['docker','restart','-t','35',container],capture_output=True)
-        info=json.loads(run(['docker','inspect',container],capture_output=True,text=True).stdout)[0]
-        port=info['NetworkSettings']['Ports']['8080/tcp'][0]['HostPort'];origin=f'http://127.0.0.1:{port}'
-        ready(container,port)
+        ports=restart_ready(container)
+        port=ports['8080/tcp'][0]['HostPort'];origin=f'http://127.0.0.1:{port}'
         admin=api('/api/quickstart/v1/login',body={'password':password},method='POST')[1]['accessToken']
         assert api('/api/quickstart/v1/vault',admin)[1]['names']==['demo/token']
         assert run(['docker','exec',container,'cat','/data/hotfolder/welcome.txt'],capture_output=True,text=True).stdout==write['text']
