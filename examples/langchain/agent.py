@@ -33,8 +33,9 @@ def tools_for(gateway, allowed_read_paths=None, output_path=None, writes=None):
     catalog = gateway.rpc('tools/list')['tools']
     available = {item['name']: item for item in catalog if item['name'] in TOOLS}
     if set(available) != TOOLS:
-        raise ValueError('The target must expose list, read, write and activity tools. Run manage.py setup '
-                         'and check device approval, current profiles, groups and package pins.')
+        raise ValueError('The target must expose list, read, write and activity tools; missing: '
+                         + ', '.join(sorted(TOOLS - set(available))) + '. Run deploy.bat again (manage.py setup); '
+                         'it checks discovery and names the cause.')
     result = {}
     def make_call(name):
         def call(**arguments):

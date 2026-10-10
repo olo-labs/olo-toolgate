@@ -98,4 +98,4 @@ Write-PublicRegistration $registration ($publicDevice | ConvertTo-Json -Depth 40
 Write-Host "Prepared existing tools and fictional inputs. Generated reports will be in: $folder"
 Write-Host "Public installed profiles: $output"
 Write-Host "Public group-selection registration: $registration"
-Write-Host 'Approve this device in the example console, then use start.bat -Win. Setup assigns both prepared devices to ReadAndWriteDeviceGroup through independent review.'
+Write-Host 'Approve this device in the example console, then run deploy.bat -Win and execute.bat -Win. Setup assigns both prepared devices to ReadAndWriteDeviceGroup through independent review.'

@@ -153,5 +153,52 @@ class DeviceSelectionTests(unittest.TestCase):
             self.assertEqual([row[1] for row in self.config.allocations], [LINUX])
 
 
+def extractor(version='0.10.0-dev', revision=1):
+    return dict(id='extract-hotfolder', enabled=True, revision=revision, version=version, fields=[])
+
+
+class ExtractorConflictTests(unittest.TestCase):
+    def selection(self, version='0.10.0-dev'):
+        return dict(deviceId=WINDOWS, platform='windows',
+                    profiles=[dict(tool=dict(id='hotfolder.list'), extractor=extractor(version))])
+
+    def test_missing_or_identical_extractor_is_accepted(self):
+        for stored in ([], [extractor()]):
+            with self.subTest(stored=stored):
+                manage.check_extractors(SimpleNamespace(all=lambda collection: stored), self.selection())
+
+    def test_different_client_version_stops_before_replacing_shared_extractor(self):
+        config = SimpleNamespace(all=lambda collection: [extractor('0.9.0')])
+        with self.assertRaisesRegex(ValueError, 'version 0.10.0-dev, but this Gateway has version 0.9.0'):
+            manage.check_extractors(config, self.selection())
+
+    def test_edited_extractor_can_never_match_and_requires_reset(self):
+        config = SimpleNamespace(all=lambda collection: [extractor(revision=2)])
+        with self.assertRaisesRegex(ValueError, 'revision 2.*docker compose down -v'):
+            manage.check_extractors(config, self.selection())
+
+
+class DiscoveryTests(unittest.TestCase):
+    def verify(self, catalogs, platform='windows'):
+        gateway = SimpleNamespace(rpc=lambda method: dict(tools=[dict(name=n) for n in catalogs.pop(0)]))
+        mimic = SimpleNamespace(Agent=lambda *args: gateway)
+        selection = dict(deviceId=WINDOWS, platform=platform)
+        with patch.object(manage, 'load_mimic', return_value=mimic), \
+                patch.object(manage.time, 'sleep'), \
+                patch.object(manage.time, 'monotonic', side_effect=[0, 1, 31]):
+            manage.verify_discovery(selection, Path('.'), 'windows')
+
+    def test_waits_for_the_catalog_to_include_every_example_tool(self):
+        self.verify([sorted(manage.TOOLS)[:1], sorted(manage.TOOLS)])
+
+    def test_missing_tools_name_the_cause_and_windows_remedy(self):
+        with self.assertRaisesRegex(ValueError, 'client.read_log_entry.*prepare-windows.ps1'):
+            self.verify([sorted(manage.TOOLS - {'client.read_log_entry'})] * 2)
+
+    def test_linux_remedy_rebuilds_the_device(self):
+        with self.assertRaisesRegex(ValueError, 'without -SkipBuild'):
+            self.verify([[]] * 2, platform='linux')
+
+
 if __name__ == '__main__':
     unittest.main()
