@@ -44,7 +44,7 @@ final class EndpointTest {
         try(var connection=java.sql.DriverManager.getConnection(base,"control_migrator",password);var statement=connection.createStatement()){statement.execute("CREATE DATABASE "+database);}
         var url=base.replace("/control?","/"+database+"?");
         org.flywaydb.core.Flyway.configure().dataSource(url,"control_migrator",password).target("4").load().migrate();
-        assertEquals(12,org.flywaydb.core.Flyway.configure().dataSource(url,"control_migrator",password).load().migrate().migrationsExecuted);
+        assertEquals(13,org.flywaydb.core.Flyway.configure().dataSource(url,"control_migrator",password).load().migrate().migrationsExecuted);
         var source=new org.postgresql.ds.PGSimpleDataSource();source.setURL(url);source.setUser("control_app");source.setPassword(password);
         return configured(new PostgresStore(source,codec));
     }
@@ -145,6 +145,31 @@ final class EndpointTest {
         var service=new EndpointService(failing,codec,s.issuer,s.clock,true,"endpoint","server","Organization","https://control.example.test","https://gateway.example.test");
         assertThrows(Failure.class,()->service.decide(s.admin,"owner",codec.json(new EndpointEnrollmentDecision(second.userCode(),secondReview.keyFingerprint(),EnrollmentChoice.APPROVE,null,null)),"audit-fail","request"));
         assertEquals(EnrollmentState.PENDING,review(s,second).state());assertThrows(Failure.class,()->s.service.device(s.admin,"audit"));
+    }
+    @Test void autoApprovalUsesSettingsAndSqlite(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory)throws Exception{
+        var s=configured(new PostgresStore(SqliteState.open(directory.resolve("auto.sqlite")),codec));var settings=new ServerSettingsService(s.store,codec);
+        var defaults=codec.model(settings.get(s.admin).body(),ControlServerSettings.class);
+        assertEquals(0L,defaults.revision());assertFalse(defaults.autoApproveDevices());assertEquals(30L,defaults.autoApproveDurationDays());
+        assertEquals(403,assertThrows(Failure.class,()->settings.get(new DirectoryService.Actor(s.admin.tenant(),"a".repeat(64),false))).status());
+        assertEquals(400,assertThrows(Failure.class,()->settings.update(s.admin,codec.json(new ControlServerSettings(1L,0L,true,30L,null)),0,"no-owner","request")).status());
+        assertEquals(400,assertThrows(Failure.class,()->settings.update(s.admin,codec.json(new ControlServerSettings(1L,0L,true,30L,"missing")),0,"missing-owner","request")).status());
+        var manual=start(s,"manual");assertEquals(EnrollmentState.PENDING,review(s,manual).state());
+        var body=codec.json(new ControlServerSettings(1L,0L,true,30L,"owner"));
+        var saved=settings.update(s.admin,body,0,"enable","request");assertEquals(1L,codec.model(saved.body(),ControlServerSettings.class).revision());
+        assertEquals(saved,settings.update(s.admin,body,0,"enable","retry"));
+        assertEquals(409,assertThrows(Failure.class,()->settings.update(s.admin,body,0,"stale","request")).status());
+        var automatic=start(s,"automatic");var result=poll(s,automatic);
+        assertEquals(EnrollmentState.CONSUMED,result.state());assertNotNull(result.identity());
+        var device=codec.model(s.service.device(s.admin,"automatic").body(),EndpointDeviceRecord.class);
+        assertEquals("owner",device.userId());assertEquals(START+30L*86400000,device.connectionExpiresAtUnixMs());assertTrue(device.connectionApproved());
+        assertEquals(List.of(manual.userCode()),codec.model(s.service.pending(s.admin,"owner").body(),EndpointEnrollmentPage.class).items().stream().map(EndpointEnrollmentReview::userCode).toList());
+        // Startup import seeds only once unless overwrite is requested.
+        assertFalse(settings.importAtStartup(s.admin.tenant(),new ControlServerSettings(1L,0L,false,7L,null),false,"startup"));
+        assertTrue(settings.importAtStartup(s.admin.tenant(),new ControlServerSettings(1L,0L,false,7L,null),true,"startup"));
+        var imported=codec.model(settings.get(s.admin).body(),ControlServerSettings.class);assertEquals(2L,imported.revision());assertEquals(7L,imported.autoApproveDurationDays());
+        assertEquals(EnrollmentState.PENDING,review(s,start(s,"after-off")).state());
+        assertEquals(30L,ConfigurationImportBootstrap.days("30Day"));assertEquals(7L,ConfigurationImportBootstrap.days("7"));
+        assertThrows(IllegalStateException.class,()->ConfigurationImportBootstrap.days("month"));
     }
     @Test void pendingDeviceListAndConnectionDeadlinesUsePostgres()throws Exception{deadlineFlow(setup());}
     @Test void pendingDeviceListAndConnectionDeadlinesUseSqlite(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory)throws Exception{

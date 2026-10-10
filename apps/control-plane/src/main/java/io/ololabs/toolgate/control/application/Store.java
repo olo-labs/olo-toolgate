@@ -37,6 +37,9 @@ public interface Store {
         void saveEndpoint(EndpointRecord endpoint);
         default EndpointConfiguration endpointConfiguration(String deviceId) { throw Failure.unavailable(); }
         default void saveEndpointConfiguration(EndpointConfiguration configuration) { throw Failure.unavailable(); }
+        /** Current tenant settings document, or null before the first save. */
+        default String serverSettings() { throw Failure.unavailable(); }
+        default void saveServerSettings(long revision, String document) { throw Failure.unavailable(); }
     }
     /** Immutable signed wire bytes and compiler bytes, committed with audit/replay. */
     record BundleRecord(long sequence, String document, String policy, long directoryRevision) {}

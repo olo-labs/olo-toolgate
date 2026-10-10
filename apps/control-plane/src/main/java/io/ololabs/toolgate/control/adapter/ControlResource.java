@@ -38,6 +38,16 @@ public class ControlResource {
         try { var result = Long.parseLong(value.substring(1, value.length() - 1)); if (result > 9007199254740991L) throw Failure.validation(); return result; }
         catch (NumberFormatException e) { throw Failure.validation(); }
     }
+    @Inject io.ololabs.toolgate.control.application.ServerSettingsService settings;
+    @GET @Path("settings")
+    public Response settings() {
+        return Response.fromResponse(response(settings.get(actor()), "READ", "settings")).header("Cache-Control", "no-store").build();
+    }
+    @PUT @Path("settings") @Consumes("application/json")
+    public Response updateSettings(@HeaderParam("Idempotency-Key") String key, @HeaderParam("If-Match") String revision, String document) {
+        if (document == null || document.length() > 16384) throw Failure.validation();
+        return Response.fromResponse(response(settings.update(actor(), document, expected(revision), key, correlation.id()), "UPDATE", "settings")).header("Cache-Control", "no-store").build();
+    }
     @GET @Path("admin-session") @io.quarkus.security.Authenticated
     public String adminSession() {
         var identity=actor();

@@ -122,6 +122,15 @@ public class PostgresStore implements Store {
                 if(s.executeUpdate()!=1)throw Failure.conflict();
             } catch(SQLException failure){throw Failure.unavailable();}
         }
+        public String serverSettings() {
+            try (var s=statement("SELECT document FROM control_server_settings WHERE tenant_id=?");var rows=s.executeQuery()) {return rows.next()?rows.getString(1):null;}
+            catch(SQLException failure){throw Failure.unavailable();}
+        }
+        public void saveServerSettings(long revision,String document) {
+            try(var s=statement("INSERT INTO control_server_settings (tenant_id,revision,document) VALUES (?,?,?) ON CONFLICT (tenant_id) DO UPDATE SET revision=excluded.revision,document=excluded.document WHERE control_server_settings.revision=excluded.revision-1",revision,document)) {
+                if(s.executeUpdate()!=1)throw Failure.conflict();
+            } catch(SQLException failure){throw Failure.unavailable();}
+        }
         public McpStore mcp() {
             return new McpStore() {
                 private Row row(java.sql.ResultSet rows)throws SQLException{return new Row(rows.getString(1),rows.getString(2),rows.getString(3),rows.getLong(4),rows.getString(5),rows.getString(6),rows.getString(7));}

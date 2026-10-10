@@ -2482,6 +2482,75 @@ paths:
           application/yaml:
             schema:
               $ref: ../schemas/v1/control.schema.json#/$defs/ControlImportRequest
+  /api/control/v1/settings:
+    get:
+      operationId: getServerSettings
+      description: Requires toolgate-admin. Returns the tenant's control-plane settings,
+        including device auto-approval. The document is also the export format.
+      responses:
+        '200':
+          description: Success; no-store
+          headers:
+            ETag:
+              description: Quoted settings revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlServerSettings
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
+    put:
+      operationId: updateServerSettings
+      description: Requires toolgate-admin. Replaces the tenant's control-plane settings;
+        also used to import an exported settings document. The revision in the body
+        is ignored; If-Match carries the current revision.
+      parameters:
+      - *id011
+      - *id012
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v1/control.schema.json#/$defs/ControlServerSettings
+      responses:
+        '200':
+          description: Success; no-store
+          headers:
+            ETag:
+              description: Quoted settings revision
+              schema:
+                type: string
+            X-Request-ID:
+              description: Server correlation ID
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v1/control.schema.json#/$defs/ControlServerSettings
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '413': *id007
+        '415': *id008
+        '500': *id009
+        '503': *id010
   /api/control/v1/audit:
     get:
       operationId: listAudit

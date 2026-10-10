@@ -15,6 +15,12 @@ services:
     environment:
       TOOLGATE_DISABLE_ADMIN_PASSWORD: ${TOOLGATE_DISABLE_ADMIN_PASSWORD:-false}
       TOOLGATE_QUICKSTART_DATABASE_MODE: ${TOOLGATE_QUICKSTART_DATABASE_MODE:-sqlite}
+      # Server settings import during bring-up; see docs/control-plane/import-export.md.
+      TOOLGATE_CONFIG_IMPORT_DIRECTORY: /config/import
+      TOOLGATE_CONFIG_IMPORT_OVERWRITE: ${TOOLGATE_CONFIG_IMPORT_OVERWRITE:-false}
+      TOOLGATE_SETTINGS_AUTO_APPROVE_DEVICES: ${TOOLGATE_SETTINGS_AUTO_APPROVE_DEVICES:-}
+      TOOLGATE_SETTINGS_AUTO_APPROVE_DURATION_DAYS: ${TOOLGATE_SETTINGS_AUTO_APPROVE_DURATION_DAYS:-}
+      TOOLGATE_SETTINGS_AUTO_APPROVE_OWNER: ${TOOLGATE_SETTINGS_AUTO_APPROVE_OWNER:-}
     env_file:
       - path: ./env/.env.db
         required: false
@@ -28,6 +34,7 @@ services:
     volumes:
       - data:/data
       - ./env:/external:ro
+      - ./config:/config/import:ro
       - ./check-options.py:/opt/quickstart/check-options.py:ro
 volumes:
   data:
