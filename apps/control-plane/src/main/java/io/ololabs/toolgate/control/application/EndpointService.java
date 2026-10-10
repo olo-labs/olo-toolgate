@@ -88,12 +88,18 @@ public final class EndpointService {
             if(device!=null)active(tx,device);
             if(tx.load().entries().values().stream().noneMatch(e->e.id().kind()==Ids.Kind.USER&&e.enabled()))throw forbidden();
             String id=random(16),deviceCode=random(32),userCode=random(8).toUpperCase(Locale.ROOT);long expires=now+600000;
-            var review=new EndpointEnrollmentReview(id,userCode,start.deviceId(),start.platform(),fingerprint,device==null?EnrollmentState.PENDING:EnrollmentState.APPROVED,expires,device==null?null:device.connectionExpiresAtUnixMs(),device==null?null:device.connectionExpiresAtUnixMs()==null);
+            // Administrator-enabled auto-approval registers a new key for a bounded period under the configured owner.
+            var settings=new ServerSettingsService(store,codec).current(tx);
+            String autoOwner=device==null?ServerSettingsService.autoApprovalOwner(tx,settings):null;
+            Long autoExpires=autoOwner==null?null:Math.min(9007199254740991L,now+settings.autoApproveDurationDays()*86400000L);
+            var review=new EndpointEnrollmentReview(id,userCode,start.deviceId(),start.platform(),fingerprint,device==null&&autoOwner==null?EnrollmentState.PENDING:EnrollmentState.APPROVED,expires,device==null?autoExpires:device.connectionExpiresAtUnixMs(),device==null?(autoOwner==null?null:Boolean.FALSE):Boolean.valueOf(device.connectionExpiresAtUnixMs()==null));
             // A verified CSR for the exact approved registered key can recover its public certificate.
             // It cannot change approval, owner, activation, key or connection deadline.
-            String certificate=device==null?null:codec.json(issuer.issue(start.csrPem(),device.deviceId(),tenant.value(),device.userId(),server,now,device.connectionExpiresAtUnixMs()==null?Long.MAX_VALUE:device.connectionExpiresAtUnixMs()));
-            tx.saveEnrollment(new Store.EnrollmentRecord(id,DirectoryService.digest(userCode),DirectoryService.digest(deviceCode),codec.json(review),start.csrPem(),device==null?null:device.userId(),certificate,expires,0));
+            String certificate=device!=null?codec.json(issuer.issue(start.csrPem(),device.deviceId(),tenant.value(),device.userId(),server,now,device.connectionExpiresAtUnixMs()==null?Long.MAX_VALUE:device.connectionExpiresAtUnixMs()))
+                :autoOwner!=null?register(tx,review,start.csrPem(),autoOwner,autoExpires,now):null;
+            tx.saveEnrollment(new Store.EnrollmentRecord(id,DirectoryService.digest(userCode),DirectoryService.digest(deviceCode),codec.json(review),start.csrPem(),device!=null?device.userId():autoOwner,certificate,expires,0));
             tx.audit(fingerprint,device==null?"ENROLLMENT_CREATE":"DEVICE_IDENTITY_RECOVER","endpoint:"+start.deviceId(),1,requestId,DirectoryService.digest(codec.json(start)));
+            if(autoOwner!=null)tx.audit(fingerprint,"ENROLLMENT_AUTO_APPROVE","endpoint:"+start.deviceId(),1,requestId,DirectoryService.digest(codec.json(settings)));
             return reply(new EndpointEnrollmentChallenge(id,deviceCode,userCode,verification(),expires,5L),1);
         });
     }
@@ -126,23 +132,26 @@ public final class EndpointService {
             boolean approve=decision.choice()==EnrollmentChoice.APPROVE;
             Long connectionExpires=approve?connectionDeadline(decision.connectionExpiresAtUnixMs(),decision.unlimitedConnection(),now):null;
             var state=approve?EnrollmentState.APPROVED:EnrollmentState.DENIED;String certificate=null;
-            if(approve){
-                if(tx.endpoint(review.deviceId())!=null||tx.endpointKey(review.keyFingerprint())!=null)throw Failure.conflict();
-                var identity=issuer.issue(row.csr(),review.deviceId(),tenant.value(),user,server,now,connectionExpires==null?Long.MAX_VALUE:connectionExpires);certificate=codec.json(identity);
-                var endpoint=new EndpointDeviceRecord(review.deviceId(),tenant.value(),user,review.keyFingerprint(),EndpointState.ACTIVE,1L,0L,0L,null,connectionExpires,true,1L,null,null);
-                tx.saveEndpoint(new Store.EndpointRecord(review.deviceId(),review.keyFingerprint(),codec.json(endpoint),row.csr(),"0".repeat(64),"{}"));
-                // Directory metadata cannot grant device credentials; enrollment creates the matching bounded record atomically.
-                var before=tx.load();var id=Ids.Kind.DEVICE.id(review.deviceId());var previous=before.entries().get(id);
-                if(previous==null){
-                    if(tx.used(id))throw Failure.conflict();
-                    var entry=codec.entry(Ids.Kind.DEVICE,codec.json(new ControlDevice(review.deviceId(),"Enrolled "+review.platform(),true,1L,user)));
-                    var entries=new HashMap<>(before.entries());entries.put(id,entry);DeviceGroups.addDefault(entries,codec,review.deviceId());var after=new Directory(before.revision()+1,entries);after.validate(512,1048576);tx.save(before,after);
-                }
-            }
+            if(approve)certificate=register(tx,review,row.csr(),user,connectionExpires,now);
             var updated=new EndpointEnrollmentReview(review.enrollmentId(),review.userCode(),review.deviceId(),review.platform(),review.keyFingerprint(),state,review.expiresAtUnixMs(),connectionExpires,approve?connectionExpires==null:null);tx.saveEnrollment(new Store.EnrollmentRecord(row.id(),row.codeDigest(),row.deviceDigest(),codec.json(updated),row.csr(),approve?user:null,certificate,row.expiresAt(),row.lastPoll()));
             tx.audit(actor.id(),approve?"ENROLLMENT_APPROVE":"ENROLLMENT_DENY","endpoint:"+review.deviceId(),1,requestId,digest);
             var result=reply(updated,1);tx.remember(actor.id(),key,digest,result);return result;
         });
+    }
+    /** Issues the first identity for an approved key and creates its bounded endpoint and directory records atomically. */
+    private String register(Store.Session tx,EndpointEnrollmentReview review,String csr,String user,Long connectionExpires,long now){
+        if(tx.endpoint(review.deviceId())!=null||tx.endpointKey(review.keyFingerprint())!=null)throw Failure.conflict();
+        var identity=issuer.issue(csr,review.deviceId(),tenant.value(),user,server,now,connectionExpires==null?Long.MAX_VALUE:connectionExpires);
+        var endpoint=new EndpointDeviceRecord(review.deviceId(),tenant.value(),user,review.keyFingerprint(),EndpointState.ACTIVE,1L,0L,0L,null,connectionExpires,true,1L,null,null);
+        tx.saveEndpoint(new Store.EndpointRecord(review.deviceId(),review.keyFingerprint(),codec.json(endpoint),csr,"0".repeat(64),"{}"));
+        // Directory metadata cannot grant device credentials; enrollment creates the matching bounded record atomically.
+        var before=tx.load();var id=Ids.Kind.DEVICE.id(review.deviceId());var previous=before.entries().get(id);
+        if(previous==null){
+            if(tx.used(id))throw Failure.conflict();
+            var entry=codec.entry(Ids.Kind.DEVICE,codec.json(new ControlDevice(review.deviceId(),"Enrolled "+review.platform(),true,1L,user)));
+            var entries=new HashMap<>(before.entries());entries.put(id,entry);DeviceGroups.addDefault(entries,codec,review.deviceId());var after=new Directory(before.revision()+1,entries);after.validate(512,1048576);tx.save(before,after);
+        }
+        return codec.json(identity);
     }
     public Store.Reply poll(String body,String requestId) {
         var poll=codec.model(body,EndpointEnrollmentPoll.class);Ids.valid(requestId);

@@ -68,6 +68,8 @@ export const operations = {
   deleteControlDevice: { method: 'DELETE', path: '/api/control/v1/devices/{id}' },
   exportConfig: { method: 'GET', path: '/api/control/v1/config/export' },
   importConfig: { method: 'POST', path: '/api/control/v1/config/import' },
+  getServerSettings: { method: 'GET', path: '/api/control/v1/settings' },
+  updateServerSettings: { method: 'PUT', path: '/api/control/v1/settings' },
   listAudit: { method: 'GET', path: '/api/control/v1/audit' },
   listFleetReleases: { method: 'GET', path: '/api/control/v1/fleet/releases' },
   publishFleetRelease: { method: 'POST', path: '/api/control/v1/fleet/releases' },
