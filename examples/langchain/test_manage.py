@@ -1,7 +1,9 @@
 # Copyright 2026 OLO Labs
 # SPDX-License-Identifier: Apache-2.0
 """Group selection must retain enrollment, availability and platform boundaries."""
+import contextlib
 from copy import deepcopy
+import io
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -192,12 +194,24 @@ class DiscoveryTests(unittest.TestCase):
         self.verify([sorted(manage.TOOLS)[:1], sorted(manage.TOOLS)])
 
     def test_missing_tools_name_the_cause_and_windows_remedy(self):
-        with self.assertRaisesRegex(ValueError, 'client.read_log_entry.*prepare-windows.ps1'):
+        with self.assertRaisesRegex(manage.ToolsNotReported, 'client.read_log_entry.*repairs.*prepare-windows.ps1'):
             self.verify([sorted(manage.TOOLS - {'client.read_log_entry'})] * 2)
 
     def test_linux_remedy_rebuilds_the_device(self):
-        with self.assertRaisesRegex(ValueError, 'without -SkipBuild'):
+        with self.assertRaises(ValueError) as raised:
             self.verify([[]] * 2, platform='linux')
+        self.assertIn('without -SkipBuild', str(raised.exception))
+        self.assertNotIsInstance(raised.exception, manage.ToolsNotReported)
+
+
+class ExitCodeTests(unittest.TestCase):
+    def test_unreported_windows_tools_exit_for_automatic_repair(self):
+        for failure, code in ((manage.ToolsNotReported('missing'), manage.TOOLS_NOT_REPORTED_EXIT),
+                              (ValueError('other'), 1)):
+            with self.subTest(code=code), patch.object(manage, 'main', side_effect=failure), \
+                    contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as raised:
+                manage.run()
+            self.assertEqual(raised.exception.code, code)
 
 
 if __name__ == '__main__':

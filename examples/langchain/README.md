@@ -141,6 +141,20 @@ The scripts work from another directory too. `deploy.bat` calls `deploy.ps1`, wh
    offer all four example tools, deploy fails here and names the missing tools and
    the fix, instead of the test failing later.
 
+**Self-healing on this machine.** With `-Win` and a client installed on the machine
+running deploy, deploy repairs the client's example tool profiles itself by running
+`prepare-windows.ps1` elevated (approve the administrator prompt):
+
+- before setup, when no registration in `.state/devices` pins the installed client
+  executable (first use, or after a client install, update or reinstall);
+- after setup, when the client is connected but not reporting its example tools
+  (for example after **Switch gateway** or **Repair gateway connection**). Deploy
+  then runs setup once more.
+
+A declined prompt or a failed preparation stops deploy with the reason. Deploy can
+only repair the client on this machine; for another Windows device, run
+`prepare-windows.ps1` there.
+
 `execute.bat` then checks that a current deployment exists for the target, starts a
 stopped stack without rebuilding it, and runs the selected LangChain task.
 
@@ -322,8 +336,10 @@ enrollment and generated reports.
   again with the same target. Its discovery check names what is wrong:
   - *connected, but the Gateway does not offer ...*: the Windows client is not reporting
     its example tools, usually after **Switch gateway**, **Repair gateway connection** or
-    a client reinstall or update. Rerun `prepare-windows.ps1` as Administrator on that
-    device, then `deploy.bat -Win`.
+    a client reinstall or update. For a client on this machine, `deploy.bat -Win` repairs
+    this itself (see *Self-healing on this machine*). If it still fails after the repair,
+    or for another Windows device, run `prepare-windows.ps1` as Administrator on that
+    device to see its error, then `deploy.bat -Win`.
   - *registers ... as version X, but this Gateway has version Y*: built-in tool IDs share
     one registration, and a client of another version cannot match it. Install the
     Windows client from this stack's console (**Connect**), rerun `prepare-windows.ps1`,
