@@ -14,8 +14,9 @@ The project follows semantic versioning once stable versioning begins.
 - Windows setup downloaded from a console installs and connects in one step: it skips
   the gateway and repair/uninstall questions when the download names its gateway, and
   enrollment no longer reports an error when a reinstall resumed an enrollment.
-  Uninstall is complete: it removes every gateway enrollment, the device key, logs and
-  remembered gateways and CAs (`uninstall --purge`).
+  Uninstall is complete: it removes every gateway enrollment, logs, local tool settings
+  and remembered gateways and CAs (`uninstall --purge`). Only the device key stays, so a
+  gateway that already approved the device reconnects it without a new approval.
 
 - Connect in the console starts a fresh enrollment when the client is already pointed
   at that gateway but its enrollment no longer works (revoked, or offline after an

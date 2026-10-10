@@ -1009,9 +1009,10 @@ fn remove(purge: bool, park: bool) -> Result<()> {
     Ok(())
 }
 
-/// Complete uninstall: every enrollment (focused and parked), the device key, logs, local
-/// tool settings and remembered gateways and CAs. The state directory is removed without
-/// following links inside it (`remove_dir_all` deletes links, never their targets).
+/// Complete uninstall: every enrollment (focused and parked), logs, local tool settings and
+/// remembered gateways and CAs. Only the device key stays, so a gateway that already
+/// approved this device recognises it after a reinstall. Links inside the state directory
+/// are deleted, never followed (`remove_dir_all` deletes links, never their targets).
 fn purge_device(state: &Path, config_directory: &Path) -> Result<()> {
     if state.try_exists().map_err(|_| Failure::Unavailable)? {
         if std::fs::symlink_metadata(state)
@@ -1022,7 +1023,21 @@ fn purge_device(state: &Path, config_directory: &Path) -> Result<()> {
             return Err(Failure::Unauthorized);
         }
         crate::storage::check_owned(state, true)?;
-        std::fs::remove_dir_all(state).map_err(|_| Failure::Unavailable)?;
+        for entry in std::fs::read_dir(state).map_err(|_| Failure::Unavailable)? {
+            let entry = entry.map_err(|_| Failure::Unavailable)?;
+            if entry.file_name() == "device-key" {
+                continue;
+            }
+            let kind = entry.file_type().map_err(|_| Failure::Unavailable)?;
+            let path = entry.path();
+            if kind.is_dir() {
+                std::fs::remove_dir_all(&path)
+            } else {
+                // A file, or a link removed as itself.
+                std::fs::remove_file(&path).or_else(|_| std::fs::remove_dir(&path))
+            }
+            .map_err(|_| Failure::Unavailable)?;
+        }
     }
     for entry in std::fs::read_dir(config_directory).map_err(|_| Failure::Unavailable)? {
         let path = entry.map_err(|_| Failure::Unavailable)?.path();
@@ -1304,7 +1319,7 @@ mod tests {
     }
     #[cfg(unix)]
     #[test]
-    fn complete_uninstall_removes_every_enrollment_and_remembered_gateway() {
+    fn complete_uninstall_removes_everything_but_the_device_key() {
         let root = std::env::temp_dir().join(format!(
             "toolgate-purge-test-{}",
             crate::identity::nonce().unwrap()
@@ -1331,7 +1346,12 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(&state, std::fs::Permissions::from_mode(0o700)).unwrap();
         purge_device(&state, &root).unwrap();
-        assert!(!state.exists());
+        // Only the device key stays, so an approved device is recognised after a reinstall.
+        let left: Vec<_> = std::fs::read_dir(&state)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        assert_eq!(left, ["device-key"]);
         assert!(!root.join("gateways.json").exists());
         assert!(!root.join("gateway-ca-1.crt").exists());
         // The configuration and binary are removed by uninstall itself.

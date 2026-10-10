@@ -60,7 +60,7 @@ begin
   ConfiguredServer := SetupServer(ConfiguredServer);
   MaintenancePage := CreateInputOptionPage(wpWelcome, 'ToolGate is already installed',
     'Choose what to do with the existing client',
-    'Reinstall preserves enrollment for the same gateway. Switching gateways starts a new enrollment. Uninstall removes the service, tray icon and all ToolGate data on this computer, including every gateway enrollment and the device key.', True, False);
+    'Reinstall preserves enrollment for the same gateway. Switching gateways starts a new enrollment. Uninstall removes the service, tray icon and all ToolGate data on this computer, including every gateway enrollment; only the device key is kept so approved gateways recognise this device after a reinstall.', True, False);
   MaintenancePage.Add('Repair / reinstall');
   MaintenancePage.Add('Uninstall');
   MaintenancePage.SelectedValueIndex := 0;
@@ -190,7 +190,7 @@ var ExitCode: Integer;
 begin
   Result := True;
   if FileExists(ExpandConstant('{commonappdata}\OLO\ToolGate\client.json')) then
-    // Uninstall is complete: enrollments, device key and remembered gateways go too.
+    // Uninstall is complete: enrollments and remembered gateways go too; the device key stays.
     Result := Exec(ExpandConstant('{app}\olo-toolgate-client.exe'), 'uninstall --purge', '',
       SW_HIDE, ewWaitUntilTerminated, ExitCode) and (ExitCode = 0);
 end;
