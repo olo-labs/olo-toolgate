@@ -3,7 +3,7 @@
 name: toolgate-langchain
 services:
   quickstart:
-    image: ${TOOLGATE_QUICKSTART_IMAGE:-ololab/olo-toolgate-quickstart:dev-f6b503f4a378}
+    image: ${TOOLGATE_QUICKSTART_IMAGE:-ololab/olo-toolgate-quickstart:dev}
     platform: linux/amd64
     restart: unless-stopped
     read_only: true
@@ -32,7 +32,7 @@ services:
       context: ../..
       dockerfile: examples/langchain/device.Dockerfile
       args:
-        QUICKSTART_IMAGE: ${TOOLGATE_QUICKSTART_IMAGE:-ololab/olo-toolgate-quickstart:dev-f6b503f4a378-37978665914-1}
+        QUICKSTART_IMAGE: ${TOOLGATE_QUICKSTART_IMAGE:-ololab/olo-toolgate-quickstart:dev}
     platform: linux/amd64
     hostname: langchain-linux-device
     restart: unless-stopped
