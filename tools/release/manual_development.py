@@ -42,7 +42,8 @@ def build():
     ASSETS.mkdir(parents=True, exist_ok=True)
     info = metadata()
     version = info['binaryVersion']
-    common = ['--build-arg', 'VERSION='+version, '--build-arg', 'REVISION='+info['commit']]
+    common = ['--build-arg', 'VERSION='+version, '--build-arg', 'REVISION='+info['commit'],
+              '--build-arg', 'BUILD_NUMBER='+os.environ['GITHUB_RUN_NUMBER']+' ('+info['commit'][:7]+')']
     clients = ['--build-arg', 'CLIENT_ASSETS_DIR=deploy/client-assets/release',
                '--build-arg', 'CLIENT_DOWNLOADS_DIRECTORY=/opt/toolgate/client-downloads']
     # Images keep the source product version and its matching initial configuration bundle.

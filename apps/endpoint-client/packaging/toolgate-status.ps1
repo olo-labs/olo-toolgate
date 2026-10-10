@@ -150,11 +150,11 @@ function Update-ToolGateStatusWindow {
     $ui.Logs.Text = $lines -join "`r`n"
 }
 function New-ToolGateAboutWindow {
-    param([string]$LogoPath, [string]$Version)
+    param([string]$LogoPath, [string]$Version, [string]$Build = 'Unavailable')
     $form = New-ToolGateWindow -Title 'About OLO ToolGate' -LogoPath $LogoPath
     $text = New-Object System.Windows.Forms.Label
     $text.Dock = 'Fill'
-    $text.Text = "OLO ToolGate Client`r`nVersion: $Version`r`n`r`nOLO Labs`r`nEnterprise tools and device access`r`n`r`nCopyright 2026 OLO Labs`r`nLicensed under Apache-2.0"
+    $text.Text = "OLO ToolGate Client`r`nVersion: $Version`r`nBuild: $Build`r`n`r`nOLO Labs`r`nEnterprise tools and device access`r`n`r`nCopyright 2026 OLO Labs`r`nLicensed under Apache-2.0"
     $form.Tag.Layout.Controls.Add($text, 0, 1)
     return $form
 }

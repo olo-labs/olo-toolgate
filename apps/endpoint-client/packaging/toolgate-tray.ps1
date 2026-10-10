@@ -163,27 +163,33 @@ $trayUninstall.add_Click({
     try { Start-Process -FilePath $trayUninstaller -Verb RunAs }
     catch { $script:trayDetail = 'Uninstall was cancelled or could not start.' }
 })
+function Get-ToolGateClientOutput {
+    param([string]$Arguments, [string]$Pattern)
+    $value = 'Unavailable'
+    $start = New-Object System.Diagnostics.ProcessStartInfo
+    $start.FileName = $trayClient
+    $start.Arguments = $Arguments
+    $start.UseShellExecute = $false
+    $start.CreateNoWindow = $true
+    $start.RedirectStandardOutput = $true
+    $start.RedirectStandardError = $true
+    $process = $null
+    try {
+        $process = [System.Diagnostics.Process]::Start($start)
+        if ($process.WaitForExit(2000) -and $process.ExitCode -eq 0) {
+            $candidate = $process.StandardOutput.ReadToEnd().Trim()
+            if ($candidate -match $Pattern) { $value = $candidate }
+        } else { if (-not $process.HasExited) { $process.Kill() } }
+    } catch { $value = 'Unavailable' }
+    finally { if ($process) { $process.Dispose() } }
+    return $value
+}
 $trayAbout = $trayMenu.Items.Add('About OLO ToolGate')
 $trayAbout.add_Click({
     if (-not $script:aboutWindow -or $script:aboutWindow.IsDisposed) {
-        $version = 'Unavailable'
-        $versionStart = New-Object System.Diagnostics.ProcessStartInfo
-        $versionStart.FileName = $trayClient
-        $versionStart.Arguments = 'version'
-        $versionStart.UseShellExecute = $false
-        $versionStart.CreateNoWindow = $true
-        $versionStart.RedirectStandardOutput = $true
-        $versionStart.RedirectStandardError = $true
-        $versionProcess = $null
-        try {
-            $versionProcess = [System.Diagnostics.Process]::Start($versionStart)
-            if ($versionProcess.WaitForExit(2000) -and $versionProcess.ExitCode -eq 0) {
-                $candidate = $versionProcess.StandardOutput.ReadToEnd().Trim()
-                if ($candidate -match '^[0-9]+\.[0-9]+\.[0-9]+[a-zA-Z0-9.+-]*$') { $version = $candidate }
-            } else { if (-not $versionProcess.HasExited) { $versionProcess.Kill() } }
-        } catch { $version = 'Unavailable' }
-        finally { if ($versionProcess) { $versionProcess.Dispose() } }
-        $script:aboutWindow = New-ToolGateAboutWindow -LogoPath $trayLogo -Version $version
+        $version = Get-ToolGateClientOutput -Arguments 'version' -Pattern '^[0-9]+\.[0-9]+\.[0-9]+[a-zA-Z0-9.+-]*$'
+        $build = Get-ToolGateClientOutput -Arguments 'build' -Pattern '^(local|[0-9]+ \([0-9a-f]{1,40}\))$'
+        $script:aboutWindow = New-ToolGateAboutWindow -LogoPath $trayLogo -Version $version -Build $build
     }
     $script:aboutWindow.Show()
     $script:aboutWindow.Activate()

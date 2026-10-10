@@ -9,7 +9,7 @@ $root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 . (Join-Path $root 'apps/endpoint-client/packaging/toolgate-status.ps1')
 $logo = Join-Path $root 'apps/admin-ui/src/assets/olo.png'
 $form = New-ToolGateStatusWindow -LogoPath $logo
-$about = New-ToolGateAboutWindow -LogoPath $logo -Version '0.10.0-dev'
+$about = New-ToolGateAboutWindow -LogoPath $logo -Version '0.10.0-dev' -Build '42 (8f0822a)'
 try {
     $now = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
     $running = [pscustomobject]@{ active = @([pscustomobject]@{ name = 'hotfolder.write_text'; startedAtUnixMs = $now - 4000 }); events = @(); logAvailable = $true }
@@ -23,7 +23,7 @@ try {
     if ($form.Tag.Command.Text -ne 'Last command: calculator.evaluate' -or $form.Tag.Logs.Text -notmatch 'SUCCEEDED') { throw 'Last command or log missing' }
     Update-ToolGateStatusWindow $form 'Unavailable' $idle $false
     if ($form.Tag.Command.Text -ne 'Command status unavailable') { throw 'Stale activity presented as current' }
-    if (-not $form.Tag.Logo.Image -or $about.Tag.Layout.GetControlFromPosition(0, 1).Text -notmatch '0.10.0-dev') { throw 'Branding/version missing' }
+    if (-not $form.Tag.Logo.Image -or $about.Tag.Layout.GetControlFromPosition(0, 1).Text -notmatch '0.10.0-dev' -or $about.Tag.Layout.GetControlFromPosition(0, 1).Text -notmatch 'Build: 42 \(8f0822a\)') { throw 'Branding/version missing' }
     foreach ($window in @($form,$about)) {
         if (-not $window.Tag.BrandIcon -or $window.Icon -ne $window.Tag.BrandIcon -or $window.Icon.Width -ne 32) {
             throw 'OLO window icon missing'
