@@ -73,9 +73,9 @@ export function Connect({onCode,onCancel}:{onCode:(code:string)=>void;onCancel?:
           setMessage(status.client?.health&&!status.client.error
             ? 'Client detected'+(status.serverUrl?' at '+status.serverUrl:'')+'. '+(status.client.health.ready
               ? 'The client reports successful gateway check-ins. Open Clients to view its current server status.'
-              : status.client.health.state==='REVOKED' ? 'Device access was revoked. Contact your administrator.'
+              : status.client.health.state==='REVOKED' ? 'This gateway no longer accepts the device. Click Retry Connect to request a fresh enrollment for approval.'
               : ['UNENROLLED','PENDING'].includes(status.client.health.state??'') ? 'Complete enrollment using the code and fingerprint below. Connection will be confirmed after the first successful check-in.'
-              : 'The client is offline: no recent successful gateway check-in. Retry Connect to repair gateway setup and review enrollment if requested.')
+              : 'The client is offline: no recent successful gateway check-in. Click Retry Connect: it reconnects, or requests a fresh enrollment if this gateway no longer accepts the device.')
             : status.phase==='connecting' ? 'Installing the verified client or updating its gateway URL. Approve Windows administrator permission if shown…'
             : status.phase==='gateway-changed' ? 'The client was connected to another gateway. Click Retry Connect to use this gateway again.'
             : status.phase==='setup-required' ? 'Install the combined client and Chrome extension setup below, then click Retry Connect. If setup is installed, check the gateway connection and Windows permissions.'

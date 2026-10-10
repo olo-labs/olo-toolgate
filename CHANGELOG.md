@@ -17,6 +17,11 @@ The project follows semantic versioning once stable versioning begins.
   Uninstall is complete: it removes every gateway enrollment, the device key, logs and
   remembered gateways and CAs (`uninstall --purge`).
 
+- Connect in the console starts a fresh enrollment when the client is already pointed
+  at that gateway but its enrollment no longer works (revoked, or offline after an
+  immediate check-in), including after switching back to a gateway that has forgotten
+  the device. The new request still needs approval (`reenroll` command).
+
 - Keep the Windows client connected to every gateway it has enrolled with. Switching
   gateways moves focus (and the tray icon color) instead of disconnecting; Show status
   has a Status and Activity log tab per gateway headed with its name and URL. Gateways

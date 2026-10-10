@@ -154,6 +154,10 @@ pub fn configure(_: &str, _: Option<&str>) -> Result<()> {
 pub fn configure_with_ca(_: &str, _: Option<&str>, _: Option<&str>, _: Option<&str>) -> Result<()> {
     Err(Failure::Unsupported)
 }
+#[cfg(not(windows))]
+pub fn reenroll_with_ca(_: &str, _: Option<&str>, _: Option<&str>, _: Option<&str>) -> Result<()> {
+    Err(Failure::Unsupported)
+}
 #[cfg(windows)]
 pub fn configure(server: &str, peer: Option<&str>) -> Result<()> {
     configure_with_ca(server, peer, None, None)
@@ -167,6 +171,32 @@ pub fn configure_with_ca(
     peer: Option<&str>,
     ca: Option<&str>,
     console: Option<&str>,
+) -> Result<()> {
+    reconfigure(server, peer, ca, console, false)
+}
+/// Starts a fresh enrollment with the focused gateway when its current enrollment no
+/// longer connects (the gateway forgot or revoked this device). The gateway must still
+/// approve the new request; tool settings are kept.
+#[cfg(windows)]
+pub fn reenroll_with_ca(
+    server: &str,
+    peer: Option<&str>,
+    ca: Option<&str>,
+    console: Option<&str>,
+) -> Result<()> {
+    let server = crate::config::origin(server)?;
+    if Config::load(&config_path())?.server_url != server {
+        return Err(Failure::Conflict);
+    }
+    reconfigure(&server, peer, ca, console, true)
+}
+#[cfg(windows)]
+fn reconfigure(
+    server: &str,
+    peer: Option<&str>,
+    ca: Option<&str>,
+    console: Option<&str>,
+    fresh: bool,
 ) -> Result<()> {
     admin()?;
     validate_peer(peer)?;
@@ -198,6 +228,8 @@ pub fn configure_with_ca(
         } else if trust_changed {
             // The same URL now serves a recreated gateway; its old enrollment is unusable.
             clear_gateway_settings(&mut settings);
+            retire_gateway_state(&settings.state_directory, &mut moves, &mut retired)?;
+        } else if fresh {
             retire_gateway_state(&settings.state_directory, &mut moves, &mut retired)?;
         }
         if let Some(console) = &console {

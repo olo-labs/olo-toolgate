@@ -221,23 +221,17 @@ async fn configure_client(server: String, source: String) -> Result<String> {
                 _ => false,
             };
             if trust_matches {
-                if let Ok(response) = crate::ipc::call(
-                    &settings.ipc_endpoint,
-                    olo_toolgate_contracts::ClientIpcOperation::Health,
-                )
-                .await
-                {
-                    if response.health.is_some_and(|health| {
-                        health.ready
-                            || matches!(
-                                health.state,
-                                olo_toolgate_contracts::EndpointState::Unenrolled
-                                    | olo_toolgate_contracts::EndpointState::Pending
-                                    | olo_toolgate_contracts::EndpointState::Revoked
-                            )
-                    }) {
+                match connected(&settings.ipc_endpoint).await {
+                    Some(true) => return Ok(server),
+                    // This gateway no longer accepts the enrollment: start a fresh one.
+                    Some(false) => {
+                        elevate(
+                            &cli,
+                            &format!("reenroll --server \"{source}\" --peer \"{peer}\""),
+                        )?;
                         return Ok(server);
                     }
+                    None => {}
                 }
             }
         }
@@ -247,7 +241,57 @@ async fn configure_client(server: String, source: String) -> Result<String> {
     };
     let parameters = format!("{operation} --server \"{source}\" --peer \"{peer}\"");
     elevate(&cli, &parameters)?;
+    // Switching back can resume an enrollment this gateway has since forgotten.
+    if operation == "configure" && connected(&crate::install::ipc_endpoint()).await == Some(false) {
+        elevate(
+            &cli,
+            &format!("reenroll --server \"{source}\" --peer \"{peer}\""),
+        )?;
+    }
     Ok(server)
+}
+/// Whether the focused enrollment works: `Some(true)` when ready or awaiting enrollment,
+/// `Some(false)` when revoked or still offline after an immediate check-in, `None` when the
+/// service cannot be asked.
+async fn connected(endpoint: &str) -> Option<bool> {
+    use olo_toolgate_contracts::{ClientIpcOperation, EndpointState};
+    let health = |operation| async move {
+        tokio::time::timeout(
+            std::time::Duration::from_secs(25),
+            crate::ipc::call(endpoint, operation),
+        )
+        .await
+        .ok()?
+        .ok()?
+        .health
+    };
+    // A just-restarted service takes a moment to listen.
+    let mut current = None;
+    for _ in 0..10 {
+        current = health(ClientIpcOperation::Health).await;
+        if current.is_some() {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    }
+    let current = current?;
+    if current.ready
+        || matches!(
+            current.state,
+            EndpointState::Unenrolled | EndpointState::Pending
+        )
+    {
+        return Some(true);
+    }
+    if current.state == EndpointState::Revoked {
+        return Some(false);
+    }
+    // Offline may only mean no check-in since the service started; ask for one now.
+    Some(
+        health(ClientIpcOperation::CheckIn)
+            .await
+            .is_some_and(|health| health.ready),
+    )
 }
 #[cfg(windows)]
 fn current_peer() -> Result<String> {
