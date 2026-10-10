@@ -58,7 +58,7 @@ public class ConfigurationImportBootstrap {
         var duration = config.getOptionalValue("toolgate.settings.auto-approve-duration-days", String.class).map(ConfigurationImportBootstrap::days);
         var owner = config.getOptionalValue("toolgate.settings.auto-approve-owner", String.class);
         if (enabled.isEmpty() && duration.isEmpty() && owner.isEmpty() && !present) return null;
-        return new ControlServerSettings(1L, 0L, enabled.orElse(base.autoApproveDevices()), duration.orElse(base.autoApproveDurationDays()), owner.orElse(base.autoApproveOwnerUserId()));
+        return new ControlServerSettings(1L, 0L, enabled.orElse(base.autoApproveDevices()), duration.orElse(base.autoApproveDurationDays()), owner.orElse(base.autoApproveOwnerUserId()), base.gatewayName());
     }
 
     /** Accepts 30, 30d, 30day or 30days. */

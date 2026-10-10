@@ -6,6 +6,12 @@ The project follows semantic versioning once stable versioning begins.
 
 ## 0.10.0-dev
 
+- Keep the Windows client connected to every gateway it has enrolled with. Switching
+  gateways moves focus (and the tray icon color) instead of disconnecting; Show status
+  has a Status and Activity log tab per gateway headed with its name and URL. Gateways
+  send their name, initialized from `TOOLGATE_GATEWAY_NAME` and editable under
+  Configuration, in enrollment and check-in replies.
+
 - Add a live branded Windows tray status window, command activity/progress,
   protected bounded device history and an About/version menu. Require license
   acceptance in the interactive Windows installer.

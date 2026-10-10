@@ -12,12 +12,13 @@ final readonly class ControlServerSettings implements \JsonSerializable {
         public int $revision,
         public bool $autoApproveDevices,
         public int $autoApproveDurationDays,
-        public ?string $autoApproveOwnerUserId = null
+        public ?string $autoApproveOwnerUserId = null,
+        public ?string $gatewayName = null
     ) {}
 
     /** Decode a structural model; canonical schema validation is also required. */
     public static function fromArray(array $data): self {
-        if (array_diff(array_keys($data), ['formatVersion', 'revision', 'autoApproveDevices', 'autoApproveDurationDays', 'autoApproveOwnerUserId']) || array_diff(['formatVersion', 'revision', 'autoApproveDevices', 'autoApproveDurationDays'], array_keys($data))) {
+        if (array_diff(array_keys($data), ['formatVersion', 'revision', 'autoApproveDevices', 'autoApproveDurationDays', 'autoApproveOwnerUserId', 'gatewayName']) || array_diff(['formatVersion', 'revision', 'autoApproveDevices', 'autoApproveDurationDays'], array_keys($data))) {
             throw new \InvalidArgumentException('Unknown or missing contract fields');
         }
         return new self(
@@ -25,7 +26,8 @@ final readonly class ControlServerSettings implements \JsonSerializable {
             $data['revision'],
             $data['autoApproveDevices'],
             $data['autoApproveDurationDays'],
-            array_key_exists('autoApproveOwnerUserId', $data) ? $data['autoApproveOwnerUserId'] : null
+            array_key_exists('autoApproveOwnerUserId', $data) ? $data['autoApproveOwnerUserId'] : null,
+            array_key_exists('gatewayName', $data) ? $data['gatewayName'] : null
         );
     }
 

@@ -6,17 +6,19 @@ import {ControlClient} from './api';
 import {Failure} from './Failure';
 
 export const DEFAULT_AUTO_APPROVE_DAYS=30;
-type Draft={autoApproveDevices:boolean;autoApproveDurationDays:string;autoApproveOwnerUserId:string};
-const draftOf=(settings:ControlServerSettings):Draft=>({autoApproveDevices:settings.autoApproveDevices,autoApproveDurationDays:String(settings.autoApproveDurationDays),autoApproveOwnerUserId:settings.autoApproveOwnerUserId??''});
+type Draft={gatewayName:string;autoApproveDevices:boolean;autoApproveDurationDays:string;autoApproveOwnerUserId:string};
+const draftOf=(settings:ControlServerSettings):Draft=>({gatewayName:settings.gatewayName??'',autoApproveDevices:settings.autoApproveDevices,autoApproveDurationDays:String(settings.autoApproveDurationDays),autoApproveOwnerUserId:settings.autoApproveOwnerUserId??''});
 const days=(value:string)=>/^[0-9]{1,4}$/.test(value)&&Number(value)>=1&&Number(value)<=3650?Number(value):undefined;
 const identifier=(value:string)=>/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(value);
+const gatewayName=(value:string)=>/^[A-Za-z0-9][A-Za-z0-9 ._()-]{0,63}$/.test(value);
 
 /** Parses an exported settings file; the revision in the file is ignored on import. */
 export function importedSettings(value:unknown):Draft{
   if(!value||typeof value!=='object')throw new Error('Invalid settings');
   const settings=value as Partial<ControlServerSettings>;
   if(settings.formatVersion!==1||typeof settings.autoApproveDevices!=='boolean'||!Number.isSafeInteger(settings.autoApproveDurationDays)||days(String(settings.autoApproveDurationDays))===undefined
-    ||(settings.autoApproveOwnerUserId!==undefined&&(typeof settings.autoApproveOwnerUserId!=='string'||!identifier(settings.autoApproveOwnerUserId))))throw new Error('Invalid settings');
+    ||(settings.autoApproveOwnerUserId!==undefined&&(typeof settings.autoApproveOwnerUserId!=='string'||!identifier(settings.autoApproveOwnerUserId)))
+    ||(settings.gatewayName!==undefined&&(typeof settings.gatewayName!=='string'||!gatewayName(settings.gatewayName))))throw new Error('Invalid settings');
   return draftOf(settings as ControlServerSettings);
 }
 
@@ -30,11 +32,13 @@ export function ServerSettings({client}:{client:ControlClient}){
     return()=>abort.abort();},[client,attempt]);
   const duration=draft&&days(draft.autoApproveDurationDays);
   const owner=draft?.autoApproveOwnerUserId.trim()??'';
-  const valid=Boolean(draft)&&duration!==undefined&&(owner===''?!draft?.autoApproveDevices:identifier(owner));
-  const changed=Boolean(saved&&draft)&&JSON.stringify(draftOf(saved!))!==JSON.stringify({...draft!,autoApproveOwnerUserId:owner});
+  const name=draft?.gatewayName.trim()??'';
+  const nameValid=name===''||gatewayName(name);
+  const valid=Boolean(draft)&&duration!==undefined&&nameValid&&(owner===''?!draft?.autoApproveDevices:identifier(owner));
+  const changed=Boolean(saved&&draft)&&JSON.stringify(draftOf(saved!))!==JSON.stringify({...draft!,gatewayName:name,autoApproveOwnerUserId:owner});
   const update=(change:Partial<Draft>)=>{setDraft(current=>current&&{...current,...change});setNotice('');};
   async function save(){if(!saved||!draft||!valid||locked.current)return;
-    const body:ControlServerSettings={formatVersion:1,revision:saved.revision,autoApproveDevices:draft.autoApproveDevices,autoApproveDurationDays:duration!,...(owner?{autoApproveOwnerUserId:owner}:{})};
+    const body:ControlServerSettings={formatVersion:1,revision:saved.revision,...(name?{gatewayName:name}:{}),autoApproveDevices:draft.autoApproveDevices,autoApproveDurationDays:duration!,...(owner?{autoApproveOwnerUserId:owner}:{})};
     const encoded=JSON.stringify(body);if(pending.current?.body!==encoded)pending.current={body:encoded,key:crypto.randomUUID()};
     locked.current=true;setBusy(true);setError(undefined);setNotice('');
     try{const result=await client.saveServerSettings(body,saved.revision,pending.current.key);pending.current=undefined;setSaved(result);setDraft(draftOf(result));setNotice('Server settings saved.');}
@@ -45,10 +49,16 @@ export function ServerSettings({client}:{client:ControlClient}){
     setNotice('Server settings exported. Mount the file as server-settings.json in the configuration import folder to apply it during bring-up.');}
   async function importSettings(file:File|undefined){if(!file)return;setError(undefined);
     if(file.size>16384){setNotice('Choose a settings file no larger than 16 KiB.');return;}
-    try{setDraft(importedSettings(JSON.parse(await file.text()) as unknown));setNotice('Imported settings loaded. Review them, then save.');}
+    try{const imported=importedSettings(JSON.parse(await file.text()) as unknown);setDraft(current=>imported.gatewayName?imported:{...imported,gatewayName:current?.gatewayName??''});setNotice('Imported settings loaded. Review them, then save.');}
     catch{setNotice('The file is not an exported ToolGate server settings document.');}}
   return <section className="guidance" aria-label="Server settings"><h2>Server settings</h2>
     {!draft&&!error&&<p role="status">Loading server settings…</p>}
+    {draft&&<fieldset disabled={busy}><legend>Gateway</legend>
+      <label htmlFor="gateway-name">Gateway name</label>
+      <input id="gateway-name" value={draft.gatewayName} maxLength={64} onChange={event=>update({gatewayName:event.target.value})} aria-describedby="gateway-name-help"/>
+      <p id="gateway-name-help" className="hint">Devices show this name with the gateway URL on their Status and Activity log tabs, and pick up a rename on their next check-in. It starts as TOOLGATE_GATEWAY_NAME. Use up to 64 letters, numbers, spaces and . _ ( ) -</p>
+      {!nameValid&&<p role="alert">Enter a gateway name that starts with a letter or number.</p>}
+    </fieldset>}
     {draft&&<fieldset disabled={busy}><legend>Device approval</legend>
       <label className="checkbox"><input type="checkbox" checked={draft.autoApproveDevices} onChange={event=>update({autoApproveDevices:event.target.checked})}/> Auto approve devices</label>
       <p className="hint">New devices that start enrollment are approved immediately, without an administrator decision, for the duration below. Existing devices are not changed. Leave this off unless every device that can reach this server should get access.</p>

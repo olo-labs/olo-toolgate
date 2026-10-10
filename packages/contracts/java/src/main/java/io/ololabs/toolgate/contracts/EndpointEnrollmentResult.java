@@ -7,16 +7,19 @@ package io.ololabs.toolgate.contracts;
  *
  * @param state canonical state value
  * @param identity canonical identity value
+ * @param serverName canonical serverName value
  */
 @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
 public record EndpointEnrollmentResult(
     @com.fasterxml.jackson.annotation.JsonProperty(value = "state", required = true) EnrollmentState state,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "identity", required = false) DeviceIdentity identity
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "identity", required = false) DeviceIdentity identity,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "serverName", required = false) String serverName
 ) {
     /** Reject absent required references and copy collections to retain value semantics.
      *
      * @param state canonical state value
      * @param identity canonical identity value
+     * @param serverName canonical serverName value
      */
     public EndpointEnrollmentResult {
         java.util.Objects.requireNonNull(state, "state");

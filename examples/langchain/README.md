@@ -226,8 +226,13 @@ log**, and **About** for command progress, recent activity and version informati
    enabled and connected.
 
    Already enrolled to another gateway, such as the debug stack? Use the tray's
-   **Switch gateway** menu. Each gateway keeps its own enrollment, so switching
-   back needs no new approval. If this stack is recreated with a fresh volume,
+   **Switch gateway** menu. Each gateway keeps its own enrollment and stays
+   connected in the background, so switching only moves focus (the tray icon
+   color follows the focused gateway) and switching back needs no new approval.
+   **Show status** has a Status and an Activity log tab per gateway, each headed
+   with the gateway name and URL. This stack names itself `LangChain Gateway`;
+   set `TOOLGATE_GATEWAY_NAME` to change it, or rename it later under
+   **Configuration** in the console. If this stack is recreated with a fresh volume,
    the tray offers **Repair gateway connection**, and the Linux device container
    re-enrolls by itself.
 3. In an Administrator PowerShell on that Windows device, run:

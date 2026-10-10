@@ -933,6 +933,10 @@
         },
         "autoApproveOwnerUserId": {
           "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "gatewayName": {
+          "$ref": "endpoint.schema.json#/$defs/GatewayName",
+          "description": "Name devices show beside this gateway's URL. Defaults to TOOLGATE_GATEWAY_NAME."
         }
       },
       "required": [

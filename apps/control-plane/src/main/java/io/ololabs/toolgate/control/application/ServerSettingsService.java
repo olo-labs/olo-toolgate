@@ -8,12 +8,19 @@ import io.ololabs.toolgate.contracts.ControlServerSettings;
 /** Tenant control-plane settings. Auto-approval is off until an administrator or a startup import enables it. */
 public final class ServerSettingsService {
     public static final long DEFAULT_AUTO_APPROVE_DAYS=30;
+    private static final java.util.regex.Pattern GATEWAY_NAME=java.util.regex.Pattern.compile("[A-Za-z0-9][A-Za-z0-9 ._()-]{0,63}");
+    /** Gateway name devices show until an administrator renames it; from TOOLGATE_GATEWAY_NAME. */
+    public static final String DEFAULT_GATEWAY_NAME=gatewayName(System.getenv("TOOLGATE_GATEWAY_NAME"),"ToolGate");
+    static String gatewayName(String value,String fallback){return value!=null&&GATEWAY_NAME.matcher(value.trim()).matches()?value.trim():fallback;}
     private static final String STARTUP_ACTOR=DirectoryService.digest("startup-configuration-import");
     private final Store store;
     private final Codec codec;
     public ServerSettingsService(Store store,Codec codec){this.store=store;this.codec=codec;}
-    public static ControlServerSettings defaults(){return new ControlServerSettings(1L,0L,false,DEFAULT_AUTO_APPROVE_DAYS,null);}
-    public ControlServerSettings current(Store.Session tx){var document=tx.serverSettings();return document==null?defaults():codec.model(document,ControlServerSettings.class);}
+    public static ControlServerSettings defaults(){return new ControlServerSettings(1L,0L,false,DEFAULT_AUTO_APPROVE_DAYS,null,DEFAULT_GATEWAY_NAME);}
+    public ControlServerSettings current(Store.Session tx){var document=tx.serverSettings();if(document==null)return defaults();
+        var saved=codec.model(document,ControlServerSettings.class);
+        // Settings saved before gateway names existed still show the environment name.
+        return saved.gatewayName()!=null?saved:new ControlServerSettings(saved.formatVersion(),saved.revision(),saved.autoApproveDevices(),saved.autoApproveDurationDays(),saved.autoApproveOwnerUserId(),DEFAULT_GATEWAY_NAME);}
     /** The enabled user that owns devices approved without a human decision, or null when auto-approval is unavailable. */
     public static String autoApprovalOwner(Store.Session tx,ControlServerSettings settings){
         if(!settings.autoApproveDevices()||settings.autoApproveOwnerUserId()==null)return null;
@@ -42,7 +49,9 @@ public final class ServerSettingsService {
         if(owner!=null){Ids.valid(owner);var entry=requireOwner?tx.load().entries().get(Ids.Kind.USER.id(owner)):null;if(requireOwner&&(entry==null||!entry.enabled()))throw Failure.validation();}
         // Auto-approved identities need an accountable owner, exactly like a human approval.
         if(requested.autoApproveDevices()&&owner==null)throw Failure.validation();
-        var saved=new ControlServerSettings(1L,current.revision()+1,requested.autoApproveDevices(),requested.autoApproveDurationDays(),owner);
+        var name=requested.gatewayName()==null?current.gatewayName():requested.gatewayName();
+        if(!name.equals(gatewayName(name,null)))throw Failure.validation();
+        var saved=new ControlServerSettings(1L,current.revision()+1,requested.autoApproveDevices(),requested.autoApproveDurationDays(),owner,name);
         tx.saveServerSettings(saved.revision(),codec.json(saved));return saved;
     }
 }

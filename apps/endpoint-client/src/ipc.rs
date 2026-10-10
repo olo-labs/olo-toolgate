@@ -1,7 +1,9 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
 //! Length-framed, bounded OS-authenticated IPC; no remote listener or credential export.
-use crate::{contracts::Contracts, service::ClientService, Failure, Result};
+use crate::{
+    connections::Connections, contracts::Contracts, service::ClientService, Failure, Result,
+};
 use olo_toolgate_contracts::*;
 use std::{sync::Arc, time::Duration};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
@@ -53,6 +55,18 @@ pub async fn connection<S: AsyncRead + AsyncWrite + Unpin>(
     contracts: &Contracts,
     activity: &Arc<crate::activity::Activity>,
 ) -> Result<()> {
+    connection_with_gateways(stream, peer, peers, service, None, contracts, activity).await
+}
+/// Same as [`connection`], and also reports every gateway connection the service holds.
+pub async fn connection_with_gateways<S: AsyncRead + AsyncWrite + Unpin>(
+    stream: &mut S,
+    peer: &str,
+    peers: &[String],
+    service: &Arc<tokio::sync::Mutex<ClientService>>,
+    gateways: Option<&Connections>,
+    contracts: &Contracts,
+    activity: &Arc<crate::activity::Activity>,
+) -> Result<()> {
     if !authorized(peer, peers) {
         activity.event("Local IPC", "UNAUTHORIZED");
         return Err(Failure::Unauthorized);
@@ -60,7 +74,10 @@ pub async fn connection<S: AsyncRead + AsyncWrite + Unpin>(
     let bytes = tokio::time::timeout(Duration::from_secs(5), read(stream))
         .await
         .map_err(|_| Failure::Unavailable)??;
-    handle(stream, peer, peers, service, contracts, activity, &bytes).await
+    handle(
+        stream, peer, peers, service, gateways, contracts, activity, &bytes,
+    )
+    .await
 }
 // Keep authenticated peer, bounded payload and independent diagnostic state explicit.
 #[allow(clippy::too_many_arguments)]
@@ -69,6 +86,7 @@ async fn handle<S: AsyncWrite + Unpin>(
     peer: &str,
     peers: &[String],
     service: &Arc<tokio::sync::Mutex<ClientService>>,
+    gateways: Option<&Connections>,
     contracts: &Contracts,
     activity: &Arc<crate::activity::Activity>,
     bytes: &[u8],
@@ -201,9 +219,12 @@ async fn handle<S: AsyncWrite + Unpin>(
         challenge: None,
         activity: None,
         error: None,
+        connections: None,
     };
+    // Connection snapshots are published by each heartbeat and never wait for a service lock.
     if request.operation == ClientIpcOperation::Activity {
         response.activity = Some(activity.snapshot());
+        response.connections = gateways.map(|g| g.snapshot(true));
         return write(stream, &contracts.encode("ClientIpcResponse", &response)?).await;
     }
     // Health may wait briefly behind a poll. Listener permits bound waiting readers;
@@ -231,6 +252,7 @@ async fn handle<S: AsyncWrite + Unpin>(
         ClientIpcOperation::Activity => unreachable!(),
         ClientIpcOperation::Health => {
             response.health = Some(state.health());
+            response.connections = gateways.map(|g| g.snapshot(false));
             Ok(())
         }
         ClientIpcOperation::Enroll => state
@@ -259,6 +281,7 @@ pub async fn listen(
     endpoint: &str,
     peers: Vec<String>,
     service: Arc<tokio::sync::Mutex<ClientService>>,
+    gateways: Arc<Connections>,
     contracts: Arc<Contracts>,
     mut shutdown: tokio::sync::watch::Receiver<bool>,
 ) -> Result<()> {
@@ -286,8 +309,8 @@ pub async fn listen(
             incoming=listener.accept()=>{
                 let(mut stream,_)=incoming.map_err(|_|Failure::Unavailable)?;let permit=match limit.clone().try_acquire_owned(){Ok(p)=>p,Err(_)=>continue};
                 let peer=stream.peer_cred().map_err(|_|Failure::Unauthorized)?.uid().to_string();
-                let service=service.clone();let contracts=contracts.clone();let peers=peers.clone();let activity=activity.clone();
-                tasks.spawn(async move{let _permit=permit;let _=tokio::time::timeout(Duration::from_secs(230),connection(&mut stream,&peer,&peers,&service,&contracts,&activity)).await;});
+                let service=service.clone();let gateways=gateways.clone();let contracts=contracts.clone();let peers=peers.clone();let activity=activity.clone();
+                tasks.spawn(async move{let _permit=permit;let _=tokio::time::timeout(Duration::from_secs(230),connection_with_gateways(&mut stream,&peer,&peers,&service,Some(&gateways),&contracts,&activity)).await;});
             },
             Some(_)=tasks.join_next()=>{},
         }
@@ -302,6 +325,7 @@ pub async fn listen(
     endpoint: &str,
     peers: Vec<String>,
     service: Arc<tokio::sync::Mutex<ClientService>>,
+    gateways: Arc<Connections>,
     contracts: Arc<Contracts>,
     mut shutdown: tokio::sync::watch::Receiver<bool>,
 ) -> Result<()> {
@@ -338,12 +362,12 @@ pub async fn listen(
                 connected.map_err(|_|Failure::Unavailable)?;
                 let next=create(endpoint,&peers,false)?;
                 let mut stream=std::mem::replace(&mut pipe,next);let permit=match limit.clone().try_acquire_owned(){Ok(p)=>p,Err(_)=>continue};
-                let service=service.clone();let contracts=contracts.clone();let peers=peers.clone();let activity=activity.clone();
+                let service=service.clone();let gateways=gateways.clone();let contracts=contracts.clone();let peers=peers.clone();let activity=activity.clone();
                 tasks.spawn(async move{let _permit=permit;let _=tokio::time::timeout(Duration::from_secs(230),async{
                     // Impersonation authenticates the token associated with data actually read.
                     // SAFETY: stream owns the live connected server pipe during the query.
                     let bytes=read(&mut stream).await?;let peer=unsafe { crate::platform::windows::peer_sid(stream.as_raw_handle()) }?;
-                    handle(&mut stream,&peer,&peers,&service,&contracts,&activity,&bytes).await
+                    handle(&mut stream,&peer,&peers,&service,Some(&gateways),&contracts,&activity,&bytes).await
                 }).await;});
             },
             Some(_)=tasks.join_next()=>{},

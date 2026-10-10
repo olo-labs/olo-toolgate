@@ -12,12 +12,13 @@ final readonly class ClientIpcResponse implements \JsonSerializable {
         public ?ClientHealth $health = null,
         public ?EndpointEnrollmentPrompt $challenge = null,
         public ?ErrorCode $error = null,
-        public ?ClientActivity $activity = null
+        public ?ClientActivity $activity = null,
+        public ?array $connections = null
     ) {}
 
     /** Decode a structural model; canonical schema validation is also required. */
     public static function fromArray(array $data): self {
-        if (array_diff(array_keys($data), ['requestId', 'health', 'challenge', 'error', 'activity']) || array_diff(['requestId'], array_keys($data))) {
+        if (array_diff(array_keys($data), ['requestId', 'health', 'challenge', 'error', 'activity', 'connections']) || array_diff(['requestId'], array_keys($data))) {
             throw new \InvalidArgumentException('Unknown or missing contract fields');
         }
         return new self(
@@ -25,7 +26,8 @@ final readonly class ClientIpcResponse implements \JsonSerializable {
             array_key_exists('health', $data) ? ClientHealth::fromArray($data['health']) : null,
             array_key_exists('challenge', $data) ? EndpointEnrollmentPrompt::fromArray($data['challenge']) : null,
             array_key_exists('error', $data) ? ErrorCode::from($data['error']) : null,
-            array_key_exists('activity', $data) ? ClientActivity::fromArray($data['activity']) : null
+            array_key_exists('activity', $data) ? ClientActivity::fromArray($data['activity']) : null,
+            array_key_exists('connections', $data) ? array_map(static fn ($item) => ClientGatewayConnection::fromArray($item), $data['connections']) : null
         );
     }
 

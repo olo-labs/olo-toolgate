@@ -21,6 +21,8 @@ $script:activityError = $null
 $script:activityStarted = $null
 $script:activitySnapshot = $null
 $script:activityAvailable = $false
+$script:connections = @()
+$script:connectionsChecked = [DateTime]::MinValue
 $trayIndex = 'C:\ProgramData\OLO\ToolGate\gateways.json'
 $trayEnrollScript = Join-Path $PSScriptRoot 'toolgate-enroll.ps1'
 $script:trustChanged = $false
@@ -92,6 +94,8 @@ function Update-ToolGateTrustCheck([bool]$Ready) {
 $trayLogo = Join-Path $PSScriptRoot 'olo.png'
 $trayConnectedIcon = New-ToolGateStatusIcon -LogoPath $trayLogo -Connected $true
 $trayOfflineIcon = New-ToolGateStatusIcon -LogoPath $trayLogo -Connected $false
+$trayConnectedImage = $trayConnectedIcon.ToBitmap()
+$trayOfflineImage = $trayOfflineIcon.ToBitmap()
 $trayIcon = New-Object System.Windows.Forms.NotifyIcon
 $trayIcon.Icon = $trayOfflineIcon
 $trayIcon.Text = 'ToolGate: checking service'
@@ -102,7 +106,7 @@ $trayStatus.add_Click({
     if (-not $script:statusWindow -or $script:statusWindow.IsDisposed) {
         $script:statusWindow = New-ToolGateStatusWindow -LogoPath $trayLogo
     }
-    Update-ToolGateStatusWindow -Form $script:statusWindow -Detail $script:trayDetail -Activity $script:activitySnapshot -Available $script:activityAvailable
+    Update-ToolGateStatusWindow -Form $script:statusWindow -Detail $script:trayDetail -Activity $script:activitySnapshot -Available $script:activityAvailable -Connections $script:connections
     $script:statusWindow.Show()
     $script:statusWindow.Activate()
 })
@@ -121,7 +125,8 @@ $trayConsole.add_Click({
         Start-Process ($trayServer.TrimEnd('/') + $trayRoute)
     }
 })
-# Switching parks the current enrollment; switching back resumes it without a new approval.
+# Switching moves focus: the previous gateway stays connected in the background and
+# switching back resumes its enrollment without a new approval.
 $traySwitch = New-Object System.Windows.Forms.ToolStripMenuItem('Switch gateway')
 [void]$trayMenu.Items.Insert(2, $traySwitch)
 $trayRepair = New-Object System.Windows.Forms.ToolStripMenuItem('Repair gateway connection')
@@ -133,8 +138,12 @@ $trayMenu.add_Opening({
     foreach ($trayGateway in @(Get-ToolGateKnownGateways)) {
         $trayTarget = if ($trayGateway.consoleUrl) { [string]$trayGateway.consoleUrl } else { [string]$trayGateway.serverUrl }
         $trayLabel = [string]$trayGateway.serverUrl
+        $trayLive = @($script:connections | Where-Object { $_.serverUrl -eq $trayGateway.serverUrl })
+        if ($trayLive.Count -and $trayLive[0].serverName) { $trayLabel = "$($trayLive[0].serverName) - $trayLabel" }
         if ($trayGateway.consoleUrl) { $trayLabel += "  (console $($trayGateway.consoleUrl))" }
         $trayItem = New-Object System.Windows.Forms.ToolStripMenuItem($trayLabel)
+        # Same green/red as the tray icon, per gateway, so background connections are visible too.
+        if ($trayLive.Count) { $trayItem.Image = if ((Get-ToolGateHealthSummary $trayLive[0].health).Connected) { $trayConnectedImage } else { $trayOfflineImage } }
         $trayItem.Tag = $trayTarget
         $trayItem.Checked = $trayCurrent -and $trayCurrent.serverUrl -eq $trayGateway.serverUrl
         $trayItem.add_Click({ param($sender) Invoke-ToolGateConfigure ([string]$sender.Tag) })
@@ -215,20 +224,9 @@ $trayTimer.add_Tick({
             if ($trayHealth.error -or -not $trayHealth.state) { throw 'Health unavailable' }
             $trayState = [string]$trayHealth.state
             $script:trayState = $trayState
-            $trayStatusText = switch ($trayState) {
-                'UNENROLLED' { 'Enrollment required' }
-                'PENDING' { 'Waiting for enrollment approval' }
-                'REVOKED' { 'Enrollment revoked' }
-                'OFFLINE' { 'Offline - waiting for gateway' }
-                'ACTIVE' { if ($trayHealth.ready) { 'Connected' } else { 'Waiting for gateway check-in' } }
-                default { 'Checking connection' }
-            }
-            $trayGuidance = switch ($trayState) {
-                'UNENROLLED' { 'Choose Enroll this device from the tray menu, then approve it in the console.' }
-                'PENDING' { 'Approve the enrollment code and fingerprint on Enroll Device.' }
-                'REVOKED' { 'Contact your administrator to enroll this device again.' }
-                default { if ($trayHealth.ready) { 'Protected tools are ready.' } else { 'Protected tools will be ready after enrollment and a successful gateway check-in.' } }
-            }
+            $traySummary = Get-ToolGateHealthSummary $trayHealth
+            $trayStatusText = $traySummary.Status
+            $trayGuidance = $traySummary.Guidance
             Update-ToolGateTrustCheck ($trayHealth.ready -and $trayState -eq 'ACTIVE')
             if ($script:trustChanged) { $trayGuidance = 'The local gateway was recreated with a new certificate. Choose Repair gateway connection.' }
             if ($script:enrollAfterSwitch) {
@@ -242,8 +240,13 @@ $trayTimer.add_Tick({
                 }
             }
             $script:trayDetail = "Service running`r`nStatus: $trayStatusText`r`n$trayGuidance`r`nSuccessful check-ins: $($trayHealth.successfulCheckIns)`r`nFailed check-ins: $($trayHealth.failedCheckIns)"
-            $trayIcon.Text = 'ToolGate: ' + $trayStatusText
-            $trayIcon.Icon = if ($trayHealth.ready -and $trayState -eq 'ACTIVE') { $trayConnectedIcon } else { $trayOfflineIcon }
+            # The icon color always follows the gateway in focus; background gateways show in the menu.
+            $trayFocused = @($script:connections | Where-Object { $_.focused })
+            $trayName = if ($trayFocused.Count -and $trayFocused[0].serverName) { [string]$trayFocused[0].serverName + ': ' } else { '' }
+            $trayTip = 'ToolGate: ' + $trayName + $trayStatusText
+            if ($script:connections.Count -gt 1) { $trayTip += " (+$($script:connections.Count - 1))" }
+            $trayIcon.Text = if ($trayTip.Length -gt 63) { $trayTip.Substring(0, 63) } else { $trayTip }
+            $trayIcon.Icon = if ($traySummary.Connected) { $trayConnectedIcon } else { $trayOfflineIcon }
         } catch {
             $trayService = Get-Service -Name OloToolGateClient -ErrorAction SilentlyContinue
             if ($trayService.Status -eq 'Running') {
@@ -273,6 +276,7 @@ $trayTimer.add_Tick({
     } catch { $script:trayDetail = 'Could not contact the ToolGate service.'; $trayIcon.Icon = $trayOfflineIcon }
 })
 # Independent reader remains responsive while a protected command holds execution state.
+# One snapshot carries every gateway connection: its health, name and activity, focused first.
 $activityTimer = New-Object System.Windows.Forms.Timer
 $activityTimer.Interval = 1000
 $activityTimer.add_Tick({
@@ -284,30 +288,37 @@ $activityTimer.add_Tick({
         if ($script:activityProcess.HasExited -and $script:activityOutput.IsCompleted -and $script:activityError.IsCompleted) {
             try {
                 if ($script:activityProcess.ExitCode -ne 0) { throw 'Activity unavailable' }
-                $script:activitySnapshot = $script:activityOutput.Result | ConvertFrom-Json
+                # Windows PowerShell emits a JSON array as one object; assign before wrapping.
+                $parsed = ConvertFrom-Json $script:activityOutput.Result
+                $script:connections = @($parsed)
+                $focused = @($script:connections | Where-Object { $_.focused })
+                $script:activitySnapshot = if ($focused.Count) { $focused[0].activity } else { $null }
                 $script:activityAvailable = $true
             } catch { $script:activityAvailable = $false }
             finally { $script:activityProcess.Dispose(); $script:activityProcess = $null }
         }
     }
-    if ($script:statusWindow -and -not $script:statusWindow.IsDisposed) {
-        Update-ToolGateStatusWindow -Form $script:statusWindow -Detail $script:trayDetail -Activity $script:activitySnapshot -Available $script:activityAvailable
-        if (-not $script:activityProcess) {
-            $start = New-Object System.Diagnostics.ProcessStartInfo
-            $start.FileName = $trayClient
-            $start.Arguments = 'activity'
-            $start.UseShellExecute = $false
-            $start.CreateNoWindow = $true
-            $start.RedirectStandardOutput = $true
-            $start.RedirectStandardError = $true
-            try {
-                $script:activityProcess = [System.Diagnostics.Process]::Start($start)
-                $script:activityStarted = Get-Date
-                # Drain both pipes immediately; a full log must never block the child.
-                $script:activityOutput = $script:activityProcess.StandardOutput.ReadToEndAsync()
-                $script:activityError = $script:activityProcess.StandardError.ReadToEndAsync()
-            } catch { $script:activityAvailable = $false }
-        }
+    $windowOpen = $script:statusWindow -and -not $script:statusWindow.IsDisposed
+    if ($windowOpen) {
+        Update-ToolGateStatusWindow -Form $script:statusWindow -Detail $script:trayDetail -Activity $script:activitySnapshot -Available $script:activityAvailable -Connections $script:connections
+    }
+    # The Switch gateway menu and tooltip also use the snapshot, so refresh it slowly while the window is closed.
+    if (-not $script:activityProcess -and ($windowOpen -or ((Get-Date) - $script:connectionsChecked).TotalSeconds -ge 5)) {
+        $script:connectionsChecked = Get-Date
+        $start = New-Object System.Diagnostics.ProcessStartInfo
+        $start.FileName = $trayClient
+        $start.Arguments = 'connections'
+        $start.UseShellExecute = $false
+        $start.CreateNoWindow = $true
+        $start.RedirectStandardOutput = $true
+        $start.RedirectStandardError = $true
+        try {
+            $script:activityProcess = [System.Diagnostics.Process]::Start($start)
+            $script:activityStarted = Get-Date
+            # Drain both pipes immediately; a full log must never block the child.
+            $script:activityOutput = $script:activityProcess.StandardOutput.ReadToEndAsync()
+            $script:activityError = $script:activityProcess.StandardError.ReadToEndAsync()
+        } catch { $script:activityAvailable = $false }
     }
 })
 try {
@@ -333,6 +344,8 @@ try {
     $trayIcon.Dispose()
     $trayConnectedIcon.Dispose()
     $trayOfflineIcon.Dispose()
+    $trayConnectedImage.Dispose()
+    $trayOfflineImage.Dispose()
     $trayMenu.Dispose()
     $trayMutex.ReleaseMutex()
     $trayMutex.Dispose()
