@@ -1,4 +1,4 @@
-# ADR 012: Single-node Quickstart composition
+# ADR 012a: Single-node Quickstart composition
 
 Status: Accepted, 2026-10-04. Module 11 only.
 

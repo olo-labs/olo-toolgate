@@ -7,6 +7,9 @@ React/TypeScript/Vite assets ship in the Control image and use generated operati
 metadata from the canonical API. UI and versioned API share one administrative origin.
 See [device registry and tool-call controls](device-registry.md) for the current
 enrollment, approval and execution flow.
+The planned **Configuration** menu (Server, Device and Backup/Restore pages, with
+field-level settings save) is specified in [Configuration menu](configuration-menu.md);
+it is a design gate D1 specification implemented in milestone M1.
 
 ## Authentication
 

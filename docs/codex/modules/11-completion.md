@@ -8,7 +8,7 @@ No Module 12 is started.
 
 Preparation preceded implementation: [coverage](11-coverage.md), master prompt,
 traceability, governing documents and [definition of done](../08-DEFINITION-OF-DONE.md).
-See [ADR 012](../../adr/012-single-node-quickstart.md), the
+See [ADR 012a](../../adr/012a-single-node-quickstart.md), the
 [walkthrough](../../getting-started/one-minute-quickstart.md) and
 [production/debug configuration and recovery guide](../../deployment/quickstart.md).
 

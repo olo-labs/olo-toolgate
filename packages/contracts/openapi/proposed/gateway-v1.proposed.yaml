@@ -1,0 +1,210 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+# PROPOSED (design gate D1). Not served; see README.md in this folder.
+openapi: 3.1.0
+info:
+  title: OLO ToolGate Gateway Core (proposed scoped MCP routes)
+  version: 0.10.0-dev
+  description: Proposed at design gate D1 (ADRs 014, 015, 018, 020, 021). Not served. Milestone M1 moves each operation into
+    the served file when it is implemented, so the served contract never advertises an unimplemented endpoint.
+security:
+- bearer: []
+paths:
+  /mcp/agent/{agent}:
+    post:
+      operationId: mcpAgentScope
+      description: CatalogScope AGENT. The caller is the agent or holds an issuer-approved delegation for it (plan.md §9.4).
+      parameters:
+      - name: agent
+        in: path
+        required: true
+        description: Agent slug
+        schema:
+          type: string
+          pattern: ^[a-z0-9][a-z0-9-]{0,62}$
+      - name: MCP-Protocol-Version
+        in: header
+        required: false
+        description: Legacy adapter only; 2026-07-28 requests carry the version in _meta
+        schema:
+          type: string
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Business key for tools that use one (plan.md §11.7)
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: MCP JSON-RPC request, defined by the MCP specification
+      responses:
+        '200':
+          description: MCP JSON-RPC response or stream
+          content:
+            application/json:
+              schema:
+                type: object
+            text/event-stream:
+              schema:
+                type: string
+        '401':
+          description: Missing or invalid credential; RFC 9728 WWW-Authenticate
+          headers:
+            WWW-Authenticate:
+              description: Resource metadata pointer
+              schema:
+                type: string
+          content: &id001
+            application/json:
+              schema:
+                $ref: ../../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
+        '403':
+          description: Scope mismatch; same response whether or not the agent or group exists
+          content: *id001
+  /mcp/agent-group/{group}:
+    post:
+      operationId: mcpAgentGroupScope
+      description: 'CatalogScope AGENT_GROUP: only tools permitted through the group.'
+      parameters:
+      - name: group
+        in: path
+        required: true
+        description: Agent Group slug
+        schema:
+          type: string
+          pattern: ^[a-z0-9][a-z0-9-]{0,62}$
+      - name: MCP-Protocol-Version
+        in: header
+        required: false
+        description: Legacy adapter only; 2026-07-28 requests carry the version in _meta
+        schema:
+          type: string
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Business key for tools that use one (plan.md §11.7)
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: MCP JSON-RPC request, defined by the MCP specification
+      responses:
+        '200':
+          description: MCP JSON-RPC response or stream
+          content:
+            application/json:
+              schema:
+                type: object
+            text/event-stream:
+              schema:
+                type: string
+        '401':
+          description: Missing or invalid credential; RFC 9728 WWW-Authenticate
+          headers:
+            WWW-Authenticate:
+              description: Resource metadata pointer
+              schema:
+                type: string
+          content: *id001
+        '403':
+          description: Scope mismatch; same response whether or not the agent or group exists
+          content: *id001
+  /mcp/agent-group/{group}/{agent}:
+    post:
+      operationId: mcpAgentInGroupScope
+      description: CatalogScope AGENT_IN_GROUP.
+      parameters:
+      - name: group
+        in: path
+        required: true
+        description: Agent Group slug
+        schema:
+          type: string
+          pattern: ^[a-z0-9][a-z0-9-]{0,62}$
+      - name: agent
+        in: path
+        required: true
+        description: Agent slug
+        schema:
+          type: string
+          pattern: ^[a-z0-9][a-z0-9-]{0,62}$
+      - name: MCP-Protocol-Version
+        in: header
+        required: false
+        description: Legacy adapter only; 2026-07-28 requests carry the version in _meta
+        schema:
+          type: string
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Business key for tools that use one (plan.md §11.7)
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: MCP JSON-RPC request, defined by the MCP specification
+      responses:
+        '200':
+          description: MCP JSON-RPC response or stream
+          content:
+            application/json:
+              schema:
+                type: object
+            text/event-stream:
+              schema:
+                type: string
+        '401':
+          description: Missing or invalid credential; RFC 9728 WWW-Authenticate
+          headers:
+            WWW-Authenticate:
+              description: Resource metadata pointer
+              schema:
+                type: string
+          content: *id001
+        '403':
+          description: Scope mismatch; same response whether or not the agent or group exists
+          content: *id001
+  /.well-known/oauth-protected-resource:
+    get:
+      operationId: getProtectedResourceMetadata
+      security: []
+      description: RFC 9728 metadata naming the tenant's trusted issuers for this resource.
+      responses:
+        '200':
+          description: Metadata
+          content:
+            application/json:
+              schema:
+                type: object
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      description: Static token (tg_ prefix), JWT access token (typ at+jwt) or introspected opaque token, classified per plan.md
+        §9.2
+  responses:
+    Error:
+      description: Stable sanitized error code and server-generated request ID
+      content:
+        application/json:
+          schema:
+            $ref: ../../schemas/v1/error.schema.json#/$defs/ErrorEnvelope
