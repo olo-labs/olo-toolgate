@@ -195,6 +195,14 @@ def register_devices(config, args):
     return registrations
 
 
+class ToolsNotReported(ValueError):
+    """The device is connected but its client is not reporting the registered example tools."""
+
+
+# deploy.ps1 repairs this exit by rerunning prepare-windows.ps1 on this machine.
+TOOLS_NOT_REPORTED_EXIT = 3
+
+
 def check_extractors(config, selection):
     """Refuse a profile whose extractor would replace this Gateway's copy.
 
@@ -238,10 +246,11 @@ def verify_discovery(selection, directory, target, timeout=30):
             break
         time.sleep(3)
     device, platform = selection['deviceId'], selection['platform']
-    remedy = ('In an Administrator PowerShell on that device, run prepare-windows.ps1 again, then deploy.bat -Win.'
+    remedy = ('deploy.bat repairs a client on this machine automatically. For another Windows device, run '
+              'prepare-windows.ps1 again in an Administrator PowerShell there, then deploy.bat -Win.'
               if platform == 'windows' else
               'Rebuild the Linux device from the current image: run deploy.bat -Target linux without -SkipBuild.')
-    raise ValueError(f'The {platform} device {device} is connected, but the Gateway does not offer '
+    raise (ToolsNotReported if platform == 'windows' else ValueError)(f'The {platform} device {device} is connected, but the Gateway does not offer '
                      f'{", ".join(missing)} for it. The installed client is not reporting the tool profiles '
                      f'registered in .state/devices/{device}.json. This happens after Switch gateway, Repair '
                      f'gateway connection, or a client reinstall or update. {remedy}')
@@ -337,10 +346,14 @@ def main():
         print(json.dumps(linux_status(), indent=2))
 
 
-if __name__ == '__main__':
+def run():
     try:
         main()
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as failure:
         print('FAILED: ' + (str(failure) if isinstance(failure, ValueError) else
               'Example setup failed; inspect Compose health and configuration'), file=sys.stderr)
-        raise SystemExit(1)
+        raise SystemExit(TOOLS_NOT_REPORTED_EXIT if isinstance(failure, ToolsNotReported) else 1)
+
+
+if __name__ == '__main__':
+    run()
