@@ -1,0 +1,22 @@
+{
+  "comment": "Equivalent: differs only by a single-element type array, required order, a default-valued keyword and a local non-recursive $ref.",
+  "a": {
+    "toolId": "acme.orders/orders.lookup",
+    "inputSchema": {
+      "type": "object",
+      "properties": { "orderId": { "type": "string", "description": "Order number" }, "since": { "type": "integer", "description": "Since" } },
+      "required": ["since", "orderId"],
+      "additionalProperties": false
+    }
+  },
+  "b": {
+    "toolId": "acme.orders/orders.lookup",
+    "inputSchema": {
+      "type": ["object"],
+      "properties": { "orderId": { "$ref": "#/$defs/OrderId" }, "since": { "type": "integer", "description": "Since", "deprecated": false } },
+      "required": ["orderId", "since"],
+      "additionalProperties": false,
+      "$defs": { "OrderId": { "type": "string", "description": "Order number" } }
+    }
+  }
+}

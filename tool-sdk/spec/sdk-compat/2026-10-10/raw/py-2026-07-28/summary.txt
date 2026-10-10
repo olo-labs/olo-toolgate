@@ -1,0 +1,75 @@
+PASS caching: 8 passed, 0 failed
+PASS completion-complete: 2 passed, 0 failed
+PASS dns-rebinding-protection: 2 passed, 0 failed
+PASS http-custom-header-server-validation: 10 passed, 0 failed
+PASS http-header-validation: 14 passed, 0 failed
+PASS input-required-result-basic-elicitation: 3 passed, 0 failed
+PASS input-required-result-basic-list-roots: 3 passed, 0 failed
+PASS input-required-result-basic-sampling: 3 passed, 0 failed
+PASS input-required-result-capability-check: 2 passed, 0 failed
+PASS input-required-result-ignore-extra-params: 2 passed, 0 failed
+PASS input-required-result-missing-input-response: 2 passed, 0 failed
+PASS input-required-result-multi-round: 4 passed, 0 failed
+PASS input-required-result-multiple-input-requests: 3 passed, 0 failed
+PASS input-required-result-non-tool-request: 3 passed, 0 failed
+PASS input-required-result-request-state: 3 passed, 0 failed
+PASS input-required-result-result-type: 2 passed, 0 failed
+PASS input-required-result-tampered-state: 2 passed, 0 failed
+PASS input-required-result-unsupported-methods: 2 passed, 0 failed
+PASS input-required-result-validate-input: 3 passed, 0 failed
+PASS json-schema-2020-12: 8 passed, 0 failed
+PASS prompts-get-embedded-resource: 2 passed, 0 failed
+PASS prompts-get-simple: 2 passed, 0 failed
+PASS prompts-get-with-args: 2 passed, 0 failed
+PASS prompts-get-with-image: 2 passed, 0 failed
+PASS prompts-list: 2 passed, 0 failed
+PASS resources-list: 2 passed, 0 failed
+PASS resources-read-binary: 2 passed, 0 failed
+PASS resources-read-text: 2 passed, 0 failed
+PASS resources-templates-read: 2 passed, 0 failed
+PASS sep-2164-resource-not-found: 4 passed, 0 failed
+PASS server-sse-multiple-streams: 1 passed, 0 failed
+PASS server-stateless: 30 passed, 0 failed
+FAIL tasks-capability-negotiation: 2 passed, 3 failed
+      - tasks-extension-advertised: capabilities.extensions MUST be advertised
+      - sep-2663-tasks-methods-non-declaring: tasks/get MUST return -32021; got -32601; tasks/update MUST return -32021; got -32601; tasks/cancel MUST return -32021; got -32601
+      - tasks-per-request-meta-opt-in: expected resultType:"task" via per-request opt-in; got "complete"; per-request opt-in MUST produce a CreateTaskResult with top-level taskId
+FAIL tasks-dispatch-and-envelope: 6 passed, 3 failed
+      - tasks-server-directed-creation-no-hint: expected CreateTaskResult; got resultType="complete", taskId=undefined
+      - sep-2663-durable-create-strong-consistency: slow_compute did not create a task
+      - sep-2663-tasks-get-invalid-task-id-32602: expected -32602; got -32601 (if the server is otherwise compliant, verify it does not validate other dimensions — routing headers, _meta, pa
+FAIL tasks-lifecycle: 2 passed, 7 failed
+      - sep-2663-result-type-task-on-create: expected resultType:"task"; got "complete"; CreateTaskResult MUST carry top-level taskId; CreateTaskResult MUST carry top-level status; crea
+      - sep-2663-tasks-get-status-working: Not testable: no task was created by the preceding step, so this check could not be exercised
+      - sep-2663-tasks-get-status-completed: Not testable: no task was created by the preceding step, so this check could not be exercised
+      - sep-2663-tool-error-uses-completed-status: failing_job MUST create a task
+      - sep-2663-tasks-get-status-failed: protocol_error_job MUST create a task
+      - sep-2663-cancel-ack-empty-result: slow_compute did not create a task
+      - tasks-cancel-terminal-idempotent-ack: slow_compute did not create a task
+FAIL tasks-mrtr-composition: 1 passed, 1 failed
+      - sep-2663-mrtr-synchronous-before-task-creation: round 1 MUST be InputRequiredResult; got {"content":[{"text":"Unknown tool: test_tool_with_task","type":"text"}],"isError":true,"resultType"
+FAIL tasks-mrtr-input: 1 passed, 3 failed
+      - sep-2663-tasks-get-status-input-required: confirm_delete did not create a task
+      - tasks-mrtr-tasks-update-resumes: confirm_delete did not create a task
+      - tasks-mrtr-partial-fulfillment: multi_input did not create a task
+FAIL tasks-request-headers: 2 passed, 3 failed
+      - tasks-headers-tolerate-mcp-method-on-tools-call: tool result content MUST be unaffected by the Mcp-Method header
+      - sep-2663-routing-headers-accepted-on-tasks-get: slow_compute did not create a task
+      - sep-2663-server-rejects-mismatched-mcp-name-on-tasks-get: routing-task fixture from Check 2 unavailable; cannot drive negative-path probe
+FAIL tasks-request-state-removal: 1 passed, 1 failed
+      - tasks-request-state-removal-setup: no taskId in tools/call response
+FAIL tasks-required-task-error: 1 passed, 1 failed
+      - sep-2663-server-returns-missing-capability-when-required: tools/call for failing_job returned a successful response from a client that did not declare io.modelcontextprotocol/tasks; spec requires -3
+PASS tasks-status-notifications: 0 passed, 0 failed
+FAIL tasks-wire-fields: 1 passed, 3 failed
+      - tasks-wire-field-renames: CreateTaskResult MUST carry ttlMs (renamed from v1 `ttl`)
+      - tasks-no-early-ttl-expiry: Not testable: no task was created by the preceding step, so this check could not be exercised
+      - tasks-no-related-task-meta-on-inlined-result: Not testable: no task was created by the preceding step, so this check could not be exercised
+PASS tools-call-audio: 2 passed, 0 failed
+PASS tools-call-embedded-resource: 2 passed, 0 failed
+PASS tools-call-error: 2 passed, 0 failed
+PASS tools-call-image: 2 passed, 0 failed
+PASS tools-call-mixed-content: 2 passed, 0 failed
+PASS tools-call-simple-text: 2 passed, 0 failed
+PASS tools-call-with-progress: 2 passed, 0 failed
+PASS tools-list: 4 passed, 0 failed

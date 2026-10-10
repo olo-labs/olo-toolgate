@@ -1,0 +1,178 @@
+Running requirements 2025-11-25 (33 scenarios) against http://localhost:3000/mcp
+
+
+=== Running scenario: server-initialize ===
+Running client scenario 'server-initialize' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-server-initialize-2026-10-10T18-34-20-575Z
+
+=== Running scenario: logging-set-level ===
+Running client scenario 'logging-set-level' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-logging-set-level-2026-10-10T18-34-20-833Z
+
+=== Running scenario: ping ===
+Running client scenario 'ping' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-ping-2026-10-10T18-34-20-887Z
+
+=== Running scenario: completion-complete ===
+Running client scenario 'completion-complete' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-completion-complete-2026-10-10T18-34-20-923Z
+
+=== Running scenario: tools-list ===
+Running client scenario 'tools-list' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-tools-list-2026-10-10T18-34-20-964Z
+
+=== Running scenario: tools-call-simple-text ===
+Running client scenario 'tools-call-simple-text' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-tools-call-simple-text-2026-10-10T18-34-21-007Z
+
+=== Running scenario: tools-call-image ===
+Running client scenario 'tools-call-image' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-tools-call-image-2026-10-10T18-34-21-070Z
+
+=== Running scenario: tools-call-audio ===
+Running client scenario 'tools-call-audio' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-tools-call-audio-2026-10-10T18-34-21-098Z
+
+=== Running scenario: tools-call-embedded-resource ===
+Running client scenario 'tools-call-embedded-resource' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-tools-call-embedded-resource-2026-10-10T18-34-21-121Z
+
+=== Running scenario: tools-call-mixed-content ===
+Running client scenario 'tools-call-mixed-content' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-tools-call-mixed-content-2026-10-10T18-34-21-148Z
+
+=== Running scenario: tools-call-with-logging ===
+Running client scenario 'tools-call-with-logging' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-tools-call-with-logging-2026-10-10T18-34-21-168Z
+
+=== Running scenario: tools-call-error ===
+Running client scenario 'tools-call-error' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-tools-call-error-2026-10-10T18-34-21-501Z
+
+=== Running scenario: tools-call-with-progress ===
+Running client scenario 'tools-call-with-progress' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-tools-call-with-progress-2026-10-10T18-34-21-519Z
+
+=== Running scenario: tools-call-sampling ===
+Running client scenario 'tools-call-sampling' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-tools-call-sampling-2026-10-10T18-34-21-645Z
+
+=== Running scenario: tools-call-elicitation ===
+Running client scenario 'tools-call-elicitation' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-tools-call-elicitation-2026-10-10T18-34-21-697Z
+
+=== Running scenario: elicitation-sep1034-defaults ===
+Running client scenario 'elicitation-sep1034-defaults' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-elicitation-sep1034-defaults-2026-10-10T18-34-21-769Z
+
+=== Running scenario: server-sse-multiple-streams ===
+Running client scenario 'server-sse-multiple-streams' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-server-sse-multiple-streams-2026-10-10T18-34-21-800Z
+
+=== Running scenario: elicitation-sep1330-enums ===
+Running client scenario 'elicitation-sep1330-enums' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-elicitation-sep1330-enums-2026-10-10T18-34-21-844Z
+
+=== Running scenario: resources-list ===
+Running client scenario 'resources-list' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-resources-list-2026-10-10T18-34-21-872Z
+
+=== Running scenario: resources-read-text ===
+Running client scenario 'resources-read-text' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-resources-read-text-2026-10-10T18-34-21-897Z
+
+=== Running scenario: resources-read-binary ===
+Running client scenario 'resources-read-binary' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-resources-read-binary-2026-10-10T18-34-21-928Z
+
+=== Running scenario: resources-templates-read ===
+Running client scenario 'resources-templates-read' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-resources-templates-read-2026-10-10T18-34-21-950Z
+
+=== Running scenario: resources-subscribe ===
+Running client scenario 'resources-subscribe' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-resources-subscribe-2026-10-10T18-34-21-966Z
+
+=== Running scenario: resources-unsubscribe ===
+Running client scenario 'resources-unsubscribe' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-resources-unsubscribe-2026-10-10T18-34-21-986Z
+
+=== Running scenario: prompts-list ===
+Running client scenario 'prompts-list' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-prompts-list-2026-10-10T18-34-22-014Z
+
+=== Running scenario: prompts-get-simple ===
+Running client scenario 'prompts-get-simple' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-prompts-get-simple-2026-10-10T18-34-22-043Z
+
+=== Running scenario: prompts-get-with-args ===
+Running client scenario 'prompts-get-with-args' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-prompts-get-with-args-2026-10-10T18-34-22-075Z
+
+=== Running scenario: prompts-get-embedded-resource ===
+Running client scenario 'prompts-get-embedded-resource' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-prompts-get-embedded-resource-2026-10-10T18-34-22-095Z
+
+=== Running scenario: prompts-get-with-image ===
+Running client scenario 'prompts-get-with-image' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-prompts-get-with-image-2026-10-10T18-34-22-117Z
+
+=== Running scenario: dns-rebinding-protection ===
+Running client scenario 'dns-rebinding-protection' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-dns-rebinding-protection-2026-10-10T18-34-22-136Z
+
+=== Running scenario: server-session-lifecycle ===
+Running client scenario 'server-session-lifecycle' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-server-session-lifecycle-2026-10-10T18-34-22-152Z
+
+=== Running scenario: json-schema-2020-12 ===
+Running client scenario 'json-schema-2020-12' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-json-schema-2020-12-2026-10-10T18-34-22-179Z
+
+=== Running scenario: server-sse-polling ===
+Running client scenario 'server-sse-polling' against server: http://localhost:3000/mcp
+Results saved to /tmp/claude-0/conformance/work/results/ts-2025-11-25/checks/server-server-sse-polling-2026-10-10T18-34-22-201Z
+
+
+=== SUMMARY ===
+✓ server-initialize: 3 passed, 0 failed
+✓ logging-set-level: 2 passed, 0 failed
+✓ ping: 2 passed, 0 failed
+✓ completion-complete: 2 passed, 0 failed
+✓ tools-list: 3 passed, 0 failed
+✓ tools-call-simple-text: 2 passed, 0 failed
+✓ tools-call-image: 2 passed, 0 failed
+✓ tools-call-audio: 2 passed, 0 failed
+✓ tools-call-embedded-resource: 2 passed, 0 failed
+✓ tools-call-mixed-content: 2 passed, 0 failed
+✓ tools-call-with-logging: 2 passed, 0 failed
+✓ tools-call-error: 2 passed, 0 failed
+✓ tools-call-with-progress: 2 passed, 0 failed
+✓ tools-call-sampling: 2 passed, 0 failed
+✓ tools-call-elicitation: 2 passed, 0 failed
+✓ elicitation-sep1034-defaults: 6 passed, 0 failed
+✓ server-sse-multiple-streams: 2 passed, 0 failed
+✓ elicitation-sep1330-enums: 6 passed, 0 failed
+✓ resources-list: 2 passed, 0 failed
+✓ resources-read-text: 2 passed, 0 failed
+✓ resources-read-binary: 2 passed, 0 failed
+✓ resources-templates-read: 2 passed, 0 failed
+✓ resources-subscribe: 2 passed, 0 failed
+✓ resources-unsubscribe: 2 passed, 0 failed
+✓ prompts-list: 2 passed, 0 failed
+✓ prompts-get-simple: 2 passed, 0 failed
+✓ prompts-get-with-args: 2 passed, 0 failed
+✓ prompts-get-embedded-resource: 2 passed, 0 failed
+✓ prompts-get-with-image: 2 passed, 0 failed
+✓ dns-rebinding-protection: 2 passed, 0 failed
+✓ server-session-lifecycle: 3 passed, 0 failed
+✓ json-schema-2020-12: 8 passed, 0 failed
+✓ server-sse-polling: 3 passed, 0 failed
+
+Total: 84 passed, 0 failed
+
+Not scored for 2025-11-25: 3 scenario(s) run, 0 failing. These do not affect conformance.
+  ✓ server-session-lifecycle (added-after-release)
+  ✓ json-schema-2020-12 (pending)
+  ✓ server-sse-polling (pending)
+exit=0

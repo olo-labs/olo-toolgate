@@ -1,0 +1,17 @@
+>> server/discover
+<< {"result":{"supportedVersions":["2026-07-28"],"capabilities":{"tools":{"listChanged":true}},"resultType":"complete","ttlMs":0,"cacheScope":"private","_meta":{"io.modelcontextprotocol/serverInfo":{"name":"probe-ts","version":"1.0.0"}}},"jsonrpc":"2.0","id":1}
+>> tools/list
+<< {"result":{"tools":[{"name":"echo","description":"echo","inputSchema":{"type":"object","$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"text":{"type":"string"}},"required":["text"]}}],"resultType":"complete","ttlMs":0,"cacheScope":"private","_meta":{"io.modelcontextprotocol/serverInfo":{"name":"probe-ts","version":"1.0.0"}}},"jsonrpc":"2.0","id":2}
+>> tools/call
+<< {"result":{"content":[{"type":"text","text":"hi"}],"resultType":"complete","_meta":{"io.modelcontextprotocol/serverInfo":{"name":"probe-ts","version":"1.0.0"}}},"jsonrpc":"2.0","id":3}
+>> acme/echo
+<< {"result":{"echoed":"custom","resultType":"complete","_meta":{"io.modelcontextprotocol/serverInfo":{"name":"probe-ts","version":"1.0.0"}}},"jsonrpc":"2.0","id":4}
+>> initialize
+<< {"jsonrpc":"2.0","id":5,"error":{"code":-32022,"message":"Unsupported protocol version: 2025-11-25","data":{"supported":["2026-07-28"],"requested":"2025-11-25"}}}
+>> initialize
+<< {"result":{"protocolVersion":"2025-11-25","capabilities":{"tools":{"listChanged":true}},"serverInfo":{"name":"probe-ts","version":"1.0.0"}},"jsonrpc":"2.0","id":1}
+>> notifications/initialized
+>> tools/list
+<< {"result":{"tools":[{"name":"echo","description":"echo","inputSchema":{"type":"object","$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"text":{"type":"string"}},"required":["text"]}}]},"jsonrpc":"2.0","id":2}
+>> acme/echo
+<< {"result":{"echoed":"custom-legacy"},"jsonrpc":"2.0","id":3}

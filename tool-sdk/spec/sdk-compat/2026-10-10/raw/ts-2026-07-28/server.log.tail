@@ -1,0 +1,96 @@
+MCP Conformance Test Server running on http://localhost:3000
+  - MCP endpoint: http://localhost:3000/mcp
+Modern-era MCP handler error: Error: Rejected inbound request (modern-header-without-claim): Invalid params: the MCP-Protocol-Version header names protocol revision 2026-07-28, but the request is missing the required per-request envelope key(s): _meta
+    at handle (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:981:33)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.fetchFace (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:1006:20)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/packages/middleware/node/src/toNodeHandler.ts:152:24)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/test/conformance/src/everythingServer.ts:1491:13)
+Modern-era MCP handler error: Error: Rejected inbound request (modern-header-without-claim): Invalid params: the MCP-Protocol-Version header names protocol revision 2026-07-28, but the request is missing the required per-request envelope key(s): io.modelcontextprotocol/protocolVersion
+    at handle (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:981:33)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.fetchFace (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:1006:20)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/packages/middleware/node/src/toNodeHandler.ts:152:24)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/test/conformance/src/everythingServer.ts:1491:13)
+Modern-era MCP handler error: Error: Rejected inbound request (envelope-invalid): Invalid _meta envelope for protocol revision 2026-07-28: io.modelcontextprotocol/clientCapabilities: missing
+    at handle (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:981:33)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.fetchFace (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:1006:20)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/packages/middleware/node/src/toNodeHandler.ts:152:24)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/test/conformance/src/everythingServer.ts:1491:13)
+Modern-era MCP handler error: UnsupportedProtocolVersionError [ProtocolError]: Unsupported protocol version: v999.0.0
+    at serveModern (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:734:27)
+    at handle (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:985:34)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.fetchFace (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:1006:20)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/packages/middleware/node/src/toNodeHandler.ts:152:24)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/test/conformance/src/everythingServer.ts:1491:13) {
+  code: -32022,
+  data: { supported: [ '2026-07-28' ], requested: 'v999.0.0' }
+}
+Modern-era MCP handler error: Error: Rejected inbound request (header-body-version-mismatch): Bad Request: the request headers and body disagree: the body envelope names protocol version v999.0.0 but the MCP-Protocol-Version header names 2026-07-28
+    at handle (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:981:33)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.fetchFace (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:1006:20)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/packages/middleware/node/src/toNodeHandler.ts:152:24)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/test/conformance/src/everythingServer.ts:1491:13)
+Modern-era MCP handler error: Error: Rejected inbound request (method-header-mismatch): Bad Request: the request headers and body disagree: the body names method tools/call but the Mcp-Method header names tasks/get
+    at handle (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:981:33)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.fetchFace (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:1006:20)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/packages/middleware/node/src/toNodeHandler.ts:152:24)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/test/conformance/src/everythingServer.ts:1491:13)
+Modern-era MCP handler error: Error: Rejected inbound request (method-header-mismatch): Bad Request: the request headers and body disagree: the body names method tools/list but the Mcp-Method header names prompts/list
+    at handle (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:981:33)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.fetchFace (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:1006:20)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/packages/middleware/node/src/toNodeHandler.ts:152:24)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/test/conformance/src/everythingServer.ts:1491:13)
+Modern-era MCP handler error: Error: Rejected inbound request (method-header-missing): Bad Request: the request headers and body disagree: the body names method tools/list but the required Mcp-Method header is absent
+    at serveModern (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:757:25)
+    at handle (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:985:34)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.fetchFace (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:1006:20)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/packages/middleware/node/src/toNodeHandler.ts:152:24)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/test/conformance/src/everythingServer.ts:1491:13)
+Modern-era MCP handler error: Error: Rejected inbound request (name-header-mismatch): Bad Request: the request headers and body disagree: the body carries params.name="test_x_mcp_header" but the Mcp-Name header names "wrong_tool_name"
+    at serveModern (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:757:25)
+    at handle (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:985:34)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.fetchFace (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:1006:20)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/packages/middleware/node/src/toNodeHandler.ts:152:24)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/test/conformance/src/everythingServer.ts:1491:13)
+Modern-era MCP handler error: Error: Rejected inbound request (name-header-missing): Bad Request: the request headers and body disagree: the body carries params.name="test_x_mcp_header" but the required Mcp-Name header is absent
+    at serveModern (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:757:25)
+    at handle (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:985:34)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.fetchFace (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:1006:20)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/packages/middleware/node/src/toNodeHandler.ts:152:24)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/test/conformance/src/everythingServer.ts:1491:13)
+Modern-era MCP handler error: Error: Rejected inbound request (method-header-mismatch): Bad Request: the request headers and body disagree: the body names method tools/list but the Mcp-Method header names TOOLS/LIST
+    at handle (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:981:33)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.fetchFace (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:1006:20)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/packages/middleware/node/src/toNodeHandler.ts:152:24)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/test/conformance/src/everythingServer.ts:1491:13)
+Modern-era MCP handler error: Error: Rejected inbound request (param-header-invalid-encoding): Bad Request: the request headers and body disagree: the Mcp-Param-Region header carries an invalid Base64 sentinel value
+    at serveModern (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:836:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async handle (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:985:28)
+    at async Object.fetchFace (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:1006:20)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/packages/middleware/node/src/toNodeHandler.ts:152:24)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/test/conformance/src/everythingServer.ts:1491:13)
+Modern-era MCP handler error: Error: Rejected inbound request (param-header-invalid-encoding): Bad Request: the request headers and body disagree: the Mcp-Param-Region header carries an invalid Base64 sentinel value
+    at serveModern (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:836:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async handle (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:985:28)
+    at async Object.fetchFace (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:1006:20)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/packages/middleware/node/src/toNodeHandler.ts:152:24)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/test/conformance/src/everythingServer.ts:1491:13)
+Modern-era MCP handler error: Error: Rejected inbound request (param-header-missing): Bad Request: the request headers and body disagree: the body carries region="test-value" but the Mcp-Param-Region header is absent
+    at serveModern (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:836:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async handle (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:985:28)
+    at async Object.fetchFace (/tmp/claude-0/conformance/dl/ts-sdk/packages/server/src/server/createMcpHandler.ts:1006:20)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/packages/middleware/node/src/toNodeHandler.ts:152:24)
+    at async <anonymous> (/tmp/claude-0/conformance/dl/ts-sdk/test/conformance/src/everythingServer.ts:1491:13)

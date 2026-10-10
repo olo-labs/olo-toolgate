@@ -1,0 +1,192 @@
+FAIL caching: 0 passed, 7 failed
+      - sep-2549-tools-list-caching-hints: tools/list request failed: HTTP 400: expected a JSON-RPC result for 'tools/list', got unexpected body {"jsonRpcError":{"code":-32601,"messag
+      - sep-2549-prompts-list-caching-hints: prompts/list request failed: HTTP 400: expected a JSON-RPC result for 'prompts/list', got unexpected body {"jsonRpcError":{"code":-32601,"me
+      - sep-2549-resources-list-caching-hints: resources/list request failed: HTTP 400: expected a JSON-RPC result for 'resources/list', got unexpected body {"jsonRpcError":{"code":-32601
+      - sep-2549-resources-templates-list-caching-hints: resources/templates/list request failed: HTTP 400: expected a JSON-RPC result for 'resources/templates/list', got unexpected body {"jsonRpcE
+      - sep-2549-ttl-non-negative: no endpoints returned ttlMs
+      - sep-2549-cache-scope-valid: no endpoints returned cacheScope
+      - wire-schema-valid: [implementation] response to 'tools/list' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL completion-complete: 0 passed, 2 failed
+      - completion-complete: Failed: HTTP 400: expected a JSON-RPC result for 'completion/complete', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Sessio
+      - wire-schema-valid: [implementation] response to 'completion/complete' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or respons
+FAIL dns-rebinding-protection: 1 passed, 1 failed
+      - localhost-host-valid-accepted: Expected HTTP 2xx for valid localhost Host/Origin headers, got 400
+FAIL http-custom-header-server-validation: 0 passed, 6 failed
+      - sep-2243-server-custom-setup: tools/list discovery failed: HTTP 400, no result in response body
+      - sep-2243-server-decode-base64: Check was not observed: custom-header validation setup failed before this case ran.
+      - sep-2243-server-validate-param-match: Check was not observed: custom-header validation setup failed before this case ran.
+      - sep-2243-server-reject-invalid-param-chars: Check was not observed: custom-header validation setup failed before this case ran.
+      - sep-2243-server-reject-param-mismatch: Check was not observed: custom-header validation setup failed before this case ran.
+      - wire-schema-valid: [implementation] response to 'tools/list' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL http-header-validation: 0 passed, 5 failed
+      - sep-2243-server-standard-setup: tools/list discovery failed: HTTP 400, no result in response body
+      - sep-2243-server-reject-invalid-headers: Not testable: tools/list discovery failed, so the Mcp-Name header-validation cases could not be exercised
+      - sep-2243-server-accepts-whitespace-header-value: Not testable: tools/list discovery failed, so the Mcp-Name header-validation cases could not be exercised
+      - sep-2243-server-reject-invalid-headers: Not testable: tools/list discovery failed, so the Mcp-Name header-validation cases could not be exercised
+      - wire-schema-valid: [implementation] response to 'tools/list' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL input-required-result-basic-elicitation: 0 passed, 2 failed
+      - sep-2322-elicitation-incomplete: No result in response
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL input-required-result-basic-list-roots: 0 passed, 2 failed
+      - sep-2322-list-roots-incomplete: No result in response
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL input-required-result-basic-sampling: 0 passed, 2 failed
+      - sep-2322-sampling-incomplete: No result in response
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL input-required-result-capability-check: 0 passed, 2 failed
+      - sep-2322-respect-client-capabilities: No result in response
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL input-required-result-ignore-extra-params: 0 passed, 1 failed
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL input-required-result-missing-input-response: 0 passed, 1 failed
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL input-required-result-multi-round: 0 passed, 2 failed
+      - sep-2322-multi-round-r1: Expected InputRequiredResult with inputRequests and requestState
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL input-required-result-multiple-input-requests: 0 passed, 2 failed
+      - sep-2322-multiple-inputs-incomplete: Expected InputRequiredResult
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL input-required-result-non-tool-request: 0 passed, 2 failed
+      - sep-2322-non-tool-incomplete: Expected InputRequiredResult from prompts/get
+      - wire-schema-valid: [implementation] response to 'prompts/get' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — mess
+FAIL input-required-result-request-state: 0 passed, 2 failed
+      - sep-2322-request-state-incomplete: Expected InputRequiredResult
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL input-required-result-result-type: 0 passed, 2 failed
+      - sep-2322-result-type-included: No result in response
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL input-required-result-tampered-state: 0 passed, 2 failed
+      - sep-2322-reject-tampered-state: Prerequisite failed: could not get initial InputRequiredResult with requestState
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL input-required-result-unsupported-methods: 1 passed, 1 failed
+      - wire-schema-valid: [implementation] response to 'tools/list' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL input-required-result-validate-input: 2 passed, 1 failed
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL json-schema-2020-12: 0 passed, 2 failed
+      - json-schema-2020-12-error: Failed: HTTP 400: expected a JSON-RPC result for 'tools/list', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID requ
+      - wire-schema-valid: [implementation] response to 'tools/list' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL prompts-get-embedded-resource: 0 passed, 2 failed
+      - prompts-get-embedded-resource: Failed: HTTP 400: expected a JSON-RPC result for 'prompts/get', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID req
+      - wire-schema-valid: [implementation] response to 'prompts/get' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — mess
+FAIL prompts-get-simple: 0 passed, 2 failed
+      - prompts-get-simple: Failed: HTTP 400: expected a JSON-RPC result for 'prompts/get', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID req
+      - wire-schema-valid: [implementation] response to 'prompts/get' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — mess
+FAIL prompts-get-with-args: 0 passed, 2 failed
+      - prompts-get-with-args: Failed: HTTP 400: expected a JSON-RPC result for 'prompts/get', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID req
+      - wire-schema-valid: [implementation] response to 'prompts/get' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — mess
+FAIL prompts-get-with-image: 0 passed, 2 failed
+      - prompts-get-with-image: Failed: HTTP 400: expected a JSON-RPC result for 'prompts/get', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID req
+      - wire-schema-valid: [implementation] response to 'prompts/get' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — mess
+FAIL prompts-list: 0 passed, 2 failed
+      - prompts-list: Failed: HTTP 400: expected a JSON-RPC result for 'prompts/list', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID re
+      - wire-schema-valid: [implementation] response to 'prompts/list' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — mes
+FAIL resources-list: 0 passed, 2 failed
+      - resources-list: Failed: HTTP 400: expected a JSON-RPC result for 'resources/list', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID 
+      - wire-schema-valid: [implementation] response to 'resources/list' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — m
+FAIL resources-read-binary: 0 passed, 2 failed
+      - resources-read-binary: Failed: HTTP 400: expected a JSON-RPC result for 'resources/read', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID 
+      - wire-schema-valid: [implementation] response to 'resources/read' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — m
+FAIL resources-read-text: 0 passed, 2 failed
+      - resources-read-text: Failed: HTTP 400: expected a JSON-RPC result for 'resources/read', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID 
+      - wire-schema-valid: [implementation] response to 'resources/read' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — m
+FAIL resources-templates-read: 0 passed, 2 failed
+      - resources-templates-read: Failed: HTTP 400: expected a JSON-RPC result for 'resources/read', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID 
+      - wire-schema-valid: [implementation] response to 'resources/read' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — m
+FAIL sep-2164-resource-not-found: 1 passed, 2 failed
+      - sep-2164-data-uri: No JSON-RPC error received; cannot evaluate data field.
+      - wire-schema-valid: [implementation] response to 'resources/read' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — m
+FAIL server-sse-multiple-streams: 0 passed, 1 failed
+      - server-accepts-multiple-post-streams: Server rejected some requests. Statuses: 400, 400, 400
+FAIL server-stateless: 7 passed, 20 failed
+      - sep-2575-request-meta-invalid-missing-meta: Expected error code -32602, got undefined
+      - sep-2575-request-meta-invalid-missing-protocol-version: Expected error code -32602, got undefined
+      - sep-2575-request-meta-invalid-missing-client-capabilities: Expected error code -32602, got undefined
+      - sep-2575-request-meta-client-info-optional: Expected HTTP 200, got status code 400
+      - sep-2575-server-implements-discover: Missing mandatory fields in discover response setup
+      - sep-2575-server-declares-prompts-in-discover: Server handles prompts but did not declare prompts capability in discover result
+      - sep-2575-discover-capabilities-match-handlers: Did not advertise tools capability but tools/list did not yield -32601
+      - sep-2575-server-unsupported-version-error: Returned supported versions data layout does not correlate to active server metrics: undefined
+      - sep-2575-http-server-header-mismatch-400: Expected HTTP 400 and JSON-RPC error -32020, got status 400 with code undefined
+      - sep-2575-server-rejects-undeclared-capability: Not testable: server does not list the diagnostic tool 'test_missing_capability' in tools/list and the probe call did not exercise it (requi
+      - sep-2575-missing-capability-http-400: Not testable: server does not list the diagnostic tool 'test_missing_capability' in tools/list, so the -32021 HTTP status could not be valid
+      - sep-2575-http-server-method-not-found-404-initialize: Expected HTTP 404 and code -32601 for removed methods, got HTTP 200 and code undefined
+      - sep-2575-http-server-method-not-found-404-ping: Expected HTTP 404 and code -32601 for removed methods, got HTTP 400 and code undefined
+      - sep-2575-http-server-method-not-found-404-logging-setlevel: Expected HTTP 404 and code -32601 for removed methods, got HTTP 400 and code undefined
+      - sep-2575-http-server-method-not-found-404-resources-subscribe: Expected HTTP 404 and code -32601 for removed methods, got HTTP 400 and code undefined
+      - sep-2575-http-server-method-not-found-404-resources-unsubscribe: Expected HTTP 404 and code -32601 for removed methods, got HTTP 400 and code undefined
+      - sep-2575-http-server-method-not-found-404: Expected HTTP 404 and JSON-RPC error code -32601, got HTTP 400 and code undefined
+      - sep-2575-server-sends-subscription-ack: Expected first frame method to be 'notifications/subscriptions/acknowledged', got 'undefined'
+      - sep-2575-server-tags-subscription-id: subscriptions/listen stream carried no notification frames to inspect
+      - sep-2575-http-server-error-jsonrpc-id: Not testable: no error responses were observed across the probes, so the id-echo requirement could not be validated
+PASS tasks-capability-negotiation: 0 passed, 0 failed
+      - <no checks.json>
+FAIL tasks-dispatch-and-envelope: 0 passed, 9 failed
+      - sep-2663-tasks-result-removed-method-not-found: expected -32601; got <missing> (if the server is otherwise compliant, verify it does not validate other dimensions — routing headers, _meta,
+      - tasks-removed-tasks-list: expected -32601; got <missing> (if the server is otherwise compliant, verify it does not validate other dimensions — routing headers, _meta,
+      - tasks-server-directed-creation-no-hint: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in 
+      - sep-2663-legacy-task-param-ignored: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in 
+      - tasks-immediate-result-shortcut: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in 
+      - tasks-result-type-complete-on-non-task-responses: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in 
+      - sep-2663-durable-create-strong-consistency: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in 
+      - sep-2663-tasks-get-invalid-task-id-32602: expected -32602; got <missing> (if the server is otherwise compliant, verify it does not validate other dimensions — routing headers, _meta,
+      - wire-schema-valid: [implementation] response to 'tasks/result' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — mes
+FAIL tasks-lifecycle: 0 passed, 9 failed
+      - tasks-sync-tool-call: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in 
+      - sep-2663-result-type-task-on-create: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in 
+      - sep-2663-tasks-get-status-working: Not testable: no task was created by the preceding step, so this check could not be exercised
+      - sep-2663-tasks-get-status-completed: Not testable: no task was created by the preceding step, so this check could not be exercised
+      - sep-2663-tool-error-uses-completed-status: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in 
+      - sep-2663-tasks-get-status-failed: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in 
+      - sep-2663-cancel-ack-empty-result: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in 
+      - tasks-cancel-terminal-idempotent-ack: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in 
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL tasks-mrtr-composition: 0 passed, 2 failed
+      - sep-2663-mrtr-synchronous-before-task-creation: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in 
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL tasks-mrtr-input: 0 passed, 4 failed
+      - sep-2663-tasks-get-status-input-required: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in 
+      - tasks-mrtr-tasks-update-resumes: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in 
+      - tasks-mrtr-partial-fulfillment: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in 
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL tasks-request-headers: 0 passed, 5 failed
+      - tasks-headers-tolerate-mcp-method-on-tools-call: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in 
+      - sep-2663-routing-headers-accepted-on-tasks-get: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in 
+      - tasks-headers-reject-mismatched-method: expected -32020 HeaderMismatch; got HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-3260
+      - sep-2663-server-rejects-mismatched-mcp-name-on-tasks-get: routing-task fixture from Check 2 unavailable; cannot drive negative-path probe
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL tasks-request-state-removal: 0 passed, 2 failed
+      - tasks-request-state-removal-setup: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in 
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL tasks-required-task-error: 0 passed, 2 failed
+      - sep-2663-server-returns-missing-capability-when-required: tools/call for failing_job returned error code (unknown); spec requires -32021.
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+PASS tasks-status-notifications: 0 passed, 0 failed
+FAIL tasks-wire-fields: 0 passed, 4 failed
+      - tasks-wire-field-renames: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in 
+      - tasks-no-early-ttl-expiry: Not testable: no task was created by the preceding step, so this check could not be exercised
+      - tasks-no-related-task-meta-on-inlined-result: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in 
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL tools-call-audio: 0 passed, 2 failed
+      - tools-call-audio: Failed: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID requ
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL tools-call-embedded-resource: 0 passed, 2 failed
+      - tools-call-embedded-resource: Failed: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID requ
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL tools-call-error: 0 passed, 2 failed
+      - tools-call-error: Failed: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID requ
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL tools-call-image: 0 passed, 2 failed
+      - tools-call-image: Failed: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID requ
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL tools-call-mixed-content: 0 passed, 2 failed
+      - tools-call-mixed-content: Failed: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID requ
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL tools-call-simple-text: 0 passed, 2 failed
+      - tools-call-simple-text: Failed: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID requ
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL tools-call-with-progress: 0 passed, 2 failed
+      - tools-call-with-progress: Failed: HTTP 400: expected a JSON-RPC result for 'tools/call', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID requ
+      - wire-schema-valid: [implementation] response to 'tools/call' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
+FAIL tools-list: 0 passed, 2 failed
+      - tools-list: Failed: HTTP 400: expected a JSON-RPC result for 'tools/list', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID requ
+      - wire-schema-valid: [implementation] response to 'tools/list' (spec 2026-07-28): JSONRPCMessage: not a valid JSON-RPC request, notification, or response — messa
