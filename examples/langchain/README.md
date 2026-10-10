@@ -47,11 +47,17 @@ current group grants, policy, device approval and installed package evidence.
 - For Windows targeting, an installed client enrolled and approved on this
   example's Gateway, on the machine running Docker.
 
-The checked-in image tag is a specific published development release. Both the
-Quickstart and Linux client are taken from that image; the native archive checksum
-and architecture are verified before extraction. No Rust compilation is required.
-To use another compatible release, change `TOOLGATE_QUICKSTART_IMAGE` in `.env`.
+The default image is `ololab/olo-toolgate-quickstart:dev`, the latest development
+build. Both the Quickstart and Linux client are taken from that image; the native
+archive checksum and architecture are verified before extraction. No Rust compilation
+is required. `start.bat` re-pulls the image and rebuilds the Linux device from it on
+every run (except with `-SkipBuild`), so a moved `dev` tag is picked up. To pin a
+reproducible release, set `TOOLGATE_QUICKSTART_IMAGE` in `.env` to a `dev-<commit>` tag.
 An image without its Linux client archive fails the build.
+
+An existing `.env` is preserved, so one copied from an older `.env.example` may still
+pin an old `dev-<commit>` tag and therefore an old client. Set
+`TOOLGATE_QUICKSTART_IMAGE=ololab/olo-toolgate-quickstart:dev` there to follow `dev`.
 
 ## Windows: start everything and run the example
 
@@ -105,7 +111,8 @@ uses the existing local images without rebuilding. Omit `-SkipBuild` after code 
 `start.bat` works from another directory too. It calls `start.ps1`, which:
 
 1. Loads `.env` (copies `.env.example` if absent) and checks the required settings.
-2. Builds the Linux client wrapper and LangChain runner images.
+2. Pulls the Quickstart image and rebuilds the Linux client wrapper and LangChain
+   runner images from freshly pulled bases.
 3. Starts Quickstart and the Linux device, waiting for readiness.
 4. Logs in through the normal admin and two independent reviewer APIs. On a fresh
    isolated stack it uses the one-time installation passwords, changes them to
@@ -137,7 +144,8 @@ and approve the submitted drafts using independent console sessions.
 cd examples/langchain
 cp .env.example .env
 # Edit .env. Set LOCAL_UID and LOCAL_GID to `id -u` and `id -g` for private file access.
-docker compose build linux-device agent
+docker compose pull quickstart
+docker compose build --pull linux-device agent
 docker compose up -d --wait --wait-timeout 180 quickstart linux-device
 python3 manage.py setup --bootstrap-local --approve-linux-device
 docker compose run --rm -T agent --smoke

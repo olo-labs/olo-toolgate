@@ -62,14 +62,19 @@ try {
     Invoke-ExampleCommand 'docker' @('compose','version')
     Invoke-ExampleCommand 'docker' @('compose','config','--quiet')
     if (-not $SkipBuild) {
+        # Mutable tags such as `dev` must be re-pulled; a cached local copy keeps the old
+        # server and, through the device build below, the old Linux client.
+        Write-Host 'Pulling the published Quickstart image.'
+        Invoke-ImageCommand @('compose','pull','quickstart')
         Write-Host 'Building the Linux endpoint from the published client package and installing LangChain.'
-        Invoke-ImageCommand @('compose','build','linux-device','agent')
+        Invoke-ImageCommand @('compose','build','--pull','linux-device','agent')
+    } else {
+        $ErrorActionPreference = 'Continue'
+        & docker image inspect $env:TOOLGATE_QUICKSTART_IMAGE *> $null
+        $imageExists = $LASTEXITCODE -eq 0
+        $ErrorActionPreference = 'Stop'
+        if (-not $imageExists) { Invoke-ImageCommand @('compose','pull','quickstart') }
     }
-    $ErrorActionPreference = 'Continue'
-    & docker image inspect $env:TOOLGATE_QUICKSTART_IMAGE *> $null
-    $imageExists = $LASTEXITCODE -eq 0
-    $ErrorActionPreference = 'Stop'
-    if (-not $imageExists) { Invoke-ImageCommand @('compose','pull','quickstart') }
     Invoke-ExampleCommand 'docker' @('compose','up','-d','--wait','--wait-timeout','180','quickstart','linux-device')
     $setupArguments = @('manage.py','setup','--bootstrap-local','--approve-linux-device','--target',$Target)
     if ($DeviceId) { $setupArguments += @('--device-id',$DeviceId) }
