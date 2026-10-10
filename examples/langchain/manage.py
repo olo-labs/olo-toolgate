@@ -195,6 +195,58 @@ def register_devices(config, args):
     return registrations
 
 
+def check_extractors(config, selection):
+    """Refuse a profile whose extractor would replace this Gateway's copy.
+
+    An installed client digests its own revision-1 extractor, and every Gateway edit
+    bumps the stored revision. One replacement therefore breaks discovery for every
+    client of these tool IDs, so stop before changing anything.
+    """
+    stored = {row['id']: row for row in config.all('extractors')}
+    for profile in selection['profiles']:
+        wanted, tool = profile['extractor'], profile['tool']['id']
+        current = stored.get(wanted['id'])
+        if current is None or current == wanted:
+            continue
+        if current.get('revision') != wanted.get('revision'):
+            raise ValueError(f'This Gateway\'s resource extractor for {tool} was edited (revision '
+                             f'{current.get("revision")}), so no installed client can match it. Reset this '
+                             'example with "docker compose down -v", run deploy again, then repair the Windows '
+                             'client connection and rerun prepare-windows.ps1.')
+        raise ValueError(f'The selected {selection["platform"]} client registers {tool} as version '
+                         f'{wanted.get("version")}, but this Gateway has version {current.get("version")}. '
+                         'Replacing it would stop every other client from matching. Install the client from this '
+                         'stack\'s console (Connect), rerun prepare-windows.ps1, then deploy again.')
+
+
+def load_mimic():
+    spec = importlib.util.spec_from_file_location('agent_mimic', ROOT / 'debug/agent-mimic.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def verify_discovery(selection, directory, target, timeout=30):
+    """Run the agent's own discovery once, so deploy fails with the cause instead of execute."""
+    gateway = load_mimic().Agent(gateway_url(), directory / (target + '.token'), directory / 'gateway-ca.crt')
+    deadline = time.monotonic() + timeout
+    while True:
+        missing = sorted(TOOLS - {tool['name'] for tool in gateway.rpc('tools/list')['tools']})
+        if not missing:
+            return
+        if time.monotonic() >= deadline:
+            break
+        time.sleep(3)
+    device, platform = selection['deviceId'], selection['platform']
+    remedy = ('In an Administrator PowerShell on that device, run prepare-windows.ps1 again, then deploy.bat -Win.'
+              if platform == 'windows' else
+              'Rebuild the Linux device from the current image: run deploy.bat -Target linux without -SkipBuild.')
+    raise ValueError(f'The {platform} device {device} is connected, but the Gateway does not offer '
+                     f'{", ".join(missing)} for it. The installed client is not reporting the tool profiles '
+                     f'registered in .state/devices/{device}.json. This happens after Switch gateway, Repair '
+                     f'gateway connection, or a client reinstall or update. {remedy}')
+
+
 def provision(args):
     origin = wait_ready()
     config = Configuration(origin, args.bootstrap_local)
@@ -207,6 +259,7 @@ def provision(args):
     selected = selection['profiles']
     print(f'Selected {selection["platform"]}: {device} from {DEVICE_GROUP}', flush=True)
     wait_device(config, device)
+    check_extractors(config, selection)
     for profile in selected:
         config.upsert('extractors', profile['extractor'])
         config.upsert('tools', profile['tool'])
@@ -259,6 +312,7 @@ def provision(args):
             raise ValueError('Could not reconnect this example\'s Linux device')
     print('Waiting for a fresh device check-in after the Gateway restart (up to 6 minutes for client retry backoff).', flush=True)
     wait_device(config, device, seen_after=reconnect_after, timeout=360)
+    verify_discovery(selection, directory, args.target)
     print(f'Configured {selection["platform"]}: {device} in {DEVICE_GROUP}. Group changes were independently reviewed. Credentials expire in 24 hours.')
     print('Private runner credentials: ' + str(directory))
 

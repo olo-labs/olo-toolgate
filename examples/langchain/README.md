@@ -50,7 +50,7 @@ current group grants, policy, device approval and installed package evidence.
 The default image is `ololab/olo-toolgate-quickstart:dev`, the latest development
 build. Both the Quickstart and Linux client are taken from that image; the native
 archive checksum and architecture are verified before extraction. No Rust compilation
-is required. `start.bat` re-pulls the image and rebuilds the Linux device from it on
+is required. `deploy.bat` re-pulls the image and rebuilds the Linux device from it on
 every run (except with `-SkipBuild`), so a moved `dev` tag is picked up. To pin a
 reproducible release, set `TOOLGATE_QUICKSTART_IMAGE` in `.env` to a `dev-<commit>` tag.
 An image without its Linux client archive fails the build.
@@ -87,28 +87,40 @@ For a specific free model, set `OPENROUTER_MODEL` to its full `author/model:free
 ID from the [tool-capable model catalog](https://openrouter.ai/models?supported_parameters=tools).
 An existing `.env` is preserved; add these two settings when upgrading this example.
 
-Run:
+Deploying and testing are separate steps. `deploy.bat` brings up the stack, selects
+a device and issues its agent credential. `execute.bat` runs the test against that
+deployment, as many times as you like, without rebuilding or restarting anything:
 
 ```bat
-start.bat
-start.bat -UseCase operations
-start.bat -UseCase inventory
-start.bat -Win
-start.bat -Target linux
+deploy.bat
+execute.bat
+execute.bat -UseCase operations
+execute.bat -UseCase inventory
+
+deploy.bat -Win
+execute.bat -Win
+
+deploy.bat -Target linux
+execute.bat -Target linux
 ```
 
-Without a model key, test the actual ToolGate/device path first:
+Use the same target for both steps. Without a model key, test the actual
+ToolGate/device path first:
 
 ```bat
-start.bat -Smoke
+execute.bat -Smoke
+execute.bat -Win -Smoke
 ```
+
+`start.bat` still runs both steps in one go and accepts the options of both, for
+example `start.bat -Win -Smoke`.
 
 Image builds and pulls retry up to three times. A Docker Hub authentication
 `500`/`504` occurs before ToolGate starts; wait and retry if the registry remains
-unavailable. After the images have built successfully, `start.bat -Smoke -SkipBuild`
+unavailable. After the images have built successfully, `deploy.bat -SkipBuild`
 uses the existing local images without rebuilding. Omit `-SkipBuild` after code changes.
 
-`start.bat` works from another directory too. It calls `start.ps1`, which:
+The scripts work from another directory too. `deploy.bat` calls `deploy.ps1`, which:
 
 1. Loads `.env` (copies `.env.example` if absent) and checks the required settings.
 2. Pulls the Quickstart image and rebuilds the Linux client wrapper and LangChain
@@ -124,7 +136,13 @@ uses the existing local images without rebuilding. Omit `-SkipBuild` after code 
    registers its real tool profiles/package digest, and maps tools/agent to the
    standard ReadAndWrite groups through independent reviews.
 6. Issues a 24-hour opaque agent credential for the selected device, restarts only this
-   example's Quickstart to load it, then runs the selected LangChain task.
+   example's Quickstart to load it, and waits for the device to check in again.
+7. Runs the agent's own tool discovery with that credential. If the device does not
+   offer all four example tools, deploy fails here and names the missing tools and
+   the fix, instead of the test failing later.
+
+`execute.bat` then checks that a current deployment exists for the target, starts a
+stopped stack without rebuilding it, and runs the selected LangChain task.
 
 The bootstrap/reviewer automation is an **explicit local evaluation fixture**.
 The configuration still uses distinct requester/reviewer identities and the real
@@ -198,7 +216,7 @@ log**, and **About** for command progress, recent activity and version informati
 
 ## Add/select a Windows device
 
-1. Start this stack first (`start.bat -Smoke` is sufficient).
+1. Start this stack first (`deploy.bat` is sufficient).
 2. Open its console and click **Connect** (or download the Windows setup from
    it). For a local stack, setup is pointed at the console address
    `http://127.0.0.1:18091`, which publishes the gateway's certificate, and it
@@ -229,8 +247,9 @@ log**, and **About** for command progress, recent activity and version informati
 4. Run:
 
    ```bat
-   start.bat -Win -Smoke
-   start.bat -Win -UseCase tickets
+   deploy.bat -Win
+   execute.bat -Win -Smoke
+   execute.bat -Win -UseCase tickets
    ```
 
    Setup adds both registered devices to `ReadAndWriteDeviceGroup` through review.
@@ -241,7 +260,7 @@ log**, and **About** for command progress, recent activity and version informati
    one with `-Profiles <registration.json>` or `TOOLGATE_WINDOWS_PROFILES` in `.env`.
    An export from a different Gateway is rejected.
 
-   `start.bat` picks any eligible Linux or Windows member; `-Win` / `-Target windows`
+   `deploy.bat` picks any eligible Linux or Windows member; `-Win` / `-Target windows`
    filters to Windows, and `-Target linux` filters to Linux. `-DeviceId <id>`
    optionally pins a particular eligible member. Membership alone is insufficient:
    the device must be enabled, approved, have unexpired connection approval, and
@@ -266,7 +285,7 @@ profiles and pins their package bytes through reviewed changes.
 **Current product limitation:** a built-in tool ID has one current registered
 package/profile in this tenant. Windows and Linux executable hashes differ, so
 this example selects **one active device build at a time**. Selecting Windows can
-remove the matching Linux catalog until you run `start.bat -Target linux -Smoke` (or Linux setup)
+remove the matching Linux catalog until you run `deploy.bat -Target linux` (or Linux setup)
 again. Credentials remain device-bound; they do not bypass package matching. This
 example does not claim simultaneous mixed-build dispatch under the same tool IDs.
 
@@ -293,7 +312,21 @@ python manage.py status
 containers/network but also retains named volumes. Keep the volumes to reuse
 enrollment and generated reports.
 
-- **No model key:** use `start.bat -Smoke`, or configure `.env` before an AI run.
+- **No model key:** use `execute.bat -Smoke`, or configure `.env` before an AI run.
+- **"The target must expose list, read, write and activity tools":** run `deploy.bat`
+  again with the same target. Its discovery check names what is wrong:
+  - *connected, but the Gateway does not offer ...*: the Windows client is not reporting
+    its example tools, usually after **Switch gateway**, **Repair gateway connection** or
+    a client reinstall or update. Rerun `prepare-windows.ps1` as Administrator on that
+    device, then `deploy.bat -Win`.
+  - *registers ... as version X, but this Gateway has version Y*: built-in tool IDs share
+    one registration, and a client of another version cannot match it. Install the
+    Windows client from this stack's console (**Connect**), rerun `prepare-windows.ps1`,
+    then `deploy.bat -Win`. Deploy stops before changing the registration, so the
+    Linux device keeps working.
+  - *resource extractor ... was edited*: an earlier run replaced the shared registration,
+    and no client can match it again. Reset with `docker compose down -v`, run
+    `deploy.bat`, repair the Windows client connection and rerun `prepare-windows.ps1`.
 - **OpenRouter HTTP 401:** check the OpenRouter key in `OPENROUTER_API_KEY`.
 - **OpenRouter HTTP 429:** the free-model quota/rate limit may be exhausted;
   wait for the limit to reset before retrying. `-Smoke` still tests real device
