@@ -10,6 +10,14 @@ function response(items: unknown[] = []) { return new Response(JSON.stringify({i
 async function connect() { fireEvent.change(screen.getByLabelText('Access token'),{target:{value:'test-only-secret'}}); fireEvent.click(screen.getByRole('button',{name:'Connect to workspace'})); await screen.findByRole('navigation'); }
 
 describe('Management shell states', () => {
+  it('shows the version and build number on the About page', async () => {
+    vi.stubGlobal('fetch',vi.fn().mockImplementation(async()=>response()));
+    render(<App/>); await connect();
+    fireEvent.click(screen.getByRole('link',{name:'About'})); window.dispatchEvent(new HashChangeEvent('hashchange'));
+    expect(await screen.findByRole('heading',{name:'About ToolGate'})).toBeTruthy();
+    expect(screen.getByText('Build').nextElementSibling?.textContent).toBe('local');
+  });
+
   it('keeps navigation controls in landmarks and main outside nested landmarks', async () => {
     vi.stubGlobal('fetch',vi.fn().mockImplementation(async()=>response()));
     render(<App/>); await connect();

@@ -149,6 +149,10 @@ async fn command(arguments: Vec<String>) -> Result<()> {
             println!("{}", env!("CARGO_PKG_VERSION"));
             Ok(())
         }
+        "build" if arguments.len() == 1 => {
+            println!("{}", build_label());
+            Ok(())
+        }
         "resolve-server" if arguments.len() == 3 && arguments[1] == "--server" => {
             println!(
                 "{}",
@@ -277,5 +281,12 @@ async fn command(arguments: Vec<String>) -> Result<()> {
             Ok(())
         }
         _ => Err(Failure::Unsupported),
+    }
+}
+/// CI run number and short commit captured at compile time; "local" otherwise.
+fn build_label() -> String {
+    match (option_env!("GITHUB_RUN_NUMBER"), option_env!("GITHUB_SHA")) {
+        (Some(run), Some(sha)) => format!("{run} ({})", &sha[..sha.len().min(7)]),
+        _ => "local".into(),
     }
 }

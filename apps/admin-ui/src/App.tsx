@@ -24,8 +24,9 @@ import {AgentToolMapping,PublishAccess,GroupMembershipEditor} from './AccessMapp
 import oloLogo from './assets/olo.png';
 
 declare const __APP_VERSION__: string;
+declare const __APP_BUILD__: string;
 const directorySections = [['users','Users'],['teams','Teams'],['roles','Typed roles'],['tools','Tools'],['policies','Policies'],['devices','Devices'],['agents','Agents'],['agentGroups','Agent groups'],['toolGroups','Tool groups'],['deviceGroups','Device groups'],['grants','Access grants'],['delegations','Human delegations'],['agentDelegations','Agent delegations'],['bindings','Execution bindings'],['extractors','Resource extractors'],['workloadBindings','Workload identities'],['identityBindings','Human identities'],['deviceEvidence','Device evidence']] as const;
-const sections = [['overview','Overview'],...directorySections,['audit','Audit log'],['approvals','Approvals'],['configuration','Configuration reviews'],['outcomes','Effect outcomes'],['simulation','Access simulation'],['fleet','Packages'],['builder','Tool builder'],['enroll','Enroll device'],['local','Built-in tools and vault'],['requests','Client tool requests'],['mapping','Agent Group tool mapping']] as const;
+const sections = [['overview','Overview'],...directorySections,['audit','Audit log'],['approvals','Approvals'],['configuration','Configuration reviews'],['outcomes','Effect outcomes'],['simulation','Access simulation'],['fleet','Packages'],['builder','Tool builder'],['enroll','Enroll device'],['local','Built-in tools and vault'],['requests','Client tool requests'],['mapping','Agent Group tool mapping'],['about','About']] as const;
 const navigationGroups=[{label:'Audit',routes:['audit','approvals','configuration','outcomes','simulation']},{label:'Tools',routes:['tools','toolGroups','grants','bindings','policies','extractors','builder','local','requests']},{label:'Devices',routes:['devices','deviceGroups','deviceEvidence','enroll','fleet']},{label:'Users',routes:['users','teams','roles','identityBindings','delegations']},{label:'Agents',routes:['agents','agentGroups','mapping','workloadBindings','agentDelegations']}] as const;
 type Route = typeof sections[number][0];
 type RecordValue = DirectoryRecords[DirectoryKind];
@@ -141,7 +142,7 @@ export function App() {
       {!sidebarCollapsed && <p className="sidebar-caption">{administrator?'Workspace':'Approval workspace'}</p>}
       <nav aria-label="Main navigation">{administrator?<><a href="#overview" title="Overview" aria-label={sidebarCollapsed?'Overview':undefined} aria-current={route==='overview'?'page':undefined}><MenuIcon name="overview"/>{!sidebarCollapsed&&'Overview'}</a>{navigationGroups.map(group=>sidebarCollapsed?
         <button className="rail-menu" key={group.label} title={group.label} aria-label={group.label} onClick={()=>{ setExpandedGroups([group.label]); toggleSidebar(); }}><MenuIcon name={group.label}/></button>:
-        <details className="nav-group" key={group.label} open={expandedGroups.includes(group.label)} onToggle={event=>{const opened=event.currentTarget.open;setExpandedGroups(previous=>opened===previous.includes(group.label)?previous:opened?[...previous,group.label]:previous.filter(label=>label!==group.label));}}><summary><MenuIcon name={group.label}/>{group.label}</summary><div className="nav-submenu">{group.routes.filter(value=>quickstart||value!=='local').map(value=><a key={value} href={`#${value}`} aria-current={route===value?'page':undefined}><MenuIcon name={value}/>{sections.find(([key])=>key===value)![1]}</a>)}</div></details>)}</>:<a href="#approvals" title="Approvals" aria-label={sidebarCollapsed?'Approvals':undefined} aria-current="page"><MenuIcon name="approvals"/>{!sidebarCollapsed&&'Approvals'}</a>}</nav>
+        <details className="nav-group" key={group.label} open={expandedGroups.includes(group.label)} onToggle={event=>{const opened=event.currentTarget.open;setExpandedGroups(previous=>opened===previous.includes(group.label)?previous:opened?[...previous,group.label]:previous.filter(label=>label!==group.label));}}><summary><MenuIcon name={group.label}/>{group.label}</summary><div className="nav-submenu">{group.routes.filter(value=>quickstart||value!=='local').map(value=><a key={value} href={`#${value}`} aria-current={route===value?'page':undefined}><MenuIcon name={value}/>{sections.find(([key])=>key===value)![1]}</a>)}</div></details>)}</>:<a href="#approvals" title="Approvals" aria-label={sidebarCollapsed?'Approvals':undefined} aria-current="page"><MenuIcon name="approvals"/>{!sidebarCollapsed&&'Approvals'}</a>}<a href="#about" title="About" aria-label={sidebarCollapsed?'About':undefined} aria-current={route==='about'?'page':undefined}><MenuIcon name="about"/>{!sidebarCollapsed&&'About'}</a></nav>
       <div className="sidebar-bottom">{!sidebarCollapsed&&<><span className="connection">Connected to Control</span><small>v{__APP_VERSION__}</small></>}<button title="Disconnect" aria-label="Disconnect" onClick={disconnect}>{sidebarCollapsed?<MenuIcon name="disconnect"/>:'Disconnect'}</button></div></aside>
       <div className="navigation-controls" role="region" aria-label="Navigation controls"><button className="sidebar-toggle" style={{left:sidebarCollapsed?18:sidebarWidth-38}} aria-label={sidebarCollapsed?'Expand navigation':'Collapse navigation'} aria-controls="sidebar" aria-expanded={!sidebarCollapsed} onClick={toggleSidebar}>{sidebarCollapsed?'>':'<'}</button>
       {!sidebarCollapsed && <div className="sidebar-resizer" role="separator" aria-label="Resize navigation" aria-orientation="vertical" aria-valuemin={190} aria-valuemax={420} aria-valuenow={sidebarWidth} tabIndex={0}
@@ -151,12 +152,13 @@ export function App() {
         onKeyDown={event => { if (['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) { event.preventDefault(); resizeSidebar(event.key==='Home'?190:event.key==='End'?420:sidebarWidth+(event.key==='ArrowLeft'?-20:20)); } }} />}</div>
 
       <div className="workspace">
-        <main id="main" tabIndex={-1} className={administrator&&route==='requests'?'request-canvas':undefined}>{!administrator?<Approvals client={client}/>:route==='outcomes'?<EffectOutcomes client={client}/>:route==='simulation'?<AccessSimulation client={client}/>:route==='configuration'?<ConfigurationRequests client={client}/>:route==='mapping'?<AgentToolMapping client={client}/>:route==='devices'?<Devices client={client}/>:route==='requests'?<RemoteRequests client={client}/>:route === 'local' ? quickstart ? <QuickstartTools client={client} /> : <p>Local tools are available in Quickstart.</p> : route === 'overview' ? <Dashboard client={client} /> : route === 'audit' ? <Audit client={client}/> : route === 'approvals' ? <Approvals client={client} /> : route === 'fleet' ? <Fleet client={client} /> : route === 'builder' ? <Builder client={client} /> : route === 'enroll' ? <><Enrollment client={client} /><ClientDownloads /></> : <Directory key={route} client={client} kind={route} />}</main>
+        <main id="main" tabIndex={-1} className={administrator&&route==='requests'?'request-canvas':undefined}>{route==='about'?<About/>:!administrator?<Approvals client={client}/>:route==='outcomes'?<EffectOutcomes client={client}/>:route==='simulation'?<AccessSimulation client={client}/>:route==='configuration'?<ConfigurationRequests client={client}/>:route==='mapping'?<AgentToolMapping client={client}/>:route==='devices'?<Devices client={client}/>:route==='requests'?<RemoteRequests client={client}/>:route === 'local' ? quickstart ? <QuickstartTools client={client} /> : <p>Local tools are available in Quickstart.</p> : route === 'overview' ? <Dashboard client={client} /> : route === 'audit' ? <Audit client={client}/> : route === 'approvals' ? <Approvals client={client} /> : route === 'fleet' ? <Fleet client={client} /> : route === 'builder' ? <Builder client={client} /> : route === 'enroll' ? <><Enrollment client={client} /><ClientDownloads /></> : <Directory key={route} client={client} kind={route} />}</main>
         <footer>Control verifies permissions. Gateway checks current policy for every runtime authorization.</footer></div></div></div>}
   </>;
 }
 
 const iconPaths: Record<string,string> = {
+  about:'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z M12 11v6 M12 7.5v.5',
   overview:'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',
   Audit:'M6 3h12v18H6z M9 7h6 M9 11h6 M9 15h4',
   Tools:'M14 4a5 5 0 0 0-6 6L3 17l4 4 7-7a5 5 0 0 0 6-6l-4 3-3-3z',
@@ -182,6 +184,12 @@ const iconPaths: Record<string,string> = {
   disconnect:'M10 3H3v18h7 M9 12h13 M17 7l5 5-5 5',
 };
 function MenuIcon({name}:{name:string}) { return <svg className="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={iconPaths[name]}/></svg>; }
+
+function About() {
+  return <section aria-labelledby="about-heading"><div className="page-heading"><h1 id="about-heading">About ToolGate</h1></div>
+    <dl><dt>Version</dt><dd>{__APP_VERSION__}</dd><dt>Build</dt><dd>{__APP_BUILD__}</dd></dl>
+    <p>OLO Labs · Licensed under Apache-2.0</p></section>;
+}
 
 function Dashboard({ client }: { client: ControlClient }) {
   const [counts,setCounts] = useState<Partial<Record<DirectoryKind,{ count: number; more: boolean }>>>({});

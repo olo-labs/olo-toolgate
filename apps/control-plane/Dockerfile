@@ -9,6 +9,8 @@ COPY apps/admin-ui/ apps/admin-ui/
 COPY config/initial/ config/initial/
 COPY tests/fixtures/contracts/v1/valid.json tests/fixtures/contracts/v1/valid.json
 COPY tools/ui/build.mjs tools/ui/build.mjs
+ARG BUILD_NUMBER=local
+ENV TOOLGATE_BUILD=$BUILD_NUMBER
 RUN npm ci --ignore-scripts && npm run ui:build && node tools/ui/build.mjs --metadata-only
 
 FROM eclipse-temurin:21-jdk-noble@sha256:70898f0f893a6b772a0f29834d8b022e3ac20b6a0c33a922973cf66342ef56be AS build
