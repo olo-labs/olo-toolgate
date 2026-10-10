@@ -1,0 +1,17 @@
+>> server/discover
+<< {"result":{"supportedVersions":["2026-07-28"],"capabilities":{"logging":{},"tools":{"listChanged":true}},"ttlMs":0,"cacheScope":"private","resultType":"complete","_meta":{"io.modelcontextprotocol/serverInfo":{"name":"csprobe","version":"1.0.0.0"}}},"id":1,"jsonrpc":"2.0"}
+>> tools/list
+<< {"result":{"tools":[{"name":"echo","description":"echo","inputSchema":{"type":"object","properties":{"text":{"type":"string"}},"required":["text"]}}],"ttlMs":0,"cacheScope":"private","resultType":"complete","_meta":{"io.modelcontextprotocol/serverInfo":{"name":"csprobe","version":"1.0.0.0"}}},"id":2,"jsonrpc":"2.0"}
+>> tools/call
+<< {"result":{"content":[{"type":"text","text":"hi"}],"resultType":"complete","_meta":{"io.modelcontextprotocol/serverInfo":{"name":"csprobe","version":"1.0.0.0"}}},"id":3,"jsonrpc":"2.0"}
+>> acme/echo
+<< {"result":{"echoed":"custom","_meta":{"io.modelcontextprotocol/serverInfo":{"name":"csprobe","version":"1.0.0.0"}}},"id":4,"jsonrpc":"2.0"}
+>> initialize
+<< {"result":{"protocolVersion":"2025-11-25","capabilities":{"logging":{},"tools":{"listChanged":true}},"serverInfo":{"name":"csprobe","version":"1.0.0.0"}},"id":5,"jsonrpc":"2.0"}
+>> initialize
+<< {"result":{"protocolVersion":"2025-11-25","capabilities":{"logging":{},"tools":{"listChanged":true}},"serverInfo":{"name":"csprobe","version":"1.0.0.0"}},"id":1,"jsonrpc":"2.0"}
+>> notifications/initialized
+>> tools/list
+<< {"result":{"tools":[{"name":"echo","description":"echo","inputSchema":{"type":"object","properties":{"text":{"type":"string"}},"required":["text"]}}]},"id":2,"jsonrpc":"2.0"}
+>> acme/echo
+<< {"result":{"echoed":"custom-legacy"},"id":3,"jsonrpc":"2.0"}

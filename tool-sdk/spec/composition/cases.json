@@ -1,0 +1,1128 @@
+{
+  "fixtureVersion": 1,
+  "note": "Normative cases for composition.md. Tool and declaration entries are abbreviated to the members each case needs.",
+  "cases": [
+    {
+      "id": "C01-namespacing",
+      "description": "Library names are prefixed; no mapping needed.",
+      "host": {
+        "packageId": "acme.orders",
+        "secrets": [
+          {
+            "name": "AcmeApiKey",
+            "type": "STRING",
+            "scope": "GROUP"
+          }
+        ],
+        "tools": [
+          {
+            "name": "orders.lookup"
+          }
+        ]
+      },
+      "libraries": [
+        {
+          "fragmentVersion": 1,
+          "libraryId": "acme.http-tools",
+          "version": "1.2.0",
+          "descriptorGeneration": 1,
+          "namespacePrefix": "acmehttp",
+          "tools": [
+            {
+              "name": "ping",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "ping"
+              ]
+            },
+            {
+              "name": "debugDump",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "dump"
+              ]
+            }
+          ],
+          "routes": [
+            {
+              "id": "ping",
+              "destination": "api",
+              "method": "GET",
+              "path": "/ping"
+            },
+            {
+              "id": "dump",
+              "destination": "api",
+              "method": "GET",
+              "path": "/debug"
+            }
+          ],
+          "destinations": [
+            {
+              "id": "api",
+              "hostSetting": "ApiHost",
+              "port": 443,
+              "spkiPins": []
+            }
+          ],
+          "secrets": [
+            {
+              "name": "ApiKey",
+              "type": "STRING",
+              "scope": "GROUP"
+            }
+          ],
+          "globals": [],
+          "claims": []
+        }
+      ],
+      "mappings": [],
+      "expect": {
+        "ok": true,
+        "toolIds": [
+          "acme.orders/acmehttp.debugDump",
+          "acme.orders/acmehttp.ping",
+          "acme.orders/orders.lookup"
+        ],
+        "secrets": [
+          "AcmeApiKey",
+          "acmehttp.ApiKey"
+        ],
+        "routes": [
+          "acmehttp.dump",
+          "acmehttp.ping"
+        ]
+      }
+    },
+    {
+      "id": "C02-share-secret-and-exclude",
+      "description": "Explicit mapping shares the host secret and excludes a tool.",
+      "host": {
+        "packageId": "acme.orders",
+        "secrets": [
+          {
+            "name": "AcmeApiKey",
+            "type": "STRING",
+            "scope": "GROUP"
+          }
+        ],
+        "tools": [
+          {
+            "name": "orders.lookup"
+          }
+        ]
+      },
+      "libraries": [
+        {
+          "fragmentVersion": 1,
+          "libraryId": "acme.http-tools",
+          "version": "1.2.0",
+          "descriptorGeneration": 1,
+          "namespacePrefix": "acmehttp",
+          "tools": [
+            {
+              "name": "ping",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "ping"
+              ]
+            },
+            {
+              "name": "debugDump",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "dump"
+              ]
+            }
+          ],
+          "routes": [
+            {
+              "id": "ping",
+              "destination": "api",
+              "method": "GET",
+              "path": "/ping"
+            },
+            {
+              "id": "dump",
+              "destination": "api",
+              "method": "GET",
+              "path": "/debug"
+            }
+          ],
+          "destinations": [
+            {
+              "id": "api",
+              "hostSetting": "ApiHost",
+              "port": 443,
+              "spkiPins": []
+            }
+          ],
+          "secrets": [
+            {
+              "name": "ApiKey",
+              "type": "STRING",
+              "scope": "GROUP"
+            }
+          ],
+          "globals": [],
+          "claims": []
+        }
+      ],
+      "mappings": [
+        {
+          "library": "acme.http-tools",
+          "secret": {
+            "name": "ApiKey",
+            "to": "AcmeApiKey"
+          }
+        },
+        {
+          "library": "acme.http-tools",
+          "exclude": "debugDump"
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "toolIds": [
+          "acme.orders/acmehttp.ping",
+          "acme.orders/orders.lookup"
+        ],
+        "secrets": [
+          "AcmeApiKey"
+        ],
+        "composition": [
+          {
+            "libraryId": "acme.http-tools",
+            "version": "1.2.0",
+            "namespacePrefix": "acmehttp",
+            "mappings": [
+              {
+                "secret": "acmehttp.ApiKey",
+                "to": "AcmeApiKey"
+              }
+            ],
+            "excluded": [
+              "acmehttp.debugDump"
+            ],
+            "narrowed": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "C03-incompatible-secret",
+      "description": "Sharing a secret with a different scope fails.",
+      "host": {
+        "packageId": "acme.orders",
+        "secrets": [
+          {
+            "name": "AcmeApiKey",
+            "type": "STRING",
+            "scope": "USER"
+          }
+        ],
+        "tools": [
+          {
+            "name": "orders.lookup"
+          }
+        ]
+      },
+      "libraries": [
+        {
+          "fragmentVersion": 1,
+          "libraryId": "acme.http-tools",
+          "version": "1.2.0",
+          "descriptorGeneration": 1,
+          "namespacePrefix": "acmehttp",
+          "tools": [
+            {
+              "name": "ping",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "ping"
+              ]
+            },
+            {
+              "name": "debugDump",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "dump"
+              ]
+            }
+          ],
+          "routes": [
+            {
+              "id": "ping",
+              "destination": "api",
+              "method": "GET",
+              "path": "/ping"
+            },
+            {
+              "id": "dump",
+              "destination": "api",
+              "method": "GET",
+              "path": "/debug"
+            }
+          ],
+          "destinations": [
+            {
+              "id": "api",
+              "hostSetting": "ApiHost",
+              "port": 443,
+              "spkiPins": []
+            }
+          ],
+          "secrets": [
+            {
+              "name": "ApiKey",
+              "type": "STRING",
+              "scope": "GROUP"
+            }
+          ],
+          "globals": [],
+          "claims": []
+        }
+      ],
+      "mappings": [
+        {
+          "library": "acme.http-tools",
+          "secret": {
+            "name": "ApiKey",
+            "to": "AcmeApiKey"
+          }
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "error": "COMPOSITION_INCOMPATIBLE_MAPPING"
+      }
+    },
+    {
+      "id": "C04-two-versions",
+      "description": "Two versions of one library fail.",
+      "host": {
+        "packageId": "acme.orders",
+        "secrets": [
+          {
+            "name": "AcmeApiKey",
+            "type": "STRING",
+            "scope": "GROUP"
+          }
+        ],
+        "tools": [
+          {
+            "name": "orders.lookup"
+          }
+        ]
+      },
+      "libraries": [
+        {
+          "fragmentVersion": 1,
+          "libraryId": "acme.http-tools",
+          "version": "1.2.0",
+          "descriptorGeneration": 1,
+          "namespacePrefix": "acmehttp",
+          "tools": [
+            {
+              "name": "ping",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "ping"
+              ]
+            },
+            {
+              "name": "debugDump",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "dump"
+              ]
+            }
+          ],
+          "routes": [
+            {
+              "id": "ping",
+              "destination": "api",
+              "method": "GET",
+              "path": "/ping"
+            },
+            {
+              "id": "dump",
+              "destination": "api",
+              "method": "GET",
+              "path": "/debug"
+            }
+          ],
+          "destinations": [
+            {
+              "id": "api",
+              "hostSetting": "ApiHost",
+              "port": 443,
+              "spkiPins": []
+            }
+          ],
+          "secrets": [
+            {
+              "name": "ApiKey",
+              "type": "STRING",
+              "scope": "GROUP"
+            }
+          ],
+          "globals": [],
+          "claims": []
+        },
+        {
+          "fragmentVersion": 1,
+          "libraryId": "acme.http-tools",
+          "version": "1.3.0",
+          "descriptorGeneration": 1,
+          "namespacePrefix": "acmehttp",
+          "tools": [
+            {
+              "name": "ping",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "ping"
+              ]
+            },
+            {
+              "name": "debugDump",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "dump"
+              ]
+            }
+          ],
+          "routes": [
+            {
+              "id": "ping",
+              "destination": "api",
+              "method": "GET",
+              "path": "/ping"
+            },
+            {
+              "id": "dump",
+              "destination": "api",
+              "method": "GET",
+              "path": "/debug"
+            }
+          ],
+          "destinations": [
+            {
+              "id": "api",
+              "hostSetting": "ApiHost",
+              "port": 443,
+              "spkiPins": []
+            }
+          ],
+          "secrets": [
+            {
+              "name": "ApiKey",
+              "type": "STRING",
+              "scope": "GROUP"
+            }
+          ],
+          "globals": [],
+          "claims": []
+        }
+      ],
+      "mappings": [],
+      "expect": {
+        "ok": false,
+        "error": "COMPOSITION_DUPLICATE_LIBRARY"
+      }
+    },
+    {
+      "id": "C05-widen-route",
+      "description": "Adding a route to a library tool is widening.",
+      "host": {
+        "packageId": "acme.orders",
+        "secrets": [
+          {
+            "name": "AcmeApiKey",
+            "type": "STRING",
+            "scope": "GROUP"
+          }
+        ],
+        "tools": [
+          {
+            "name": "orders.lookup"
+          }
+        ]
+      },
+      "libraries": [
+        {
+          "fragmentVersion": 1,
+          "libraryId": "acme.http-tools",
+          "version": "1.2.0",
+          "descriptorGeneration": 1,
+          "namespacePrefix": "acmehttp",
+          "tools": [
+            {
+              "name": "ping",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "ping"
+              ]
+            },
+            {
+              "name": "debugDump",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "dump"
+              ]
+            }
+          ],
+          "routes": [
+            {
+              "id": "ping",
+              "destination": "api",
+              "method": "GET",
+              "path": "/ping"
+            },
+            {
+              "id": "dump",
+              "destination": "api",
+              "method": "GET",
+              "path": "/debug"
+            }
+          ],
+          "destinations": [
+            {
+              "id": "api",
+              "hostSetting": "ApiHost",
+              "port": 443,
+              "spkiPins": []
+            }
+          ],
+          "secrets": [
+            {
+              "name": "ApiKey",
+              "type": "STRING",
+              "scope": "GROUP"
+            }
+          ],
+          "globals": [],
+          "claims": []
+        }
+      ],
+      "mappings": [
+        {
+          "library": "acme.http-tools",
+          "narrow": {
+            "tool": "ping",
+            "routes": [
+              "ping",
+              "dump"
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "error": "COMPOSITION_WIDENING"
+      }
+    },
+    {
+      "id": "C06-weaken-effect",
+      "description": "Changing READ_ONLY to UNKNOWN is weakening.",
+      "host": {
+        "packageId": "acme.orders",
+        "secrets": [
+          {
+            "name": "AcmeApiKey",
+            "type": "STRING",
+            "scope": "GROUP"
+          }
+        ],
+        "tools": [
+          {
+            "name": "orders.lookup"
+          }
+        ]
+      },
+      "libraries": [
+        {
+          "fragmentVersion": 1,
+          "libraryId": "acme.http-tools",
+          "version": "1.2.0",
+          "descriptorGeneration": 1,
+          "namespacePrefix": "acmehttp",
+          "tools": [
+            {
+              "name": "ping",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "ping"
+              ]
+            },
+            {
+              "name": "debugDump",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "dump"
+              ]
+            }
+          ],
+          "routes": [
+            {
+              "id": "ping",
+              "destination": "api",
+              "method": "GET",
+              "path": "/ping"
+            },
+            {
+              "id": "dump",
+              "destination": "api",
+              "method": "GET",
+              "path": "/debug"
+            }
+          ],
+          "destinations": [
+            {
+              "id": "api",
+              "hostSetting": "ApiHost",
+              "port": 443,
+              "spkiPins": []
+            }
+          ],
+          "secrets": [
+            {
+              "name": "ApiKey",
+              "type": "STRING",
+              "scope": "GROUP"
+            }
+          ],
+          "globals": [],
+          "claims": []
+        }
+      ],
+      "mappings": [
+        {
+          "library": "acme.http-tools",
+          "narrow": {
+            "tool": "ping",
+            "effect": "UNKNOWN"
+          }
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "error": "COMPOSITION_EFFECT_WEAKENED"
+      }
+    },
+    {
+      "id": "C07-tool-id-conflict",
+      "description": "A host tool whose name equals a prefixed library tool fails.",
+      "host": {
+        "packageId": "acme.orders",
+        "secrets": [
+          {
+            "name": "AcmeApiKey",
+            "type": "STRING",
+            "scope": "GROUP"
+          }
+        ],
+        "tools": [
+          {
+            "name": "acmehttp.ping"
+          }
+        ]
+      },
+      "libraries": [
+        {
+          "fragmentVersion": 1,
+          "libraryId": "acme.http-tools",
+          "version": "1.2.0",
+          "descriptorGeneration": 1,
+          "namespacePrefix": "acmehttp",
+          "tools": [
+            {
+              "name": "ping",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "ping"
+              ]
+            },
+            {
+              "name": "debugDump",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "dump"
+              ]
+            }
+          ],
+          "routes": [
+            {
+              "id": "ping",
+              "destination": "api",
+              "method": "GET",
+              "path": "/ping"
+            },
+            {
+              "id": "dump",
+              "destination": "api",
+              "method": "GET",
+              "path": "/debug"
+            }
+          ],
+          "destinations": [
+            {
+              "id": "api",
+              "hostSetting": "ApiHost",
+              "port": 443,
+              "spkiPins": []
+            }
+          ],
+          "secrets": [
+            {
+              "name": "ApiKey",
+              "type": "STRING",
+              "scope": "GROUP"
+            }
+          ],
+          "globals": [],
+          "claims": []
+        }
+      ],
+      "mappings": [],
+      "expect": {
+        "ok": false,
+        "error": "COMPOSITION_TOOL_ID_CONFLICT"
+      }
+    },
+    {
+      "id": "C08-order-independent",
+      "description": "Two libraries discovered in either order give byte-identical descriptors.",
+      "host": {
+        "packageId": "acme.orders",
+        "secrets": [
+          {
+            "name": "AcmeApiKey",
+            "type": "STRING",
+            "scope": "GROUP"
+          }
+        ],
+        "tools": [
+          {
+            "name": "orders.lookup"
+          }
+        ]
+      },
+      "libraries": [
+        {
+          "fragmentVersion": 1,
+          "libraryId": "acme.http-tools",
+          "version": "1.2.0",
+          "descriptorGeneration": 1,
+          "namespacePrefix": "acmehttp",
+          "tools": [
+            {
+              "name": "ping",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "ping"
+              ]
+            },
+            {
+              "name": "debugDump",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "dump"
+              ]
+            }
+          ],
+          "routes": [
+            {
+              "id": "ping",
+              "destination": "api",
+              "method": "GET",
+              "path": "/ping"
+            },
+            {
+              "id": "dump",
+              "destination": "api",
+              "method": "GET",
+              "path": "/debug"
+            }
+          ],
+          "destinations": [
+            {
+              "id": "api",
+              "hostSetting": "ApiHost",
+              "port": 443,
+              "spkiPins": []
+            }
+          ],
+          "secrets": [
+            {
+              "name": "ApiKey",
+              "type": "STRING",
+              "scope": "GROUP"
+            }
+          ],
+          "globals": [],
+          "claims": []
+        },
+        {
+          "fragmentVersion": 1,
+          "libraryId": "acme.audit-tools",
+          "version": "1.2.0",
+          "descriptorGeneration": 1,
+          "namespacePrefix": "acmeaudit",
+          "tools": [
+            {
+              "name": "ping",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "ping"
+              ]
+            },
+            {
+              "name": "debugDump",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "dump"
+              ]
+            }
+          ],
+          "routes": [
+            {
+              "id": "ping",
+              "destination": "api",
+              "method": "GET",
+              "path": "/ping"
+            },
+            {
+              "id": "dump",
+              "destination": "api",
+              "method": "GET",
+              "path": "/debug"
+            }
+          ],
+          "destinations": [
+            {
+              "id": "api",
+              "hostSetting": "ApiHost",
+              "port": 443,
+              "spkiPins": []
+            }
+          ],
+          "secrets": [
+            {
+              "name": "ApiKey",
+              "type": "STRING",
+              "scope": "GROUP"
+            }
+          ],
+          "globals": [],
+          "claims": []
+        }
+      ],
+      "mappings": [],
+      "permuteLibraries": true,
+      "expect": {
+        "ok": true,
+        "identicalAcrossPermutations": true
+      }
+    },
+    {
+      "id": "C09-unknown-target",
+      "description": "Mapping to a secret the host doesn't declare fails.",
+      "host": {
+        "packageId": "acme.orders",
+        "secrets": [
+          {
+            "name": "AcmeApiKey",
+            "type": "STRING",
+            "scope": "GROUP"
+          }
+        ],
+        "tools": [
+          {
+            "name": "orders.lookup"
+          }
+        ]
+      },
+      "libraries": [
+        {
+          "fragmentVersion": 1,
+          "libraryId": "acme.http-tools",
+          "version": "1.2.0",
+          "descriptorGeneration": 1,
+          "namespacePrefix": "acmehttp",
+          "tools": [
+            {
+              "name": "ping",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "ping"
+              ]
+            },
+            {
+              "name": "debugDump",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "dump"
+              ]
+            }
+          ],
+          "routes": [
+            {
+              "id": "ping",
+              "destination": "api",
+              "method": "GET",
+              "path": "/ping"
+            },
+            {
+              "id": "dump",
+              "destination": "api",
+              "method": "GET",
+              "path": "/debug"
+            }
+          ],
+          "destinations": [
+            {
+              "id": "api",
+              "hostSetting": "ApiHost",
+              "port": 443,
+              "spkiPins": []
+            }
+          ],
+          "secrets": [
+            {
+              "name": "ApiKey",
+              "type": "STRING",
+              "scope": "GROUP"
+            }
+          ],
+          "globals": [],
+          "claims": []
+        }
+      ],
+      "mappings": [
+        {
+          "library": "acme.http-tools",
+          "secret": {
+            "name": "ApiKey",
+            "to": "Missing"
+          }
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "error": "COMPOSITION_UNKNOWN_MAPPING_TARGET"
+      }
+    },
+    {
+      "id": "C10-narrow-allowed",
+      "description": "Restricting concurrency and duration is allowed and recorded.",
+      "host": {
+        "packageId": "acme.orders",
+        "secrets": [
+          {
+            "name": "AcmeApiKey",
+            "type": "STRING",
+            "scope": "GROUP"
+          }
+        ],
+        "tools": [
+          {
+            "name": "orders.lookup"
+          }
+        ]
+      },
+      "libraries": [
+        {
+          "fragmentVersion": 1,
+          "libraryId": "acme.http-tools",
+          "version": "1.2.0",
+          "descriptorGeneration": 1,
+          "namespacePrefix": "acmehttp",
+          "tools": [
+            {
+              "name": "ping",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "ping"
+              ]
+            },
+            {
+              "name": "debugDump",
+              "kind": "SERVER",
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "routes": [
+                "dump"
+              ]
+            }
+          ],
+          "routes": [
+            {
+              "id": "ping",
+              "destination": "api",
+              "method": "GET",
+              "path": "/ping"
+            },
+            {
+              "id": "dump",
+              "destination": "api",
+              "method": "GET",
+              "path": "/debug"
+            }
+          ],
+          "destinations": [
+            {
+              "id": "api",
+              "hostSetting": "ApiHost",
+              "port": 443,
+              "spkiPins": []
+            }
+          ],
+          "secrets": [
+            {
+              "name": "ApiKey",
+              "type": "STRING",
+              "scope": "GROUP"
+            }
+          ],
+          "globals": [],
+          "claims": []
+        }
+      ],
+      "mappings": [
+        {
+          "library": "acme.http-tools",
+          "narrow": {
+            "tool": "ping",
+            "maxConcurrency": 2,
+            "maxDurationMs": 5000
+          }
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "narrowed": [
+          "acmehttp.ping"
+        ]
+      }
+    }
+  ]
+}

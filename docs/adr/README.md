@@ -21,3 +21,4 @@ Use `000-template.md`.
 - [005: Signed policy publication and verified snapshots](005-signed-policy-bundles.md)
 
 - [006: Durable exact-operation ASK approvals and single-use permits](006-ask-approvals.md)
+- [019: Tool SDK authoring contract, runtime modes and MCP SDK compatibility](019-tool-sdk-authoring-contract.md)

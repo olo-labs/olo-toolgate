@@ -1,0 +1,137 @@
+MCP Conformance Test Server running on http://localhost:3000
+  - MCP endpoint: http://localhost:3000/mcp
+Session initialized with ID: b328d5ca-245d-47a8-aae0-9094b310be90
+Establishing SSE stream for session b328d5ca-245d-47a8-aae0-9094b310be90
+Received session termination request for session b328d5ca-245d-47a8-aae0-9094b310be90
+Session b328d5ca-245d-47a8-aae0-9094b310be90 closed
+Session initialized with ID: ef99820f-1e87-434c-848a-f203032b1b9b
+Received session termination request for session ef99820f-1e87-434c-848a-f203032b1b9b
+Session ef99820f-1e87-434c-848a-f203032b1b9b closed
+Session initialized with ID: 52a87ec5-95c7-4335-8ac9-95d0e3ddaa70
+Establishing SSE stream for session 52a87ec5-95c7-4335-8ac9-95d0e3ddaa70
+Received session termination request for session 52a87ec5-95c7-4335-8ac9-95d0e3ddaa70
+Session 52a87ec5-95c7-4335-8ac9-95d0e3ddaa70 closed
+Session initialized with ID: d1b6b0ca-abeb-46a1-98bf-2996d9bbb669
+Establishing SSE stream for session d1b6b0ca-abeb-46a1-98bf-2996d9bbb669
+Received session termination request for session d1b6b0ca-abeb-46a1-98bf-2996d9bbb669
+Session d1b6b0ca-abeb-46a1-98bf-2996d9bbb669 closed
+Session initialized with ID: 68282369-aac1-41a7-a71a-9c4443a1b7b4
+Establishing SSE stream for session 68282369-aac1-41a7-a71a-9c4443a1b7b4
+Received session termination request for session 68282369-aac1-41a7-a71a-9c4443a1b7b4
+Session 68282369-aac1-41a7-a71a-9c4443a1b7b4 closed
+Session initialized with ID: 6356a15f-dc78-4707-bb7e-271b55fac88b
+Establishing SSE stream for session 6356a15f-dc78-4707-bb7e-271b55fac88b
+Received session termination request for session 6356a15f-dc78-4707-bb7e-271b55fac88b
+Session 6356a15f-dc78-4707-bb7e-271b55fac88b closed
+Session initialized with ID: 3a3cf5f2-b74d-4a44-a332-bfc0ecc16406
+Establishing SSE stream for session 3a3cf5f2-b74d-4a44-a332-bfc0ecc16406
+Received session termination request for session 3a3cf5f2-b74d-4a44-a332-bfc0ecc16406
+Session 3a3cf5f2-b74d-4a44-a332-bfc0ecc16406 closed
+Session initialized with ID: f38a3ddc-e25a-4762-9187-e6e8372c365d
+Establishing SSE stream for session f38a3ddc-e25a-4762-9187-e6e8372c365d
+Received session termination request for session f38a3ddc-e25a-4762-9187-e6e8372c365d
+Session f38a3ddc-e25a-4762-9187-e6e8372c365d closed
+Session initialized with ID: e10e9b37-e665-4bf0-9f06-086d0fed837e
+Establishing SSE stream for session e10e9b37-e665-4bf0-9f06-086d0fed837e
+Received session termination request for session e10e9b37-e665-4bf0-9f06-086d0fed837e
+Session e10e9b37-e665-4bf0-9f06-086d0fed837e closed
+Session initialized with ID: 4ad7081c-afad-47ba-bedd-8fb480f1c4c2
+Establishing SSE stream for session 4ad7081c-afad-47ba-bedd-8fb480f1c4c2
+Received session termination request for session 4ad7081c-afad-47ba-bedd-8fb480f1c4c2
+Session 4ad7081c-afad-47ba-bedd-8fb480f1c4c2 closed
+Session initialized with ID: 7c0fb8b0-6e76-4136-a8eb-9362df7af561
+Establishing SSE stream for session 7c0fb8b0-6e76-4136-a8eb-9362df7af561
+Received session termination request for session 7c0fb8b0-6e76-4136-a8eb-9362df7af561
+Session 7c0fb8b0-6e76-4136-a8eb-9362df7af561 closed
+Session initialized with ID: 315c5efe-2303-437f-b682-e6e42a5b5990
+Establishing SSE stream for session 315c5efe-2303-437f-b682-e6e42a5b5990
+Received session termination request for session 315c5efe-2303-437f-b682-e6e42a5b5990
+Session 315c5efe-2303-437f-b682-e6e42a5b5990 closed
+Session initialized with ID: fe51f806-54dc-4129-965a-8e121d58efde
+Establishing SSE stream for session fe51f806-54dc-4129-965a-8e121d58efde
+Received session termination request for session fe51f806-54dc-4129-965a-8e121d58efde
+Session fe51f806-54dc-4129-965a-8e121d58efde closed
+Session initialized with ID: 41ed6bfb-acbf-4304-b355-71da323b62d2
+Establishing SSE stream for session 41ed6bfb-acbf-4304-b355-71da323b62d2
+Received session termination request for session 41ed6bfb-acbf-4304-b355-71da323b62d2
+Session 41ed6bfb-acbf-4304-b355-71da323b62d2 closed
+Session initialized with ID: 16eeb522-6899-48ec-8069-145c1f9864b3
+Establishing SSE stream for session 16eeb522-6899-48ec-8069-145c1f9864b3
+Received session termination request for session 16eeb522-6899-48ec-8069-145c1f9864b3
+Session 16eeb522-6899-48ec-8069-145c1f9864b3 closed
+Session initialized with ID: f7c0591c-1e69-4bf1-926c-1f39b6f89a93
+Establishing SSE stream for session f7c0591c-1e69-4bf1-926c-1f39b6f89a93
+Received session termination request for session f7c0591c-1e69-4bf1-926c-1f39b6f89a93
+Session f7c0591c-1e69-4bf1-926c-1f39b6f89a93 closed
+Session initialized with ID: cd6f3ace-f897-4904-b305-d64368ed438f
+Establishing SSE stream for session cd6f3ace-f897-4904-b305-d64368ed438f
+Received session termination request for session cd6f3ace-f897-4904-b305-d64368ed438f
+Session cd6f3ace-f897-4904-b305-d64368ed438f closed
+Session initialized with ID: 7fed3179-a8a5-452b-aa4e-8c83ac222893
+Establishing SSE stream for session 7fed3179-a8a5-452b-aa4e-8c83ac222893
+Received session termination request for session 7fed3179-a8a5-452b-aa4e-8c83ac222893
+Session 7fed3179-a8a5-452b-aa4e-8c83ac222893 closed
+Session initialized with ID: 5a865d38-205d-464c-b9ed-4a8bbe17639e
+Establishing SSE stream for session 5a865d38-205d-464c-b9ed-4a8bbe17639e
+Received session termination request for session 5a865d38-205d-464c-b9ed-4a8bbe17639e
+Session 5a865d38-205d-464c-b9ed-4a8bbe17639e closed
+Session initialized with ID: f58e5695-ec14-4822-9764-07ee01d36a16
+Establishing SSE stream for session f58e5695-ec14-4822-9764-07ee01d36a16
+Received session termination request for session f58e5695-ec14-4822-9764-07ee01d36a16
+Session f58e5695-ec14-4822-9764-07ee01d36a16 closed
+Session initialized with ID: 4dfacca2-4015-44d2-9162-edabd4ed13ad
+Establishing SSE stream for session 4dfacca2-4015-44d2-9162-edabd4ed13ad
+Received session termination request for session 4dfacca2-4015-44d2-9162-edabd4ed13ad
+Session 4dfacca2-4015-44d2-9162-edabd4ed13ad closed
+Session initialized with ID: c6c058b7-151e-487a-8b8f-c1c6380636d5
+Establishing SSE stream for session c6c058b7-151e-487a-8b8f-c1c6380636d5
+Received session termination request for session c6c058b7-151e-487a-8b8f-c1c6380636d5
+Session c6c058b7-151e-487a-8b8f-c1c6380636d5 closed
+Session initialized with ID: 08315106-0fed-4d4a-99d4-2cffd050a9e1
+Establishing SSE stream for session 08315106-0fed-4d4a-99d4-2cffd050a9e1
+Received session termination request for session 08315106-0fed-4d4a-99d4-2cffd050a9e1
+Session 08315106-0fed-4d4a-99d4-2cffd050a9e1 closed
+Session initialized with ID: 6a236db2-7a00-4a5c-9652-236ca869460e
+Establishing SSE stream for session 6a236db2-7a00-4a5c-9652-236ca869460e
+Received session termination request for session 6a236db2-7a00-4a5c-9652-236ca869460e
+Session 6a236db2-7a00-4a5c-9652-236ca869460e closed
+Session initialized with ID: ff6f842b-7900-465c-9730-8ce52a5edcbe
+Establishing SSE stream for session ff6f842b-7900-465c-9730-8ce52a5edcbe
+Received session termination request for session ff6f842b-7900-465c-9730-8ce52a5edcbe
+Session ff6f842b-7900-465c-9730-8ce52a5edcbe closed
+Session initialized with ID: b6ec9808-a3d2-4136-b09b-7dfc76382c20
+Establishing SSE stream for session b6ec9808-a3d2-4136-b09b-7dfc76382c20
+Received session termination request for session b6ec9808-a3d2-4136-b09b-7dfc76382c20
+Session b6ec9808-a3d2-4136-b09b-7dfc76382c20 closed
+Session initialized with ID: 4390d088-56bd-491b-be29-dd4516d32be8
+Establishing SSE stream for session 4390d088-56bd-491b-be29-dd4516d32be8
+Received session termination request for session 4390d088-56bd-491b-be29-dd4516d32be8
+Session 4390d088-56bd-491b-be29-dd4516d32be8 closed
+Session initialized with ID: d15f70ba-c55b-44cc-959c-98d2c5981b80
+Establishing SSE stream for session d15f70ba-c55b-44cc-959c-98d2c5981b80
+Received session termination request for session d15f70ba-c55b-44cc-959c-98d2c5981b80
+Session d15f70ba-c55b-44cc-959c-98d2c5981b80 closed
+Session initialized with ID: bb9c42d0-448f-4b1c-bd46-f5ab7240ae52
+Establishing SSE stream for session bb9c42d0-448f-4b1c-bd46-f5ab7240ae52
+Received session termination request for session bb9c42d0-448f-4b1c-bd46-f5ab7240ae52
+Session bb9c42d0-448f-4b1c-bd46-f5ab7240ae52 closed
+Session initialized with ID: 88cad3ec-b175-419a-8ee9-0db89ef28bf5
+Establishing SSE stream for session 88cad3ec-b175-419a-8ee9-0db89ef28bf5
+Received session termination request for session 88cad3ec-b175-419a-8ee9-0db89ef28bf5
+Session 88cad3ec-b175-419a-8ee9-0db89ef28bf5 closed
+Session initialized with ID: 174c494f-b103-410c-964b-19bcf11b5e71
+Session initialized with ID: 5469d304-4dc3-4c0e-8f4f-1814fe224747
+Received session termination request for session 5469d304-4dc3-4c0e-8f4f-1814fe224747
+Session 5469d304-4dc3-4c0e-8f4f-1814fe224747 closed
+Session initialized with ID: 5af962d2-d325-4a3d-b91e-0f57ec520902
+Establishing SSE stream for session 5af962d2-d325-4a3d-b91e-0f57ec520902
+Received session termination request for session 5af962d2-d325-4a3d-b91e-0f57ec520902
+Session 5af962d2-d325-4a3d-b91e-0f57ec520902 closed
+Session initialized with ID: acf93735-c5ba-43da-a65e-b53c8dcfa38f
+Establishing SSE stream for session acf93735-c5ba-43da-a65e-b53c8dcfa38f
+[acf93735-c5ba-43da-a65e-b53c8dcfa38f] Starting test_reconnection tool...
+[acf93735-c5ba-43da-a65e-b53c8dcfa38f] Closing SSE stream to trigger client polling...
+Client reconnecting with Last-Event-ID: 66211cf7-f491-473e-af44-4cd4000105c0::001791657262216_53775148-e2f4-4220-809d-685df9923565
+[acf93735-c5ba-43da-a65e-b53c8dcfa38f] test_reconnection tool complete
+Received session termination request for session acf93735-c5ba-43da-a65e-b53c8dcfa38f
+Session acf93735-c5ba-43da-a65e-b53c8dcfa38f closed

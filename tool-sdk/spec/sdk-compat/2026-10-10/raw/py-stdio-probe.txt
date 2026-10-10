@@ -1,0 +1,17 @@
+>> server/discover
+>> tools/list
+<< {"jsonrpc":"2.0","id":1,"result":{"cacheScope":"private","capabilities":{"extensions":{"com.example/acme":{}},"prompts":{"listChanged":true},"resources":{"listChanged":true,"subscribe":true},"tools":{"listChanged":true}},"resultType":"complete","supportedVersions":["2026-07-28"],"ttlMs":0,"_meta":{"io.modelcontextprotocol/serverInfo":{"name":"probe-py","version":""}}}}
+<< {"jsonrpc":"2.0","id":2,"result":{"cacheScope":"private","resultType":"complete","tools":[{"description":"","inputSchema":{"type":"object","properties":{"text":{"title":"Text","type":"string"}},"required":["text"],"title":"echoArguments"},"name":"echo","outputSchema":{"properties":{"result":{"title":"Result","type":"string"}},"required":["result"],"title":"echoOutput","type":"object"}}],"ttlMs":0,"_meta":{"io.modelcontextprotocol/serverInfo":{"name":"probe-py","version":""}}}}
+>> tools/call
+<< {"jsonrpc":"2.0","id":3,"result":{"content":[{"text":"hi","type":"text"}],"isError":false,"resultType":"complete","structuredContent":{"result":"hi"},"_meta":{"io.modelcontextprotocol/serverInfo":{"name":"probe-py","version":""}}}}
+>> acme/echo
+<< {"jsonrpc":"2.0","id":4,"result":{"echoed":"custom","resultType":"complete","_meta":{"io.modelcontextprotocol/serverInfo":{"name":"probe-py","version":""}}}}
+>> initialize
+<< {"jsonrpc":"2.0","id":5,"error":{"code":-32022,"message":"connection is serving the 2026-07-28 protocol; the initialize handshake is not accepted","data":{"supported":["2026-07-28"],"requested":"2025-11-25"}}}
+>> initialize
+<< {"jsonrpc":"2.0","id":1,"result":{"capabilities":{"prompts":{"listChanged":false},"resources":{"listChanged":false,"subscribe":false},"tools":{"listChanged":false}},"protocolVersion":"2025-11-25","serverInfo":{"name":"probe-py","version":""}}}
+>> notifications/initialized
+>> tools/list
+<< {"jsonrpc":"2.0","id":2,"result":{"tools":[{"description":"","inputSchema":{"properties":{"text":{"title":"Text","type":"string"}},"required":["text"],"type":"object","title":"echoArguments"},"name":"echo","outputSchema":{"properties":{"result":{"title":"Result","type":"string"}},"required":["result"],"type":"object","title":"echoOutput"}}]}}
+>> acme/echo
+<< {"jsonrpc":"2.0","id":3,"result":{"echoed":"custom-legacy"}}

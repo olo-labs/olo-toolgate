@@ -1,0 +1,55 @@
+{
+  "descriptorGeneration": 1,
+  "toolId": "acme.orders/orders.refund",
+  "mcpName": "orders.orders.refund",
+  "kind": "SERVER",
+  "title": "Refund an order",
+  "description": "Refunds an order in full. Café orders are refunded to the original card; the amount is in €.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "orderId": { "type": "string", "description": "Order number", "pattern": "^[0-9]{6,12}$" },
+      "reason": { "type": "string", "description": "Reason shown to the customer", "enum": ["DAMAGED", "LATE", "ÉCHANGE"] },
+      "refundKey": { "type": "string", "description": "Business key for this refund", "minLength": 8, "maxLength": 64 }
+    },
+    "required": ["orderId", "reason", "refundKey"],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "état": { "type": "string" },
+      "€amount": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+      "😀note": { "type": "string" },
+      "zeta": { "type": "boolean" },
+      "Ａlpha": { "type": "string" }
+    },
+    "required": ["zeta", "état", "€amount", "😀note", "Ａlpha"],
+    "additionalProperties": false
+  },
+  "errors": [
+    { "code": "ALREADY_REFUNDED", "description": "The order was already refunded", "retryable": false },
+    { "code": "PSP_BUSY", "description": "The payment provider asked us to retry", "retryable": true }
+  ],
+  "effect": { "safety": "NON_IDEMPOTENT", "destructive": true, "openWorld": true },
+  "businessKey": { "required": true, "namespace": "TENANT", "argument": "refundKey", "idempotencyHeader": "Idempotency-Key", "idempotencyScope": "BUSINESS_KEY" },
+  "execution": { "async": true, "maxDurationMs": 900000, "stateless": true, "maxConcurrency": 4, "cancelIfAbandoned": false },
+  "reconcileTool": "orders.refund-status",
+  "routes": [
+    {
+      "id": "orders.refund", "destination": "acme-api", "method": "POST", "path": "/orders/{orderId}/refunds",
+      "query": [], "headers": ["Idempotency-Key"], "requestContentTypes": ["application/json"],
+      "maxRequestBytes": 65536, "maxResponseBytes": 65536, "streaming": "NONE", "timeoutMs": 15000, "auth": "acme-oauth"
+    }
+  ],
+  "destinations": [ { "id": "acme-api", "hostSetting": "AcmeApiHost", "port": 443, "spkiPins": [] } ],
+  "httpAuth": [ { "id": "acme-oauth", "type": "OAUTH2_CLIENT_CREDENTIALS", "secret": "AcmeClient", "scopes": ["refunds:write"], "audience": "https://api.acme.com" } ],
+  "tcp": [],
+  "variables": {
+    "globals": [],
+    "secrets": [ { "name": "AcmeClient", "type": "OBJECT", "scope": "GROUP" } ],
+    "claims": []
+  },
+  "permissions": ["HTTP_ROUTE"],
+  "toolsets": ["payments"]
+}

@@ -1,0 +1,178 @@
+ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/get' request handler completed in 0.1072ms.
+fail: ModelContextProtocol.Server.McpServer[1433779783]
+      "failing_job" threw an unhandled exception.
+      System.Exception: The conformance task failed.
+         at ConformanceServer.Tools.ConformanceTaskTools.FailingJob(CancellationToken cancellationToken) in /tmp/claude-0/conformance/dl/cs-sdk/tests/ModelContextProtocol.ConformanceServer/Tools/ConformanceTaskTools.cs:line 30
+         at Microsoft.Extensions.AI.AIFunctionFactory.ReflectionAIFunctionDescriptor.<>c__DisplayClass41_1.<<GetReturnParameterMarshaller>b__10>d.MoveNext()
+      --- End of stack trace from previous location ---
+         at Microsoft.Extensions.AI.AIFunctionFactory.ReflectionAIFunction.InvokeCoreAsync(AIFunctionArguments arguments, CancellationToken cancellationToken)
+         at Microsoft.Extensions.AI.AIFunctionFactory.ReflectionAIFunction.InvokeCoreAsync(AIFunctionArguments arguments, CancellationToken cancellationToken)
+         at ModelContextProtocol.Server.AIFunctionMcpServerTool.InvokeAsync(RequestContext`1 request, CancellationToken cancellationToken) in /tmp/claude-0/conformance/dl/cs-sdk/src/ModelContextProtocol.Core/Server/AIFunctionMcpServerTool.cs:line 289
+         at ModelContextProtocol.ConformanceServer.Program.<>c__DisplayClass1_1.<<ConfigureConformanceMcpServer>b__12>d.MoveNext() in /tmp/claude-0/conformance/dl/cs-sdk/tests/ModelContextProtocol.ConformanceServer/Program.cs:line 80
+      --- End of stack trace from previous location ---
+         at ModelContextProtocol.Server.McpServerImpl.<>c__DisplayClass85_1.<<BuildComposedCallToolHandler>g__InvokeOrdinaryPipelineAsync|1>d.MoveNext() in /tmp/claude-0/conformance/dl/cs-sdk/src/ModelContextProtocol.Core/Server/McpServerImpl.cs:line 1649
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/get' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/get' request handler completed in 0.2773ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler called.
+info: ModelContextProtocol.Server.McpServer[2065726448]
+      "greet" completed. IsError = False.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler completed in 0.6893ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler completed in 0.1716ms.
+info: ModelContextProtocol.Server.McpServer[2065726448]
+      "slow_compute" completed. IsError = False.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler called.
+info: ModelContextProtocol.Server.McpServer[2065726448]
+      "greet" completed. IsError = False.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler completed in 0.1588ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler completed in 0.1772ms.
+info: ModelContextProtocol.Server.McpServer[2065726448]
+      "slow_compute" completed. IsError = False.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/get' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/get' request handler completed in 0.1744ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/get' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/get' request handler completed in 0.1349ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler completed in 0.3377ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/cancel' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/cancel' request handler completed in 0.0776ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler completed in 0.1982ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/get' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/get' request handler completed in 0.137ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/update' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/update' request handler completed in 0.096ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/cancel' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/cancel' request handler completed in 0.3752ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler completed in 0.3156ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/get' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/get' request handler completed in 0.1957ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/cancel' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/cancel' request handler completed in 0.0633ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/get' request handler called.
+warn: ModelContextProtocol.Server.McpServer[975074943]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/get' request handler failed in 0.115ms.
+      ModelContextProtocol.McpProtocolException: Unknown task: 'tasks-conformance-nonexistent-12345'
+         at ModelContextProtocol.Extensions.Tasks.McpTasksBuilderExtensions.McpTasksConfigureOptions.HandleGetTask(JsonRpcRequest request, CancellationToken cancellationToken) in /tmp/claude-0/conformance/dl/cs-sdk/src/ModelContextProtocol.Extensions.Tasks/Server/McpTasksBuilderExtensions.cs:line 321
+         at ModelContextProtocol.McpSessionHandler.HandleRequestAsync(JsonRpcRequest request, CancellationToken cancellationToken) in /tmp/claude-0/conformance/dl/cs-sdk/src/ModelContextProtocol.Core/McpSessionHandler.cs:line 535
+         at ModelContextProtocol.McpSessionHandler.HandleMessageCoreAsync(JsonRpcMessage message, CancellationToken cancellationToken) in /tmp/claude-0/conformance/dl/cs-sdk/src/ModelContextProtocol.Core/McpSessionHandler.cs:line 467
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler called.
+fail: ModelContextProtocol.Server.McpServer[1433779783]
+      "failing_job" threw an unhandled exception.
+      ModelContextProtocol.MissingRequiredClientCapabilityException: The request requires the 'io.modelcontextprotocol/tasks' client extension capability.
+         at ModelContextProtocol.Extensions.Tasks.McpTasksBuilderExtensions.McpTasksConfigureOptions.<Configure>b__6_0(RequestContext`1 request, McpRequestHandler`2 next, CancellationToken cancellationToken) in /tmp/claude-0/conformance/dl/cs-sdk/src/ModelContextProtocol.Extensions.Tasks/Server/McpTasksBuilderExtensions.cs:line 148
+         at ModelContextProtocol.AspNetCore.AuthorizationCallToolFilterGuardSetup.<>c.<<PostConfigure>b__2_0>d.MoveNext() in /tmp/claude-0/conformance/dl/cs-sdk/src/ModelContextProtocol.AspNetCore/AuthorizationCallToolFilterGuardSetup.cs:line 28
+      --- End of stack trace from previous location ---
+         at ModelContextProtocol.Server.McpServerImpl.<>c__DisplayClass85_0.<<BuildComposedCallToolHandler>b__0>d.MoveNext() in /tmp/claude-0/conformance/dl/cs-sdk/src/ModelContextProtocol.Core/Server/McpServerImpl.cs:line 1622
+warn: ModelContextProtocol.Server.McpServer[975074943]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler failed in 0.4479ms.
+      ModelContextProtocol.MissingRequiredClientCapabilityException: The request requires the 'io.modelcontextprotocol/tasks' client extension capability.
+         at ModelContextProtocol.Extensions.Tasks.McpTasksBuilderExtensions.McpTasksConfigureOptions.<Configure>b__6_0(RequestContext`1 request, McpRequestHandler`2 next, CancellationToken cancellationToken) in /tmp/claude-0/conformance/dl/cs-sdk/src/ModelContextProtocol.Extensions.Tasks/Server/McpTasksBuilderExtensions.cs:line 148
+         at ModelContextProtocol.AspNetCore.AuthorizationCallToolFilterGuardSetup.<>c.<<PostConfigure>b__2_0>d.MoveNext() in /tmp/claude-0/conformance/dl/cs-sdk/src/ModelContextProtocol.AspNetCore/AuthorizationCallToolFilterGuardSetup.cs:line 28
+      --- End of stack trace from previous location ---
+         at ModelContextProtocol.Server.McpServerImpl.<>c__DisplayClass85_0.<<BuildComposedCallToolHandler>b__0>d.MoveNext() in /tmp/claude-0/conformance/dl/cs-sdk/src/ModelContextProtocol.Core/Server/McpServerImpl.cs:line 1622
+      --- End of stack trace from previous location ---
+         at ModelContextProtocol.Server.McpServerImpl.<>c__DisplayClass94_0`2.<<SetWithAlternateHandler>b__0>d.MoveNext() in /tmp/claude-0/conformance/dl/cs-sdk/src/ModelContextProtocol.Core/Server/McpServerImpl.cs:line 1922
+      --- End of stack trace from previous location ---
+         at ModelContextProtocol.RequestHandlers.<>c__DisplayClass1_0`2.<<SetWithAlternate>b__0>d.MoveNext() in /tmp/claude-0/conformance/dl/cs-sdk/src/ModelContextProtocol.Core/RequestHandlers.cs:line 69
+      --- End of stack trace from previous location ---
+         at ModelContextProtocol.Server.McpServerImpl.InvokeWithInputRequiredResultHandlingAsync(Func`3 handler, JsonRpcRequest request, CancellationToken cancellationToken) in /tmp/claude-0/conformance/dl/cs-sdk/src/ModelContextProtocol.Core/Server/McpServerImpl.cs:line 2099
+         at ModelContextProtocol.Server.McpServerImpl.<>c__DisplayClass112_0.<<WrapHandlerWithMrtr>b__0>d.MoveNext() in /tmp/claude-0/conformance/dl/cs-sdk/src/ModelContextProtocol.Core/Server/McpServerImpl.cs:line 2369
+      --- End of stack trace from previous location ---
+         at ModelContextProtocol.McpSessionHandler.HandleRequestAsync(JsonRpcRequest request, CancellationToken cancellationToken) in /tmp/claude-0/conformance/dl/cs-sdk/src/ModelContextProtocol.Core/McpSessionHandler.cs:line 535
+         at ModelContextProtocol.McpSessionHandler.HandleMessageCoreAsync(JsonRpcMessage message, CancellationToken cancellationToken) in /tmp/claude-0/conformance/dl/cs-sdk/src/ModelContextProtocol.Core/McpSessionHandler.cs:line 467
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler completed in 1.5174ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler completed in 0.3011ms.
+info: ModelContextProtocol.Server.McpServer[2065726448]
+      "test_tool_with_task" completed. IsError = False.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/get' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tasks/get' request handler completed in 0.2299ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/list' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/list' request handler completed in 0.8467ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/list' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/list' request handler completed in 0.6838ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler completed in 0.5613ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/list' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/list' request handler completed in 0.3763ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/list' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/list' request handler completed in 0.2685ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/list' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/list' request handler completed in 0.6761ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler called.
+info: ModelContextProtocol.Server.McpServer[2065726448]
+      "test_header_tool" completed. IsError = False.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler completed in 0.5003ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler called.
+info: ModelContextProtocol.Server.McpServer[2065726448]
+      "test_header_tool" completed. IsError = False.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler completed in 0.7582ms.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler called.
+info: ModelContextProtocol.Server.McpServer[2065726448]
+      "test_header_tool" completed. IsError = False.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler completed in 0.2551ms.
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...

@@ -1,0 +1,69 @@
+Required for 2025-11-25 (48 scenarios, frozen; run at the 2025-11-25 wire):
+
+Server scenarios (test against a server):
+  - server-initialize
+  - logging-set-level
+  - ping
+  - completion-complete
+  - tools-list
+  - tools-call-simple-text
+  - tools-call-image
+  - tools-call-audio
+  - tools-call-embedded-resource
+  - tools-call-mixed-content
+  - tools-call-with-logging
+  - tools-call-error
+  - tools-call-with-progress
+  - tools-call-sampling
+  - tools-call-elicitation
+  - elicitation-sep1034-defaults
+  - server-sse-multiple-streams
+  - elicitation-sep1330-enums
+  - resources-list
+  - resources-read-text
+  - resources-read-binary
+  - resources-templates-read
+  - resources-subscribe
+  - resources-unsubscribe
+  - prompts-list
+  - prompts-get-simple
+  - prompts-get-with-args
+  - prompts-get-embedded-resource
+  - prompts-get-with-image
+  - dns-rebinding-protection
+
+Client scenarios (test against a client):
+  - initialize
+  - tools_call
+  - elicitation-sep1034-client-defaults
+  - sse-retry
+  - auth/metadata-default
+  - auth/metadata-var1
+  - auth/metadata-var2
+  - auth/metadata-var3
+  - auth/basic-cimd
+  - auth/scope-from-www-authenticate
+  - auth/scope-from-scopes-supported
+  - auth/scope-omitted-when-undefined
+  - auth/scope-step-up
+  - auth/scope-retry-limit
+  - auth/token-endpoint-auth-basic
+  - auth/token-endpoint-auth-post
+  - auth/token-endpoint-auth-none
+  - auth/pre-registration
+
+Run and reported, but never scored:
+  extension (6):
+    - auth/client-credentials-jwt [client]
+    - auth/client-credentials-basic [client]
+    - auth/enterprise-managed-authorization [client]
+    - auth/dpop [client]
+    - auth/dpop-nonce [client]
+    - auth/wif-jwt-bearer [client]
+  added-after-release (2):
+    - server-session-lifecycle [server]
+    - json-schema-2020-12-preservation [client]
+  pending (2):
+    - json-schema-2020-12 [server]
+    - server-sse-polling [server]
+

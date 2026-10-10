@@ -1,0 +1,6 @@
+{
+  "comment": "Not equivalent: a recursive $ref is never inlined, so it differs from any finite expansion.",
+  "a": { "toolId": "t/x", "inputSchema": { "type": "object", "properties": { "n": { "$ref": "#/$defs/Node" } }, "required": [], "additionalProperties": false,
+         "$defs": { "Node": { "type": "object", "properties": { "next": { "$ref": "#/$defs/Node" } }, "required": [], "additionalProperties": false } } } },
+  "b": { "toolId": "t/x", "inputSchema": { "type": "object", "properties": { "n": { "type": "object", "properties": {}, "required": [], "additionalProperties": false } }, "required": [], "additionalProperties": false } }
+}

@@ -1,0 +1,274 @@
+T /mcp HTTP/1.1" 202 Accepted
+                    INFO     Terminating session:         streamable_http.py:855
+                             ab1d0be7afc3484885e00812b305                       
+                             c873                                               
+INFO:     127.0.0.1:37886 - "DELETE /mcp HTTP/1.1" 200 OK
+                    INFO     Created new          streamable_http_manager.py:325
+                             transport with                                     
+                             session ID:                                        
+                             4de08b946a6d41e68a81                               
+                             1f910c7f0a1b                                       
+INFO:     127.0.0.1:38004 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:38004 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37860 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 202 Accepted
+                    INFO     Terminating session:         streamable_http.py:855
+                             4de08b946a6d41e68a811f910c7f                       
+                             0a1b                                               
+INFO:     127.0.0.1:37886 - "DELETE /mcp HTTP/1.1" 200 OK
+                    INFO     Created new          streamable_http_manager.py:325
+                             transport with                                     
+                             session ID:                                        
+                             53d683d600934035b809                               
+                             5d692184cdfb                                       
+INFO:     127.0.0.1:38020 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:38020 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37860 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38032 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38046 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Terminating session:         streamable_http.py:855
+                             53d683d600934035b8095d692184                       
+                             cdfb                                               
+INFO:     127.0.0.1:37886 - "DELETE /mcp HTTP/1.1" 200 OK
+                    INFO     Created new          streamable_http_manager.py:325
+                             transport with                                     
+                             session ID:                                        
+                             c720a09857ac40d48434                               
+                             fe51d217f1f0                                       
+INFO:     127.0.0.1:38080 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:38080 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38054 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 202 Accepted
+                    INFO     Terminating session:         streamable_http.py:855
+                             c720a09857ac40d48434fe51d217                       
+                             f1f0                                               
+INFO:     127.0.0.1:37886 - "DELETE /mcp HTTP/1.1" 200 OK
+                    INFO     Created new          streamable_http_manager.py:325
+                             transport with                                     
+                             session ID:                                        
+                             73cc61ded9bc492aa741                               
+                             d50b4ab5a5be                                       
+INFO:     127.0.0.1:38092 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:38092 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38054 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Terminating session:         streamable_http.py:855
+                             73cc61ded9bc492aa741d50b4ab5                       
+                             a5be                                               
+INFO:     127.0.0.1:37886 - "DELETE /mcp HTTP/1.1" 200 OK
+                    INFO     Created new          streamable_http_manager.py:325
+                             transport with                                     
+                             session ID:                                        
+                             2a3a9e9992da4f7bbe9c                               
+                             47881770c7ee                                       
+INFO:     127.0.0.1:38098 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:38098 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38054 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Terminating session:         streamable_http.py:855
+                             2a3a9e9992da4f7bbe9c47881770                       
+                             c7ee                                               
+INFO:     127.0.0.1:37886 - "DELETE /mcp HTTP/1.1" 200 OK
+                    INFO     Created new          streamable_http_manager.py:325
+                             transport with                                     
+                             session ID:                                        
+                             3e93a363868c43429dc5                               
+                             905e5e33eb16                                       
+INFO:     127.0.0.1:38100 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:38100 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38054 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Terminating session:         streamable_http.py:855
+                             3e93a363868c43429dc5905e5e33                       
+                             eb16                                               
+INFO:     127.0.0.1:37886 - "DELETE /mcp HTTP/1.1" 200 OK
+                    INFO     Created new          streamable_http_manager.py:325
+                             transport with                                     
+                             session ID:                                        
+                             19ad590cd3a441f0a455                               
+                             d37abe7baa7f                                       
+INFO:     127.0.0.1:38116 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:38116 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38054 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Terminating session:         streamable_http.py:855
+                             19ad590cd3a441f0a455d37abe7b                       
+                             aa7f                                               
+INFO:     127.0.0.1:37886 - "DELETE /mcp HTTP/1.1" 200 OK
+                    INFO     Created new          streamable_http_manager.py:325
+                             transport with                                     
+                             session ID:                                        
+                             49c36dbc27ed4315ade8                               
+                             838a466d2548                                       
+INFO:     127.0.0.1:38120 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:38120 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38054 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Subscribed to resource:               server.py:756
+                             test://watched-resource                            
+                    INFO     Terminating session:         streamable_http.py:855
+                             49c36dbc27ed4315ade8838a466d                       
+                             2548                                               
+INFO:     127.0.0.1:37886 - "DELETE /mcp HTTP/1.1" 200 OK
+                    INFO     Created new          streamable_http_manager.py:325
+                             transport with                                     
+                             session ID:                                        
+                             3260c46b9a3a495ba9b1                               
+                             48c2f4cded9e                                       
+INFO:     127.0.0.1:38126 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:38126 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38054 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Subscribed to resource:               server.py:756
+                             test://watched-resource                            
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Unsubscribed from resource:           server.py:763
+                             test://watched-resource                            
+                    INFO     Terminating session:         streamable_http.py:855
+                             3260c46b9a3a495ba9b148c2f4cd                       
+                             ed9e                                               
+INFO:     127.0.0.1:38054 - "DELETE /mcp HTTP/1.1" 200 OK
+                    INFO     Created new          streamable_http_manager.py:325
+                             transport with                                     
+                             session ID:                                        
+                             520ddfefc81c40e1ab94                               
+                             d031bb417db2                                       
+INFO:     127.0.0.1:38130 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:38130 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38054 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Terminating session:         streamable_http.py:855
+                             520ddfefc81c40e1ab94d031bb41                       
+                             7db2                                               
+INFO:     127.0.0.1:37886 - "DELETE /mcp HTTP/1.1" 200 OK
+                    INFO     Created new          streamable_http_manager.py:325
+                             transport with                                     
+                             session ID:                                        
+                             59c1827c82d044caa9f0                               
+                             dcd32f1334e5                                       
+INFO:     127.0.0.1:38142 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:38142 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38054 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Terminating session:         streamable_http.py:855
+                             59c1827c82d044caa9f0dcd32f13                       
+                             34e5                                               
+INFO:     127.0.0.1:37886 - "DELETE /mcp HTTP/1.1" 200 OK
+                    INFO     Created new          streamable_http_manager.py:325
+                             transport with                                     
+                             session ID:                                        
+                             fa66f153c0c84242a00a                               
+                             c1bf27c1cd1a                                       
+INFO:     127.0.0.1:38154 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:38154 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38054 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Terminating session:         streamable_http.py:855
+                             fa66f153c0c84242a00ac1bf27c1                       
+                             cd1a                                               
+INFO:     127.0.0.1:37886 - "DELETE /mcp HTTP/1.1" 200 OK
+                    INFO     Created new          streamable_http_manager.py:325
+                             transport with                                     
+                             session ID:                                        
+                             357e6f02dd0f4664a6e2                               
+                             c00aab219545                                       
+INFO:     127.0.0.1:38168 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:38168 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38054 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Terminating session:         streamable_http.py:855
+                             357e6f02dd0f4664a6e2c00aab21                       
+                             9545                                               
+INFO:     127.0.0.1:37886 - "DELETE /mcp HTTP/1.1" 200 OK
+                    INFO     Created new          streamable_http_manager.py:325
+                             transport with                                     
+                             session ID:                                        
+                             025780f5ee204e259e05                               
+                             5cfe9407b791                                       
+INFO:     127.0.0.1:38174 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:38174 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38054 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Terminating session:         streamable_http.py:855
+                             025780f5ee204e259e055cfe9407                       
+                             b791                                               
+INFO:     127.0.0.1:37886 - "DELETE /mcp HTTP/1.1" 200 OK
+                    INFO     Created new          streamable_http_manager.py:325
+                             transport with                                     
+                             session ID:                                        
+                             ff64ceeff2474cde85d8                               
+                             a0bc5b9947b2                                       
+                    WARNING  Invalid Host header:       transport_security.py:69
+                             evil.example.com                                   
+INFO:     127.0.0.1:38186 - "POST /mcp HTTP/1.1" 421 Misdirected Request
+                    INFO     Terminating session:         streamable_http.py:855
+                             ff64ceeff2474cde85d8a0bc5b99                       
+                             47b2                                               
+                    INFO     Created new          streamable_http_manager.py:325
+                             transport with                                     
+                             session ID:                                        
+                             3d01d105063549e8b219                               
+                             199a7767c9aa                                       
+INFO:     127.0.0.1:38186 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38186 - "POST /mcp HTTP/1.1" 202 Accepted
+                    INFO     Created new          streamable_http_manager.py:325
+                             transport with                                     
+                             session ID:                                        
+                             675a313e95ee433dae54                               
+                             f6839288f5d8                                       
+INFO:     127.0.0.1:38186 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 202 Accepted
+                    INFO     Terminating session:         streamable_http.py:855
+                             675a313e95ee433dae54f6839288                       
+                             f5d8                                               
+INFO:     127.0.0.1:38186 - "DELETE /mcp HTTP/1.1" 200 OK
+                    INFO     Rejected request     streamable_http_manager.py:305
+                             with unknown or                                    
+                             expired session ID:                                
+                             675a313e95ee433dae54                               
+                             f6839288f5d8                                       
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 404 Not Found
+                    INFO     Created new          streamable_http_manager.py:325
+                             transport with                                     
+                             session ID:                                        
+                             b689963bd5384bb8bd3a                               
+                             339db8e7a75a                                       
+INFO:     127.0.0.1:38186 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:38186 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38054 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Terminating session:         streamable_http.py:855
+                             b689963bd5384bb8bd3a339db8e7                       
+                             a75a                                               
+INFO:     127.0.0.1:37886 - "DELETE /mcp HTTP/1.1" 200 OK
+                    INFO     Created new          streamable_http_manager.py:325
+                             transport with                                     
+                             session ID:                                        
+                             721d7012e0f74ccd89e7                               
+                             52ad418219ee                                       
+INFO:     127.0.0.1:38200 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37886 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:38200 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38054 - "POST /mcp HTTP/1.1" 200 OK
+/tmp/claude-0/conformance/dl/py-sdk/examples/servers/everything-server/mcp_everything_server/server.py:612: MCPDeprecationWarning: The logging capability is deprecated as of 2026-07-28 (SEP-2577).
+  await ctx.info("Before disconnect")  # pyright: ignore[reportDeprecated]
+INFO:     127.0.0.1:37886 - "GET /mcp HTTP/1.1" 200 OK
+/tmp/claude-0/conformance/dl/py-sdk/examples/servers/everything-server/mcp_everything_server/server.py:618: MCPDeprecationWarning: The logging capability is deprecated as of 2026-07-28 (SEP-2577).
+  await ctx.info("After reconnect")  # pyright: ignore[reportDeprecated]
+                    INFO     Terminating session:         streamable_http.py:855
+                             721d7012e0f74ccd89e752ad4182                       
+                             19ee                                               
+INFO:     127.0.0.1:38054 - "DELETE /mcp HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+                    INFO     StreamableHTTP       streamable_http_manager.py:166
+                             session manager                                    
+                             shutting down                                      
+                    INFO     Terminating session:         streamable_http.py:855
+                             3d01d105063549e8b219199a7767                       
+                             c9aa                                               
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1667]

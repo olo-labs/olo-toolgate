@@ -1,0 +1,10 @@
+{
+  "name": "toolgate-sdk-compat-pins-ts",
+  "private": true,
+  "description": "Pinned official MCP SDK for the TypeScript standalone runtime (compatibility record 2026-10-10).",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.3.1",
+    "@modelcontextprotocol/client": "2.3.1"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "comment": "Not equivalent: enum order is not in the rewrite list, so it is a change.",
+  "a": { "toolId": "t/x", "inputSchema": { "type": "object", "properties": { "s": { "type": "string", "enum": ["A", "B"] } }, "required": [], "additionalProperties": false } },
+  "b": { "toolId": "t/x", "inputSchema": { "type": "object", "properties": { "s": { "type": "string", "enum": ["B", "A"] } }, "required": [], "additionalProperties": false } }
+}

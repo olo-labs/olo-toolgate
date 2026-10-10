@@ -1,0 +1,14 @@
+# Resolved runtime artifacts for io.modelcontextprotocol.sdk:mcp:2.0.1 (mvn dependency:list), sha256 of the jar in the local repository fetched from Maven Central
+c0f10b4e0eb8825dae1396c3c688b61b5df1a15ff5c0a7262a4a478d93e85f62  io.modelcontextprotocol.sdk:mcp:2.0.1
+af8c33709d139918cd75b9ea829b9fa95d0f9fb8eea6afb326de14bbdfadc0eb  io.modelcontextprotocol.sdk:mcp-json-jackson3:2.0.1
+14034bfdf392b6ebec1b4bb6c1de29d604f0aa97251259a19d5f19af8719bb20  tools.jackson.core:jackson-databind:3.1.4
+3bda1cd6eff0a8d47bdfcaeae7c2bd5311d6c8ed494ef5f3e51029bb44aa9bdf  tools.jackson.core:jackson-core:3.1.4
+f6f727370bbc53de6d1321710b7e90288774042e69e3bb6992d6801048f56800  com.networknt:json-schema-validator:3.0.6
+5cf40ab0cc77828ab2b875b1f3ecd71c8295d7721933476abc2e08fddcea164a  com.ethlo.time:itu:1.14.0
+f583bd16b6d39a0ec900e37948507616bb651caea58fb882560d7e63efbe56db  tools.jackson.dataformat:jackson-dataformat-yaml:3.1.4
+0b638c8806112215e02e58e95cbd9e9a69d4bd540991f47553d053919994cc94  org.snakeyaml:snakeyaml-engine:3.0.1
+1217c23097ca3bd36121ef14daf14a55ff07aa3777e31b578894407bd98a3735  io.modelcontextprotocol.sdk:mcp-core:2.0.1
+a12578dde1ba00bd9b816d388a0b879928d00bab3c83c240f7013bf4196c579a  org.slf4j:slf4j-api:2.0.16
+53ca085f4a150f703f49e1aabd935bd03b43e1ea3d55d135438292af22cef56b  com.fasterxml.jackson.core:jackson-annotations:2.21
+14aebad4882def1f88389656cf9b46177f6b090bb00a0707025d76aeacaaead2  io.projectreactor:reactor-core:3.7.0
+f75ca597789b3dac58f61857b9ac2e1034a68fa672db35055a8fb4509e325f28  org.reactivestreams:reactive-streams:1.0.4

@@ -1,0 +1,34 @@
+{
+  "descriptorGeneration": 1,
+  "toolId": "acme.files/files.checksum",
+  "mcpName": "files.files.checksum",
+  "kind": "CLIENT",
+  "title": "Checksum a file",
+  "description": "SHA-256 of a file in the protected HotFolder.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "path": { "type": "string", "description": "Path relative to the HotFolder", "minLength": 1, "maxLength": 1024 }
+    },
+    "required": ["path"],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": { "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" } },
+    "required": ["sha256"],
+    "additionalProperties": false
+  },
+  "errors": [],
+  "effect": { "safety": "READ_ONLY", "destructive": false, "openWorld": false },
+  "businessKey": { "required": false, "namespace": "AGENT" },
+  "execution": { "async": false, "maxDurationMs": 30000, "stateless": false, "cancelIfAbandoned": false },
+  "tiers": ["OCI_SANDBOX"],
+  "routes": [],
+  "destinations": [],
+  "httpAuth": [],
+  "tcp": [],
+  "variables": { "globals": [], "secrets": [], "claims": [] },
+  "permissions": [],
+  "toolsets": []
+}

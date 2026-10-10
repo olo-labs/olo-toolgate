@@ -1,0 +1,277 @@
+Running requirements 2026-07-28 (50 scenarios) against http://localhost:8080/mcp
+
+
+=== Running scenario: server-stateless ===
+Running client scenario 'server-stateless' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-server-stateless-2026-10-10T18-42-52-697Z
+
+=== Running scenario: completion-complete ===
+Running client scenario 'completion-complete' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-completion-complete-2026-10-10T18-42-53-001Z
+
+=== Running scenario: tools-list ===
+Running client scenario 'tools-list' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-tools-list-2026-10-10T18-42-53-111Z
+
+=== Running scenario: tools-call-simple-text ===
+Running client scenario 'tools-call-simple-text' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-tools-call-simple-text-2026-10-10T18-42-53-121Z
+
+=== Running scenario: tools-call-image ===
+Running client scenario 'tools-call-image' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-tools-call-image-2026-10-10T18-42-53-159Z
+
+=== Running scenario: tools-call-audio ===
+Running client scenario 'tools-call-audio' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-tools-call-audio-2026-10-10T18-42-53-165Z
+
+=== Running scenario: tools-call-embedded-resource ===
+Running client scenario 'tools-call-embedded-resource' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-tools-call-embedded-resource-2026-10-10T18-42-53-180Z
+
+=== Running scenario: tools-call-mixed-content ===
+Running client scenario 'tools-call-mixed-content' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-tools-call-mixed-content-2026-10-10T18-42-53-187Z
+
+=== Running scenario: tools-call-error ===
+Running client scenario 'tools-call-error' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-tools-call-error-2026-10-10T18-42-53-198Z
+
+=== Running scenario: tools-call-with-progress ===
+Running client scenario 'tools-call-with-progress' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-tools-call-with-progress-2026-10-10T18-42-53-210Z
+
+=== Running scenario: server-sse-multiple-streams ===
+Running client scenario 'server-sse-multiple-streams' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-server-sse-multiple-streams-2026-10-10T18-42-53-218Z
+
+=== Running scenario: resources-list ===
+Running client scenario 'resources-list' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-resources-list-2026-10-10T18-42-53-228Z
+
+=== Running scenario: resources-read-text ===
+Running client scenario 'resources-read-text' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-resources-read-text-2026-10-10T18-42-53-237Z
+
+=== Running scenario: resources-read-binary ===
+Running client scenario 'resources-read-binary' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-resources-read-binary-2026-10-10T18-42-53-252Z
+
+=== Running scenario: resources-templates-read ===
+Running client scenario 'resources-templates-read' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-resources-templates-read-2026-10-10T18-42-53-259Z
+
+=== Running scenario: sep-2164-resource-not-found ===
+Running client scenario 'sep-2164-resource-not-found' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-sep-2164-resource-not-found-2026-10-10T18-42-53-266Z
+
+=== Running scenario: prompts-list ===
+Running client scenario 'prompts-list' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-prompts-list-2026-10-10T18-42-53-272Z
+
+=== Running scenario: prompts-get-simple ===
+Running client scenario 'prompts-get-simple' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-prompts-get-simple-2026-10-10T18-42-53-279Z
+
+=== Running scenario: prompts-get-with-args ===
+Running client scenario 'prompts-get-with-args' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-prompts-get-with-args-2026-10-10T18-42-53-288Z
+
+=== Running scenario: prompts-get-embedded-resource ===
+Running client scenario 'prompts-get-embedded-resource' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-prompts-get-embedded-resource-2026-10-10T18-42-53-293Z
+
+=== Running scenario: prompts-get-with-image ===
+Running client scenario 'prompts-get-with-image' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-prompts-get-with-image-2026-10-10T18-42-53-300Z
+
+=== Running scenario: dns-rebinding-protection ===
+Running client scenario 'dns-rebinding-protection' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-dns-rebinding-protection-2026-10-10T18-42-53-306Z
+
+=== Running scenario: caching ===
+Running client scenario 'caching' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-caching-2026-10-10T18-42-53-324Z
+
+=== Running scenario: input-required-result-basic-elicitation ===
+Running client scenario 'input-required-result-basic-elicitation' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-input-required-result-basic-elicitation-2026-10-10T18-42-53-345Z
+
+=== Running scenario: input-required-result-basic-sampling ===
+Running client scenario 'input-required-result-basic-sampling' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-input-required-result-basic-sampling-2026-10-10T18-42-53-350Z
+
+=== Running scenario: input-required-result-basic-list-roots ===
+Running client scenario 'input-required-result-basic-list-roots' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-input-required-result-basic-list-roots-2026-10-10T18-42-53-356Z
+
+=== Running scenario: input-required-result-request-state ===
+Running client scenario 'input-required-result-request-state' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-input-required-result-request-state-2026-10-10T18-42-53-361Z
+
+=== Running scenario: input-required-result-multiple-input-requests ===
+Running client scenario 'input-required-result-multiple-input-requests' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-input-required-result-multiple-input-requests-2026-10-10T18-42-53-366Z
+
+=== Running scenario: input-required-result-multi-round ===
+Running client scenario 'input-required-result-multi-round' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-input-required-result-multi-round-2026-10-10T18-42-53-371Z
+
+=== Running scenario: input-required-result-missing-input-response ===
+Running client scenario 'input-required-result-missing-input-response' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-input-required-result-missing-input-response-2026-10-10T18-42-53-376Z
+
+=== Running scenario: input-required-result-non-tool-request ===
+Running client scenario 'input-required-result-non-tool-request' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-input-required-result-non-tool-request-2026-10-10T18-42-53-384Z
+
+=== Running scenario: input-required-result-result-type ===
+Running client scenario 'input-required-result-result-type' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-input-required-result-result-type-2026-10-10T18-42-53-390Z
+
+=== Running scenario: input-required-result-unsupported-methods ===
+Running client scenario 'input-required-result-unsupported-methods' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-input-required-result-unsupported-methods-2026-10-10T18-42-53-396Z
+
+=== Running scenario: input-required-result-tampered-state ===
+Running client scenario 'input-required-result-tampered-state' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-input-required-result-tampered-state-2026-10-10T18-42-53-407Z
+
+=== Running scenario: input-required-result-capability-check ===
+Running client scenario 'input-required-result-capability-check' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-input-required-result-capability-check-2026-10-10T18-42-53-414Z
+
+=== Running scenario: input-required-result-ignore-extra-params ===
+Running client scenario 'input-required-result-ignore-extra-params' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-input-required-result-ignore-extra-params-2026-10-10T18-42-53-422Z
+
+=== Running scenario: input-required-result-validate-input ===
+Running client scenario 'input-required-result-validate-input' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-input-required-result-validate-input-2026-10-10T18-42-53-429Z
+
+=== Running scenario: tasks-lifecycle ===
+Running client scenario 'tasks-lifecycle' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-tasks-lifecycle-2026-10-10T18-42-53-439Z
+
+=== Running scenario: tasks-capability-negotiation ===
+Running client scenario 'tasks-capability-negotiation' against server: http://localhost:8080/mcp
+Failed to run scenario tasks-capability-negotiation: Error: HTTP 400: expected a JSON-RPC result for 'server/discover', got unexpected body {"jsonRpcError":{"code":-32601,"message":"Session ID required in mcp-session-id header"},"cause":null,"localizedMessage":"Session ID required in mcp-session-id header","message":"Session ID required in mcp-session-id header","stackTrace":[{"classLoaderName":null,"className":"io.modelcontextprotocol.spec.McpError$Builder","fileName":"McpError.java","lineNumber":81,"methodName":"build","moduleName":null,"moduleVersion":null,"nativeMethod":false},{"classLoaderName":null,"className":"io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider","fileName":"HttpServletStreamableServerTransportProvider.java","lineNumber":494,"methodName":"doPost","moduleName":null,"moduleVersion":null,"nativeMethod":false},{"classLoaderName":null,"className":"jakarta.servlet.http.HttpServlet","fileName":"HttpServlet.java","lineNumber":645,"methodName":"service","moduleName":null,"moduleVersion":null,"nativeMethod":false},{"classLoaderName":null,"className":"jakarta.servlet.http.HttpServlet","fileName":"HttpServlet.java","lineNumber":716,"methodName":"service","moduleName":null,"moduleVersion":null,"nativeMethod":false},{"classLoaderName":null,"className":"org.apache.catalina.core.ApplicationFilterChain","fileName":"ApplicationFilterChain.java","lineNumber":130,"methodName":"doFilter","moduleName":null,"moduleVersion":null,"nativeMethod":false},{"classLoaderName":null,"className":"org.apache.catalina.core.StandardWrapperValve","fileName":"StandardWrapperValve.java","lineNumber":167,"methodName":"invoke","moduleName":null,"moduleVersion":null,"nativeMethod":false},{"classLoaderName":null,"className":"org.apache.catalina.core.StandardContextValve","fileName":"StandardContextValve.java","lineNumber":79,"methodName":"invoke","moduleName":null,"moduleVersion":null,"nativeMethod":false},{"classLoaderName":null,"className":"org.apache.catalina.authenticator.AuthenticatorBase","fileName":"AuthenticatorBase.java","lineNumber":483,"methodName":"invoke","moduleName":null,"moduleVersion":null,"nativeMethod":false},{"classLoaderName":null,"className":"org.apache.catalina.core.StandardHostValve","fileName":"StandardHostValve.java","lineNumber":115,"methodName":"invoke","moduleName":null,"moduleVersion":null,"nativeMethod":false},{"classLoaderName":null,"className":"org.apache.catalina.valves.ErrorReportValve","fileName":"ErrorReportValve.java","lineNumber":93,"methodName":"invoke","moduleName":null,"moduleVersion":null,"nativeMethod":false},{"classLoaderName":null,"className":"org.apache.catalina.core.StandardEngineValve","fileName":"StandardEngineValve.java","lineNumber":74,"methodName":"invoke","moduleName":null,"moduleVersion":null,"nativeMethod":false},{"classLoaderName":null,"className":"org.apache.catalina.connector.CoyoteAdapter","fileName":"CoyoteAdapter.java","lineNumber":342,"methodName":"service","moduleName":null,"moduleVersion":null,"nativeMethod":false},{"classLoaderName":null,"className":"org.apache.coyote.http11.Http11Processor","fileName":"Http11Processor.java","lineNumber":395,"methodName":"service","moduleName":null,"moduleVersion":null,"nativeMethod":false},{"classLoaderName":null,"className":"org.apache.coyote.AbstractProcessorLight","fileName":"AbstractProcessorLight.java","lineNumber":63,"methodName":"process","moduleName":null,"moduleVersion":null,"nativeMethod":false},{"classLoaderName":null,"className":"org.apache.coyote.AbstractProtocol$ConnectionHandler","fileName":"AbstractProtocol.java","lineNumber":905,"methodName":"process","moduleName":null,"moduleVersion":null,"nativeMethod":false},{"classLoaderName":null,"className":"org.apache.tomcat.util.net.NioEndpoint$SocketProcessor","fileName":"NioEndpoint.java","lineNumber":1746,"methodName":"doRun","moduleName":null,"moduleVersion":null,"nativeMethod":false},{"classLoaderName":null,"className":"org.apache.tomcat.util.net.SocketProcessorBase","fileName":"SocketProcessorBase.java","lineNumber":52,"methodName":"run","moduleName":null,"moduleVersion":null,"nativeMethod":false},{"classLoaderName":null,"className":"org.apache.tomcat.util.threads.ThreadPoolExecutor","fileName":"ThreadPoolExecutor.java","lineNumber":1148,"methodName":"runWorker","moduleName":null,"moduleVersion":null,"nativeMethod":false},{"classLoaderName":null,"className":"org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker","fileName":"ThreadPoolExecutor.java","lineNumber":636,"methodName":"run","moduleName":null,"moduleVersion":null,"nativeMethod":false},{"classLoaderName":null,"className":"org.apache.tomcat.util.threads.TaskThread$WrappingRunnable","fileName":"TaskThread.java","lineNumber":63,"methodName":"run","moduleName":null,"moduleVersion":null,"nativeMethod":false},{"classLoaderName":null,"className":"java.lang.Thread","fileName":"Thread.java","lineNumber":1583,"methodName":"run","moduleName":"java.base","moduleVersion":"21.0.12.1","nativeMethod":false}],"suppressed":[]}
+    at l (file:///tmp/claude-0/conformance/work/conf/node_modules/@modelcontextprotocol/conformance/dist/index.js:1128:6843)
+    at d (file:///tmp/claude-0/conformance/work/conf/node_modules/@modelcontextprotocol/conformance/dist/index.js:1128:7163)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async ga.run (file:///tmp/claude-0/conformance/work/conf/node_modules/@modelcontextprotocol/conformance/dist/index.js:2073:16100)
+
+=== Running scenario: tasks-wire-fields ===
+Running client scenario 'tasks-wire-fields' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-tasks-wire-fields-2026-10-10T18-42-53-477Z
+
+=== Running scenario: tasks-request-state-removal ===
+Running client scenario 'tasks-request-state-removal' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-tasks-request-state-removal-2026-10-10T18-42-53-487Z
+
+=== Running scenario: tasks-mrtr-input ===
+Running client scenario 'tasks-mrtr-input' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-tasks-mrtr-input-2026-10-10T18-42-53-494Z
+
+=== Running scenario: tasks-request-headers ===
+Running client scenario 'tasks-request-headers' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-tasks-request-headers-2026-10-10T18-42-53-509Z
+
+=== Running scenario: tasks-dispatch-and-envelope ===
+Running client scenario 'tasks-dispatch-and-envelope' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-tasks-dispatch-and-envelope-2026-10-10T18-42-53-528Z
+
+=== Running scenario: tasks-status-notifications ===
+Running client scenario 'tasks-status-notifications' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-tasks-status-notifications-2026-10-10T18-42-53-565Z
+
+=== Running scenario: tasks-required-task-error ===
+Running client scenario 'tasks-required-task-error' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-tasks-required-task-error-2026-10-10T18-42-53-566Z
+
+=== Running scenario: tasks-mrtr-composition ===
+Running client scenario 'tasks-mrtr-composition' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-tasks-mrtr-composition-2026-10-10T18-42-53-571Z
+
+=== Running scenario: json-schema-2020-12 ===
+Running client scenario 'json-schema-2020-12' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-json-schema-2020-12-2026-10-10T18-42-53-575Z
+
+=== Running scenario: http-header-validation ===
+Running client scenario 'http-header-validation' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-http-header-validation-2026-10-10T18-42-53-579Z
+
+=== Running scenario: http-custom-header-server-validation ===
+Running client scenario 'http-custom-header-server-validation' against server: http://localhost:8080/mcp
+Results saved to /tmp/claude-0/conformance/work/results/java-2026-07-28/checks/server-http-custom-header-server-validation-2026-10-10T18-42-53-583Z
+
+
+=== SUMMARY ===
+✗ server-stateless: 7 passed, 20 failed
+✗ completion-complete: 0 passed, 2 failed
+✗ tools-list: 0 passed, 2 failed
+✗ tools-call-simple-text: 0 passed, 2 failed
+✗ tools-call-image: 0 passed, 2 failed
+✗ tools-call-audio: 0 passed, 2 failed
+✗ tools-call-embedded-resource: 0 passed, 2 failed
+✗ tools-call-mixed-content: 0 passed, 2 failed
+✗ tools-call-error: 0 passed, 2 failed
+✗ tools-call-with-progress: 0 passed, 2 failed
+✗ server-sse-multiple-streams: 0 passed, 1 failed
+✗ resources-list: 0 passed, 2 failed
+✗ resources-read-text: 0 passed, 2 failed
+✗ resources-read-binary: 0 passed, 2 failed
+✗ resources-templates-read: 0 passed, 2 failed
+✗ sep-2164-resource-not-found: 1 passed, 2 failed
+✗ prompts-list: 0 passed, 2 failed
+✗ prompts-get-simple: 0 passed, 2 failed
+✗ prompts-get-with-args: 0 passed, 2 failed
+✗ prompts-get-embedded-resource: 0 passed, 2 failed
+✗ prompts-get-with-image: 0 passed, 2 failed
+✗ dns-rebinding-protection: 1 passed, 1 failed
+✗ caching: 0 passed, 7 failed
+✗ input-required-result-basic-elicitation: 0 passed, 2 failed
+✗ input-required-result-basic-sampling: 0 passed, 2 failed
+✗ input-required-result-basic-list-roots: 0 passed, 2 failed
+✗ input-required-result-request-state: 0 passed, 2 failed
+✗ input-required-result-multiple-input-requests: 0 passed, 2 failed
+✗ input-required-result-multi-round: 0 passed, 2 failed
+✗ input-required-result-missing-input-response: 0 passed, 1 failed
+✗ input-required-result-non-tool-request: 0 passed, 2 failed
+✗ input-required-result-result-type: 0 passed, 2 failed
+✗ input-required-result-unsupported-methods: 1 passed, 1 failed
+✗ input-required-result-tampered-state: 0 passed, 2 failed
+✗ input-required-result-capability-check: 0 passed, 2 failed
+✗ input-required-result-ignore-extra-params: 0 passed, 1 failed
+✗ input-required-result-validate-input: 2 passed, 1 failed
+✗ tasks-lifecycle: 0 passed, 9 failed
+✗ tasks-capability-negotiation: 0 passed, 1 failed
+✗ tasks-wire-fields: 0 passed, 4 failed
+✗ tasks-request-state-removal: 0 passed, 2 failed
+✗ tasks-mrtr-input: 0 passed, 4 failed
+✗ tasks-request-headers: 0 passed, 5 failed
+✗ tasks-dispatch-and-envelope: 0 passed, 9 failed
+✓ tasks-status-notifications: 0 passed, 0 failed
+✗ tasks-required-task-error: 0 passed, 2 failed
+✗ tasks-mrtr-composition: 0 passed, 2 failed
+✗ json-schema-2020-12: 0 passed, 2 failed
+✗ http-header-validation: 0 passed, 5 failed
+✗ http-custom-header-server-validation: 0 passed, 6 failed
+
+Total: 12 passed, 142 failed
+
+Not scored for 2026-07-28: 13 scenario(s) run, 12 failing. These do not affect conformance.
+  ✗ tasks-lifecycle (extension)
+  ✗ tasks-capability-negotiation (extension)
+  ✗ tasks-wire-fields (extension)
+  ✗ tasks-request-state-removal (extension)
+  ✗ tasks-mrtr-input (extension)
+  ✗ tasks-request-headers (extension)
+  ✗ tasks-dispatch-and-envelope (extension)
+  ✓ tasks-status-notifications (extension)
+  ✗ tasks-required-task-error (extension)
+  ✗ tasks-mrtr-composition (extension)
+  ✗ json-schema-2020-12 (pending)
+  ✗ http-header-validation (pending)
+  ✗ http-custom-header-server-validation (pending)
+exit=1

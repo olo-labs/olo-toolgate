@@ -1,0 +1,219 @@
+jQgBmzN1EDPQSR7FIpAEQ', stream '1'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'ijQgBmzN1EDPQSR7FIpAEQ', stream '__get__'. Total events written: 1.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'z-JckrtRP69sXrza2gb6kA', stream '0' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0) method 'initialize' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'initialize' request handler completed in 0.2601ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'z-JckrtRP69sXrza2gb6kA', stream '0'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'z-JckrtRP69sXrza2gb6kA', stream '__get__' with mode Streaming.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'z-JckrtRP69sXrza2gb6kA', stream '1' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'resources/subscribe' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'resources/subscribe' request handler completed in 3.8817ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'z-JckrtRP69sXrza2gb6kA', stream '1'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'z-JckrtRP69sXrza2gb6kA', stream '__get__'. Total events written: 1.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'tvQD0bvDQcHpE3T0gbqtVw', stream '0' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0) method 'initialize' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'initialize' request handler completed in 0.4591ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'tvQD0bvDQcHpE3T0gbqtVw', stream '0'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'tvQD0bvDQcHpE3T0gbqtVw', stream '__get__' with mode Streaming.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'tvQD0bvDQcHpE3T0gbqtVw', stream '1' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'resources/subscribe' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'resources/subscribe' request handler completed in 0.2106ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'tvQD0bvDQcHpE3T0gbqtVw', stream '1'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'tvQD0bvDQcHpE3T0gbqtVw', stream '2' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'resources/unsubscribe' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'resources/unsubscribe' request handler completed in 2.5354ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'tvQD0bvDQcHpE3T0gbqtVw', stream '2'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'tvQD0bvDQcHpE3T0gbqtVw', stream '__get__'. Total events written: 1.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session '4J8dEUzxEA_t62FAED6hCA', stream '0' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0) method 'initialize' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'initialize' request handler completed in 0.2205ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session '4J8dEUzxEA_t62FAED6hCA', stream '0'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session '4J8dEUzxEA_t62FAED6hCA', stream '__get__' with mode Streaming.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session '4J8dEUzxEA_t62FAED6hCA', stream '1' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'prompts/list' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'prompts/list' request handler completed in 5.4128ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session '4J8dEUzxEA_t62FAED6hCA', stream '1'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session '4J8dEUzxEA_t62FAED6hCA', stream '__get__'. Total events written: 1.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'pmGXgfbI6QJNtH9Csx0JgQ', stream '0' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0) method 'initialize' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'initialize' request handler completed in 0.3285ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'pmGXgfbI6QJNtH9Csx0JgQ', stream '0'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'pmGXgfbI6QJNtH9Csx0JgQ', stream '__get__' with mode Streaming.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'pmGXgfbI6QJNtH9Csx0JgQ', stream '1' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'prompts/get' request handler called.
+info: ModelContextProtocol.Server.McpServer[1256276250]
+      GetPrompt "test_simple_prompt" completed.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'prompts/get' request handler completed in 5.5114ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'pmGXgfbI6QJNtH9Csx0JgQ', stream '1'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'pmGXgfbI6QJNtH9Csx0JgQ', stream '__get__'. Total events written: 1.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'U_PsEA6-319MS_74FblS4g', stream '0' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0) method 'initialize' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'initialize' request handler completed in 0.1974ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'U_PsEA6-319MS_74FblS4g', stream '0'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'U_PsEA6-319MS_74FblS4g', stream '__get__' with mode Streaming.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'U_PsEA6-319MS_74FblS4g', stream '1' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'prompts/get' request handler called.
+info: ModelContextProtocol.Server.McpServer[1256276250]
+      GetPrompt "test_prompt_with_arguments" completed.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'prompts/get' request handler completed in 1.0811ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'U_PsEA6-319MS_74FblS4g', stream '1'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'U_PsEA6-319MS_74FblS4g', stream '__get__'. Total events written: 1.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'KmW_oliQFPgt8bHoJR6VqQ', stream '0' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0) method 'initialize' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'initialize' request handler completed in 0.3173ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'KmW_oliQFPgt8bHoJR6VqQ', stream '0'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'KmW_oliQFPgt8bHoJR6VqQ', stream '__get__' with mode Streaming.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'KmW_oliQFPgt8bHoJR6VqQ', stream '1' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'prompts/get' request handler called.
+info: ModelContextProtocol.Server.McpServer[1256276250]
+      GetPrompt "test_prompt_with_embedded_resource" completed.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'prompts/get' request handler completed in 1.4582ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'KmW_oliQFPgt8bHoJR6VqQ', stream '1'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'KmW_oliQFPgt8bHoJR6VqQ', stream '__get__'. Total events written: 1.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'b5Jq91QG0ihH4GDaNqtKWQ', stream '0' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0) method 'initialize' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'initialize' request handler completed in 0.2773ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'b5Jq91QG0ihH4GDaNqtKWQ', stream '0'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'b5Jq91QG0ihH4GDaNqtKWQ', stream '__get__' with mode Streaming.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'b5Jq91QG0ihH4GDaNqtKWQ', stream '1' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'prompts/get' request handler called.
+info: ModelContextProtocol.Server.McpServer[1256276250]
+      GetPrompt "test_prompt_with_image" completed.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'prompts/get' request handler completed in 0.7549ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'b5Jq91QG0ihH4GDaNqtKWQ', stream '1'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'b5Jq91QG0ihH4GDaNqtKWQ', stream '__get__'. Total events written: 1.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session '415_PBIPlBArkESPIBOhlA', stream '1' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0) method 'initialize' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-dns-rebinding-test 1.0.0) method 'initialize' request handler completed in 0.1985ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session '415_PBIPlBArkESPIBOhlA', stream '1'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'V3MglM5DtJRag9pyPSFyjw', stream '1' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0) method 'initialize' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-session-lifecycle-test 1.0.0) method 'initialize' request handler completed in 0.2457ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'V3MglM5DtJRag9pyPSFyjw', stream '1'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session '94uJrV09vlOOWz0MEGQKjQ', stream '0' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0) method 'initialize' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'initialize' request handler completed in 0.38ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session '94uJrV09vlOOWz0MEGQKjQ', stream '0'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session '94uJrV09vlOOWz0MEGQKjQ', stream '__get__' with mode Streaming.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session '94uJrV09vlOOWz0MEGQKjQ', stream '1' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/list' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/list' request handler completed in 0.7703ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session '94uJrV09vlOOWz0MEGQKjQ', stream '1'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session '94uJrV09vlOOWz0MEGQKjQ', stream '__get__'. Total events written: 1.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'xgkcSSeavmtiChDc_8kkTA', stream '0' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0) method 'initialize' request handler called.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'initialize' request handler completed in 0.3202ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'xgkcSSeavmtiChDc_8kkTA', stream '0'. Total events written: 2.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'xgkcSSeavmtiChDc_8kkTA', stream '__get__' with mode Streaming.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[2081915367]
+      Stream created for session 'xgkcSSeavmtiChDc_8kkTA', stream '1' with mode Streaming.
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler called.
+info: ModelContextProtocol.Server.McpServer[2065726448]
+      "test_reconnection" completed. IsError = False.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (ModelContextProtocol.ConformanceServer 1.0.0.0), Client (conformance-test-client 1.0.0) method 'tools/call' request handler completed in 3.9652ms.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'xgkcSSeavmtiChDc_8kkTA', stream '1'. Total events written: 3.
+info: ModelContextProtocol.Server.DistributedCacheEventStreamStore[1098987775]
+      Stream writer disposed for session 'xgkcSSeavmtiChDc_8kkTA', stream '__get__'. Total events written: 1.
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...

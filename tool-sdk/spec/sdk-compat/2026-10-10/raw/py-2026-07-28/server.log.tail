@@ -1,0 +1,234 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+[10/10/26 18:35:35] INFO     Starting MCP Everything Server on     server.py:805
+                             port 3001                                          
+                    INFO     Endpoint will be:                     server.py:806
+                             http://localhost:3001/mcp                          
+INFO:     Started server process [1636]
+INFO:     Waiting for application startup.
+                    INFO     StreamableHTTP       streamable_http_manager.py:162
+                             session manager                                    
+                             started                                            
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:3001 (Press CTRL+C to quit)
+[10/10/26 18:35:36] INFO     Created new          streamable_http_manager.py:325
+                             transport with                                     
+                             session ID:                                        
+                             897bc917767e4ca786d4                               
+                             547d150ca484                                       
+INFO:     127.0.0.1:53844 - "GET /mcp HTTP/1.1" 400 Bad Request
+                    INFO     Terminating session:         streamable_http.py:855
+                             897bc917767e4ca786d4547d150c                       
+                             a484                                               
+INFO:     127.0.0.1:53850 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:53856 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:53850 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:53856 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53850 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53856 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53850 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53856 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:53850 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:53856 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:53850 - "POST /mcp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53856 - "POST /mcp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53850 - "POST /mcp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53856 - "POST /mcp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53850 - "POST /mcp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53856 - "POST /mcp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53850 - "POST /mcp HTTP/1.1" 200 OK
+/tmp/claude-0/conformance/dl/py-sdk/examples/servers/everything-server/mcp_everything_server/server.py:399: MCPDeprecationWarning: The logging capability is deprecated as of 2026-07-28 (SEP-2577).
+  await ctx.info("test_logging_tool ran")  # pyright: ignore[reportDeprecated]
+/tmp/claude-0/conformance/dl/py-sdk/src/mcp/server/mcpserver/context.py:381: MCPDeprecationWarning: The logging capability is deprecated as of 2026-07-28 (SEP-2577).
+  await self.log("info", data, logger_name=logger_name)  # pyright: ignore[reportDeprecated]
+/tmp/claude-0/conformance/dl/py-sdk/src/mcp/server/mcpserver/context.py:281: MCPDeprecationWarning: The logging capability is deprecated as of 2026-07-28 (SEP-2577).
+  await self.request_context.session.send_log_message(  # pyright: ignore[reportDeprecated]
+INFO:     127.0.0.1:53856 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53850 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53856 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53856 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53858 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53858 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53870 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53870 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+[10/10/26 18:35:38] INFO     Tool 'test_error_handling' failed:    server.py:453
+                             'Error executing tool                              
+                             test_error_handling: This tool                     
+                             intentionally returns an error for                 
+                             testing'                                           
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37784 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Resource                              server.py:473
+                             'test://nonexistent-resource-for-conf              
+                             ormance-testing' failed: 'Unknown                  
+                             resource:                                          
+                             test://nonexistent-resource-for-confo              
+                             rmance-testing'                                    
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+                    WARNING  Invalid Host header:       transport_security.py:69
+                             evil.example.com                                   
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 421 Misdirected Request
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+                    WARNING  requestState rejected on       request_state.py:263
+                             tools/call: seal                                   
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+[10/10/26 18:35:39] INFO     Tool 'greet' failed: 'Unknown tool:   server.py:453
+                             greet'                                             
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'slow_compute' failed: 'Unknown  server.py:453
+                             tool: slow_compute'                                
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'failing_job' failed: 'Unknown   server.py:453
+                             tool: failing_job'                                 
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'protocol_error_job' failed:     server.py:453
+                             'Unknown tool: protocol_error_job'                 
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'slow_compute' failed: 'Unknown  server.py:453
+                             tool: slow_compute'                                
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'slow_compute' failed: 'Unknown  server.py:453
+                             tool: slow_compute'                                
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 404 Not Found
+                    INFO     Tool 'slow_compute' failed: 'Unknown  server.py:453
+                             tool: slow_compute'                                
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'slow_compute' failed: 'Unknown  server.py:453
+                             tool: slow_compute'                                
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'slow_compute' failed: 'Unknown  server.py:453
+                             tool: slow_compute'                                
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'slow_compute' failed: 'Unknown  server.py:453
+                             tool: slow_compute'                                
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'slow_compute' failed: 'Unknown  server.py:453
+                             tool: slow_compute'                                
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'confirm_delete' failed:         server.py:453
+                             'Unknown tool: confirm_delete'                     
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'confirm_delete' failed:         server.py:453
+                             'Unknown tool: confirm_delete'                     
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'multi_input' failed: 'Unknown   server.py:453
+                             tool: multi_input'                                 
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'greet' failed: 'Unknown tool:   server.py:453
+                             greet'                                             
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'slow_compute' failed: 'Unknown  server.py:453
+                             tool: slow_compute'                                
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 404 Not Found
+                    INFO     Tool 'failing_job' failed: 'Unknown   server.py:453
+                             tool: failing_job'                                 
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'greet' failed: 'Unknown tool:   server.py:453
+                             greet'                                             
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'slow_compute' failed: 'Unknown  server.py:453
+                             tool: slow_compute'                                
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'greet' failed: 'Unknown tool:   server.py:453
+                             greet'                                             
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'slow_compute' failed: 'Unknown  server.py:453
+                             tool: slow_compute'                                
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'slow_compute' failed: 'Unknown  server.py:453
+                             tool: slow_compute'                                
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'confirm_delete' failed:         server.py:453
+                             'Unknown tool: confirm_delete'                     
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'slow_compute' failed: 'Unknown  server.py:453
+                             tool: slow_compute'                                
+INFO:     127.0.0.1:37772 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 404 Not Found
+                    INFO     Tool 'failing_job' failed: 'Unknown   server.py:453
+                             tool: failing_job'                                 
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+                    INFO     Tool 'test_tool_with_task' failed:    server.py:453
+                             'Unknown tool: test_tool_with_task'                
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37792 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:37792 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:37792 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:37792 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37792 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:37792 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37792 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37792 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:53872 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37792 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37792 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:37792 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:37792 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37792 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37792 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+                    INFO     StreamableHTTP       streamable_http_manager.py:166
+                             session manager                                    
+                             shutting down                                      
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1636]

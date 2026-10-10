@@ -1,0 +1,57 @@
+{
+  "descriptorGeneration": 1,
+  "toolId": "acme.orders/orders.lookup",
+  "mcpName": "orders.orders.lookup",
+  "kind": "SERVER",
+  "title": "Look up an order",
+  "description": "Returns status and items for one order.",
+  "useWhen": "The user asks about a specific order number.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "orderId": { "type": "string", "description": "Order number", "pattern": "^[0-9]{6,12}$" },
+      "since": { "type": "integer", "description": "Only events after this epoch second", "minimum": -2147483648, "maximum": 2147483647 }
+    },
+    "required": ["orderId"],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "orderId": { "type": "string" },
+      "status": { "type": "string", "enum": ["OPEN", "SHIPPED", "CANCELLED"] },
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": { "sku": { "type": "string" }, "quantity": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 } },
+          "required": ["quantity", "sku"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": ["items", "orderId", "status"],
+    "additionalProperties": false
+  },
+  "errors": [ { "code": "ORDER_NOT_FOUND", "description": "No such order", "retryable": false } ],
+  "effect": { "safety": "READ_ONLY", "destructive": false, "openWorld": true },
+  "businessKey": { "required": false, "namespace": "AGENT" },
+  "execution": { "async": false, "maxDurationMs": 30000, "stateless": false, "cancelIfAbandoned": false },
+  "routes": [
+    {
+      "id": "orders.get", "destination": "acme-api", "method": "GET", "path": "/orders/{orderId:[0-9]{6,12}}",
+      "query": ["since"], "headers": ["X-On-Behalf-Of"], "requestContentTypes": ["application/json"],
+      "maxRequestBytes": 1048576, "maxResponseBytes": 4194304, "streaming": "NONE", "timeoutMs": 10000, "auth": "acme-key"
+    }
+  ],
+  "destinations": [ { "id": "acme-api", "hostSetting": "AcmeApiHost", "port": 443, "spkiPins": [] } ],
+  "httpAuth": [ { "id": "acme-key", "type": "API_KEY", "header": "X-Api-Key", "secret": "ApiKey", "scopes": [] } ],
+  "tcp": [],
+  "variables": {
+    "globals": [ { "name": "TimeoutSeconds", "type": "INT", "required": true, "default": 10, "sensitive": false } ],
+    "secrets": [ { "name": "ApiKey", "type": "STRING", "scope": "GROUP" } ],
+    "claims": [ { "name": "UserName", "claim": "preferred_username", "type": "STRING", "required": true } ]
+  },
+  "permissions": ["HTTP_ROUTE"],
+  "toolsets": []
+}

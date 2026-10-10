@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Pinned official MCP SDK for the .NET standalone runtime (compatibility record 2026-10-10). -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <NuGetAudit>false</NuGetAudit>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" Version="[2.2.0]" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="[2.2.0]" />
+  </ItemGroup>
+</Project>
