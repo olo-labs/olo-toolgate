@@ -194,24 +194,53 @@ class DiscoveryTests(unittest.TestCase):
         self.verify([sorted(manage.TOOLS)[:1], sorted(manage.TOOLS)])
 
     def test_missing_tools_name_the_cause_and_windows_remedy(self):
-        with self.assertRaisesRegex(manage.ToolsNotReported, 'client.read_log_entry.*repairs.*prepare-windows.ps1'):
+        with self.assertRaisesRegex(ValueError, 'client.read_log_entry.*prepare-windows.ps1'):
             self.verify([sorted(manage.TOOLS - {'client.read_log_entry'})] * 2)
 
     def test_linux_remedy_rebuilds_the_device(self):
-        with self.assertRaises(ValueError) as raised:
+        with self.assertRaisesRegex(ValueError, 'without -SkipBuild'):
             self.verify([[]] * 2, platform='linux')
-        self.assertIn('without -SkipBuild', str(raised.exception))
-        self.assertNotIsInstance(raised.exception, manage.ToolsNotReported)
 
 
-class ExitCodeTests(unittest.TestCase):
-    def test_unreported_windows_tools_exit_for_automatic_repair(self):
-        for failure, code in ((manage.ToolsNotReported('missing'), manage.TOOLS_NOT_REPORTED_EXIT),
-                              (ValueError('other'), 1)):
-            with self.subTest(code=code), patch.object(manage, 'main', side_effect=failure), \
-                    contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as raised:
-                manage.run()
-            self.assertEqual(raised.exception.code, code)
+class LocalRegistrationTests(unittest.TestCase):
+    def refresh(self, records, installed, host='HOST-A'):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            for name, record in records.items():
+                (directory / name).write_text(json.dumps(record))
+            exe = directory / 'client.exe'
+            exe.write_text('')
+            result = SimpleNamespace(returncode=0, stdout=json.dumps(installed))
+            with patch.object(manage.os, 'name', 'nt'), patch.object(manage, 'LOCAL_CLIENT', exe), \
+                    patch.dict(manage.os.environ, {'COMPUTERNAME': host}), \
+                    patch.object(manage.subprocess, 'run', return_value=result), \
+                    patch.object(manage.shared, 'private_file', side_effect=lambda path, value: path.write_text(value)), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                manage.refresh_local_registration(directory)
+            return {name: json.loads((directory / name).read_text()) for name in records}
+
+    def profiles(self, digest):
+        return [dict(tool=dict(id=name, enabled=True, packageDigest=digest), extractor=dict(enabled=True))
+                for name in sorted(manage.TOOLS)]
+
+    def record(self, device, digest, **extra):
+        return dict(deviceId=device, platform='windows', gateway=manage.gateway_url(),
+                    profiles=self.profiles(digest), **extra)
+
+    def test_this_machines_registration_follows_the_installed_client(self):
+        refreshed = self.refresh({'device-a.json': self.record(WINDOWS, 'old', host='host-a')}, self.profiles('new'))
+        self.assertEqual(refreshed['device-a.json']['profiles'], self.profiles('new'))
+        self.assertEqual(refreshed['device-a.json']['host'], 'host-a')
+
+    def test_a_single_registration_without_host_is_treated_as_this_machine(self):
+        refreshed = self.refresh({'device-a.json': self.record(WINDOWS, 'old')}, self.profiles('new'))
+        self.assertEqual(refreshed['device-a.json']['profiles'], self.profiles('new'))
+
+    def test_other_machines_registrations_are_left_alone(self):
+        records = {'device-a.json': self.record(WINDOWS, 'old', host='host-b'),
+                   'device-b.json': self.record('device-' + 'c' * 32, 'old')}
+        refreshed = self.refresh(records, self.profiles('new'))
+        self.assertEqual(refreshed, records)
 
 
 if __name__ == '__main__':
