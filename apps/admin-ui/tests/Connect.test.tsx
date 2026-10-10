@@ -92,3 +92,27 @@ it('detects a newly installed extension and continues once without a page reload
   expect(sent.mock.calls.filter(([message])=>message.operation==='connect')).toHaveLength(1);
   fireEvent.click(screen.getByRole('button',{name:'Cancel Connect'}));
 });
+it('retries a client this gateway does not accept once from scratch',async()=>{
+  vi.useFakeTimers();chrome();
+  const sent=vi.spyOn(window,'postMessage').mockImplementation(message=>{
+    queueMicrotask(()=>window.dispatchEvent(new MessageEvent('message',{source:window,origin:location.origin,
+      data:{channel:'toolgate-connect-response',id:message.id,protocol:1,version:release.version,chromeVersion:release.chromeVersion,
+        phase:'ready',serverUrl:'https://localhost:18450',client:{health:{ready:false,state:'OFFLINE'}}}})));
+  });
+  render(<Connect onCode={vi.fn()}/>);fireEvent.click(screen.getByRole('button',{name:'Connect'}));
+  await vi.advanceTimersByTimeAsync(10000);
+  expect(sent.mock.calls.filter(([message])=>message.operation==='connect')).toHaveLength(2);
+  fireEvent.click(screen.getByRole('button',{name:'Cancel Connect'}));
+});
+it('reconnects a client that moved to another gateway',async()=>{
+  vi.useFakeTimers();chrome();
+  const sent=vi.spyOn(window,'postMessage').mockImplementation(message=>{
+    queueMicrotask(()=>window.dispatchEvent(new MessageEvent('message',{source:window,origin:location.origin,
+      data:{channel:'toolgate-connect-response',id:message.id,protocol:1,version:release.version,chromeVersion:release.chromeVersion,phase:'gateway-changed'}})));
+  });
+  render(<Connect onCode={vi.fn()}/>);fireEvent.click(screen.getByRole('button',{name:'Connect'}));
+  await vi.advanceTimersByTimeAsync(6000);
+  expect(screen.getByText(/Reconnecting it to this gateway/)).toBeTruthy();
+  expect(sent.mock.calls.filter(([message])=>message.operation==='connect')).toHaveLength(2);
+  fireEvent.click(screen.getByRole('button',{name:'Cancel Connect'}));
+});

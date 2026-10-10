@@ -56,7 +56,7 @@ export function Connect({onCode,onCancel}:{onCode:(code:string)=>void;onCancel?:
           }
         }
       } catch { /* Missing setup must not turn an extension ZIP into an installer. */ }
-      const deadline=Date.now()+900000;let detected=false;let requested=false;let previousCode='';
+      const deadline=Date.now()+900000;let detected=false;let requested=false;let previousCode='';let retried=false;
       while(!controller.signal.aborted&&Date.now()<deadline) {
         let status:ConnectStatus|undefined;
         try { status=await extensionStatus(controller.signal,detected?'status':'hello'); } catch { if(controller.signal.aborted)break;detected=false; }
@@ -67,6 +67,11 @@ export function Connect({onCode,onCancel}:{onCode:(code:string)=>void;onCancel?:
         else {
           detected=true;
           if(status.phase==='installation-detected')requested=false;
+          // This page is trying to connect: a client on another gateway, or one this gateway no
+          // longer accepts after this page's Connect, is a wrong configuration. Retry once from scratch; an already
+          // approved device reconnects without a new approval.
+          const health=status.client?.health;
+          if(requested&&!retried&&(status.phase==='gateway-changed'||(status.phase==='ready'&&!status.client?.error&&health&&!health.ready&&['OFFLINE','REVOKED'].includes(health.state??'')))){retried=true;requested=false;}
           if(!requested){requested=true;void extensionStatus(controller.signal,'connect').catch(()=>{});}
           if(status.phase==='gateway-changed'&&previousCode){previousCode='';onCancel?.();}
           if(typeof status.userCode==='string'&&/^[A-F0-9]{16}$/.test(status.userCode)&&status.userCode!==previousCode){previousCode=status.userCode;onCode(status.userCode);}
@@ -77,7 +82,7 @@ export function Connect({onCode,onCancel}:{onCode:(code:string)=>void;onCancel?:
               : ['UNENROLLED','PENDING'].includes(status.client.health.state??'') ? 'Complete enrollment using the code and fingerprint below. Connection will be confirmed after the first successful check-in.'
               : 'The client is offline: no recent successful gateway check-in. Click Retry Connect: it reconnects, or requests a fresh enrollment if this gateway no longer accepts the device.')
             : status.phase==='connecting' ? 'Installing the verified client or updating its gateway URL. Approve Windows administrator permission if shown…'
-            : status.phase==='gateway-changed' ? 'The client was connected to another gateway. Click Retry Connect to use this gateway again.'
+            : status.phase==='gateway-changed' ? (retried ? 'The client was connected to another gateway. Reconnecting it to this gateway…' : 'The client was connected to another gateway. Click Retry Connect to use this gateway again.')
             : status.phase==='setup-required' ? 'Install the combined client and Chrome extension setup below, then click Retry Connect. If setup is installed, check the gateway connection and Windows permissions.'
             : 'Chrome extension detected. Configuring the client for this gateway…');
         }
