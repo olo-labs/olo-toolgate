@@ -1,0 +1,1831 @@
+{
+  "AdmissionResponse": [
+    {
+      "case": "unknown kind",
+      "value": {
+        "kind": "MAYBE",
+        "invocationId": "inv-5",
+        "fencingToken": "nonce-77"
+      }
+    }
+  ],
+  "BreakGlassRequest": [
+    {
+      "case": "one operator",
+      "value": {
+        "scope": {
+          "kind": "TOOL",
+          "value": "acme.orders/orders.refund"
+        },
+        "mode": "STOP_NEW",
+        "reason": "Incident 551",
+        "operatorSignatures": [
+          "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ4In0.c2lnbmF0dXJl"
+        ]
+      }
+    }
+  ],
+  "BusinessKeyReservationRequest": [
+    {
+      "case": "raw key instead of hash",
+      "value": {
+        "toolId": "acme.orders/orders.refund",
+        "namespace": "TENANT",
+        "businessKeyHash": "order-123",
+        "source": "ARGUMENT",
+        "fingerprint": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "caller": {
+          "agentId": "agent-1",
+          "userId": "user-1"
+        }
+      }
+    }
+  ],
+  "CatalogScope": [
+    {
+      "case": "non-slug agent",
+      "value": {
+        "kind": "AGENT_IN_GROUP",
+        "agentId": "Order Bot",
+        "agentGroupId": "finance-bots",
+        "toolsets": [
+          "finance"
+        ],
+        "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    {
+      "case": "unknown kind",
+      "value": {
+        "kind": "TEAM",
+        "agentId": "order-bot",
+        "agentGroupId": "finance-bots",
+        "toolsets": [
+          "finance"
+        ],
+        "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    }
+  ],
+  "ClientCheckIn": [
+    {
+      "case": "below the client minimum",
+      "value": {
+        "checkInMs": 100,
+        "jitterPct": 20,
+        "offlineAfterMs": 120000,
+        "source": "ENVIRONMENT"
+      }
+    }
+  ],
+  "ControlServerSettings": [
+    {
+      "case": "format version 1",
+      "value": {
+        "formatVersion": 1,
+        "revision": 5,
+        "gateway": {
+          "gatewayName": "ToolGate EU"
+        },
+        "deviceApproval": {
+          "autoApprove": true,
+          "durationMs": 86400000,
+          "ownerUserId": "admin-1"
+        },
+        "clientCheckIn": {
+          "checkInMs": 2000,
+          "jitterPct": 20,
+          "offlineAfterMs": 120000,
+          "source": "ENVIRONMENT"
+        }
+      }
+    }
+  ],
+  "ControlServerSettingsPatch": [
+    {
+      "case": "env-owned check-in is not patchable",
+      "value": {
+        "clientCheckIn": {
+          "checkInMs": 2000,
+          "jitterPct": 20,
+          "offlineAfterMs": 120000,
+          "source": "ENVIRONMENT"
+        }
+      }
+    }
+  ],
+  "DeploymentBinding": [
+    {
+      "case": "missing package digest",
+      "value": {
+        "bindingFormatVersion": 1,
+        "bindingId": "bind-1",
+        "revision": 7,
+        "tenantId": "tenant-1",
+        "packageId": "acme.orders",
+        "configRevision": 12,
+        "serviceProfileDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "serviceProfileRevision": 4,
+        "target": {
+          "kind": "TOOL_HOST_POOL",
+          "ids": [
+            "pool-eu"
+          ],
+          "allowedTiers": []
+        },
+        "grants": [
+          {
+            "agentGroupId": "finance-bots",
+            "toolIds": [
+              "acme.orders/orders.lookup"
+            ]
+          }
+        ],
+        "limitOverrides": [
+          {
+            "toolId": "acme.orders/orders.lookup",
+            "maxConcurrency": 8
+          }
+        ],
+        "rolloutPlan": {
+          "strategy": "ALL_AT_ONCE",
+          "steps": [],
+          "autoRollback": false
+        },
+        "effects": [
+          {
+            "toolId": "acme.orders/orders.refund",
+            "effectSafety": "NON_IDEMPOTENT",
+            "businessKeyNamespace": "TENANT",
+            "missingKeyPolicy": "REJECT",
+            "approvalId": "appr-2"
+          }
+        ]
+      }
+    }
+  ],
+  "Digest": [
+    {
+      "case": "bare hex is not a prefixed digest",
+      "value": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+  ],
+  "GlobalDeclaration": [
+    {
+      "case": "unknown value type",
+      "value": {
+        "name": "TimeoutSeconds",
+        "type": "FLOAT",
+        "required": true,
+        "default": 10,
+        "sensitive": false
+      }
+    }
+  ],
+  "InvocationPermitClaims": [
+    {
+      "case": "missing route set target",
+      "value": {
+        "jti": "permit-9",
+        "iss": "control-effect-2026-10",
+        "aud": "toolhost-eu-1-a",
+        "iat": 1791676800000,
+        "nbf": 1791676800000,
+        "exp": 1791676805000,
+        "nonce": "nonce-77",
+        "invocationId": "inv-5",
+        "attempt": 1,
+        "taskId": "task-5",
+        "identity": {
+          "tenantId": "tenant-1",
+          "mode": "DELEGATED",
+          "agentId": "agent-1",
+          "userId": "user-1",
+          "chain": [],
+          "credentialEpoch": 3,
+          "authorizationEpoch": 41,
+          "claims": {
+            "UserName": "dana"
+          }
+        },
+        "catalogRevision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "argumentsDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "action": "orders.refund",
+        "resources": [],
+        "effectSafety": "NON_IDEMPOTENT",
+        "requiresExecutionLedger": true,
+        "businessKeyHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "businessKeyNamespace": "TENANT",
+        "approvalIds": [
+          "appr-1"
+        ],
+        "deadlineUnixMs": 1791677700000
+      }
+    },
+    {
+      "case": "attempt zero",
+      "value": {
+        "jti": "permit-9",
+        "iss": "control-effect-2026-10",
+        "aud": "toolhost-eu-1-a",
+        "iat": 1791676800000,
+        "nbf": 1791676800000,
+        "exp": 1791676805000,
+        "nonce": "nonce-77",
+        "invocationId": "inv-5",
+        "attempt": 0,
+        "taskId": "task-5",
+        "identity": {
+          "tenantId": "tenant-1",
+          "mode": "DELEGATED",
+          "agentId": "agent-1",
+          "userId": "user-1",
+          "chain": [],
+          "credentialEpoch": 3,
+          "authorizationEpoch": 41,
+          "claims": {
+            "UserName": "dana"
+          }
+        },
+        "target": {
+          "toolId": "acme.orders/orders.refund",
+          "toolDescriptorDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "packageDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "artifactDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "runtimeDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "globalsDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "serviceProfileDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "serviceProfileRevision": 4,
+          "deploymentBindingDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "deploymentBindingRevision": 7,
+          "configRevision": 12,
+          "routes": [
+            "orders.refund"
+          ]
+        },
+        "catalogRevision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "argumentsDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "action": "orders.refund",
+        "resources": [],
+        "effectSafety": "NON_IDEMPOTENT",
+        "requiresExecutionLedger": true,
+        "businessKeyHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "businessKeyNamespace": "TENANT",
+        "approvalIds": [
+          "appr-1"
+        ],
+        "deadlineUnixMs": 1791677700000
+      }
+    }
+  ],
+  "KillEvent": [
+    {
+      "case": "event id without issuer",
+      "value": {
+        "eventId": "3",
+        "issuer": "control-breakglass",
+        "scope": {
+          "kind": "PACKAGE_DIGEST",
+          "value": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "mode": "TERMINATE",
+        "reason": "Advisory TG-2026-07",
+        "issuedAtUnixMs": 1791676800000,
+        "signature": "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ4In0.c2lnbmF0dXJl"
+      }
+    }
+  ],
+  "PackageEnableRequest": [
+    {
+      "case": "digest must be prefixed",
+      "value": {
+        "packageDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "binding": {
+          "bindingFormatVersion": 1,
+          "bindingId": "bind-1",
+          "revision": 7,
+          "tenantId": "tenant-1",
+          "packageId": "acme.orders",
+          "packageDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "configRevision": 12,
+          "serviceProfileDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "serviceProfileRevision": 4,
+          "target": {
+            "kind": "TOOL_HOST_POOL",
+            "ids": [
+              "pool-eu"
+            ],
+            "allowedTiers": []
+          },
+          "grants": [
+            {
+              "agentGroupId": "finance-bots",
+              "toolIds": [
+                "acme.orders/orders.lookup"
+              ]
+            }
+          ],
+          "limitOverrides": [
+            {
+              "toolId": "acme.orders/orders.lookup",
+              "maxConcurrency": 8
+            }
+          ],
+          "rolloutPlan": {
+            "strategy": "ALL_AT_ONCE",
+            "steps": [],
+            "autoRollback": false
+          },
+          "effects": [
+            {
+              "toolId": "acme.orders/orders.refund",
+              "effectSafety": "NON_IDEMPOTENT",
+              "businessKeyNamespace": "TENANT",
+              "missingKeyPolicy": "REJECT",
+              "approvalId": "appr-2"
+            }
+          ]
+        },
+        "acknowledgedSecurityDelta": true
+      }
+    }
+  ],
+  "PackageManifest": [
+    {
+      "case": "v1 schemaVersion",
+      "value": {
+        "schemaVersion": 1,
+        "kind": "SDK",
+        "id": "acme.orders",
+        "version": "1.4.0",
+        "publisher": "acme",
+        "sdk": {
+          "language": "JAVA",
+          "version": "0.1.0",
+          "protocol": {
+            "min": 2,
+            "max": 2
+          },
+          "descriptorGeneration": 1
+        },
+        "compatibility": {
+          "contractsVersion": "1.0.0"
+        },
+        "runtimes": [
+          {
+            "runtimeId": "jvm",
+            "language": "java",
+            "version": "17"
+          }
+        ],
+        "tools": [
+          {
+            "descriptor": {
+              "descriptorGeneration": 1,
+              "toolId": "acme.orders/orders.lookup",
+              "mcpName": "orders.orders.lookup",
+              "kind": "SERVER",
+              "title": "Look up an order",
+              "description": "Returns status and items for one order.",
+              "useWhen": "The user asks about a specific order number.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "orderId": {
+                    "type": "string",
+                    "description": "Order number",
+                    "pattern": "^[0-9]{6,12}$"
+                  },
+                  "since": {
+                    "type": "integer",
+                    "description": "Only events after this epoch second",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                  }
+                },
+                "required": [
+                  "orderId"
+                ],
+                "additionalProperties": false
+              },
+              "outputSchema": {
+                "type": "object",
+                "properties": {
+                  "orderId": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "OPEN",
+                      "SHIPPED",
+                      "CANCELLED"
+                    ]
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "sku": {
+                          "type": "string"
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "minimum": -2147483648,
+                          "maximum": 2147483647
+                        }
+                      },
+                      "required": [
+                        "quantity",
+                        "sku"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "items",
+                  "orderId",
+                  "status"
+                ],
+                "additionalProperties": false
+              },
+              "errors": [
+                {
+                  "code": "ORDER_NOT_FOUND",
+                  "description": "No such order",
+                  "retryable": false
+                }
+              ],
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "businessKey": {
+                "required": false,
+                "namespace": "AGENT"
+              },
+              "execution": {
+                "async": false,
+                "maxDurationMs": 30000,
+                "stateless": false,
+                "cancelIfAbandoned": false
+              },
+              "routes": [
+                {
+                  "id": "orders.get",
+                  "destination": "acme-api",
+                  "method": "GET",
+                  "path": "/orders/{orderId:[0-9]{6,12}}",
+                  "query": [
+                    "since"
+                  ],
+                  "headers": [
+                    "X-On-Behalf-Of"
+                  ],
+                  "requestContentTypes": [
+                    "application/json"
+                  ],
+                  "maxRequestBytes": 1048576,
+                  "maxResponseBytes": 4194304,
+                  "streaming": "NONE",
+                  "timeoutMs": 10000,
+                  "auth": "acme-key"
+                }
+              ],
+              "destinations": [
+                {
+                  "id": "acme-api",
+                  "hostSetting": "AcmeApiHost",
+                  "port": 443,
+                  "spkiPins": []
+                }
+              ],
+              "httpAuth": [
+                {
+                  "id": "acme-key",
+                  "type": "API_KEY",
+                  "header": "X-Api-Key",
+                  "secret": "ApiKey",
+                  "scopes": []
+                }
+              ],
+              "tcp": [],
+              "variables": {
+                "globals": [
+                  {
+                    "name": "TimeoutSeconds",
+                    "type": "INT",
+                    "required": true,
+                    "default": 10,
+                    "sensitive": false
+                  }
+                ],
+                "secrets": [
+                  {
+                    "name": "ApiKey",
+                    "type": "STRING",
+                    "scope": "GROUP"
+                  }
+                ],
+                "claims": [
+                  {
+                    "name": "UserName",
+                    "claim": "preferred_username",
+                    "type": "STRING",
+                    "required": true
+                  }
+                ]
+              },
+              "permissions": [
+                "HTTP_ROUTE"
+              ],
+              "toolsets": []
+            },
+            "toolDescriptorDigest": "sha256:60a99eb328989f5fbb2fddbe9f2b357be9b6fb199f8f9262ea243082092e6fd6",
+            "runtimeId": "jvm",
+            "entryPoint": "io.ololabs.toolgate.runtime.Main",
+            "artifactIds": [
+              "app"
+            ],
+            "limits": {
+              "memoryBytes": 536870912
+            }
+          }
+        ],
+        "descriptorSetDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "artifacts": [
+          {
+            "artifactId": "app",
+            "path": "artifacts/app.jar",
+            "artifactDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "sizeBytes": 1048576,
+            "mediaType": "application/java-archive",
+            "runtimeId": "jvm"
+          }
+        ],
+        "credentialReferences": [],
+        "connections": [],
+        "composition": [],
+        "limits": {
+          "maxTools": 64,
+          "maxDescriptorBytes": 1048576
+        }
+      }
+    },
+    {
+      "case": "artifact outside artifacts/",
+      "value": {
+        "schemaVersion": 2,
+        "kind": "SDK",
+        "id": "acme.orders",
+        "version": "1.4.0",
+        "publisher": "acme",
+        "sdk": {
+          "language": "JAVA",
+          "version": "0.1.0",
+          "protocol": {
+            "min": 2,
+            "max": 2
+          },
+          "descriptorGeneration": 1
+        },
+        "compatibility": {
+          "contractsVersion": "1.0.0"
+        },
+        "runtimes": [
+          {
+            "runtimeId": "jvm",
+            "language": "java",
+            "version": "17"
+          }
+        ],
+        "tools": [
+          {
+            "descriptor": {
+              "descriptorGeneration": 1,
+              "toolId": "acme.orders/orders.lookup",
+              "mcpName": "orders.orders.lookup",
+              "kind": "SERVER",
+              "title": "Look up an order",
+              "description": "Returns status and items for one order.",
+              "useWhen": "The user asks about a specific order number.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "orderId": {
+                    "type": "string",
+                    "description": "Order number",
+                    "pattern": "^[0-9]{6,12}$"
+                  },
+                  "since": {
+                    "type": "integer",
+                    "description": "Only events after this epoch second",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                  }
+                },
+                "required": [
+                  "orderId"
+                ],
+                "additionalProperties": false
+              },
+              "outputSchema": {
+                "type": "object",
+                "properties": {
+                  "orderId": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "OPEN",
+                      "SHIPPED",
+                      "CANCELLED"
+                    ]
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "sku": {
+                          "type": "string"
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "minimum": -2147483648,
+                          "maximum": 2147483647
+                        }
+                      },
+                      "required": [
+                        "quantity",
+                        "sku"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "items",
+                  "orderId",
+                  "status"
+                ],
+                "additionalProperties": false
+              },
+              "errors": [
+                {
+                  "code": "ORDER_NOT_FOUND",
+                  "description": "No such order",
+                  "retryable": false
+                }
+              ],
+              "effect": {
+                "safety": "READ_ONLY",
+                "destructive": false,
+                "openWorld": true
+              },
+              "businessKey": {
+                "required": false,
+                "namespace": "AGENT"
+              },
+              "execution": {
+                "async": false,
+                "maxDurationMs": 30000,
+                "stateless": false,
+                "cancelIfAbandoned": false
+              },
+              "routes": [
+                {
+                  "id": "orders.get",
+                  "destination": "acme-api",
+                  "method": "GET",
+                  "path": "/orders/{orderId:[0-9]{6,12}}",
+                  "query": [
+                    "since"
+                  ],
+                  "headers": [
+                    "X-On-Behalf-Of"
+                  ],
+                  "requestContentTypes": [
+                    "application/json"
+                  ],
+                  "maxRequestBytes": 1048576,
+                  "maxResponseBytes": 4194304,
+                  "streaming": "NONE",
+                  "timeoutMs": 10000,
+                  "auth": "acme-key"
+                }
+              ],
+              "destinations": [
+                {
+                  "id": "acme-api",
+                  "hostSetting": "AcmeApiHost",
+                  "port": 443,
+                  "spkiPins": []
+                }
+              ],
+              "httpAuth": [
+                {
+                  "id": "acme-key",
+                  "type": "API_KEY",
+                  "header": "X-Api-Key",
+                  "secret": "ApiKey",
+                  "scopes": []
+                }
+              ],
+              "tcp": [],
+              "variables": {
+                "globals": [
+                  {
+                    "name": "TimeoutSeconds",
+                    "type": "INT",
+                    "required": true,
+                    "default": 10,
+                    "sensitive": false
+                  }
+                ],
+                "secrets": [
+                  {
+                    "name": "ApiKey",
+                    "type": "STRING",
+                    "scope": "GROUP"
+                  }
+                ],
+                "claims": [
+                  {
+                    "name": "UserName",
+                    "claim": "preferred_username",
+                    "type": "STRING",
+                    "required": true
+                  }
+                ]
+              },
+              "permissions": [
+                "HTTP_ROUTE"
+              ],
+              "toolsets": []
+            },
+            "toolDescriptorDigest": "sha256:60a99eb328989f5fbb2fddbe9f2b357be9b6fb199f8f9262ea243082092e6fd6",
+            "runtimeId": "jvm",
+            "entryPoint": "io.ololabs.toolgate.runtime.Main",
+            "artifactIds": [
+              "app"
+            ],
+            "limits": {
+              "memoryBytes": 536870912
+            }
+          }
+        ],
+        "descriptorSetDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "artifacts": [
+          {
+            "artifactId": "app",
+            "path": "../app.jar",
+            "artifactDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "sizeBytes": 1048576,
+            "mediaType": "application/java-archive",
+            "runtimeId": "jvm"
+          }
+        ],
+        "credentialReferences": [],
+        "connections": [],
+        "composition": [],
+        "limits": {
+          "maxTools": 64,
+          "maxDescriptorBytes": 1048576
+        }
+      }
+    }
+  ],
+  "PermitConsumption": [
+    {
+      "case": "missing descriptor digest",
+      "value": {
+        "invocationId": "inv-5",
+        "permit": {
+          "jws": "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ4In0.c2lnbmF0dXJl"
+        },
+        "argumentsDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "packageDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "artifactDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    }
+  ],
+  "PermitHeader": [
+    {
+      "case": "HMAC is not allowed",
+      "value": {
+        "alg": "HS256",
+        "typ": "toolgate-invocation-permit+jws",
+        "kid": "control-effect-2026-10"
+      }
+    }
+  ],
+  "RecoveryEvent": [
+    {
+      "case": "break-glass cannot recover",
+      "value": {
+        "eventId": "control:118",
+        "issuer": "control-breakglass",
+        "supersedes": [
+          "control-breakglass:3"
+        ],
+        "reviewers": [
+          "admin-1",
+          "admin-2"
+        ],
+        "issuedAtUnixMs": 1791680400000,
+        "signature": "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ4In0.c2lnbmF0dXJl"
+      }
+    },
+    {
+      "case": "one reviewer",
+      "value": {
+        "eventId": "control:118",
+        "issuer": "control",
+        "supersedes": [
+          "control-breakglass:3"
+        ],
+        "reviewers": [
+          "admin-1"
+        ],
+        "issuedAtUnixMs": 1791680400000,
+        "signature": "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ4In0.c2lnbmF0dXJl"
+      }
+    }
+  ],
+  "RequestContext": [
+    {
+      "case": "device is gone in v2",
+      "value": {
+        "requestId": "req-1",
+        "tenantId": "tenant-1",
+        "mode": "DELEGATED",
+        "credentialKind": "JWT",
+        "issuer": "https://login.example.com/",
+        "userId": "user-1",
+        "agentId": "agent-1",
+        "workloadBindingId": "wb-1",
+        "chain": [],
+        "credentialEpoch": 3,
+        "delegatedSessionEpoch": 2,
+        "expiresAtUnixMs": 1791676860000,
+        "deviceId": "dev-1"
+      }
+    },
+    {
+      "case": "missing mode",
+      "value": {
+        "requestId": "req-1",
+        "tenantId": "tenant-1",
+        "credentialKind": "JWT",
+        "issuer": "https://login.example.com/",
+        "userId": "user-1",
+        "agentId": "agent-1",
+        "workloadBindingId": "wb-1",
+        "chain": [],
+        "credentialEpoch": 3,
+        "delegatedSessionEpoch": 2,
+        "expiresAtUnixMs": 1791676860000
+      }
+    }
+  ],
+  "RolloutStep": [
+    {
+      "case": "over 100 percent",
+      "value": {
+        "percent": 150,
+        "soakSeconds": 0
+      }
+    }
+  ],
+  "ServiceDestination": [
+    {
+      "case": "plain http",
+      "value": {
+        "id": "acme-api",
+        "scheme": "http",
+        "host": "api.acme.com",
+        "port": 443,
+        "tls": {
+          "spkiPins": []
+        },
+        "mode": "BROKERED"
+      }
+    }
+  ],
+  "ToolDefinition": [
+    {
+      "case": "descriptor digest must be prefixed",
+      "value": {
+        "descriptor": {
+          "descriptorGeneration": 1,
+          "toolId": "acme.orders/orders.lookup",
+          "mcpName": "orders.orders.lookup",
+          "kind": "SERVER",
+          "title": "Look up an order",
+          "description": "Returns status and items for one order.",
+          "useWhen": "The user asks about a specific order number.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "orderId": {
+                "type": "string",
+                "description": "Order number",
+                "pattern": "^[0-9]{6,12}$"
+              },
+              "since": {
+                "type": "integer",
+                "description": "Only events after this epoch second",
+                "minimum": -2147483648,
+                "maximum": 2147483647
+              }
+            },
+            "required": [
+              "orderId"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "orderId": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "OPEN",
+                  "SHIPPED",
+                  "CANCELLED"
+                ]
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sku": {
+                      "type": "string"
+                    },
+                    "quantity": {
+                      "type": "integer",
+                      "minimum": -2147483648,
+                      "maximum": 2147483647
+                    }
+                  },
+                  "required": [
+                    "quantity",
+                    "sku"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "items",
+              "orderId",
+              "status"
+            ],
+            "additionalProperties": false
+          },
+          "errors": [
+            {
+              "code": "ORDER_NOT_FOUND",
+              "description": "No such order",
+              "retryable": false
+            }
+          ],
+          "effect": {
+            "safety": "READ_ONLY",
+            "destructive": false,
+            "openWorld": true
+          },
+          "businessKey": {
+            "required": false,
+            "namespace": "AGENT"
+          },
+          "execution": {
+            "async": false,
+            "maxDurationMs": 30000,
+            "stateless": false,
+            "cancelIfAbandoned": false
+          },
+          "routes": [
+            {
+              "id": "orders.get",
+              "destination": "acme-api",
+              "method": "GET",
+              "path": "/orders/{orderId:[0-9]{6,12}}",
+              "query": [
+                "since"
+              ],
+              "headers": [
+                "X-On-Behalf-Of"
+              ],
+              "requestContentTypes": [
+                "application/json"
+              ],
+              "maxRequestBytes": 1048576,
+              "maxResponseBytes": 4194304,
+              "streaming": "NONE",
+              "timeoutMs": 10000,
+              "auth": "acme-key"
+            }
+          ],
+          "destinations": [
+            {
+              "id": "acme-api",
+              "hostSetting": "AcmeApiHost",
+              "port": 443,
+              "spkiPins": []
+            }
+          ],
+          "httpAuth": [
+            {
+              "id": "acme-key",
+              "type": "API_KEY",
+              "header": "X-Api-Key",
+              "secret": "ApiKey",
+              "scopes": []
+            }
+          ],
+          "tcp": [],
+          "variables": {
+            "globals": [
+              {
+                "name": "TimeoutSeconds",
+                "type": "INT",
+                "required": true,
+                "default": 10,
+                "sensitive": false
+              }
+            ],
+            "secrets": [
+              {
+                "name": "ApiKey",
+                "type": "STRING",
+                "scope": "GROUP"
+              }
+            ],
+            "claims": [
+              {
+                "name": "UserName",
+                "claim": "preferred_username",
+                "type": "STRING",
+                "required": true
+              }
+            ]
+          },
+          "permissions": [
+            "HTTP_ROUTE"
+          ],
+          "toolsets": []
+        },
+        "toolDescriptorDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "runtimeId": "jvm",
+        "entryPoint": "io.ololabs.toolgate.runtime.Main",
+        "artifactIds": [
+          "app"
+        ],
+        "limits": {
+          "memoryBytes": 536870912
+        }
+      }
+    }
+  ],
+  "ToolDescriptor": [
+    {
+      "case": "generation 2 is not defined",
+      "value": {
+        "descriptorGeneration": 2,
+        "toolId": "acme.orders/orders.lookup",
+        "mcpName": "orders.orders.lookup",
+        "kind": "SERVER",
+        "title": "Look up an order",
+        "description": "Returns status and items for one order.",
+        "useWhen": "The user asks about a specific order number.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "orderId": {
+              "type": "string",
+              "description": "Order number",
+              "pattern": "^[0-9]{6,12}$"
+            },
+            "since": {
+              "type": "integer",
+              "description": "Only events after this epoch second",
+              "minimum": -2147483648,
+              "maximum": 2147483647
+            }
+          },
+          "required": [
+            "orderId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "orderId": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "OPEN",
+                "SHIPPED",
+                "CANCELLED"
+              ]
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sku": {
+                    "type": "string"
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                  }
+                },
+                "required": [
+                  "quantity",
+                  "sku"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "items",
+            "orderId",
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        "errors": [
+          {
+            "code": "ORDER_NOT_FOUND",
+            "description": "No such order",
+            "retryable": false
+          }
+        ],
+        "effect": {
+          "safety": "READ_ONLY",
+          "destructive": false,
+          "openWorld": true
+        },
+        "businessKey": {
+          "required": false,
+          "namespace": "AGENT"
+        },
+        "execution": {
+          "async": false,
+          "maxDurationMs": 30000,
+          "stateless": false,
+          "cancelIfAbandoned": false
+        },
+        "routes": [
+          {
+            "id": "orders.get",
+            "destination": "acme-api",
+            "method": "GET",
+            "path": "/orders/{orderId:[0-9]{6,12}}",
+            "query": [
+              "since"
+            ],
+            "headers": [
+              "X-On-Behalf-Of"
+            ],
+            "requestContentTypes": [
+              "application/json"
+            ],
+            "maxRequestBytes": 1048576,
+            "maxResponseBytes": 4194304,
+            "streaming": "NONE",
+            "timeoutMs": 10000,
+            "auth": "acme-key"
+          }
+        ],
+        "destinations": [
+          {
+            "id": "acme-api",
+            "hostSetting": "AcmeApiHost",
+            "port": 443,
+            "spkiPins": []
+          }
+        ],
+        "httpAuth": [
+          {
+            "id": "acme-key",
+            "type": "API_KEY",
+            "header": "X-Api-Key",
+            "secret": "ApiKey",
+            "scopes": []
+          }
+        ],
+        "tcp": [],
+        "variables": {
+          "globals": [
+            {
+              "name": "TimeoutSeconds",
+              "type": "INT",
+              "required": true,
+              "default": 10,
+              "sensitive": false
+            }
+          ],
+          "secrets": [
+            {
+              "name": "ApiKey",
+              "type": "STRING",
+              "scope": "GROUP"
+            }
+          ],
+          "claims": [
+            {
+              "name": "UserName",
+              "claim": "preferred_username",
+              "type": "STRING",
+              "required": true
+            }
+          ]
+        },
+        "permissions": [
+          "HTTP_ROUTE"
+        ],
+        "toolsets": []
+      }
+    },
+    {
+      "case": "host values are not part of the descriptor",
+      "value": {
+        "descriptorGeneration": 1,
+        "toolId": "acme.orders/orders.lookup",
+        "mcpName": "orders.orders.lookup",
+        "kind": "SERVER",
+        "title": "Look up an order",
+        "description": "Returns status and items for one order.",
+        "useWhen": "The user asks about a specific order number.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "orderId": {
+              "type": "string",
+              "description": "Order number",
+              "pattern": "^[0-9]{6,12}$"
+            },
+            "since": {
+              "type": "integer",
+              "description": "Only events after this epoch second",
+              "minimum": -2147483648,
+              "maximum": 2147483647
+            }
+          },
+          "required": [
+            "orderId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "orderId": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "OPEN",
+                "SHIPPED",
+                "CANCELLED"
+              ]
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sku": {
+                    "type": "string"
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                  }
+                },
+                "required": [
+                  "quantity",
+                  "sku"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "items",
+            "orderId",
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        "errors": [
+          {
+            "code": "ORDER_NOT_FOUND",
+            "description": "No such order",
+            "retryable": false
+          }
+        ],
+        "effect": {
+          "safety": "READ_ONLY",
+          "destructive": false,
+          "openWorld": true
+        },
+        "businessKey": {
+          "required": false,
+          "namespace": "AGENT"
+        },
+        "execution": {
+          "async": false,
+          "maxDurationMs": 30000,
+          "stateless": false,
+          "cancelIfAbandoned": false
+        },
+        "routes": [
+          {
+            "id": "orders.get",
+            "destination": "acme-api",
+            "method": "GET",
+            "path": "/orders/{orderId:[0-9]{6,12}}",
+            "query": [
+              "since"
+            ],
+            "headers": [
+              "X-On-Behalf-Of"
+            ],
+            "requestContentTypes": [
+              "application/json"
+            ],
+            "maxRequestBytes": 1048576,
+            "maxResponseBytes": 4194304,
+            "streaming": "NONE",
+            "timeoutMs": 10000,
+            "auth": "acme-key"
+          }
+        ],
+        "destinations": [
+          {
+            "id": "acme-api",
+            "hostSetting": "AcmeApiHost",
+            "port": 443,
+            "spkiPins": [],
+            "defaultHost": "api.acme.com"
+          }
+        ],
+        "httpAuth": [
+          {
+            "id": "acme-key",
+            "type": "API_KEY",
+            "header": "X-Api-Key",
+            "secret": "ApiKey",
+            "scopes": []
+          }
+        ],
+        "tcp": [],
+        "variables": {
+          "globals": [
+            {
+              "name": "TimeoutSeconds",
+              "type": "INT",
+              "required": true,
+              "default": 10,
+              "sensitive": false
+            }
+          ],
+          "secrets": [
+            {
+              "name": "ApiKey",
+              "type": "STRING",
+              "scope": "GROUP"
+            }
+          ],
+          "claims": [
+            {
+              "name": "UserName",
+              "claim": "preferred_username",
+              "type": "STRING",
+              "required": true
+            }
+          ]
+        },
+        "permissions": [
+          "HTTP_ROUTE"
+        ],
+        "toolsets": []
+      }
+    },
+    {
+      "case": "missing effect",
+      "value": {
+        "descriptorGeneration": 1,
+        "toolId": "acme.orders/orders.lookup",
+        "mcpName": "orders.orders.lookup",
+        "kind": "SERVER",
+        "title": "Look up an order",
+        "description": "Returns status and items for one order.",
+        "useWhen": "The user asks about a specific order number.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "orderId": {
+              "type": "string",
+              "description": "Order number",
+              "pattern": "^[0-9]{6,12}$"
+            },
+            "since": {
+              "type": "integer",
+              "description": "Only events after this epoch second",
+              "minimum": -2147483648,
+              "maximum": 2147483647
+            }
+          },
+          "required": [
+            "orderId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "orderId": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "OPEN",
+                "SHIPPED",
+                "CANCELLED"
+              ]
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sku": {
+                    "type": "string"
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                  }
+                },
+                "required": [
+                  "quantity",
+                  "sku"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "items",
+            "orderId",
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        "errors": [
+          {
+            "code": "ORDER_NOT_FOUND",
+            "description": "No such order",
+            "retryable": false
+          }
+        ],
+        "businessKey": {
+          "required": false,
+          "namespace": "AGENT"
+        },
+        "execution": {
+          "async": false,
+          "maxDurationMs": 30000,
+          "stateless": false,
+          "cancelIfAbandoned": false
+        },
+        "routes": [
+          {
+            "id": "orders.get",
+            "destination": "acme-api",
+            "method": "GET",
+            "path": "/orders/{orderId:[0-9]{6,12}}",
+            "query": [
+              "since"
+            ],
+            "headers": [
+              "X-On-Behalf-Of"
+            ],
+            "requestContentTypes": [
+              "application/json"
+            ],
+            "maxRequestBytes": 1048576,
+            "maxResponseBytes": 4194304,
+            "streaming": "NONE",
+            "timeoutMs": 10000,
+            "auth": "acme-key"
+          }
+        ],
+        "destinations": [
+          {
+            "id": "acme-api",
+            "hostSetting": "AcmeApiHost",
+            "port": 443,
+            "spkiPins": []
+          }
+        ],
+        "httpAuth": [
+          {
+            "id": "acme-key",
+            "type": "API_KEY",
+            "header": "X-Api-Key",
+            "secret": "ApiKey",
+            "scopes": []
+          }
+        ],
+        "tcp": [],
+        "variables": {
+          "globals": [
+            {
+              "name": "TimeoutSeconds",
+              "type": "INT",
+              "required": true,
+              "default": 10,
+              "sensitive": false
+            }
+          ],
+          "secrets": [
+            {
+              "name": "ApiKey",
+              "type": "STRING",
+              "scope": "GROUP"
+            }
+          ],
+          "claims": [
+            {
+              "name": "UserName",
+              "claim": "preferred_username",
+              "type": "STRING",
+              "required": true
+            }
+          ]
+        },
+        "permissions": [
+          "HTTP_ROUTE"
+        ],
+        "toolsets": []
+      }
+    },
+    {
+      "case": "null optional member",
+      "value": {
+        "descriptorGeneration": 1,
+        "toolId": "acme.orders/orders.lookup",
+        "mcpName": "orders.orders.lookup",
+        "kind": "SERVER",
+        "title": "Look up an order",
+        "description": "Returns status and items for one order.",
+        "useWhen": null,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "orderId": {
+              "type": "string",
+              "description": "Order number",
+              "pattern": "^[0-9]{6,12}$"
+            },
+            "since": {
+              "type": "integer",
+              "description": "Only events after this epoch second",
+              "minimum": -2147483648,
+              "maximum": 2147483647
+            }
+          },
+          "required": [
+            "orderId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "orderId": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "OPEN",
+                "SHIPPED",
+                "CANCELLED"
+              ]
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sku": {
+                    "type": "string"
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                  }
+                },
+                "required": [
+                  "quantity",
+                  "sku"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "items",
+            "orderId",
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        "errors": [
+          {
+            "code": "ORDER_NOT_FOUND",
+            "description": "No such order",
+            "retryable": false
+          }
+        ],
+        "effect": {
+          "safety": "READ_ONLY",
+          "destructive": false,
+          "openWorld": true
+        },
+        "businessKey": {
+          "required": false,
+          "namespace": "AGENT"
+        },
+        "execution": {
+          "async": false,
+          "maxDurationMs": 30000,
+          "stateless": false,
+          "cancelIfAbandoned": false
+        },
+        "routes": [
+          {
+            "id": "orders.get",
+            "destination": "acme-api",
+            "method": "GET",
+            "path": "/orders/{orderId:[0-9]{6,12}}",
+            "query": [
+              "since"
+            ],
+            "headers": [
+              "X-On-Behalf-Of"
+            ],
+            "requestContentTypes": [
+              "application/json"
+            ],
+            "maxRequestBytes": 1048576,
+            "maxResponseBytes": 4194304,
+            "streaming": "NONE",
+            "timeoutMs": 10000,
+            "auth": "acme-key"
+          }
+        ],
+        "destinations": [
+          {
+            "id": "acme-api",
+            "hostSetting": "AcmeApiHost",
+            "port": 443,
+            "spkiPins": []
+          }
+        ],
+        "httpAuth": [
+          {
+            "id": "acme-key",
+            "type": "API_KEY",
+            "header": "X-Api-Key",
+            "secret": "ApiKey",
+            "scopes": []
+          }
+        ],
+        "tcp": [],
+        "variables": {
+          "globals": [
+            {
+              "name": "TimeoutSeconds",
+              "type": "INT",
+              "required": true,
+              "default": 10,
+              "sensitive": false
+            }
+          ],
+          "secrets": [
+            {
+              "name": "ApiKey",
+              "type": "STRING",
+              "scope": "GROUP"
+            }
+          ],
+          "claims": [
+            {
+              "name": "UserName",
+              "claim": "preferred_username",
+              "type": "STRING",
+              "required": true
+            }
+          ]
+        },
+        "permissions": [
+          "HTTP_ROUTE"
+        ],
+        "toolsets": []
+      }
+    }
+  ],
+  "ToolId": [
+    {
+      "case": "no package id",
+      "value": "orders.lookup"
+    },
+    {
+      "case": "uppercase local name",
+      "value": "acme.orders/Orders.Lookup"
+    }
+  ],
+  "ToolInput": [
+    {
+      "case": "protocol v1",
+      "value": {
+        "protocolVersion": 1,
+        "invocationId": "inv-5",
+        "toolId": "acme.orders/orders.lookup",
+        "entryPoint": "io.ololabs.toolgate.runtime.Main",
+        "arguments": {
+          "orderId": "123456"
+        },
+        "globals": {
+          "TimeoutSeconds": 10
+        },
+        "claims": {
+          "UserName": "dana"
+        },
+        "secretHandles": [],
+        "deadlineUnixMs": 1791676830000,
+        "catalogRevision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "traceparent": "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"
+      }
+    },
+    {
+      "case": "secret value instead of handle",
+      "value": {
+        "protocolVersion": 2,
+        "invocationId": "inv-5",
+        "toolId": "acme.orders/orders.lookup",
+        "entryPoint": "io.ololabs.toolgate.runtime.Main",
+        "arguments": {
+          "orderId": "123456"
+        },
+        "globals": {
+          "TimeoutSeconds": 10
+        },
+        "claims": {
+          "UserName": "dana"
+        },
+        "secretHandles": [],
+        "deadlineUnixMs": 1791676830000,
+        "catalogRevision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "traceparent": "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
+        "secrets": {
+          "ApiKey": "x"
+        }
+      }
+    }
+  ],
+  "VariableName": [
+    {
+      "case": "starts with digit",
+      "value": "1Key"
+    }
+  ]
+}

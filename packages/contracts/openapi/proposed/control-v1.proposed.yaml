@@ -1,0 +1,500 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+# PROPOSED (design gate D1). Not served; see README.md in this folder.
+openapi: 3.1.0
+info:
+  title: OLO ToolGate Control Plane API (proposed v2 additions)
+  version: 0.10.0-dev
+  description: Proposed at design gate D1 (ADRs 014, 015, 018, 020, 021). Not served. Milestone M1 moves each operation into
+    the served file when it is implemented, so the served contract never advertises an unimplemented endpoint.
+security:
+- adminAccessToken: []
+paths:
+  /api/control/v1/settings:
+    patch:
+      operationId: patchServerSettings
+      description: Requires toolgate-admin. Field-level merge patch (RFC 7396) of the settings record. Each Configuration
+        page sends only its own fields. Env-owned fields (clientCheckIn) are rejected. A stale If-Match returns 409 with the
+        current record. The full-record PUT stays for import.
+      parameters:
+      - &id004
+        name: If-Match
+        in: header
+        required: true
+        description: Quoted current revision; a stale value returns 409 with the current record
+        schema:
+          type: string
+      - &id002
+        name: Idempotency-Key
+        in: header
+        required: true
+        description: Client retry key
+        schema:
+          type: string
+          minLength: 8
+          maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: ../../schemas/v2/settings.schema.json#/$defs/ControlServerSettingsPatch
+      responses:
+        '200':
+          description: Updated settings; no-store
+          content:
+            application/json:
+              schema:
+                $ref: ../../schemas/v2/settings.schema.json#/$defs/ControlServerSettings
+          headers: &id003
+            ETag:
+              description: Quoted revision
+              schema:
+                type: string
+        '400': &id001
+          $ref: '#/components/responses/Error'
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '409': *id001
+        '413': *id001
+        '415': *id001
+        '500': *id001
+        '503': *id001
+  /api/control/v1/packages/uploads:
+    post:
+      operationId: uploadPackage
+      description: Requires toolgate-admin. Uploads a .tgpkg. Control verifies zip rules, CHECKSUMS, size ceilings, secret
+        scan and signatures, stores the sealed version and drafts a review (plan.md §7.6, §8.1).
+      parameters:
+      - *id002
+      requestBody:
+        required: true
+        content:
+          application/vnd.ololabs.toolgate.package+zip:
+            schema:
+              type: string
+              contentMediaType: application/vnd.ololabs.toolgate.package+zip
+      responses:
+        '201':
+          description: Stored version
+          content:
+            application/json:
+              schema:
+                $ref: ../../schemas/v2/package.schema.json#/$defs/PackageVersion
+        '400': *id001
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '409': *id001
+        '413': *id001
+        '415': *id001
+        '500': *id001
+        '503': *id001
+  /api/control/v1/packages/{packageId}/versions:
+    get:
+      operationId: listPackageVersions
+      description: Requires toolgate-admin.
+      parameters:
+      - name: packageId
+        in: path
+        required: true
+        description: Package id
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Versions
+          content:
+            application/json:
+              schema:
+                $ref: ../../schemas/v2/package.schema.json#/$defs/PackageVersionPage
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '500': *id001
+        '503': *id001
+  /api/control/v1/packages/{packageId}/versions/{version}/review:
+    get:
+      operationId: getPackageReview
+      description: Requires toolgate-admin. API-compatibility diff, security delta and the binding draft (plan.md §8.3).
+      parameters:
+      - name: packageId
+        in: path
+        required: true
+        description: Package id
+        schema:
+          type: string
+      - name: version
+        in: path
+        required: true
+        description: SemVer
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Review
+          content:
+            application/json:
+              schema:
+                $ref: ../../schemas/v2/package.schema.json#/$defs/PackageReview
+          headers: *id003
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '500': *id001
+        '503': *id001
+  /api/control/v1/packages/{packageId}/versions/{version}/enable:
+    post:
+      operationId: enablePackageVersion
+      description: Requires toolgate-admin. Enables exactly the reviewed package digest with the given binding. A non-empty
+        security delta must be acknowledged. Runs through the existing maker/checker configuration review when enabled.
+      parameters:
+      - name: packageId
+        in: path
+        required: true
+        description: Package id
+        schema:
+          type: string
+      - name: version
+        in: path
+        required: true
+        description: SemVer
+        schema:
+          type: string
+      - *id004
+      - *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../../schemas/v2/package.schema.json#/$defs/PackageEnableRequest
+      responses:
+        '200':
+          description: Version after enable
+          content:
+            application/json:
+              schema:
+                $ref: ../../schemas/v2/package.schema.json#/$defs/PackageVersion
+        '400': *id001
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '409': *id001
+        '413': *id001
+        '415': *id001
+        '500': *id001
+        '503': *id001
+  /api/control/v1/deployments/{bindingId}:
+    get:
+      operationId: getDeploymentBinding
+      description: Requires toolgate-admin.
+      parameters:
+      - name: bindingId
+        in: path
+        required: true
+        description: Binding id
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Binding
+          content:
+            application/json:
+              schema:
+                $ref: ../../schemas/v2/deployment-binding.schema.json#/$defs/DeploymentBinding
+          headers: *id003
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '500': *id001
+        '503': *id001
+    put:
+      operationId: updateDeploymentBinding
+      description: Requires toolgate-admin. Creates a new binding revision. Values above a higher layer are rejected naming
+        the limiting layer (plan.md §8.5).
+      parameters:
+      - name: bindingId
+        in: path
+        required: true
+        description: Binding id
+        schema:
+          type: string
+      - *id004
+      - *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../../schemas/v2/deployment-binding.schema.json#/$defs/DeploymentBinding
+      responses:
+        '200':
+          description: New revision
+          content:
+            application/json:
+              schema:
+                $ref: ../../schemas/v2/deployment-binding.schema.json#/$defs/DeploymentBinding
+          headers: *id003
+        '400': *id001
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '409': *id001
+        '413': *id001
+        '415': *id001
+        '500': *id001
+        '503': *id001
+  /api/control/v1/deployments/{bindingId}/effective:
+    get:
+      operationId: getEffectiveDeployment
+      description: Requires toolgate-admin. Every effective field with its value and the layer it came from.
+      parameters:
+      - name: bindingId
+        in: path
+        required: true
+        description: Binding id
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Effective values
+          content:
+            application/json:
+              schema:
+                $ref: ../../schemas/v2/deployment-binding.schema.json#/$defs/EffectiveDeployment
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '500': *id001
+        '503': *id001
+  /api/control/v1/tool-hosts/registrations:
+    post:
+      operationId: registerToolHost
+      security:
+      - workloadCertificate: []
+      description: Tool Host registers its pool, versions and tiers with its workload certificate.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../../schemas/v2/protocol.schema.json#/$defs/ToolHostRegistration
+      responses:
+        '200':
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: ../../schemas/v2/protocol.schema.json#/$defs/ToolHostRegistration
+        '400': *id001
+        '401': *id001
+        '403': *id001
+        '409': *id001
+        '500': *id001
+        '503': *id001
+  /api/control/v1/access/permits/consume:
+    post:
+      operationId: consumeInvocationPermitV2
+      security:
+      - workloadCertificate: []
+      description: Extends the existing endpoint to Tool Host identities and v2 permits. Moves the invocation RESERVED to
+        EXECUTING once and returns the fencing token (plan.md §11.3, §12.8). The served v1 body stays accepted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../../schemas/v2/permit.schema.json#/$defs/PermitConsumption
+      responses:
+        '200':
+          description: Consumed
+          content:
+            application/json:
+              schema:
+                $ref: ../../schemas/v2/permit.schema.json#/$defs/PermitConsumed
+        '400': *id001
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '409': *id001
+        '500': *id001
+        '503': *id001
+  /api/control/v1/access/invocations/{id}/heartbeat:
+    post:
+      operationId: renewInvocationLease
+      security:
+      - workloadCertificate: []
+      description: Lease renewal for a running ledger invocation; refused once the fencing token is invalid or the authorization
+        epoch moved.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: Invocation id
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../../schemas/v2/permit.schema.json#/$defs/LeaseHeartbeat
+      responses:
+        '200':
+          description: Renewed
+          content:
+            application/json:
+              schema:
+                $ref: ../../schemas/v2/permit.schema.json#/$defs/PermitConsumed
+        '400': *id001
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '409': *id001
+        '500': *id001
+        '503': *id001
+  /api/control/v1/access/effects/report:
+    post:
+      operationId: reportInvocationResultV2
+      security:
+      - workloadCertificate: []
+      description: Extends the existing endpoint with a v2 body carrying the result payload. Idempotent per (invocationId,
+        fencingToken); a stale token records evidence only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../../schemas/v2/protocol.schema.json#/$defs/InvocationResultReport
+      responses:
+        '204':
+          description: Recorded
+        '400': *id001
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '409': *id001
+        '413': *id001
+        '500': *id001
+        '503': *id001
+  /api/control/v1/kill-events:
+    get:
+      operationId: listKillEvents
+      description: Requires toolgate-admin.
+      responses:
+        '200':
+          description: Events
+          content:
+            application/json:
+              schema:
+                $ref: ../../schemas/v2/kill.schema.json#/$defs/KillEventPage
+        '401': *id001
+        '403': *id001
+        '500': *id001
+        '503': *id001
+    post:
+      operationId: createKillEvent
+      description: Requires toolgate-admin; two-person review when the enterprise review workflow is on. Bumps the tenant
+        authorization epoch.
+      parameters:
+      - *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../../schemas/v2/kill.schema.json#/$defs/KillRequest
+      responses:
+        '201':
+          description: Event
+          content:
+            application/json:
+              schema:
+                $ref: ../../schemas/v2/kill.schema.json#/$defs/KillEvent
+        '400': *id001
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '409': *id001
+        '413': *id001
+        '415': *id001
+        '500': *id001
+        '503': *id001
+  /api/control/v1/kill-events/recoveries:
+    post:
+      operationId: createKillRecovery
+      description: Requires toolgate-admin and always two-person review. Only Control issues recovery events; break-glass
+        never can.
+      parameters:
+      - *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../../schemas/v2/kill.schema.json#/$defs/RecoveryRequest
+      responses:
+        '201':
+          description: Recovery event
+          content:
+            application/json:
+              schema:
+                $ref: ../../schemas/v2/kill.schema.json#/$defs/RecoveryEvent
+        '400': *id001
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '409': *id001
+        '413': *id001
+        '415': *id001
+        '500': *id001
+        '503': *id001
+  /api/control/v1/break-glass/kills:
+    post:
+      operationId: createBreakGlassKill
+      security:
+      - operatorCertificate: []
+      description: 'Emergency path: 2-of-3 operator signatures, no maker/checker review, adds kills only, always audited (plan.md
+        §15.4).'
+      parameters:
+      - *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../../schemas/v2/kill.schema.json#/$defs/BreakGlassRequest
+      responses:
+        '201':
+          description: Event
+          content:
+            application/json:
+              schema:
+                $ref: ../../schemas/v2/kill.schema.json#/$defs/KillEvent
+        '400': *id001
+        '401': *id001
+        '403': *id001
+        '409': *id001
+        '500': *id001
+        '503': *id001
+components:
+  securitySchemes:
+    adminAccessToken:
+      type: http
+      scheme: bearer
+      description: Administrative session token
+    workloadCertificate:
+      type: mutualTLS
+      description: Tool Host or device workload certificate
+    operatorCertificate:
+      type: mutualTLS
+      description: Break-glass operator client certificate; the body also carries 2-of-3 operator signatures
+  responses:
+    Error:
+      description: Stable sanitized error code and server-generated request ID
+      content:
+        application/json:
+          schema:
+            $ref: ../../schemas/v1/error.schema.json#/$defs/ErrorEnvelope

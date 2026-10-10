@@ -71,3 +71,72 @@ Do not bypass these checks to make a deployment ready.
 Module 05 approval behavior defaults disabled. Enable bundle signing and set the
 four `TOOLGATE_CONTROL_APPROVAL_*` fields in [approval configuration](approvals.md).
 The dedicated approver role and signed `user_id` cannot be replaced by admin role.
+
+## Client check-in (specification, design gate D1)
+
+> **Status: frozen specification, not yet available.** This section is a design gate D1
+> artifact. It is implemented in milestone M1. None of the variables below are read by
+> the current release. Source: [Tool SDK plan §17.1 and §17.2](../sdk-plan/plan.md).
+
+Today one value controls every client check-in. Control returns `nextIntervalMs` in
+the check-in reply and currently hard-codes it to 500
+(`apps/control-plane/src/main/java/io/ololabs/toolgate/control/application/EndpointService.java:190`).
+The endpoint client accepts any value from 500 ms to 1 hour and rejects anything else
+(`apps/endpoint-client/src/service.rs:859-865`). The client opens its WebSocket only
+after a poll delivers a job.
+
+### Five settings, not one
+
+| Setting | Purpose |
+|---|---|
+| Heartbeat interval | Liveness, inventory and status reports |
+| Job notification transport | How a device learns a job exists: WebSocket push (preferred) or fallback poll |
+| Job pickup timeout | How long a queued job may wait for its device before it expires, or is re-queued if idempotent |
+| Execution deadline | Per tool, from the manifest, capped by the platform ceilings |
+| Offline threshold | When a device counts as unavailable |
+
+A WebSocket disconnect is not device unavailability. A dropped socket puts the device
+in `DEGRADED` for a grace period, with fallback polling. Non-idempotent leased jobs
+must never be rescheduled to another device because of a socket drop; they go to
+`OUTCOME_UNKNOWN` at lease expiry. Only queued, not-yet-leased jobs may move, and only
+if the binding allows it.
+
+### Phase A variables (no client change)
+
+Phase A makes the existing value configurable and works with clients already deployed.
+
+| Environment variable | Meaning | Quickstart | Enterprise default |
+|---|---|---|---|
+| `TOOLGATE_CONTROL_CLIENT_CHECKIN_MS` | Value sent as `nextIntervalMs`; must be 500 to 3600000 | 500 | 2000 |
+| `TOOLGATE_CONTROL_CLIENT_CHECKIN_JITTER_PCT` | Random spread added to each interval, in percent | 0 | 20 |
+| `TOOLGATE_CONTROL_CLIENT_OFFLINE_AFTER_MS` | Time without a check-in before a device counts as offline | 120000 | max(120000, 6 × check-in) |
+
+In Phase A an idle device only learns of a job at its next check-in, so the check-in
+value is the job pickup latency.
+
+**Validation rule.** Check-in plus its maximum jitter plus a 5 second execution margin
+must not exceed the 30 second synchronous call deadline. If it does, Control must
+refuse to start with a named configuration error, rather than run with a value that
+makes synchronous client tools time out. Longer client work must use durable tasks.
+
+**Where it is set.** Helm values `control.clientCheckIn.checkInMs`,
+`control.clientCheckIn.jitterPct` and `control.clientCheckIn.offlineAfterMs`. M1 adds
+them to `deploy/helm/olo-toolgate/values.schema.json`; they are not in the chart yet.
+These are environment-owned values: the console shows the effective values read-only
+under Configuration > Device (see [Configuration menu](configuration-menu.md)) and
+they cannot be changed through the settings API or configuration import.
+
+### Phase B variables (future, needs a client release)
+
+Phase B is not part of M1. It makes a persistent WebSocket the steady state, with
+server push for jobs, permission changes and kill entries. Older clients keep Phase A
+behavior. Planned variables:
+
+- `TOOLGATE_CONTROL_CLIENT_SOCKET_MODE` (`persistent`)
+- `TOOLGATE_CONTROL_CLIENT_HEARTBEAT_MS` (enterprise 30000)
+- `TOOLGATE_CONTROL_CLIENT_FALLBACK_POLL_MS` (used only while the socket is down)
+- `TOOLGATE_CONTROL_CLIENT_JOB_PICKUP_TIMEOUT_MS`
+- `TOOLGATE_CONTROL_CLIENT_SOCKET_GRACE_MS`
+
+For scale: idle load at 10,000 devices is about 20,000 requests/s at 500 ms polling,
+5,000 at 2 s (Phase A), and about 333/s of heartbeats at 30 s (Phase B).

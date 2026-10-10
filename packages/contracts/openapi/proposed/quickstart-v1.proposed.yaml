@@ -1,0 +1,53 @@
+# Copyright 2026 OLO Labs
+# SPDX-License-Identifier: Apache-2.0
+# PROPOSED (design gate D1). Not served; see README.md in this folder.
+openapi: 3.1.0
+info:
+  title: OLO ToolGate Quickstart API (proposed package upload)
+  version: 0.10.0-dev
+  description: Proposed at design gate D1 (ADRs 014, 015, 018, 020, 021). Not served. Milestone M1 moves each operation into
+    the served file when it is implemented, so the served contract never advertises an unimplemented endpoint.
+security:
+- adminJwt: []
+paths:
+  /api/quickstart/v1/packages:
+    post:
+      operationId: uploadQuickstartPackage
+      description: Uploads a .tgpkg and auto-enables it for the uploading admin's own agents and devices (plan.md §8.1). Every
+        call still goes through policy, ASK, permits and audit.
+      requestBody:
+        required: true
+        content:
+          application/vnd.ololabs.toolgate.package+zip:
+            schema:
+              type: string
+              contentMediaType: application/vnd.ololabs.toolgate.package+zip
+      responses:
+        '201':
+          description: Enabled version
+          content:
+            application/json:
+              schema:
+                $ref: ../../schemas/v2/package.schema.json#/$defs/PackageVersion
+        '400': &id001
+          $ref: '#/components/responses/Error'
+        '401': *id001
+        '403': *id001
+        '409': *id001
+        '413': *id001
+        '415': *id001
+        '500': *id001
+        '503': *id001
+components:
+  securitySchemes:
+    adminJwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Error:
+      description: Stable sanitized error code and server-generated request ID
+      content:
+        application/json:
+          schema:
+            $ref: ../../schemas/v1/error.schema.json#/$defs/ErrorEnvelope

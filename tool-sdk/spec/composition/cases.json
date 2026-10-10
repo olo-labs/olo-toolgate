@@ -41,7 +41,7 @@
               ]
             },
             {
-              "name": "debugDump",
+              "name": "debug-dump",
               "kind": "SERVER",
               "effect": {
                 "safety": "READ_ONLY",
@@ -90,7 +90,7 @@
       "expect": {
         "ok": true,
         "toolIds": [
-          "acme.orders/acmehttp.debugDump",
+          "acme.orders/acmehttp.debug-dump",
           "acme.orders/acmehttp.ping",
           "acme.orders/orders.lookup"
         ],
@@ -143,7 +143,7 @@
               ]
             },
             {
-              "name": "debugDump",
+              "name": "debug-dump",
               "kind": "SERVER",
               "effect": {
                 "safety": "READ_ONLY",
@@ -198,7 +198,7 @@
         },
         {
           "library": "acme.http-tools",
-          "exclude": "debugDump"
+          "exclude": "debug-dump"
         }
       ],
       "expect": {
@@ -222,7 +222,7 @@
               }
             ],
             "excluded": [
-              "acmehttp.debugDump"
+              "acmehttp.debug-dump"
             ],
             "narrowed": []
           }
@@ -268,7 +268,7 @@
               ]
             },
             {
-              "name": "debugDump",
+              "name": "debug-dump",
               "kind": "SERVER",
               "effect": {
                 "safety": "READ_ONLY",
@@ -366,7 +366,7 @@
               ]
             },
             {
-              "name": "debugDump",
+              "name": "debug-dump",
               "kind": "SERVER",
               "effect": {
                 "safety": "READ_ONLY",
@@ -430,7 +430,7 @@
               ]
             },
             {
-              "name": "debugDump",
+              "name": "debug-dump",
               "kind": "SERVER",
               "effect": {
                 "safety": "READ_ONLY",
@@ -520,7 +520,7 @@
               ]
             },
             {
-              "name": "debugDump",
+              "name": "debug-dump",
               "kind": "SERVER",
               "effect": {
                 "safety": "READ_ONLY",
@@ -621,7 +621,7 @@
               ]
             },
             {
-              "name": "debugDump",
+              "name": "debug-dump",
               "kind": "SERVER",
               "effect": {
                 "safety": "READ_ONLY",
@@ -719,7 +719,7 @@
               ]
             },
             {
-              "name": "debugDump",
+              "name": "debug-dump",
               "kind": "SERVER",
               "effect": {
                 "safety": "READ_ONLY",
@@ -809,7 +809,7 @@
               ]
             },
             {
-              "name": "debugDump",
+              "name": "debug-dump",
               "kind": "SERVER",
               "effect": {
                 "safety": "READ_ONLY",
@@ -873,7 +873,7 @@
               ]
             },
             {
-              "name": "debugDump",
+              "name": "debug-dump",
               "kind": "SERVER",
               "effect": {
                 "safety": "READ_ONLY",
@@ -964,7 +964,7 @@
               ]
             },
             {
-              "name": "debugDump",
+              "name": "debug-dump",
               "kind": "SERVER",
               "effect": {
                 "safety": "READ_ONLY",
@@ -1062,7 +1062,7 @@
               ]
             },
             {
-              "name": "debugDump",
+              "name": "debug-dump",
               "kind": "SERVER",
               "effect": {
                 "safety": "READ_ONLY",
