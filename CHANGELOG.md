@@ -6,6 +6,11 @@ The project follows semantic versioning once stable versioning begins.
 
 ## 0.10.0-dev
 
+- A fresh Windows install enrolls with the gateway it was downloaded from. Uninstall
+  parks the focused gateway's enrollment in its profile, and setup parks an enrollment
+  an older uninstall left behind (or retires it when that gateway was recreated), so the
+  earlier gateway stays connected in the background instead of being inherited.
+
 - Keep the Windows client connected to every gateway it has enrolled with. Switching
   gateways moves focus (and the tray icon color) instead of disconnecting; Show status
   has a Status and Activity log tab per gateway headed with its name and URL. Gateways
