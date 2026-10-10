@@ -13,6 +13,25 @@ The project follows semantic versioning once stable versioning begins.
 
 ## 0.10.0-dev
 
+- A fresh Windows install enrolls with the gateway it was downloaded from. Uninstall
+  parks the focused gateway's enrollment in its profile, and setup parks an enrollment
+  an older uninstall left behind (or retires it when that gateway was recreated), so the
+  earlier gateway stays connected in the background instead of being inherited.
+
+- Windows setup downloaded from a console installs and connects in one step: it skips
+  the gateway and repair/uninstall questions when the download names its gateway, and
+  enrollment no longer reports an error when a reinstall resumed an enrollment.
+  Uninstall is complete: it removes every gateway enrollment, logs, local tool settings
+  and remembered gateways and CAs (`uninstall --purge`). Only the device key stays, so a
+  gateway that already approved the device reconnects it without a new approval.
+
+- Connect in the console starts a fresh enrollment when the client is already pointed
+  at that gateway but its enrollment no longer works (revoked, or offline after an
+  immediate check-in), including after switching back to a gateway that has forgotten
+  the device (`reenroll` command). A device the gateway already approved recovers its
+  identity and turns green without a new approval. The console retries Connect once on
+  its own when, after Connect, the client is on another gateway or still not accepted.
+
 - Keep the Windows client connected to every gateway it has enrolled with. Switching
   gateways moves focus (and the tray icon color) instead of disconnecting; Show status
   has a Status and Activity log tab per gateway headed with its name and URL. Gateways
