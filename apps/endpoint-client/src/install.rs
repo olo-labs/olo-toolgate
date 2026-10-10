@@ -967,31 +967,44 @@ fn remove(purge: bool, park: bool) -> Result<()> {
         if config.state_directory != expected {
             return Err(Failure::Unauthorized);
         }
-        crate::storage::check_owned(&expected, true)?;
-        // A nonrecursive known-file purge cannot follow directory links or erase unrelated files.
-        for name in [
-            "journal.json",
-            "permissions.json",
-            "remote-journal.json",
-            "fleet-intent.json",
-            "fleet-active.json",
-            "device-key",
-            "service.lock",
-        ] {
-            let path = expected.join(name);
-            if path.exists() {
-                crate::storage::check_owned(&path, true)?;
-                std::fs::remove_file(path).map_err(|_| Failure::Unavailable)?;
-            }
-        }
-        match std::fs::remove_dir(expected) {
-            Ok(()) => {}
-            Err(error) if error.kind() == std::io::ErrorKind::DirectoryNotEmpty => {}
-            Err(_) => return Err(Failure::Unavailable),
-        }
+        purge_device(
+            &expected,
+            config_path().parent().ok_or(Failure::Validation)?,
+        )?;
     }
     std::fs::remove_file(config_path()).map_err(|_| Failure::Unavailable)?;
     std::fs::remove_file(binary_path()).map_err(|_| Failure::Unavailable)?;
+    Ok(())
+}
+
+/// Complete uninstall: every enrollment (focused and parked), the device key, logs, local
+/// tool settings and remembered gateways and CAs. The state directory is removed without
+/// following links inside it (`remove_dir_all` deletes links, never their targets).
+fn purge_device(state: &Path, config_directory: &Path) -> Result<()> {
+    if state.try_exists().map_err(|_| Failure::Unavailable)? {
+        if std::fs::symlink_metadata(state)
+            .map_err(|_| Failure::Unavailable)?
+            .file_type()
+            .is_symlink()
+        {
+            return Err(Failure::Unauthorized);
+        }
+        crate::storage::check_owned(state, true)?;
+        std::fs::remove_dir_all(state).map_err(|_| Failure::Unavailable)?;
+    }
+    for entry in std::fs::read_dir(config_directory).map_err(|_| Failure::Unavailable)? {
+        let path = entry.map_err(|_| Failure::Unavailable)?.path();
+        let remembered = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| {
+                name == "gateways.json"
+                    || (name.starts_with("gateway-ca-") && name.ends_with(".crt"))
+            });
+        if remembered {
+            std::fs::remove_file(&path).map_err(|_| Failure::Unavailable)?;
+        }
+    }
     Ok(())
 }
 
@@ -1256,5 +1269,42 @@ mod tests {
         std::fs::remove_dir(directory).unwrap();
         std::fs::remove_file(kept_ca_path).unwrap();
         std::fs::remove_dir(root).unwrap();
+    }
+    #[cfg(unix)]
+    #[test]
+    fn complete_uninstall_removes_every_enrollment_and_remembered_gateway() {
+        let root = std::env::temp_dir().join(format!(
+            "toolgate-purge-test-{}",
+            crate::identity::nonce().unwrap()
+        ));
+        let state = root.join("state");
+        let profile = state.join("profiles").join("parked");
+        std::fs::create_dir_all(&profile).unwrap();
+        for file in [
+            state.join("journal.json"),
+            state.join("device-key"),
+            state.join("local-tools.json"),
+            profile.join("journal.json"),
+            root.join("gateways.json"),
+            root.join("gateway-ca-1.crt"),
+            root.join("client.json"),
+        ] {
+            std::fs::write(file, b"x").unwrap();
+        }
+        // A link inside the state directory is removed, never followed.
+        let outside = root.join("outside");
+        std::fs::create_dir(&outside).unwrap();
+        std::fs::write(outside.join("keep"), b"x").unwrap();
+        std::os::unix::fs::symlink(&outside, state.join("link")).unwrap();
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&state, std::fs::Permissions::from_mode(0o700)).unwrap();
+        purge_device(&state, &root).unwrap();
+        assert!(!state.exists());
+        assert!(!root.join("gateways.json").exists());
+        assert!(!root.join("gateway-ca-1.crt").exists());
+        // The configuration and binary are removed by uninstall itself.
+        assert!(root.join("client.json").exists());
+        assert!(outside.join("keep").exists());
+        std::fs::remove_dir_all(root).unwrap();
     }
 }

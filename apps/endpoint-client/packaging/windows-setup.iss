@@ -39,7 +39,7 @@ Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile
 #include "windows-context.iss"
 var MaintenancePage: TInputOptionWizardPage;
     GatewayPage: TInputQueryWizardPage;
-    ConfiguredServer, SetupPeer, SetupSource, HostManifestBackup: String; ExistingClient, MaintenanceComplete, SetupCompleted: Boolean;
+    ConfiguredServer, SetupPeer, SetupSource, HostManifestBackup: String; ExistingClient, NamedServer, MaintenanceComplete, SetupCompleted: Boolean;
 function StorePublished: Boolean;
 begin
   Result := '{#ChromeStoreUrl}' <> '';
@@ -53,12 +53,14 @@ begin
   ExistingClient := FileExists(ExpandConstant('{commonappdata}\OLO\ToolGate\client.json'));
   ConfiguredServer := ExpandConstant('{param:SERVER|}');
   if ConfiguredServer = '' then ConfiguredServer := ServerFromDownload;
+  // A download from a console names its gateway: install and connect without further questions.
+  NamedServer := ConfiguredServer <> '';
   if ExistingClient and (ConfiguredServer = '') then
     RegQueryStringValue(HKLM, 'Software\OLO\ToolGate', 'ServerUrl', ConfiguredServer);
   ConfiguredServer := SetupServer(ConfiguredServer);
   MaintenancePage := CreateInputOptionPage(wpWelcome, 'ToolGate is already installed',
     'Choose what to do with the existing client',
-    'Reinstall preserves enrollment for the same gateway. Switching gateways starts a new enrollment. Uninstall removes the service and tray icon; device keys are retained.', True, False);
+    'Reinstall preserves enrollment for the same gateway. Switching gateways starts a new enrollment. Uninstall removes the service, tray icon and all ToolGate data on this computer, including every gateway enrollment and the device key.', True, False);
   MaintenancePage.Add('Repair / reinstall');
   MaintenancePage.Add('Uninstall');
   MaintenancePage.SelectedValueIndex := 0;
@@ -70,7 +72,8 @@ begin
 end;
 function ShouldSkipPage(PageID: Integer): Boolean;
 begin
-  Result := (PageID = MaintenancePage.ID) and not ExistingClient;
+  Result := ((PageID = MaintenancePage.ID) and (not ExistingClient or NamedServer)) or
+    ((PageID = GatewayPage.ID) and NamedServer);
 end;
 function NextButtonClick(CurPageID: Integer): Boolean;
 var ExitCode: Integer;
@@ -187,6 +190,7 @@ var ExitCode: Integer;
 begin
   Result := True;
   if FileExists(ExpandConstant('{commonappdata}\OLO\ToolGate\client.json')) then
-    Result := Exec(ExpandConstant('{app}\olo-toolgate-client.exe'), 'uninstall', '',
+    // Uninstall is complete: enrollments, device key and remembered gateways go too.
+    Result := Exec(ExpandConstant('{app}\olo-toolgate-client.exe'), 'uninstall --purge', '',
       SW_HIDE, ewWaitUntilTerminated, ExitCode) and (ExitCode = 0);
 end;

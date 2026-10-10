@@ -11,6 +11,12 @@ The project follows semantic versioning once stable versioning begins.
   an older uninstall left behind (or retires it when that gateway was recreated), so the
   earlier gateway stays connected in the background instead of being inherited.
 
+- Windows setup downloaded from a console installs and connects in one step: it skips
+  the gateway and repair/uninstall questions when the download names its gateway, and
+  enrollment no longer reports an error when a reinstall resumed an enrollment.
+  Uninstall is complete: it removes every gateway enrollment, the device key, logs and
+  remembered gateways and CAs (`uninstall --purge`).
+
 - Keep the Windows client connected to every gateway it has enrolled with. Switching
   gateways moves focus (and the tray icon color) instead of disconnecting; Show status
   has a Status and Activity log tab per gateway headed with its name and URL. Gateways
