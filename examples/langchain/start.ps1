@@ -61,6 +61,11 @@ try {
     }
     Invoke-ExampleCommand 'docker' @('compose','version')
     Invoke-ExampleCommand 'docker' @('compose','config','--quiet')
+    # An existing .env (or a machine environment variable) wins over .env.example and may pin an old build.
+    Write-Host "Quickstart image: $env:TOOLGATE_QUICKSTART_IMAGE"
+    if ($env:TOOLGATE_QUICKSTART_IMAGE -match ':dev-[0-9a-f]{12}') {
+        Write-Host 'This is a pinned development build, not the latest. Set TOOLGATE_QUICKSTART_IMAGE=ololab/olo-toolgate-quickstart:dev in .env to follow dev.' -ForegroundColor Yellow
+    }
     if (-not $SkipBuild) {
         # Mutable tags such as `dev` must be re-pulled; a cached local copy keeps the old
         # server and, through the device build below, the old Linux client.
