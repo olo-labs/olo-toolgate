@@ -122,6 +122,8 @@ impl ProtectedStore {
                 | "service.lock"
                 | "fleet-intent.json"
                 | "fleet-active.json"
+                | "local-tools.json"
+                | "local-tools-token"
         ) {
             return Err(Failure::Validation);
         }

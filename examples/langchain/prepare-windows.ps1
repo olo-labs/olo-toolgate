@@ -93,7 +93,8 @@ function Write-PublicRegistration([string]$Path, [string]$Json) {
 Write-PublicRegistration $output ($selected | ConvertTo-Json -Depth 40 -Compress)
 $registration = Join-Path $PSScriptRoot ".state/devices/$deviceId.json"
 [void](New-Item -ItemType Directory -Force -Path (Split-Path $registration -Parent))
-$publicDevice = [pscustomobject]@{deviceId=$deviceId;platform='windows';gateway=$config.serverUrl.TrimEnd('/');profiles=$selected}
+# host lets setup on this machine follow the client's own profiles after an update.
+$publicDevice = [pscustomobject]@{deviceId=$deviceId;platform='windows';gateway=$config.serverUrl.TrimEnd('/');host=$env:COMPUTERNAME;profiles=$selected}
 Write-PublicRegistration $registration ($publicDevice | ConvertTo-Json -Depth 40 -Compress)
 Write-Host "Prepared existing tools and fictional inputs. Generated reports will be in: $folder"
 Write-Host "Public installed profiles: $output"

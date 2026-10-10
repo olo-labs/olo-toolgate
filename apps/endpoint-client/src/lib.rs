@@ -16,6 +16,7 @@ pub mod identity;
 pub mod install;
 pub mod ipc;
 mod json;
+pub mod local_tools;
 
 pub mod authorization_profile;
 pub mod platform;

@@ -23,6 +23,7 @@ spec.loader.exec_module(shared)
 TOOLS = {'hotfolder.list', 'hotfolder.read_text', 'hotfolder.write_text', 'client.read_log_entry'}
 DEVICE_GROUP = 'ReadAndWriteDeviceGroup'
 COMPOSE = ['docker', 'compose', '-p', 'toolgate-langchain', '-f', str(HERE / 'compose.yaml')]
+LOCAL_CLIENT = Path(os.environ.get('ProgramFiles', r'C:\Program Files')) / 'OLO/ToolGate/olo-toolgate-client.exe'
 
 
 def load_environment():
@@ -153,6 +154,36 @@ def select_device(config, registrations, target, device_id=None):
     return secrets.choice(candidates)
 
 
+def refresh_local_registration(directory):
+    """Follow the installed Windows client's own profiles after an update, without elevation.
+
+    The client heals its built-in profiles for a new build at service start. Its public
+    export needs no administrator rights, so this machine's registration can follow it.
+    """
+    if os.name != 'nt' or not LOCAL_CLIENT.is_file():
+        return
+    host = os.environ.get('COMPUTERNAME', '').casefold()
+    windows = []
+    for path in sorted(directory.glob('device-*.json')):
+        record = json.loads(path.read_text(encoding='utf-8-sig'))
+        if record.get('platform') == 'windows' and record.get('gateway', '').rstrip('/') == gateway_url():
+            windows.append((path, record))
+    # Older registrations carry no host; a single one on this Gateway is this machine's.
+    mine = [item for item in windows if item[1].get('host', '').casefold() == host] or \
+        (windows if len(windows) == 1 and 'host' not in windows[0][1] else [])
+    if not mine:
+        return
+    result = subprocess.run([str(LOCAL_CLIENT), 'authorization-profiles'], capture_output=True, text=True, timeout=30)
+    if result.returncode:
+        print('Could not read the installed Windows client profiles; keeping its registration', flush=True)
+        return
+    profiles = example_profiles(json.loads(result.stdout))
+    for path, record in mine:
+        if record['profiles'] != profiles:
+            shared.private_file(path, json.dumps({**record, 'profiles': profiles}))
+            print('Refreshed ' + path.name + ' for the installed Windows client build', flush=True)
+
+
 def register_devices(config, args):
     status = linux_status()
     device = status['deviceId']
@@ -179,6 +210,7 @@ def register_devices(config, args):
         if imported['gateway'].rstrip('/') != gateway_url():
             raise ValueError('Imported device registration belongs to another Gateway')
         shared.private_file(directory / (imported['deviceId'] + '.json'), json.dumps(imported))
+    refresh_local_registration(directory)
     registrations = []
     endpoints = {row['deviceId']: row for row in config.api('/api/control/v1/endpoint/devices')['items']}
     for path in sorted(directory.glob('device-*.json')):
@@ -193,14 +225,6 @@ def register_devices(config, args):
             groups = config.api('/api/control/v1/devices/' + record['deviceId'] + '/groups')['groupIds']
             config.memberships('devices', record['deviceId'], sorted(set(groups) | {DEVICE_GROUP}))
     return registrations
-
-
-class ToolsNotReported(ValueError):
-    """The device is connected but its client is not reporting the registered example tools."""
-
-
-# deploy.ps1 repairs this exit by rerunning prepare-windows.ps1 on this machine.
-TOOLS_NOT_REPORTED_EXIT = 3
 
 
 def check_extractors(config, selection):
@@ -246,14 +270,13 @@ def verify_discovery(selection, directory, target, timeout=30):
             break
         time.sleep(3)
     device, platform = selection['deviceId'], selection['platform']
-    remedy = ('deploy.bat repairs a client on this machine automatically. For another Windows device, run '
-              'prepare-windows.ps1 again in an Administrator PowerShell there, then deploy.bat -Win.'
+    remedy = ('Install the current Windows client from this stack\'s console; it restores and refreshes its tool '
+              'profiles by itself. If the device never ran prepare-windows.ps1, run it once as Administrator.'
               if platform == 'windows' else
               'Rebuild the Linux device from the current image: run deploy.bat -Target linux without -SkipBuild.')
-    raise (ToolsNotReported if platform == 'windows' else ValueError)(f'The {platform} device {device} is connected, but the Gateway does not offer '
+    raise ValueError(f'The {platform} device {device} is connected, but the Gateway does not offer '
                      f'{", ".join(missing)} for it. The installed client is not reporting the tool profiles '
-                     f'registered in .state/devices/{device}.json. This happens after Switch gateway, Repair '
-                     f'gateway connection, or a client reinstall or update. {remedy}')
+                     f'registered in .state/devices/{device}.json. {remedy}')
 
 
 def provision(args):
@@ -346,14 +369,10 @@ def main():
         print(json.dumps(linux_status(), indent=2))
 
 
-def run():
+if __name__ == '__main__':
     try:
         main()
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as failure:
         print('FAILED: ' + (str(failure) if isinstance(failure, ValueError) else
               'Example setup failed; inspect Compose health and configuration'), file=sys.stderr)
-        raise SystemExit(TOOLS_NOT_REPORTED_EXIT if isinstance(failure, ToolsNotReported) else 1)
-
-
-if __name__ == '__main__':
-    run()
+        raise SystemExit(1)
