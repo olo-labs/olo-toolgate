@@ -44,15 +44,25 @@ test('real group administration, inherited provenance and review impact are acce
       await link.click();
       const confirmation='I reviewed the affected groups, inherited access, complete configuration and digests.';
       await page.getByLabel(confirmation).check();
-      const submission=page.waitForResponse(r=>r.request().method()==='POST'&&r.url().includes('/configuration-changes/'));
+      // Read the submission reply as it passes through: the page navigates right after it,
+      // and Chrome then discards the body that waitForResponse would read.
+      let requiredReviews:number|undefined;
+      const submitted=(url:URL)=>url.pathname.includes('/configuration-changes/');
+      await page.route(submitted,async route=>{
+        if(route.request().method()!=='POST')return route.fallback();
+        const response=await route.fetch();
+        requiredReviews=(await response.json()).requiredReviews as number;
+        await route.fulfill({response});
+      });
       await page.getByRole('button',{name:'Submit draft for independent review'}).click();
-      const requiredReviews=(await (await submission).json()).requiredReviews as number;
       await expect(page.getByRole('button',{name:'Approve exact configuration'})).toBeVisible();
+      await page.unroute(submitted);
+      expect(requiredReviews).toBeGreaterThan(0);
       // The maker has management authority, but cannot approve their own change.
       await page.getByLabel(confirmation).check();
       await page.getByRole('button',{name:'Approve exact configuration'}).click();
       await expect(page.getByRole('alert')).toBeVisible();
-      for(const reviewer of reviewers.slice(0,requiredReviews)){
+      for(const reviewer of reviewers.slice(0,requiredReviews!)){
         await reviewer.goto(origin+'/console/'+href);
         await reviewer.getByLabel(confirmation).check();
         await reviewer.getByRole('button',{name:'Approve exact configuration'}).click();
