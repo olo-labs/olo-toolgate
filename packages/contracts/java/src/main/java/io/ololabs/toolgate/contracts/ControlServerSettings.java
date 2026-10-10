@@ -10,6 +10,7 @@ package io.ololabs.toolgate.contracts;
  * @param autoApproveDevices canonical autoApproveDevices value
  * @param autoApproveDurationDays canonical autoApproveDurationDays value
  * @param autoApproveOwnerUserId canonical autoApproveOwnerUserId value
+ * @param gatewayName canonical gatewayName value
  */
 @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
 public record ControlServerSettings(
@@ -17,7 +18,8 @@ public record ControlServerSettings(
     @com.fasterxml.jackson.annotation.JsonProperty(value = "revision", required = true) Long revision,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "autoApproveDevices", required = true) Boolean autoApproveDevices,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "autoApproveDurationDays", required = true) Long autoApproveDurationDays,
-    @com.fasterxml.jackson.annotation.JsonProperty(value = "autoApproveOwnerUserId", required = false) String autoApproveOwnerUserId
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "autoApproveOwnerUserId", required = false) String autoApproveOwnerUserId,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "gatewayName", required = false) String gatewayName
 ) {
     /** Reject absent required references and copy collections to retain value semantics.
      *
@@ -26,6 +28,7 @@ public record ControlServerSettings(
      * @param autoApproveDevices canonical autoApproveDevices value
      * @param autoApproveDurationDays canonical autoApproveDurationDays value
      * @param autoApproveOwnerUserId canonical autoApproveOwnerUserId value
+     * @param gatewayName canonical gatewayName value
      */
     public ControlServerSettings {
         java.util.Objects.requireNonNull(formatVersion, "formatVersion");

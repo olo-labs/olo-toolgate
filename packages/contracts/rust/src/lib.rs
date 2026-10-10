@@ -327,6 +327,18 @@ pub struct ClientEnrollmentRequest {
     pub client_version: String,
     pub capabilities: Vec<String>,
 }
+/// One gateway connection held by the device service; the focused connection serves local tool commands.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ClientGatewayConnection {
+    pub server_url: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_name: Option<String>,
+    pub focused: bool,
+    pub health: ClientHealth,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub activity: Option<ClientActivity>,
+}
 /// Endpoint identity foundation wire model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -390,6 +402,8 @@ pub struct ClientIpcResponse {
     pub error: Option<ErrorCode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub activity: Option<ClientActivity>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub connections: Option<Vec<ClientGatewayConnection>>,
 }
 /// Canonical ClientPlatform wire values.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -837,6 +851,8 @@ pub struct ControlServerSettings {
     pub auto_approve_duration_days: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auto_approve_owner_user_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gateway_name: Option<String>,
 }
 /// Enterprise group graph. Individual ACLs and retired snapshot formats are rejected.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1059,6 +1075,8 @@ pub struct EndpointCheckInAck {
     pub adoption: Option<EndpointAdoption>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub task: Option<RemoteToolTask>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_name: Option<String>,
 }
 /// Endpoint identity foundation wire model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1146,6 +1164,8 @@ pub struct EndpointEnrollmentResult {
     pub state: EnrollmentState,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub identity: Option<DeviceIdentity>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_name: Option<String>,
 }
 /// Endpoint identity foundation wire model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

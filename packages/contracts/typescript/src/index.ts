@@ -212,6 +212,14 @@ export interface ClientEnrollmentRequest {
   readonly clientVersion: string;
   readonly capabilities: ReadonlyArray<string>;
 }
+/** One gateway connection held by the device service; the focused connection serves local tool commands. */
+export interface ClientGatewayConnection {
+  readonly serverUrl: string;
+  readonly serverName?: string;
+  readonly focused: boolean;
+  readonly health: ClientHealth;
+  readonly activity?: ClientActivity;
+}
 /** Endpoint identity foundation wire model. */
 export interface ClientHealth {
   readonly state: EndpointState;
@@ -249,6 +257,7 @@ export interface ClientIpcResponse {
   readonly challenge?: EndpointEnrollmentPrompt;
   readonly error?: ErrorCode;
   readonly activity?: ClientActivity;
+  readonly connections?: ReadonlyArray<ClientGatewayConnection>;
 }
 export type ClientPlatform = "WINDOWS" | "LINUX" | "MACOS";
 /** Batched report of device inventory and applied desired revision. */
@@ -529,6 +538,7 @@ export interface ControlServerSettings {
   readonly autoApproveDevices: boolean;
   readonly autoApproveDurationDays: number;
   readonly autoApproveOwnerUserId?: string;
+  readonly gatewayName?: string;
 }
 /** Enterprise group graph. Individual ACLs and retired snapshot formats are rejected. */
 export interface ControlSnapshot {
@@ -690,6 +700,7 @@ export interface EndpointCheckInAck {
   readonly identity?: DeviceIdentity;
   readonly adoption?: EndpointAdoption;
   readonly task?: RemoteToolTask;
+  readonly serverName?: string;
 }
 /** Endpoint identity foundation wire model. */
 export interface EndpointDeviceRecord {
@@ -752,6 +763,7 @@ export interface EndpointEnrollmentPrompt {
 export interface EndpointEnrollmentResult {
   readonly state: EnrollmentState;
   readonly identity?: DeviceIdentity;
+  readonly serverName?: string;
 }
 /** Endpoint identity foundation wire model. */
 export interface EndpointEnrollmentReview {
@@ -1401,6 +1413,7 @@ export interface FleetTrustKey {
   readonly n: string;
   readonly e: string;
 }
+export type GatewayName = string;
 /** Atomic complete mandatory membership replacement guarded by directory revision. */
 export interface GroupMembership {
   readonly entityType: EnterpriseMemberType;

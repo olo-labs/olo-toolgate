@@ -384,6 +384,9 @@
         },
         "identity": {
           "$ref": "endpoint.schema.json#/$defs/DeviceIdentity"
+        },
+        "serverName": {
+          "$ref": "endpoint.schema.json#/$defs/GatewayName"
         }
       },
       "required": [
@@ -456,6 +459,9 @@
         },
         "task": {
           "$ref": "endpoint.schema.json#/$defs/RemoteToolTask"
+        },
+        "serverName": {
+          "$ref": "endpoint.schema.json#/$defs/GatewayName"
         }
       },
       "required": [
@@ -778,6 +784,13 @@
         },
         "activity": {
           "$ref": "endpoint.schema.json#/$defs/ClientActivity"
+        },
+        "connections": {
+          "type": "array",
+          "maxItems": 9,
+          "items": {
+            "$ref": "endpoint.schema.json#/$defs/ClientGatewayConnection"
+          }
         }
       },
       "required": [
@@ -1283,6 +1296,42 @@
         "INTERRUPTED"
       ],
       "description": "Local command lifecycle; interruption does not establish an external effect outcome."
+    },
+    "GatewayName": {
+      "type": "string",
+      "description": "Administrator-configured gateway display name shown on enrolled devices.",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._()-]{0,63}$"
+    },
+    "ClientGatewayConnection": {
+      "type": "object",
+      "description": "One gateway connection held by the device service; the focused connection serves local tool commands.",
+      "additionalProperties": false,
+      "properties": {
+        "serverUrl": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 2048
+        },
+        "serverName": {
+          "$ref": "endpoint.schema.json#/$defs/GatewayName"
+        },
+        "focused": {
+          "type": "boolean"
+        },
+        "health": {
+          "$ref": "endpoint.schema.json#/$defs/ClientHealth"
+        },
+        "activity": {
+          "$ref": "endpoint.schema.json#/$defs/ClientActivity"
+        }
+      },
+      "required": [
+        "serverUrl",
+        "focused",
+        "health"
+      ]
     }
   }
 }

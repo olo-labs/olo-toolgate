@@ -1236,6 +1236,19 @@
       "calculator"
     ]
   },
+  "ClientGatewayConnection": {
+    "serverUrl": "https://gateway.example",
+    "focused": false,
+    "health": {
+      "state": "UNENROLLED",
+      "ready": false,
+      "uptimeSeconds": 1,
+      "successfulCheckIns": 1,
+      "failedCheckIns": 1,
+      "reportSequence": 1
+    },
+    "serverName": "Example Gateway"
+  },
   "ClientHealth": {
     "state": "UNENROLLED",
     "ready": false,
@@ -1749,6 +1762,13 @@
         "managementRules": []
       }
     ]
+  },
+  "ControlServerSettings": {
+    "formatVersion": 1,
+    "revision": 0,
+    "autoApproveDevices": false,
+    "autoApproveDurationDays": 1,
+    "gatewayName": "Example Gateway"
   },
   "ControlSnapshot": {
     "formatVersion": 2,
@@ -2993,6 +3013,7 @@
     "n": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "e": "AQAB"
   },
+  "GatewayName": "example",
   "GroupMembership": {
     "entityType": "USER",
     "entityId": "example",

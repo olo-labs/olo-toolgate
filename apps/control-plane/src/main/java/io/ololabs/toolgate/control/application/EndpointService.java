@@ -157,7 +157,7 @@ public final class EndpointService {
         var poll=codec.model(body,EndpointEnrollmentPoll.class);Ids.valid(requestId);
         return transaction((tx,now)->{var row=tx.enrollment(poll.enrollmentId());
             if(row==null||!java.security.MessageDigest.isEqual(row.deviceDigest().getBytes(java.nio.charset.StandardCharsets.US_ASCII),DirectoryService.digest(poll.deviceCode()).getBytes(java.nio.charset.StandardCharsets.US_ASCII)))throw forbidden();
-            if(row.expiresAt()<=now)return reply(new EndpointEnrollmentResult(EnrollmentState.EXPIRED,null),1);
+            if(row.expiresAt()<=now)return reply(new EndpointEnrollmentResult(EnrollmentState.EXPIRED,null,serverName(tx)),1);
             if(row.lastPoll()!=0 && now-row.lastPoll()<5000)throw Failure.conflict();
             var review=codec.model(row.document(),EndpointEnrollmentReview.class);var state=review.state();DeviceIdentity identity=null;
             if(state==EnrollmentState.APPROVED || state==EnrollmentState.CONSUMED){
@@ -169,7 +169,7 @@ public final class EndpointService {
                 state=EnrollmentState.CONSUMED;
             }
             tx.saveEnrollment(new Store.EnrollmentRecord(row.id(),row.codeDigest(),row.deviceDigest(),codec.json(withState(review,state)),row.csr(),row.userId(),row.certificate(),row.expiresAt(),now));
-            return reply(new EndpointEnrollmentResult(state,identity),1);
+            return reply(new EndpointEnrollmentResult(state,identity,serverName(tx)),1);
         });
     }
     public Store.Reply checkIn(java.security.cert.X509Certificate peer,String body,String requestId) {
@@ -179,13 +179,15 @@ public final class EndpointService {
     public void verifySocketPeer(java.security.cert.X509Certificate peer) {
         transaction((tx,now)->{authenticate(tx,peer,now);return null;});
     }
-    private Store.Reply interval(Store.Reply reply,boolean milliseconds) {
+    /** Configured gateway name sent to devices in enrollment and check-in replies. */
+    private String serverName(Store.Session tx){return new ServerSettingsService(store,codec).current(tx).gatewayName();}
+    private Store.Reply interval(Store.Reply reply,boolean milliseconds,String serverName) {
         var ack=codec.model(reply.body(),EndpointCheckInAck.class);
         long now=clock.millis();var identity=ack.identity()!=null&&ack.identity().expiresAtUnixMs()<=now?null:ack.identity();
         // Preserve exact recent replies, but a lost response recovered after a long outage must
         // not reinstall an expired certificate or fail the client's current clock-skew check.
         long serverTime=now-ack.serverTimeUnixMs()>300000?now:ack.serverTimeUnixMs();
-        var negotiated=new EndpointCheckInAck(ack.deviceId(),ack.sequence(),serverTime,ack.nextIntervalSeconds(),milliseconds?500L:null,identity,ack.adoption(),ack.task());
+        var negotiated=new EndpointCheckInAck(ack.deviceId(),ack.sequence(),serverTime,ack.nextIntervalSeconds(),milliseconds?500L:null,identity,ack.adoption(),ack.task(),serverName);
         return new Store.Reply(reply.status(),codec.json(negotiated),reply.revision());
     }
     public Store.Reply checkIn(java.security.cert.X509Certificate peer,String body,String requestId,boolean milliseconds) {
@@ -201,7 +203,7 @@ public final class EndpointService {
             var device=codec.model(row.document(),EndpointDeviceRecord.class);active(tx,device);
             if(!device.deviceId().equals(check.report().deviceId()))throw forbidden();
             if(check.report().appliedRevision()!=0||!check.report().packages().isEmpty())FleetService.validateReport(tx,codec,check.report());
-            if(check.sequence().equals(device.reportSequence())){if(!digest.equals(row.reportDigest()))throw Failure.conflict();return interval(new Store.Reply(200,row.acknowledgment(),device.revision()),milliseconds);}
+            if(check.sequence().equals(device.reportSequence())){if(!digest.equals(row.reportDigest()))throw Failure.conflict();return interval(new Store.Reply(200,row.acknowledgment(),device.revision()),milliseconds,serverName(tx));}
             if(check.sequence()!=device.reportSequence()+1)throw Failure.conflict();
             // Allow the 500 ms cycle with transport jitter; reject request bursts.
             if(device.reportSequence()>0 && now-device.lastSeenUnixMs()<250)throw Failure.conflict();
@@ -210,10 +212,10 @@ public final class EndpointService {
             DeviceIdentity renewed=null;if(peer.getNotAfter().getTime()-now<43200000&&peer.getNotAfter().getTime()<connectionExpires/1000*1000)renewed=issuer.issue(row.csr(),device.deviceId(),tenant.value(),device.userId(),server,now,connectionExpires);
             var configuration=new EndpointAdoptions(codec).poll(tx,device,server,check.adoptionDigest(),check.localTools());
             var task=relay().poll(tx,device,now,requestId);
-            var ack=new EndpointCheckInAck(device.deviceId(),check.sequence(),now,2L,null,renewed,configuration,task);
+            var ack=new EndpointCheckInAck(device.deviceId(),check.sequence(),now,2L,null,renewed,configuration,task,null);
             var updated=new EndpointDeviceRecord(device.deviceId(),tenant.value(),device.userId(),fingerprint,EndpointState.ACTIVE,device.revision()+1,now,check.sequence(),check.report(),device.connectionExpiresAtUnixMs(),device.connectionApproved(),device.approvalRevision(),systemName==null?device.systemName():systemName,ipAddress==null?device.ipAddress():ipAddress);
             var response=reply(ack,updated.revision());tx.saveEndpoint(new Store.EndpointRecord(row.id(),row.fingerprint(),codec.json(updated),row.csr(),digest,response.body()));
-            tx.audit(fingerprint,renewed==null?"DEVICE_CHECK_IN":"DEVICE_RENEW","endpoint:"+row.id(),updated.revision(),requestId,digest);return interval(response,milliseconds);
+            tx.audit(fingerprint,renewed==null?"DEVICE_CHECK_IN":"DEVICE_RENEW","endpoint:"+row.id(),updated.revision(),requestId,digest);return interval(response,milliseconds,serverName(tx));
         });
     }
     public EndpointDeviceRecord authenticate(Store.Session tx,java.security.cert.X509Certificate peer,long now){

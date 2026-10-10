@@ -22,6 +22,7 @@ form for review, and nothing changes until an administrator saves.
 
 | Setting | Default | Meaning |
 |---|---|---|
+| `gatewayName` | `TOOLGATE_GATEWAY_NAME`, else `ToolGate` | Name devices show beside this gateway's URL; sent in enrollment and check-in replies |
 | `autoApproveDevices` | `false` | New enrollments are approved at once, without an administrator decision |
 | `autoApproveDurationDays` | `30` | Connection approval length for auto-approved devices, 1–3650 days |
 | `autoApproveOwnerUserId` | none | Enabled directory user that owns auto-approved devices; required while auto-approval is on |
@@ -43,6 +44,7 @@ environment variables. Environment values override the file.
 | `TOOLGATE_SETTINGS_AUTO_APPROVE_DEVICES` | `true` or `false` |
 | `TOOLGATE_SETTINGS_AUTO_APPROVE_DURATION_DAYS` | Days, such as `30` or `30d` |
 | `TOOLGATE_SETTINGS_AUTO_APPROVE_OWNER` | Owner user ID for auto-approved devices |
+| `TOOLGATE_GATEWAY_NAME` | Gateway name used until one is saved in Configuration or imported |
 | `TOOLGATE_CONFIG_IMPORT_OVERWRITE` | Default `false`: import only when no settings were saved yet. `true` replaces saved settings on every start |
 
 The import uses the tenant in `TOOLGATE_CONTROL_ENDPOINT_TENANT_ID` and writes a

@@ -9,17 +9,19 @@ namespace OloLabs\ToolGate\Contracts;
 final readonly class EndpointEnrollmentResult implements \JsonSerializable {
     public function __construct(
         public EnrollmentState $state,
-        public ?DeviceIdentity $identity = null
+        public ?DeviceIdentity $identity = null,
+        public ?string $serverName = null
     ) {}
 
     /** Decode a structural model; canonical schema validation is also required. */
     public static function fromArray(array $data): self {
-        if (array_diff(array_keys($data), ['state', 'identity']) || array_diff(['state'], array_keys($data))) {
+        if (array_diff(array_keys($data), ['state', 'identity', 'serverName']) || array_diff(['state'], array_keys($data))) {
             throw new \InvalidArgumentException('Unknown or missing contract fields');
         }
         return new self(
             EnrollmentState::from($data['state']),
-            array_key_exists('identity', $data) ? DeviceIdentity::fromArray($data['identity']) : null
+            array_key_exists('identity', $data) ? DeviceIdentity::fromArray($data['identity']) : null,
+            array_key_exists('serverName', $data) ? $data['serverName'] : null
         );
     }
 

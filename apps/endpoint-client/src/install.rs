@@ -158,8 +158,9 @@ pub fn configure_with_ca(_: &str, _: Option<&str>, _: Option<&str>, _: Option<&s
 pub fn configure(server: &str, peer: Option<&str>) -> Result<()> {
     configure_with_ca(server, peer, None, None)
 }
-/// Switches or repairs the gateway. The leaving gateway's enrollment is parked in a
-/// profile, so switching back resumes it unless that gateway was since recreated.
+/// Switches focus or repairs the gateway. The leaving gateway's enrollment is parked in a
+/// profile that stays connected in the background, so switching back resumes it unless
+/// that gateway was since recreated.
 #[cfg(windows)]
 pub fn configure_with_ca(
     server: &str,
@@ -451,14 +452,9 @@ fn write_config(path: &Path, settings: &Config) -> Result<()> {
 }
 #[cfg(any(windows, test))]
 fn profile_directory(state: &Path, server: &str) -> PathBuf {
-    use sha2::Digest;
-    let digest = sha2::Sha256::digest(server.as_bytes());
-    state.join("profiles").join(
-        digest[..16]
-            .iter()
-            .map(|byte| format!("{byte:02x}"))
-            .collect::<String>(),
-    )
+    state
+        .join("profiles")
+        .join(crate::connections::profile_name(server))
 }
 #[cfg(any(windows, test))]
 fn move_owned(
@@ -475,7 +471,13 @@ fn move_owned(
 }
 #[cfg(any(windows, test))]
 fn discard_profile(profile: &Path) -> Result<()> {
-    for name in GATEWAY_STATE.into_iter().chain(["client.json"]) {
+    // The background connection also keeps its own lease, activity and packet logs here.
+    for name in GATEWAY_STATE.into_iter().chain([
+        "client.json",
+        "service.lock",
+        "activity.json",
+        "packets.jsonl",
+    ]) {
         let path = profile.join(name);
         if path.try_exists().map_err(|_| Failure::Unavailable)? {
             crate::storage::check_owned(&path, true)?;

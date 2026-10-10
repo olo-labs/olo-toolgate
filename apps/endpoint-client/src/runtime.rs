@@ -1,9 +1,15 @@
 // Copyright 2026 OLO Labs
 // SPDX-License-Identifier: Apache-2.0
-//! Protected service lifecycle, bounded IPC and one serialized heartbeat loop.
+//! Protected service lifecycle, bounded IPC and one serialized heartbeat loop per gateway.
 use crate::{
-    config::Config, contracts::Contracts, identity::DeviceKey, service::ClientService,
-    storage::ProtectedStore, transport::HttpsControl, Failure, Result,
+    config::Config,
+    connections::{Connection, Connections},
+    contracts::Contracts,
+    identity::DeviceKey,
+    service::ClientService,
+    storage::ProtectedStore,
+    transport::HttpsControl,
+    Failure, Result,
 };
 use std::sync::Arc;
 /// Fixed worker limits keep system services within their OS task/memory budget,
@@ -29,59 +35,69 @@ pub async fn run(config: Config, shutdown: tokio::sync::watch::Receiver<bool>) -
     let service = Arc::new(tokio::sync::Mutex::new(ClientService::open(
         config.clone(),
         store,
-        key,
+        key.clone(),
         control,
     )?));
     let activity = service.lock().await.activity.clone();
-    let heartbeat_activity = activity.clone();
-    let mut heartbeat_shutdown = shutdown.clone();
-    let heartbeat_service = service.clone();
-    let heartbeat = tokio::spawn(async move {
-        let mut last_health = None;
-        let mut next = tokio::time::Instant::now();
-        loop {
-            tokio::select! {_=heartbeat_shutdown.changed()=>break,_=tokio::time::sleep_until(next)=>{}}
-            let started = tokio::time::Instant::now();
-            let delay = {
-                let mut state = heartbeat_service.lock().await;
-                let result = state.tick().await;
-                let health = state.health();
-                let current = format!("{:?}-{}", health.state, health.ready);
-                if last_health.as_ref() != Some(&current) {
-                    heartbeat_activity.event("Connection", &current);
-                    last_health = Some(current);
-                }
-                if let Err(failure) = result {
-                    heartbeat_activity.event("Check in", &format!("{:?}", failure));
-                }
-                state.next_delay_millis()
-            };
-            // Network time counts toward the cycle; never overlap or catch up missed requests.
-            next = (started + std::time::Duration::from_millis(delay))
-                .max(tokio::time::Instant::now());
+    let connections = Arc::new(Connections::default());
+    let focused = Connection::new(&*service.lock().await, true);
+    connections.add(focused.clone());
+    let mut heartbeats = vec![heartbeat(service.clone(), focused, shutdown.clone())];
+    // Gateways the device switched away from stay connected; one failing never blocks the others.
+    for background in crate::connections::background(&config) {
+        let server = background.server_url.clone();
+        let opened = (|| {
+            let store = ProtectedStore::open(background.state_directory.clone())?;
+            let control = Arc::new(HttpsControl::new(
+                background.clone(),
+                key.clone(),
+                contracts.clone(),
+            )?);
+            ClientService::open(background, store, key.clone(), control)
+        })();
+        match opened {
+            Ok(state) => {
+                let connection = Connection::new(&state, false);
+                connections.add(connection.clone());
+                heartbeats.push(heartbeat(
+                    Arc::new(tokio::sync::Mutex::new(state)),
+                    connection,
+                    shutdown.clone(),
+                ));
+            }
+            Err(failure) => {
+                tracing::warn!(event="background_gateway",server=%server,error=?failure);
+                activity.event("Background gateway", &format!("{:?}", failure));
+            }
         }
-    });
+    }
     tracing::info!(
         event = "client_service",
         result = "started",
-        version = env!("CARGO_PKG_VERSION")
+        version = env!("CARGO_PKG_VERSION"),
+        gateways = heartbeats.len()
     );
     let result = crate::ipc::listen(
         &config.ipc_endpoint,
         config.authorized_peers,
         service.clone(),
+        connections,
         contracts,
         shutdown,
     )
     .await;
-    heartbeat.abort();
-    heartbeat.await.map(|_| ()).or_else(|e| {
-        if e.is_cancelled() {
-            Ok(())
-        } else {
-            Err(Failure::Unavailable)
-        }
-    })?;
+    for heartbeat in &heartbeats {
+        heartbeat.abort();
+    }
+    for heartbeat in heartbeats {
+        heartbeat.await.map(|_| ()).or_else(|e| {
+            if e.is_cancelled() {
+                Ok(())
+            } else {
+                Err(Failure::Unavailable)
+            }
+        })?;
+    }
     tracing::info!(event = "client_service", result = "stopped");
     let cleanup = service.lock().await.shutdown_runtimes().await;
     if let Err(failure) = cleanup {
@@ -89,6 +105,40 @@ pub async fn run(config: Config, shutdown: tokio::sync::watch::Receiver<bool>) -
     }
     activity.event("Service", "STOPPED");
     result.and(cleanup)
+}
+/// One serialized check-in loop per gateway connection.
+fn heartbeat(
+    service: Arc<tokio::sync::Mutex<ClientService>>,
+    connection: Arc<Connection>,
+    mut shutdown: tokio::sync::watch::Receiver<bool>,
+) -> tokio::task::JoinHandle<()> {
+    tokio::spawn(async move {
+        let activity = service.lock().await.activity.clone();
+        let mut last_health = None;
+        let mut next = tokio::time::Instant::now();
+        loop {
+            tokio::select! {_=shutdown.changed()=>break,_=tokio::time::sleep_until(next)=>{}}
+            let started = tokio::time::Instant::now();
+            let delay = {
+                let mut state = service.lock().await;
+                let result = state.tick().await;
+                let health = state.health();
+                let current = format!("{:?}-{}", health.state, health.ready);
+                if last_health.as_ref() != Some(&current) {
+                    activity.event("Connection", &current);
+                    last_health = Some(current);
+                }
+                if let Err(failure) = result {
+                    activity.event("Check in", &format!("{:?}", failure));
+                }
+                connection.publish(&state);
+                state.next_delay_millis()
+            };
+            // Network time counts toward the cycle; never overlap or catch up missed requests.
+            next = (started + std::time::Duration::from_millis(delay))
+                .max(tokio::time::Instant::now());
+        }
+    })
 }
 #[cfg(windows)]
 pub mod windows {

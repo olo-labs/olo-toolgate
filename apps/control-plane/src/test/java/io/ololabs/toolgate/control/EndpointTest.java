@@ -149,24 +149,25 @@ final class EndpointTest {
     @Test void autoApprovalUsesSettingsAndSqlite(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory)throws Exception{
         var s=configured(new PostgresStore(SqliteState.open(directory.resolve("auto.sqlite")),codec));var settings=new ServerSettingsService(s.store,codec);
         var defaults=codec.model(settings.get(s.admin).body(),ControlServerSettings.class);
-        assertEquals(0L,defaults.revision());assertFalse(defaults.autoApproveDevices());assertEquals(30L,defaults.autoApproveDurationDays());
+        assertEquals(0L,defaults.revision());assertFalse(defaults.autoApproveDevices());assertEquals(30L,defaults.autoApproveDurationDays());assertEquals(ServerSettingsService.DEFAULT_GATEWAY_NAME,defaults.gatewayName());
         assertEquals(403,assertThrows(Failure.class,()->settings.get(new DirectoryService.Actor(s.admin.tenant(),"a".repeat(64),false))).status());
-        assertEquals(400,assertThrows(Failure.class,()->settings.update(s.admin,codec.json(new ControlServerSettings(1L,0L,true,30L,null)),0,"no-owner","request")).status());
-        assertEquals(400,assertThrows(Failure.class,()->settings.update(s.admin,codec.json(new ControlServerSettings(1L,0L,true,30L,"missing")),0,"missing-owner","request")).status());
-        var manual=start(s,"manual");assertEquals(EnrollmentState.PENDING,review(s,manual).state());
-        var body=codec.json(new ControlServerSettings(1L,0L,true,30L,"owner"));
+        assertEquals(400,assertThrows(Failure.class,()->settings.update(s.admin,codec.json(new ControlServerSettings(1L,0L,true,30L,null,null)),0,"no-owner","request")).status());
+        assertEquals(400,assertThrows(Failure.class,()->settings.update(s.admin,codec.json(new ControlServerSettings(1L,0L,true,30L,"missing",null)),0,"missing-owner","request")).status());
+        var manual=start(s,"manual");assertEquals(EnrollmentState.PENDING,review(s,manual).state());assertEquals(ServerSettingsService.DEFAULT_GATEWAY_NAME,poll(s,manual).serverName());
+        var body=codec.json(new ControlServerSettings(1L,0L,true,30L,"owner","Lab Gateway"));
         var saved=settings.update(s.admin,body,0,"enable","request");assertEquals(1L,codec.model(saved.body(),ControlServerSettings.class).revision());
         assertEquals(saved,settings.update(s.admin,body,0,"enable","retry"));
         assertEquals(409,assertThrows(Failure.class,()->settings.update(s.admin,body,0,"stale","request")).status());
         var automatic=start(s,"automatic");var result=poll(s,automatic);
-        assertEquals(EnrollmentState.CONSUMED,result.state());assertNotNull(result.identity());
+        assertEquals(EnrollmentState.CONSUMED,result.state());assertNotNull(result.identity());assertEquals("Lab Gateway",result.serverName());
         var device=codec.model(s.service.device(s.admin,"automatic").body(),EndpointDeviceRecord.class);
         assertEquals("owner",device.userId());assertEquals(START+30L*86400000,device.connectionExpiresAtUnixMs());assertTrue(device.connectionApproved());
         assertEquals(List.of(manual.userCode()),codec.model(s.service.pending(s.admin,"owner").body(),EndpointEnrollmentPage.class).items().stream().map(EndpointEnrollmentReview::userCode).toList());
         // Startup import seeds only once unless overwrite is requested.
-        assertFalse(settings.importAtStartup(s.admin.tenant(),new ControlServerSettings(1L,0L,false,7L,null),false,"startup"));
-        assertTrue(settings.importAtStartup(s.admin.tenant(),new ControlServerSettings(1L,0L,false,7L,null),true,"startup"));
-        var imported=codec.model(settings.get(s.admin).body(),ControlServerSettings.class);assertEquals(2L,imported.revision());assertEquals(7L,imported.autoApproveDurationDays());
+        assertFalse(settings.importAtStartup(s.admin.tenant(),new ControlServerSettings(1L,0L,false,7L,null,null),false,"startup"));
+        assertTrue(settings.importAtStartup(s.admin.tenant(),new ControlServerSettings(1L,0L,false,7L,null,null),true,"startup"));
+        var imported=codec.model(settings.get(s.admin).body(),ControlServerSettings.class);assertEquals(2L,imported.revision());assertEquals(7L,imported.autoApproveDurationDays());assertEquals("Lab Gateway",imported.gatewayName());
+        assertEquals(400,assertThrows(Failure.class,()->settings.update(s.admin,"{\"formatVersion\":1,\"revision\":2,\"autoApproveDevices\":false,\"autoApproveDurationDays\":7,\"gatewayName\":\" spaced\"}",2,"bad-name","request")).status());
         assertEquals(EnrollmentState.PENDING,review(s,start(s,"after-off")).state());
         assertEquals(30L,ConfigurationImportBootstrap.days("30Day"));assertEquals(7L,ConfigurationImportBootstrap.days("7"));
         assertThrows(IllegalStateException.class,()->ConfigurationImportBootstrap.days("month"));

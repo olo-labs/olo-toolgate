@@ -24,6 +24,9 @@ struct Journal {
     revoked: bool,
     #[serde(default)]
     observed_time: u64,
+    /// Display name the gateway last sent; shown beside its URL on the device.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    server_name: Option<String>,
 }
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -762,6 +765,7 @@ impl ClientService {
                     device_code: challenge.device_code.clone(),
                 })
                 .await?;
+            self.remember_server_name(result.server_name.as_deref());
             match result.state {
                 EnrollmentState::Consumed => {
                     let identity = result.identity.ok_or(Failure::Unauthorized)?;
@@ -859,6 +863,7 @@ impl ClientService {
             return Err(Failure::Validation);
         }
         self.check_in_interval_ms = interval_ms;
+        self.remember_server_name(ack.server_name.as_deref());
         if let Some(identity) = ack.identity {
             verify_identity(
                 &identity,
@@ -945,6 +950,18 @@ impl ClientService {
         }
         Ok(())
     }
+    /// Keeps the gateway's latest display name; the next journal save persists it.
+    fn remember_server_name(&mut self, name: Option<&str>) {
+        if let Some(name) = name.filter(|name| valid_server_name(name)) {
+            self.journal.server_name = Some(name.to_owned());
+        }
+    }
+    pub fn server_name(&self) -> Option<String> {
+        self.journal.server_name.clone()
+    }
+    pub fn server_url(&self) -> &str {
+        &self.config.server_url
+    }
     pub fn next_delay_millis(&self) -> u64 {
         if self.journal.challenge.is_some() {
             return 5000;
@@ -954,6 +971,16 @@ impl ClientService {
         }
         (5_u64.saturating_mul(1_u64 << self.failures.min(6))).min(300) * 1000
     }
+}
+
+/// Mirrors the GatewayName contract so a name never carries control characters into the tray.
+pub fn valid_server_name(name: &str) -> bool {
+    let bytes = name.as_bytes();
+    (1..=64).contains(&bytes.len())
+        && bytes[0].is_ascii_alphanumeric()
+        && bytes
+            .iter()
+            .all(|b| b.is_ascii_alphanumeric() || b" ._()-".contains(b))
 }
 
 #[cfg(test)]
@@ -1039,6 +1066,7 @@ mod tests {
                     identity: None,
                     adoption: None,
                     task: None,
+                    server_name: None,
                 })
             })
         }
