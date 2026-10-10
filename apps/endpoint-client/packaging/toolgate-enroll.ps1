@@ -7,6 +7,9 @@ $enrollClient = Join-Path (Split-Path $PSScriptRoot -Parent) 'olo-toolgate-clien
 $enrollDeadline = (Get-Date).AddSeconds(35)
 do {
     $ErrorActionPreference = 'Continue'
+    # A reinstall that resumed its enrollment is already connected; nothing to approve.
+    $enrollHealth = & $enrollClient health 2>$null | Out-String
+    if ($LASTEXITCODE -eq 0 -and $enrollHealth -match '"state":"(ACTIVE|OFFLINE|REVOKED)"') { exit 0 }
     $enrollOutput = & $enrollClient enroll 2>&1 | Out-String
     $enrollExitCode = $LASTEXITCODE
     $ErrorActionPreference = 'Stop'
