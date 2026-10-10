@@ -128,7 +128,9 @@ public class ClientArtifacts {
             return jakarta.ws.rs.core.Response.ok(output,"application/octet-stream")
                 .header("Content-Disposition","attachment; filename=\""+filename+"\"").header("Content-Length",artifact.bytes())
                 .header("ETag","\""+artifact.sha256()+"\"").header("X-Content-Type-Options","nosniff")
-                .header("Cache-Control",stable?"no-store":"public, max-age=31536000, immutable").build();
+                // Every development build reuses the same versioned filenames, so only a final
+                // release may be cached as immutable; otherwise browsers keep an older client.
+                .header("Cache-Control",stable||manifest().version().contains("-")?"no-store":"public, max-age=31536000, immutable").build();
         }catch(Exception rejected){transfers.release();throw unavailable();}
     }
 }

@@ -1,6 +1,6 @@
 # Copyright 2026 OLO Labs
 # SPDX-License-Identifier: Apache-2.0
-ARG QUICKSTART_IMAGE=ololab/olo-toolgate-quickstart:dev-f6b503f4a378-37978665914-1
+ARG QUICKSTART_IMAGE=ololab/olo-toolgate-quickstart:dev
 FROM ${QUICKSTART_IMAGE} AS release
 FROM python:3.14-slim AS extract
 WORKDIR /work
