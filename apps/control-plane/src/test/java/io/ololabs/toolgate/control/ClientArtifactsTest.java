@@ -87,6 +87,7 @@ final class ClientArtifactsTest {
         var windows=assets.manifest().artifacts().stream().filter(a->a.filename().endsWith(".zip")).findFirst().orElseThrow();
         assertThrows(Failure.class,()->assets.download(windows.filename()));
         var artifact=assets.manifest().artifacts().stream().filter(a->!a.filename().endsWith(".zip")).findFirst().orElseThrow();var response=assets.download(artifact.filename());
+        assertEquals("no-store",response.getHeaderString("Cache-Control"));
         var output=new java.io.ByteArrayOutputStream();((jakarta.ws.rs.core.StreamingOutput)response.getEntity()).write(output);assertEquals(artifact.bytes(),output.size());
         Files.writeString(directory.resolve(artifact.filename()),"corrupted");assertThrows(Failure.class,()->assets.download(artifact.filename()));
     }
