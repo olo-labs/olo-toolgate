@@ -59,19 +59,36 @@ export function App() {
   const [error, setError] = useState<unknown>(); const [route, setRoute] = useState<Route>(routeFromHash);
   const active = useRef<ControlClient | undefined>(undefined);
   useEffect(() => { const update = () => setRoute(routeFromHash()); window.addEventListener('hashchange', update); return () => { window.removeEventListener('hashchange', update); active.current?.dispose(); }; }, []);
-  function disconnect() { active.current?.dispose(); active.current = undefined; setClient(undefined); setCredential(''); setConnecting(false); }
+  function disconnect() {
+    active.current?.dispose(); active.current = undefined; setClient(undefined); setCredential(''); setConnecting(false);
+    if (quickstart) void fetch('/api/quickstart/v1/logout', {method:'POST',credentials:'same-origin',cache:'no-store',redirect:'error',keepalive:true}).catch(() => {});
+  }
   useEffect(() => {
     if (!quickstart || !safeOrigin()) return;
-    const abort = new AbortController(); let timer: ReturnType<typeof setInterval> | undefined;
-    fetch('/api/quickstart/v1/status', {credentials:'omit',redirect:'error',signal:abort.signal})
-      .then(response => response.ok ? response.json() : undefined)
-      .then(body => {
-        if (!abort.signal.aborted && body?.passwordRequired === false) {
-          setPasswordDisabled(true); void connect(null, true);
-          timer = setInterval(() => { void connect(null, true); }, 600000);
+    const abort = new AbortController(); setConnecting(true);
+    const status = fetch('/api/quickstart/v1/status', {credentials:'omit',redirect:'error',signal:abort.signal})
+      .then(response => response.ok ? response.json() : undefined).catch(() => undefined);
+    void (async () => {
+      let noSession = false;
+      try {
+        const response = await fetch('/api/quickstart/v1/session', {credentials:'same-origin',cache:'no-store',redirect:'error',signal:abort.signal});
+        if (response.status === 401) noSession = true;
+        else {
+          if (!response.ok) throw new ApiError(response.status, 'SESSION_FAILED');
+          const body: unknown = await response.json();
+          if (!body || typeof body !== 'object' || !('accessToken' in body) || typeof body.accessToken !== 'string' || !body.accessToken || body.accessToken.length > 16384) throw new ApiError(502, 'INVALID_RESPONSE');
+          if (!abort.signal.aborted) await establishSession(body.accessToken);
         }
-      }).catch(() => { /* Normal authenticated login remains available. */ });
-    return () => { abort.abort(); if (timer) clearInterval(timer); };
+      } catch (failure) { if (!abort.signal.aborted) setError(failure); }
+      const body = await status;
+      if (abort.signal.aborted) return;
+      setConnecting(false);
+      if (body?.passwordRequired === false) {
+        setPasswordDisabled(true);
+        if (noSession) void connect(null, true);
+      }
+    })();
+    return () => { abort.abort(); };
   }, [quickstart]);
   async function connect(event: FormEvent | null, automatic = false) {
     event?.preventDefault(); if (connecting || !safeOrigin()) return;
@@ -79,13 +96,17 @@ export function App() {
     let accessToken = credential.trim();
     if (quickstart) {
       try {
-        const response = await fetch('/api/quickstart/v1/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(automatic ? {} : {username,password:credential, ...(newPassword ? {newPassword} : {})}), credentials:'omit', redirect:'error' });
+        const response = await fetch('/api/quickstart/v1/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(automatic ? {} : {username,password:credential, ...(newPassword ? {newPassword} : {})}), credentials:'same-origin', redirect:'error' });
         if (!response.ok) throw new ApiError(response.status, 'LOGIN_FAILED');
         const body: unknown = await response.json();
         if (!body || typeof body !== 'object' || !('accessToken' in body) || typeof body.accessToken !== 'string' || body.accessToken.length > 16384) throw new ApiError(502, 'INVALID_RESPONSE');
         accessToken = body.accessToken; setNewPassword('');
       } catch (failure) { setCredential(''); setNewPassword(''); setError(failure); setConnecting(false); return; }
     }
+    await establishSession(accessToken);
+  }
+  async function establishSession(accessToken: string) {
+    active.current?.dispose();
     const candidate = new ControlClient(accessToken, () => { if (active.current === candidate) { disconnect(); setError(new ApiError(401, 'UNAUTHORIZED')); } });
     active.current = candidate; setCredential('');
     try {
@@ -111,7 +132,7 @@ export function App() {
         <form onSubmit={connect}>{quickstart&&<><label htmlFor="local-username">Local account</label><select id="local-username" value={username} onChange={e=>setUsername(e.target.value)} disabled={connecting}><option value="admin">Administrator</option><option value="reviewer-1">Reviewer 1</option><option value="reviewer-2">Reviewer 2</option><option value="test-readonly">ReadOnly test user</option><option value="test-readwrite">ReadAndWrite test user</option><option value="test-admin">Admin test user</option></select></>}<label htmlFor="access-token">{quickstart ? 'Password' : 'Access token'}</label>
           <input id="access-token" type="password" autoComplete="off" spellCheck={false} maxLength={16384} required value={credential} onChange={e => setCredential(e.target.value)} disabled={connecting || !safeOrigin()} aria-describedby="token-help" />
           {quickstart && <><label htmlFor="new-password">New password (required on first login)</label><input id="new-password" type="password" autoComplete="new-password" minLength={16} maxLength={128} value={newPassword} onChange={e => setNewPassword(e.target.value)} disabled={connecting} /></>}
-          <p id="token-help" className="hint">Kept in memory for this session. Refreshing or disconnecting clears it.</p>
+          <p id="token-help" className="hint">{quickstart ? 'Your session survives refresh until it expires or you disconnect. Your password is never saved in the browser.' : 'Kept in memory for this session. Refreshing or disconnecting clears it.'}</p>
           <button className="primary" disabled={connecting || !safeOrigin()}>{connecting ? 'Connecting…' : 'Connect to workspace'}</button>
           {connecting && <p role="status">Verifying your session with Control…</p>}
         </form></div><ClientDownloads /><footer>ToolGate {__APP_VERSION__} · Organization administration</footer></main>

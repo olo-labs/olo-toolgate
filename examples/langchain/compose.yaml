@@ -3,7 +3,7 @@
 name: toolgate-langchain
 services:
   quickstart:
-    image: ${TOOLGATE_QUICKSTART_IMAGE:-ololab/olo-toolgate-quickstart:dev-f6b503f4a378-37978665914-1}
+    image: ${TOOLGATE_QUICKSTART_IMAGE:-ololab/olo-toolgate-quickstart:dev-f6b503f4a378}
     platform: linux/amd64
     restart: unless-stopped
     read_only: true
@@ -75,9 +75,8 @@ services:
       linux-device:
         condition: service_healthy
     environment:
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
-      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openrouter/free}
       TOOLGATE_CREDENTIAL_DIRECTORY: /run/toolgate-agents
       PYTHONDONTWRITEBYTECODE: '1'
     volumes:

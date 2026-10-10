@@ -13,6 +13,9 @@ if ((Get-Item -LiteralPath $configPath).Attributes -band [IO.FileAttributes]::Re
 $original = [IO.File]::ReadAllText($configPath)
 $config = $original | ConvertFrom-Json
 if ($config.serverUrl.TrimEnd('/') -ne $Gateway.TrimEnd('/')) { throw 'Enroll this device to the example Gateway first. This helper does not switch gateways or install clients.' }
+$journal = Get-Content -LiteralPath (Join-Path $config.stateDirectory 'journal.json') -Raw | ConvertFrom-Json
+$deviceId = $journal.identity.deviceId
+if ($deviceId -notmatch '^device-[a-f0-9]{32}$') { throw 'Complete enrollment on this example Gateway before preparing its tools.' }
 $allProfiles = & $binary authorization-profiles | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0) { throw 'Could not export profiles from the installed executable.' }
 $names = @('hotfolder.list','hotfolder.read_text','hotfolder.write_text','client.read_log_entry')
@@ -73,7 +76,26 @@ foreach ($fixture in Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'fixtur
 }
 $output = Join-Path $PSScriptRoot '.state/windows-profiles.json'
 [void](New-Item -ItemType Directory -Force -Path (Split-Path $output -Parent))
-[IO.File]::WriteAllText($output,($selected | ConvertTo-Json -Depth 40 -Compress),$encoding)
+function Write-PublicRegistration([string]$Path, [string]$Json) {
+    if ((Test-Path -LiteralPath $Path) -and ((Get-Item -LiteralPath $Path).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        throw 'Use a regular public registration file.'
+    }
+    [IO.File]::WriteAllText($Path,$Json,$encoding)
+    # Elevated files may be owned by Administrators. The ordinary launcher must
+    # still read its public exports without requiring another elevated shell.
+    $publicAcl = New-Object Security.AccessControl.FileSecurity
+    $publicAcl.SetAccessRuleProtection($true,$false)
+    foreach ($sid in @($identity.User.Value,'S-1-5-18','S-1-5-32-544')) {
+        $publicAcl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule((New-Object Security.Principal.SecurityIdentifier($sid)),'FullControl','Allow')))
+    }
+    Set-Acl -LiteralPath $Path -AclObject $publicAcl
+}
+Write-PublicRegistration $output ($selected | ConvertTo-Json -Depth 40 -Compress)
+$registration = Join-Path $PSScriptRoot ".state/devices/$deviceId.json"
+[void](New-Item -ItemType Directory -Force -Path (Split-Path $registration -Parent))
+$publicDevice = [pscustomobject]@{deviceId=$deviceId;platform='windows';gateway=$config.serverUrl.TrimEnd('/');profiles=$selected}
+Write-PublicRegistration $registration ($publicDevice | ConvertTo-Json -Depth 40 -Compress)
 Write-Host "Prepared existing tools and fictional inputs. Generated reports will be in: $folder"
 Write-Host "Public installed profiles: $output"
-Write-Host 'Approve this device in the example console, then use start.bat -Target windows -DeviceId <id> -Profiles .state/windows-profiles.json.'
+Write-Host "Public group-selection registration: $registration"
+Write-Host 'Approve this device in the example console, then use start.bat -Win. Setup assigns both prepared devices to ReadAndWriteDeviceGroup through independent review.'

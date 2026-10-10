@@ -5,8 +5,9 @@
 This example starts the published `ololab/olo-toolgate-quickstart` container and a
 real Linux endpoint client. A LangChain AI agent discovers its permitted tools,
 reads a file **on the selected device through ToolGate**, analyzes it with a model,
-and writes a Markdown report back to that device's HotFolder. You can select an
-approved Windows device instead of Linux.
+and writes a Markdown report back to that device's HotFolder. Linux and prepared,
+approved Windows devices share `ReadAndWriteDeviceGroup`. Each startup selects
+one available member; `-Win` restricts selection to Windows.
 
 The AI container has no device filesystem mount, Docker socket or shell tool.
 Its file reads and writes use Gateway MCP calls. The endpoint authenticates with
@@ -30,7 +31,9 @@ it preserves existing inputs and reports. Each AI run replaces its selected repo
 The runner lists the HotFolder, reads the selected input, asks the model to write
 its report, and reads the report back. It reports success only if a write occurred
 in this run and the actual device readback matches. The runner restricts reads
-to the selected input/report and writes to that report; ToolGate also evaluates
+to the selected input/report and writes to that report. The model sees those exact
+relative paths in its tool schemas and can correct a rejected path; a rejected
+path never reaches the Gateway. ToolGate also evaluates
 current group grants, policy, device approval and installed package evidence.
 
 ## Requirements
@@ -39,7 +42,8 @@ current group grants, policy, device approval and installed package evidence.
 - Python 3.11+ on the host for the setup helper. Host Python uses only the standard
   library; LangChain and its dependencies are installed inside the AI image.
 - Internet for pulling images and Python dependencies.
-- A model-provider API key for an AI run. `-Smoke` needs no model key or API spend.
+- An OpenRouter API key for an AI run, including the free model. `-Smoke` needs no
+  model key or API spend.
 - For Windows targeting, an installed client enrolled and approved on this
   example's Gateway, on the machine running Docker.
 
@@ -58,11 +62,24 @@ cd D:\git\olo-toolgate\examples\langchain
 copy .env.example .env
 ```
 
-Edit `.env` locally. Set `OPENAI_API_KEY` for the model integration, and optionally
-`OPENAI_MODEL` or an OpenAI-compatible `OPENAI_BASE_URL`. These values go only to
-the AI runner. The defaults use `gpt-4.1-mini`; choose a model available to your
-provider/account. The selected device input and generated report are sent to
-that provider during an AI run.
+Create a key at [OpenRouter API keys](https://openrouter.ai/settings/keys), then
+edit `.env` locally:
+
+```dotenv
+OPENROUTER_API_KEY=your-openrouter-key
+OPENROUTER_MODEL=openrouter/free
+```
+
+The runner uses the dedicated `ChatOpenRouter` integration at
+`https://openrouter.ai/api/v1`. Only the AI container receives the model key.
+The default [free models router](https://openrouter.ai/openrouter/free) selects
+an available free model that supports the requested tools. Free models still
+require an OpenRouter account/key and are subject to rate limits and availability.
+The selected device input and generated report are sent through OpenRouter to
+the selected model provider during an AI run. These fixtures are fictional.
+For a specific free model, set `OPENROUTER_MODEL` to its full `author/model:free`
+ID from the [tool-capable model catalog](https://openrouter.ai/models?supported_parameters=tools).
+An existing `.env` is preserved; add these two settings when upgrading this example.
 
 Run:
 
@@ -70,6 +87,8 @@ Run:
 start.bat
 start.bat -UseCase operations
 start.bat -UseCase inventory
+start.bat -Win
+start.bat -Target linux
 ```
 
 Without a model key, test the actual ToolGate/device path first:
@@ -92,10 +111,12 @@ uses the existing local images without rebuilding. Omit `-SkipBuild` after code 
    isolated stack it uses the one-time installation passwords, changes them to
    unique values, and saves them privately in `.state/console-passwords.json`.
 5. Checks the Compose Linux device's actual enrollment code/fingerprint and approves
-   it for 24 hours. Registers its real tool profiles and package digest, maps the
-   device/tools/agent to the standard ReadAndWrite groups, and submits/applies
-   changes through independent reviews.
-6. Issues a 24-hour opaque agent credential for that device, restarts only this
+   it for 24 hours. Adds Linux and the registered, approved Windows devices to
+   `ReadAndWriteDeviceGroup`, preserving their other memberships. Selects an
+   available group member (Windows only with `-Win`, Linux only with `-Target linux`),
+   registers its real tool profiles/package digest, and maps tools/agent to the
+   standard ReadAndWrite groups through independent reviews.
+6. Issues a 24-hour opaque agent credential for the selected device, restarts only this
    example's Quickstart to load it, then runs the selected LangChain task.
 
 The bootstrap/reviewer automation is an **explicit local evaluation fixture**.
@@ -120,7 +141,7 @@ docker compose build linux-device agent
 docker compose up -d --wait --wait-timeout 180 quickstart linux-device
 python3 manage.py setup --bootstrap-local --approve-linux-device
 docker compose run --rm -T agent --smoke
-# With OPENAI_API_KEY configured in .env:
+# With OPENROUTER_API_KEY configured in .env:
 docker compose run --rm -T agent --use-case tickets
 ```
 
@@ -144,7 +165,7 @@ and **Tools → Client tool requests** to inspect real requests/responses.
 | --- | --- |
 | Compose Linux device | `/var/lib/olo-toolgate/hotfolder/<report-name>` **inside `linux-device`** |
 | Linux persistence | Named volume `toolgate-langchain_device-state` holds that HotFolder across restarts/container recreation |
-| Windows, default client configuration | `C:\ProgramData\OLO\ToolGate\hotfolder\<report-name>` on the **selected Windows device** |
+| Windows, prepared example with default state directory | `C:\ProgramData\OLO\ToolGate\state\hotfolder\<report-name>` on the **selected Windows device** |
 | Windows with a custom HotFolder | The `tools.hotfolder.root` value in that device's protected `client.json`; `prepare-windows.ps1` prints the actual path |
 
 The reports are **not written into the AI container or automatically into your
@@ -163,7 +184,7 @@ account, or inspect the report-read response in Client tool requests.
 
 Device activity is persisted in `activity.json` and `packets.jsonl` in the device's
 state directory (`/var/lib/olo-toolgate` on Linux; normally
-`C:\ProgramData\OLO\ToolGate` on Windows). The `client.read_log_entry` tool reads
+`C:\ProgramData\OLO\ToolGate\state` on Windows). The `client.read_log_entry` tool reads
 one latest redacted packet entry. Windows also has tray **Show status**, **Activity
 log**, and **About** for command progress, recent activity and version information.
 
@@ -193,15 +214,42 @@ log**, and **About** for command progress, recent activity and version informati
    This explicitly enables the four **already compiled** example tools in the
    protected client configuration, restarts its service, seeds missing fictional
    input files, and exports public installed profiles to
-   `.state/windows-profiles.json`. It preserves enrollment and other tool profiles;
+   `.state/windows-profiles.json` and a public selection registration in
+   `.state/devices/<device-id>.json`. It preserves enrollment and other tool profiles;
    it does not install/replace the executable or switch gateways.
 
-4. Copy the approved device ID from the console, then run:
+4. Run:
 
    ```bat
-   start.bat -Target windows -DeviceId device-REPLACE_WITH_ACTUAL_ID -Profiles .state/windows-profiles.json -Smoke
-   start.bat -Target windows -DeviceId device-REPLACE_WITH_ACTUAL_ID -Profiles .state/windows-profiles.json -UseCase tickets
+   start.bat -Win -Smoke
+   start.bat -Win -UseCase tickets
    ```
+
+   Setup adds both registered devices to `ReadAndWriteDeviceGroup` through review.
+   No device ID is needed for a run. For multiple Windows devices, copy each
+   `.state/devices/<device-id>.json` export into this host's `.state/devices/`
+   directory. These exports contain the ID, OS, Gateway URL and actual public
+   profiles, never enrollment keys or agent credentials. Alternatively import
+   one with `-Profiles <registration.json>` or `TOOLGATE_WINDOWS_PROFILES` in `.env`.
+   An export from a different Gateway is rejected.
+
+   `start.bat` picks any eligible Linux or Windows member; `-Win` / `-Target windows`
+   filters to Windows, and `-Target linux` filters to Linux. `-DeviceId <id>`
+   optionally pins a particular eligible member. Membership alone is insufficient:
+   the device must be enabled, approved, have unexpired connection approval, and
+   have checked in within 120 seconds. Missing public registrations are excluded.
+   If no eligible device matches, startup fails with a clear explanation.
+
+`-Win` executes tools on the selected Windows device. The Linux container still
+runs as the example's local TLS relay for the agent container.
+
+Selection occurs once at startup, before the AI runs; reads and writes in that
+run stay on the same device, with the selected ID/group printed in the console.
+If it goes offline during execution, the run fails; writes are not replayed on
+another device. Rerun startup to select an available member again.
+After its Gateway restart, setup waits for a fresh check-in before starting the
+agent. Existing clients can take up to five minutes to reconnect because of retry
+backoff; setup allows six minutes and preserves their service/enrollment.
 
 The Gateway credential fixes the target device; the AI cannot supply another
 actor or device identity in its tool arguments. Setup selects the real Windows
@@ -210,7 +258,7 @@ profiles and pins their package bytes through reviewed changes.
 **Current product limitation:** a built-in tool ID has one current registered
 package/profile in this tenant. Windows and Linux executable hashes differ, so
 this example selects **one active device build at a time**. Selecting Windows can
-remove the matching Linux catalog until you run `start.bat -Smoke` (or Linux setup)
+remove the matching Linux catalog until you run `start.bat -Target linux -Smoke` (or Linux setup)
 again. Credentials remain device-bound; they do not bypass package matching. This
 example does not claim simultaneous mixed-build dispatch under the same tool IDs.
 
@@ -238,6 +286,15 @@ containers/network but also retains named volumes. Keep the volumes to reuse
 enrollment and generated reports.
 
 - **No model key:** use `start.bat -Smoke`, or configure `.env` before an AI run.
+- **OpenRouter HTTP 401:** check the OpenRouter key in `OPENROUTER_API_KEY`.
+- **OpenRouter HTTP 429:** the free-model quota/rate limit may be exhausted;
+  wait for the limit to reset before retrying. `-Smoke` still tests real device
+  operations without model calls.
+- **OpenRouter HTTP 402:** check that `OPENROUTER_MODEL` selects `openrouter/free`
+  or a free variant. Paid models require OpenRouter credits.
+- **No tool-capable provider:** select an available model that supports tool calls
+  or retry when a free provider becomes available. The runner requires providers
+  to support its requested parameters.
 - **HTTP 401:** the target agent token is missing, expired, or not loaded; rerun setup.
 - **Empty catalog / HTTP 403:** check approval, enablement, current group mappings,
   selected installed profiles and package pins. Device installation alone grants no access.
@@ -249,6 +306,7 @@ enrollment and generated reports.
   configured HotFolder. The runner refuses to claim success without matching readback.
 
 The [LangChain agent API](https://docs.langchain.com/oss/python/langchain/agents)
-provides the model/tool loop. The [ToolGate initial configuration guide](../../config/initial/README.md)
+provides the model/tool loop; the [OpenRouter integration](https://docs.langchain.com/oss/python/integrations/chat/openrouter)
+provides model access. The [ToolGate initial configuration guide](../../config/initial/README.md)
 explains standard groups, grants and independent review; the
 [client guide](../../docs/client/README.md) covers endpoint enforcement.

@@ -8,7 +8,12 @@ Run in the built agent image: docker compose run --rm -T --no-deps
 import contextlib
 import io
 import json
+import os
 import unittest
+from unittest.mock import patch
+
+import httpx
+from openrouter import OpenRouter
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage
@@ -103,10 +108,12 @@ class AgentTests(unittest.TestCase):
         gateway = Gateway()
         tools = agent.tools_for(gateway, {'support-tickets.json'}, 'support-triage.md')
         self.assertEqual(set(tools), agent.TOOLS)
-        with self.assertRaisesRegex(ValueError, 'reads only'):
-            tools['hotfolder.read_text'].invoke({'path': 'private.txt'})
-        with self.assertRaisesRegex(ValueError, 'writes only'):
-            tools['hotfolder.write_text'].invoke({'path': 'private.txt', 'text': 'overwrite'})
+        self.assertIn('Read only', tools['hotfolder.read_text'].invoke({'path': 'private.txt'}))
+        self.assertIn('Write only', tools['hotfolder.write_text'].invoke({'path': 'private.txt', 'text': 'overwrite'}))
+        self.assertEqual(tools['hotfolder.read_text'].args_schema['properties']['path']['enum'],
+                         ['support-tickets.json'])
+        self.assertEqual(tools['hotfolder.write_text'].args_schema['properties']['path']['enum'],
+                         ['support-triage.md'])
         self.assertEqual(len(gateway.calls), 1)
 
     def test_missing_current_grant_stops_before_model_or_effects(self):
@@ -115,6 +122,16 @@ class AgentTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'target must expose'):
             agent.run(gateway, 'tickets', model())
         self.assertEqual(len(gateway.calls), 1)
+
+    def test_model_can_correct_a_rejected_path_without_unrelated_gateway_access(self):
+        gateway = Gateway()
+        selected = model()
+        selected.responses.insert(0, tool_message('hotfolder_read_text', {'path': 'private.txt'}))
+        with contextlib.redirect_stdout(io.StringIO()):
+            agent.run(gateway, 'tickets', selected)
+        self.assertTrue(all(params['arguments'].get('path') != 'private.txt'
+                            for method, params in gateway.calls if method == 'tools/call'))
+        self.assertIn('support-triage.md', gateway.files)
 
     def test_fabricated_completion_is_rejected(self):
         gateway = Gateway()
@@ -144,6 +161,52 @@ class AgentTests(unittest.TestCase):
             agent.smoke(gateway)
         self.assertIn('No model was called', output.getvalue())
         self.assertIn('langchain-smoke.txt', gateway.files)
+
+
+class OpenRouterTests(unittest.TestCase):
+    def test_openai_key_is_not_used_for_openrouter(self):
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'unrelated-provider-key'}, clear=True):
+            with self.assertRaisesRegex(ValueError, 'Set OPENROUTER_API_KEY'):
+                agent.create_model()
+
+    def test_free_router_runs_real_sdk_tool_loop_with_mock_http(self):
+        key = 'test-only-openrouter-credential'
+        requests = []
+        responses = model().responses
+
+        def reply(request):
+            self.assertEqual(str(request.url), 'https://openrouter.ai/api/v1/chat/completions')
+            self.assertEqual(request.headers['Authorization'], 'Bearer ' + key)
+            body = json.loads(request.content)
+            self.assertEqual(body['model'], 'openrouter/free')
+            self.assertTrue(body['provider']['require_parameters'])
+            self.assertEqual({item['function']['name'] for item in body['tools']},
+                             {name.replace('.', '_') for name in agent.TOOLS})
+            message = responses[len(requests)]
+            requests.append(body)
+            calls = [{'id': call['id'], 'type': 'function', 'function': {
+                'name': call['name'], 'arguments': json.dumps(call['args'])}}
+                for call in message.tool_calls]
+            return httpx.Response(200, json=dict(id='test-response', created=0,
+                object='chat.completion', model='openrouter/free', system_fingerprint='test', choices=[dict(index=0,
+                finish_reason='tool_calls' if calls else 'stop', message=dict(role='assistant',
+                content=message.content, tool_calls=calls))],
+                usage=dict(prompt_tokens=10, completion_tokens=10, total_tokens=20)))
+
+        with patch.dict(os.environ, {'OPENROUTER_API_KEY': key}, clear=True):
+            selected = agent.create_model()
+        self.assertEqual(selected.request_timeout, 45000)
+        self.assertEqual(selected.max_retries, 0)
+        self.assertEqual(selected.max_tokens, 4096)
+        with httpx.Client(transport=httpx.MockTransport(reply)) as client:
+            selected.client = OpenRouter(api_key=key, server_url=selected.openrouter_api_base,
+                                         client=client)
+            gateway = Gateway()
+            with contextlib.redirect_stdout(io.StringIO()):
+                agent.run(gateway, 'tickets', selected)
+        self.assertEqual(len(requests), 5)
+        self.assertIn('support-triage.md', gateway.files)
+        self.assertTrue(any(message['role'] == 'tool' for message in requests[-1]['messages']))
 
 
 if __name__ == '__main__':

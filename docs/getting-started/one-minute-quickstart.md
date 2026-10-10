@@ -32,7 +32,8 @@ Enter it in **Password**, and a different 16–128-character password with eight
 or more distinct printable ASCII characters in **New password**. First login
 requires the change and deletes the bootstrap file. Subsequent logins need only
 Password. Credentials never appear in service logs; the signed 15-minute browser
-session stays in memory. Disconnect clears it.
+session survives page refresh through a scoped HttpOnly cookie, until its
+15-minute expiry. API tokens stay in memory; disconnect clears the session cookie.
 
 1. Open **Built-in tools and vault**. Run the calculator; the default result is 14.
 2. Select `hotfolder.read_text` and enter `{"path":"welcome.txt"}`.

@@ -15,6 +15,7 @@ import hashlib
 import hmac
 import http.client
 import http.server
+from http.cookies import SimpleCookie, CookieError
 import ipaddress
 import json
 import os
@@ -450,8 +451,33 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header('Content-Length', str(len(raw))); self.send_header('Cache-Control', 'no-store')
         self.send_header('X-Content-Type-Options', 'nosniff'); self.send_header('X-Request-ID', request_id)
         for key_, value in (headers or {}).items():
-            if key_.lower() in ('content-security-policy','referrer-policy','permissions-policy','content-disposition','etag','location'): self.send_header(key_, value)
+            if key_.lower() in ('content-security-policy','referrer-policy','permissions-policy','content-disposition','etag','location','set-cookie'): self.send_header(key_, value)
         self.end_headers(); self.wfile.write(raw)
+    def session_cookie(self, token=''):
+        # Cookies are not port-scoped: isolate simultaneous local Quickstarts by
+        # their validated public Host port. Never forward this cookie to Control.
+        host = self.headers.get('Host', '')
+        if not re.fullmatch(r'(localhost|127\.0\.0\.1)(:[0-9]{1,5})?', host): raise PermissionError()
+        name = 'olo_toolgate_session_' + (host.rsplit(':', 1)[1] if ':' in host else '80')
+        cookie = SimpleCookie()
+        cookie[name] = token
+        cookie[name]['path'] = '/api/quickstart/v1'
+        cookie[name]['httponly'] = True
+        cookie[name]['samesite'] = 'Strict'
+        if isinstance(self.connection, ssl.SSLSocket): cookie[name]['secure'] = True
+        if not token: cookie[name]['max-age'] = 0
+        return name, cookie.output(header='').strip()
+    def browser_token(self):
+        name, _ = self.session_cookie()
+        cookie = SimpleCookie()
+        raw = self.headers.get('Cookie', '')
+        if len(raw) > 32768: raise PermissionError()
+        try:
+            cookie.load(raw)
+            token = cookie[name].value
+            session('Bearer ' + token)
+            return token
+        except (KeyError, ValueError, CookieError): raise PermissionError() from None
     def dispatch(self):
         try:
             host = self.headers.get('Host', '')
@@ -467,6 +493,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if path=='/api/quickstart/v1/status' and self.command=='GET':
                 return self.reply(200, {'mode': 'Quickstart', 'nonHa': True, 'ready': self.server.ready.is_set(), 'version': Path('/opt/quickstart/VERSION').read_text().strip(), 'passwordRequired': not password_disabled(), 'database': database_mode(), 'authority': 'online'})
             if path=='/health/ready' and self.command=='GET': return self.reply(200 if self.server.ready.is_set() else 503, {'ready': self.server.ready.is_set()})
+            if path=='/api/quickstart/v1/session' and self.command=='GET':
+                try:
+                    return self.reply(200, {'accessToken': self.browser_token()})
+                except PermissionError:
+                    return self.reply(401, {'code':'UNAUTHORIZED'}, headers={'Set-Cookie': self.session_cookie()[1]})
+            if path=='/api/quickstart/v1/logout' and self.command=='POST':
+                return self.reply(200, {}, headers={'Set-Cookie': self.session_cookie()[1]})
             if path=='/api/quickstart/v1/login' and self.command=='POST':
                 with self.server.login_lock:
                     now = time.monotonic(); self.server.login_times[:] = [t for t in self.server.login_times if now-t<60]
@@ -478,8 +511,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 if user not in LOCAL_USERS: raise PermissionError()
                 if password_disabled() and user=='admin':
                     record = strict((DATA/'identity.json').read_bytes())
-                    return self.reply(200, {'accessToken': jwt(GROUPS, 'admin', generation=record['generation'])})
-                return self.reply(200, {'accessToken': self.server.identity.authenticate(data.get('password'), data.get('newPassword'),user)})
+                    token = jwt(GROUPS, 'admin', generation=record['generation'])
+                else:
+                    token = self.server.identity.authenticate(data.get('password'), data.get('newPassword'),user)
+                return self.reply(200, {'accessToken': token}, headers={'Set-Cookie': self.session_cookie(token)[1]})
             protected = path.startswith(('/api/control/', '/api/quickstart/'))
             if protected: session(self.headers.get('Authorization',''))
             if path=='/api/quickstart/v1/tools' and self.command=='GET':

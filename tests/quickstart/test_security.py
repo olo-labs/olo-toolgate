@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Real local identity primitives and offline custody/integrity tests; run in Linux image."""
 import importlib.util
+import http.cookiejar
 import json
 import os
 from pathlib import Path
@@ -124,6 +125,66 @@ class SecurityTests(unittest.TestCase):
     def test_machine_identity_cannot_be_used_as_a_human_session(self):
         token=quickstart.jwt(['toolgate-relay-gateway'],'runtime',directory_bound=False)
         with self.assertRaises(PermissionError):quickstart.session('Bearer '+token)
+    def test_browser_session_survives_refresh_without_granting_cookie_api_access(self):
+        password='initial-Strong-Password-2026'
+        quickstart.atomic(quickstart.DATA/'identity.json',json.dumps(quickstart.password_record(password,True)))
+        ready=threading.Event();ready.set()
+        server=quickstart.BoundedServer(('127.0.0.1',0),quickstart.Handler,ready)
+        thread=threading.Thread(target=server.serve_forever);thread.start()
+        jar=http.cookiejar.CookieJar()
+        opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+        url='http://127.0.0.1:'+str(server.server_port)
+        try:
+            request=urllib.request.Request(url+'/api/quickstart/v1/login',data=json.dumps({'password':password}).encode(),headers={'Content-Type':'application/json'})
+            with opener.open(request) as response:
+                token=json.load(response)['accessToken'];header=response.headers['Set-Cookie']
+            self.assertIn('HttpOnly',header);self.assertIn('SameSite=Strict',header)
+            self.assertIn('Path=/api/quickstart/v1',header);self.assertNotIn('Domain=',header)
+            self.assertNotIn('Max-Age=',header)  # Browser-session lifetime; token still expires in 15 minutes.
+            with opener.open(url+'/api/quickstart/v1/session') as response:
+                self.assertEqual(json.load(response)['accessToken'],token)
+                self.assertEqual(response.headers['Cache-Control'],'no-store')
+            # The cookie cannot authorize protected operations by itself.
+            with self.assertRaises(urllib.error.HTTPError) as denied:opener.open(url+'/api/quickstart/v1/tools')
+            self.assertEqual(denied.exception.code,401)
+            # Browsers share host cookies across ports; one stack must not restore another's session.
+            wrong_port=urllib.request.Request(url+'/api/quickstart/v1/session',headers={'Host':'127.0.0.1:1'})
+            with self.assertRaises(urllib.error.HTTPError) as denied:opener.open(wrong_port)
+            self.assertEqual(denied.exception.code,401)
+            foreign=urllib.request.Request(url+'/api/quickstart/v1/session',headers={'Origin':'https://evil.example'})
+            with self.assertRaises(urllib.error.HTTPError) as denied:opener.open(foreign)
+            self.assertEqual(denied.exception.code,401)
+            with opener.open(urllib.request.Request(url+'/api/quickstart/v1/logout',data=b'')) as response:
+                self.assertIn('Max-Age=0',response.headers['Set-Cookie'])
+            self.assertEqual(len(jar),0)
+            with self.assertRaises(urllib.error.HTTPError) as denied:opener.open(url+'/api/quickstart/v1/session')
+            self.assertEqual(denied.exception.code,401)
+        finally:server.shutdown();thread.join();server.server_close()
+
+    def test_browser_session_rejects_password_rotation_and_expiration(self):
+        password='initial-Strong-Password-2026'
+        quickstart.atomic(quickstart.DATA/'identity.json',json.dumps(quickstart.password_record(password,True)))
+        ready=threading.Event();ready.set()
+        server=quickstart.BoundedServer(('127.0.0.1',0),quickstart.Handler,ready)
+        thread=threading.Thread(target=server.serve_forever);thread.start()
+        jar=http.cookiejar.CookieJar()
+        opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+        url='http://127.0.0.1:'+str(server.server_port)
+        def login(value):
+            request=urllib.request.Request(url+'/api/quickstart/v1/login',data=json.dumps({'password':value}).encode(),headers={'Content-Type':'application/json'})
+            with opener.open(request) as response:json.load(response)
+        try:
+            login(password)
+            replacement='replacement-Strong-Password-2026'
+            self.identity.authenticate(password,replacement)
+            with self.assertRaises(urllib.error.HTTPError) as denied:opener.open(url+'/api/quickstart/v1/session')
+            self.assertEqual(denied.exception.code,401);self.assertEqual(len(jar),0)
+            login(replacement)
+            expired=quickstart.time.time()+901
+            with patch.object(quickstart.time,'time',return_value=expired):
+                with self.assertRaises(urllib.error.HTTPError) as denied:opener.open(url+'/api/quickstart/v1/session')
+            self.assertEqual(denied.exception.code,401);self.assertEqual(len(jar),0)
+        finally:server.shutdown();thread.join();server.server_close()
     def test_external_backup_and_implicit_storage_switch_are_rejected(self):
         with patch.dict(os.environ,{'TOOLGATE_QUICKSTART_DATABASE_MODE':'postgresql'}):
             with self.assertRaises(ValueError):quickstart.backup(str(self.root/'external-backup'))

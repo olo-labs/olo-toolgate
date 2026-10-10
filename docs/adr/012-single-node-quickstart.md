@@ -19,7 +19,10 @@ this state between replicas. No Quickstart Helm workload or horizontal scaling.
 Bootstrap is a supplied strong password or a random credential in a private file,
 never logs. First login requires a different strong password. PBKDF2-HMAC-SHA256
 uses 600,000 iterations and random 32-byte salt. Signed 15-minute admin JWTs stay
-in browser memory. Public composition checks persisted password generation,
+in browser memory for API calls; a scoped HttpOnly, SameSite=Strict session cookie
+also permits refresh restoration until that same token expires. Disconnect clears
+the cookie; password generation checks invalidate old sessions. The cookie never
+authorizes protected operations directly. Public composition checks persisted password generation,
 exact local Host/Origin, bounded bodies/concurrency and login rate limits. Local
 loopback HTTP is for evaluation; expose only a host-loopback published port.
 Device enrollment retains direct TLS/mTLS and its independent generated CA.

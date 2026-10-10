@@ -14,9 +14,20 @@ Use HTTPS outside loopback development; token entry is disabled on insecure
 non-loopback origins. Supply a short-lived token from the external organization
 IdP with the claims required by [Control configuration](configuration.md).
 The shell verifies connectivity through the backend and does not decode claims
-or decide permissions. Refresh, disconnect or backend 401 clears the in-memory
-session and aborts outstanding requests. The masked input clears on connection.
-Tokens never enter storage, cookies, URLs, exported configuration or app logs.
+or decide permissions. Organization access tokens stay in memory; refresh,
+disconnect or backend 401 clears them and aborts outstanding requests. The masked
+input clears on connection. Tokens never enter browser storage, URLs, exported
+configuration or app logs.
+
+Quickstart password login also creates an HttpOnly, SameSite=Strict browser-session
+cookie scoped to its API path and public port. Refresh restores its existing
+15-minute signed session through the same-origin session API, then verifies access
+with Control; it does not save the password or extend token expiry. Disconnect
+clears the cookie, and expired tokens or stale password generations cannot restore.
+Cookies alone cannot authorize Control or tool operations, which still require
+the verified Bearer token. The cookie is Secure on TLS; loopback Quickstart HTTP
+uses the documented local development exception. Organization tokens retain
+their external identity-provider lifecycle.
 
 Readers browse; the server rejects their mutation attempts with a visible error.
 Directory users do not provision external IdP accounts. Managed directory roles

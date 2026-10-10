@@ -1,7 +1,7 @@
 # Copyright 2026 OLO Labs
 # SPDX-License-Identifier: Apache-2.0
 # Render the existing OLO mark in connection colors; cache icons for the tray lifetime.
-function New-ToolGateStatusIcon([string]$LogoPath, [bool]$Connected) {
+function Initialize-ToolGateIconRenderer {
     Add-Type -AssemblyName System.Drawing
     if (-not ('Olo.ToolGate.StatusIcon' -as [type])) {
         Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @'
@@ -15,6 +15,12 @@ namespace Olo.ToolGate {
         [DllImport("user32.dll")] private static extern bool DestroyIcon(IntPtr icon);
         public static Icon Create(string path, bool connected) {
             Color color = connected ? Color.FromArgb(22, 163, 74) : Color.FromArgb(220, 38, 38);
+            return Render(path, color);
+        }
+        public static Icon CreateWindow(string path) {
+            return Render(path, Color.FromArgb(15, 23, 42));
+        }
+        private static Icon Render(string path, Color color) {
             using (Image logo = Image.FromFile(path))
             using (Bitmap bitmap = new Bitmap(32, 32, PixelFormat.Format32bppArgb))
             using (Graphics graphics = Graphics.FromImage(bitmap))
@@ -39,5 +45,12 @@ namespace Olo.ToolGate {
 }
 '@
     }
+}
+function New-ToolGateStatusIcon([string]$LogoPath, [bool]$Connected) {
+    Initialize-ToolGateIconRenderer
     return [Olo.ToolGate.StatusIcon]::Create($LogoPath, $Connected)
+}
+function New-ToolGateBrandIcon([string]$LogoPath) {
+    Initialize-ToolGateIconRenderer
+    return [Olo.ToolGate.StatusIcon]::CreateWindow($LogoPath)
 }

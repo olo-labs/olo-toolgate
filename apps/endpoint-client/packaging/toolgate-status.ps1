@@ -1,6 +1,7 @@
 # Copyright 2026 OLO Labs
 # SPDX-License-Identifier: Apache-2.0
 # Presentation only: activity is obtained through the authenticated service pipe.
+. (Join-Path $PSScriptRoot 'toolgate-icons.ps1')
 function New-ToolGateWindow {
     param([string]$Title, [string]$LogoPath)
     $form = New-Object System.Windows.Forms.Form
@@ -11,6 +12,11 @@ function New-ToolGateWindow {
     $form.AutoScaleMode = 'Dpi'
     $form.Font = New-Object System.Drawing.Font('Segoe UI', 10)
     $form.BackColor = [System.Drawing.Color]::White
+    $brandIcon = $null
+    if (Test-Path -LiteralPath $LogoPath) {
+        $brandIcon = New-ToolGateBrandIcon -LogoPath $LogoPath
+        $form.Icon = $brandIcon
+    }
     $layout = New-Object System.Windows.Forms.TableLayoutPanel
     $layout.Dock = 'Fill'
     $layout.Padding = New-Object System.Windows.Forms.Padding(20)
@@ -36,8 +42,11 @@ function New-ToolGateWindow {
     $header.Controls.Add($heading, 1, 0)
     $layout.Controls.Add($header, 0, 0)
     $form.Controls.Add($layout)
-    $form.add_FormClosed({ if ($this.Tag.Logo.Image) { $this.Tag.Logo.Image.Dispose() } })
-    $form.Tag = @{ Layout = $layout; Logo = $logo }
+    $form.add_FormClosed({
+        if ($this.Tag.Logo.Image) { $this.Tag.Logo.Image.Dispose() }
+        if ($this.Tag.BrandIcon) { $this.Tag.BrandIcon.Dispose() }
+    })
+    $form.Tag = @{ Layout = $layout; Logo = $logo; BrandIcon = $brandIcon }
     return $form
 }
 function New-ToolGateStatusWindow {

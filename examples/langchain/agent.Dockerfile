@@ -1,6 +1,6 @@
 # Copyright 2026 OLO Labs
 # SPDX-License-Identifier: Apache-2.0
-FROM python:3.14-slim
+FROM python:3.13-slim
 WORKDIR /app
 COPY examples/langchain/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt

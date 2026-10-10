@@ -24,6 +24,11 @@ try {
     Update-ToolGateStatusWindow $form 'Unavailable' $idle $false
     if ($form.Tag.Command.Text -ne 'Command status unavailable') { throw 'Stale activity presented as current' }
     if (-not $form.Tag.Logo.Image -or $about.Tag.Layout.GetControlFromPosition(0, 1).Text -notmatch '0.10.0-dev') { throw 'Branding/version missing' }
+    foreach ($window in @($form,$about)) {
+        if (-not $window.Tag.BrandIcon -or $window.Icon -ne $window.Tag.BrandIcon -or $window.Icon.Width -ne 32) {
+            throw 'OLO window icon missing'
+        }
+    }
     $running.active[0].PSObject.Properties.Remove('progressPercent')
     Update-ToolGateStatusWindow $form "Service running`r`nStatus: Connected`r`nProtected tools are ready." $running $true
     $form.StartPosition = 'Manual'

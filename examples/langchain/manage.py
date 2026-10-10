@@ -21,6 +21,7 @@ spec = importlib.util.spec_from_file_location('debug_configuration', ROOT / 'deb
 shared = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(shared)
 TOOLS = {'hotfolder.list', 'hotfolder.read_text', 'hotfolder.write_text', 'client.read_log_entry'}
+DEVICE_GROUP = 'ReadAndWriteDeviceGroup'
 COMPOSE = ['docker', 'compose', '-p', 'toolgate-langchain', '-f', str(HERE / 'compose.yaml')]
 
 
@@ -91,16 +92,107 @@ def linux_status():
     return json.loads(docker('linux-device', ['cat', '/run/olo-toolgate/device-status.json']))
 
 
-def wait_device(config, device):
-    deadline = time.monotonic() + 90
+def wait_device(config, device, seen_after=0, timeout=90):
+    deadline = time.monotonic() + timeout
     while True:
         endpoint = config.api('/api/control/v1/endpoint/devices/' + device)
-        if endpoint.get('state') == 'ACTIVE' and endpoint.get('connectionApproved') is not False \
-                and int(time.time()*1000) - endpoint.get('lastSeenUnixMs', 0) < 120000:
+        directory = config.api('/api/control/v1/devices/' + device)
+        if device_available(dict(endpointDevice=endpoint, directoryDevice=directory), int(time.time()*1000)) \
+                and endpoint.get('lastSeenUnixMs', 0) >= seen_after:
             return
         if time.monotonic() >= deadline:
             raise ValueError('Approve and enable the selected device in this example\'s console first')
         time.sleep(2)
+
+
+def gateway_url():
+    return 'https://localhost:' + os.environ.get('TOOLGATE_TLS_PORT', '18451')
+
+
+def example_profiles(profiles):
+    selected = [profile for profile in profiles if profile['tool']['id'] in TOOLS]
+    if {profile['tool']['id'] for profile in selected} != TOOLS or len(selected) != len(TOOLS):
+        raise ValueError('Export the four example profiles from the actual installed client')
+    if any(not profile['tool']['enabled'] or not profile['extractor']['enabled'] for profile in selected):
+        raise ValueError('The four example tool profiles must be enabled')
+    return selected
+
+
+def validate_registration(record):
+    if not re.fullmatch(r'device-[a-f0-9]{32}', record['deviceId']) \
+            or record['platform'] not in {'linux', 'windows'}:
+        raise ValueError('Device registration requires an enrolled ID and linux/windows platform')
+    return {**record, 'profiles': example_profiles(record['profiles'])}
+
+
+def device_available(row, now):
+    endpoint = row.get('endpointDevice') or {}
+    expires = endpoint.get('connectionExpiresAtUnixMs')
+    seen = endpoint.get('lastSeenUnixMs', 0)
+    return not row.get('systemExecutor') and (row.get('directoryDevice') or {}).get('enabled') is True \
+        and endpoint.get('state') == 'ACTIVE' and endpoint.get('connectionApproved') is True \
+        and (expires is None or expires > now) and 0 <= now - seen < 120000
+
+
+def select_device(config, registrations, target, device_id=None):
+    group = config.api('/api/control/v1/device-groups/' + DEVICE_GROUP)
+    if not group['enabled']:
+        raise ValueError(DEVICE_GROUP + ' must be enabled')
+    members = set(group['deviceIds'])
+    endpoints = {row['deviceId']: row for row in config.api('/api/control/v1/endpoint/devices')['items']}
+    now = int(time.time() * 1000)
+    candidates = [record for record in registrations if record['deviceId'] in members
+                  and (target == 'any' or record['platform'] == target)
+                  and (not device_id or record['deviceId'] == device_id)
+                  and device_available(endpoints.get(record['deviceId'], {}), now)]
+    if not candidates:
+        raise ValueError(f'No available prepared {target} device in {DEVICE_GROUP}. '
+                         'Enroll/approve and enable the device on this Gateway; for Windows run '
+                         'prepare-windows.ps1 and copy its public .state/devices registration here.')
+    # Pick once per run. A write is never retried against a different device.
+    return secrets.choice(candidates)
+
+
+def register_devices(config, args):
+    status = linux_status()
+    device = status['deviceId']
+    if args.approve_linux_device and status['state'] == 'PENDING':
+        review = config.api('/api/control/v1/endpoint/enrollments/review?code=' + status['userCode'])
+        if (review['deviceId'], review['keyFingerprint']) != (device, status['keyFingerprint']):
+            raise ValueError('Enrollment fingerprint does not match the Compose device')
+        config.api('/api/control/v1/endpoint/enrollments/decision',
+            dict(userCode=status['userCode'], keyFingerprint=status['keyFingerprint'], choice='APPROVE',
+                 unlimitedConnection=False, connectionExpiresAtUnixMs=int(time.time()*1000)+86400000))
+    profiles = json.loads(docker('linux-device',
+        ['/usr/local/lib/olo-toolgate/olo-toolgate-client', 'authorization-profiles']))
+    directory = STATE / 'devices'
+    record = validate_registration(dict(deviceId=device, platform='linux', gateway=gateway_url(), profiles=profiles))
+    shared.private_file(directory / (device + '.json'), json.dumps(record))
+    if args.profiles:
+        imported = json.loads(args.profiles.read_text(encoding='utf-8-sig'))
+        if isinstance(imported, list):
+            if not args.device_id or args.target != 'windows':
+                raise ValueError('A raw Windows profile list requires --target windows --device-id. '
+                                 'Use the public .state/devices registration for automatic selection.')
+            imported = dict(deviceId=args.device_id, platform='windows', gateway=gateway_url(), profiles=imported)
+        imported = validate_registration(imported)
+        if imported['gateway'].rstrip('/') != gateway_url():
+            raise ValueError('Imported device registration belongs to another Gateway')
+        shared.private_file(directory / (imported['deviceId'] + '.json'), json.dumps(imported))
+    registrations = []
+    endpoints = {row['deviceId']: row for row in config.api('/api/control/v1/endpoint/devices')['items']}
+    for path in sorted(directory.glob('device-*.json')):
+        record = validate_registration(json.loads(path.read_text(encoding='utf-8-sig')))
+        if record['gateway'].rstrip('/') != gateway_url():
+            continue
+        registrations.append(record)
+        row = endpoints.get(record['deviceId'], {})
+        endpoint = row.get('endpointDevice') or {}
+        if endpoint.get('connectionApproved') is True and (row.get('directoryDevice') or {}).get('enabled') is True:
+            # Preserve every existing membership; this example adds its shared group.
+            groups = config.api('/api/control/v1/devices/' + record['deviceId'] + '/groups')['groupIds']
+            config.memberships('devices', record['deviceId'], sorted(set(groups) | {DEVICE_GROUP}))
+    return registrations
 
 
 def provision(args):
@@ -109,29 +201,12 @@ def provision(args):
     if config.api('/api/control/v1/admin-session')['role'] != 'SUPER_ADMIN':
         raise ValueError('Initial example provisioning requires a Super Admin API login')
     config.presets()
-    if args.target == 'linux':
-        status = linux_status()
-        device = status['deviceId']
-        if args.approve_linux_device and status['state'] == 'PENDING':
-            review = config.api('/api/control/v1/endpoint/enrollments/review?code=' + status['userCode'])
-            if (review['deviceId'], review['keyFingerprint']) != (device, status['keyFingerprint']):
-                raise ValueError('Enrollment fingerprint does not match the Compose device')
-            config.api('/api/control/v1/endpoint/enrollments/decision',
-                dict(userCode=status['userCode'], keyFingerprint=status['keyFingerprint'], choice='APPROVE',
-                     unlimitedConnection=False, connectionExpiresAtUnixMs=int(time.time()*1000)+86400000))
-        profiles = json.loads(docker('linux-device',
-            ['/usr/local/lib/olo-toolgate/olo-toolgate-client', 'authorization-profiles']))
-    else:
-        if not args.device_id or not args.profiles:
-            raise ValueError('Windows requires --device-id and --profiles from prepare-windows.ps1')
-        device = args.device_id
-        profiles = json.loads(args.profiles.read_text(encoding='utf-8-sig'))
-    if not re.fullmatch(r'device-[a-f0-9]{32}', device):
-        raise ValueError('Use an enrolled ToolGate device ID')
+    registrations = register_devices(config, args)
+    selection = select_device(config, registrations, args.target, args.device_id)
+    device = selection['deviceId']
+    selected = selection['profiles']
+    print(f'Selected {selection["platform"]}: {device} from {DEVICE_GROUP}', flush=True)
     wait_device(config, device)
-    selected = [profile for profile in profiles if profile['tool']['id'] in TOOLS]
-    if {profile['tool']['id'] for profile in selected} != TOOLS or len(selected) != len(TOOLS):
-        raise ValueError('Export the four example profiles from the actual installed client')
     for profile in selected:
         config.upsert('extractors', profile['extractor'])
         config.upsert('tools', profile['tool'])
@@ -142,7 +217,6 @@ def provision(args):
     config.upsert('agents', dict(id=agent, name='LangChain ' + args.target + ' example', enabled=True,
                                 revision=1, ownerUserId=config.username))
     config.memberships('agents', agent, ['ReadAndWriteAgentGroup'])
-    config.memberships('devices', device, ['ReadAndWriteDeviceGroup'])
     binding_id = 'standard-ReadAndWrite-ReadAndWrite'
     binding = config.api('/api/control/v1/bindings/' + binding_id)
     binding['allowedPackageDigests'] = sorted(set(binding['allowedPackageDigests']) |
@@ -167,21 +241,25 @@ def provision(args):
         "assert len(v)<32;s.atomic(p,json.dumps(v+[c]))"], json.dumps(credential))
     directory = STATE / 'agents'
     shared.private_file(directory / (args.target + '.token'), token)
-    descriptor = dict(deviceId=device, agentId=agent, bindingId=binding_id, expiresAtUnixMs=expires,
-                      gateway='https://localhost:' + os.environ.get('TOOLGATE_TLS_PORT', '18451'))
+    descriptor = dict(deviceId=device, platform=selection['platform'], deviceGroupId=DEVICE_GROUP,
+                      agentId=agent, bindingId=binding_id, expiresAtUnixMs=expires, gateway=gateway_url())
     shared.private_file(directory / (args.target + '.json'), json.dumps(descriptor))
     shared.private_file(directory / 'gateway-ca.crt', docker('quickstart', ['cat', '/data/keys/device-ca.crt']))
     result = subprocess.run(COMPOSE + ['restart', 'quickstart'], capture_output=True, text=True, cwd=HERE)
     if result.returncode:
         raise ValueError('Could not restart this example\'s Quickstart to load its credential')
     wait_ready()
-    if args.target == 'linux':
+    # Shutdown grace still permits old-process check-ins. Only a heartbeat after
+    # the replacement Gateway is ready proves the device has reconnected.
+    reconnect_after = int(time.time() * 1000)
+    if selection['platform'] == 'linux':
         # Clear retry backoff from the gateway restart; identity/files stay in volumes.
         result = subprocess.run(COMPOSE + ['restart', 'linux-device'], capture_output=True, text=True, cwd=HERE)
         if result.returncode:
             raise ValueError('Could not reconnect this example\'s Linux device')
-    wait_device(config, device)
-    print(f'Configured {args.target}: {device}. Group changes were independently reviewed. Credentials expire in 24 hours.')
+    print('Waiting for a fresh device check-in after the Gateway restart (up to 6 minutes for client retry backoff).', flush=True)
+    wait_device(config, device, seen_after=reconnect_after, timeout=360)
+    print(f'Configured {selection["platform"]}: {device} in {DEVICE_GROUP}. Group changes were independently reviewed. Credentials expire in 24 hours.')
     print('Private runner credentials: ' + str(directory))
 
 
@@ -190,7 +268,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
     setup = sub.add_parser('setup')
-    setup.add_argument('--target', choices=['linux', 'windows'], default='linux')
+    setup.add_argument('--target', choices=['any', 'linux', 'windows'], default='any',
+                       help='Select an available prepared member of ReadAndWriteDeviceGroup, optionally filtering OS')
     setup.add_argument('--bootstrap-local', action='store_true', help='Use/change the isolated stack\'s one-time installation passwords; retain independent reviewer identities')
     setup.add_argument('--approve-linux-device', action='store_true', help='Approve only the fingerprint-checked Compose Linux device for 24 hours')
     setup.add_argument('--device-id')

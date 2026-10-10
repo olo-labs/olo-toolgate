@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 param(
     [ValidateSet('tickets','operations','inventory')][string]$UseCase = 'tickets',
-    [ValidateSet('linux','windows')][string]$Target = 'linux',
+    [ValidateSet('any','linux','windows')][string]$Target = 'any',
+    [switch]$Win,
     [string]$DeviceId = '',
     [string]$Profiles = '',
     [string]$Python = '',
@@ -28,6 +29,12 @@ function Invoke-ImageCommand([string[]]$Arguments) {
 }
 Push-Location $PSScriptRoot
 try {
+    if ($Win) {
+        if ($PSBoundParameters.ContainsKey('Target') -and $Target -ne 'windows') {
+            throw '-Win selects Windows; use it alone or with -Target windows.'
+        }
+        $Target = 'windows'
+    }
     if (-not (Test-Path -LiteralPath '.env')) { Copy-Item -LiteralPath '.env.example' -Destination '.env' }
     foreach ($line in Get-Content -LiteralPath '.env') {
         if ($line.Trim() -and -not $line.TrimStart().StartsWith('#')) {
@@ -39,11 +46,14 @@ try {
             }
         }
     }
-    if (-not $Smoke -and -not $env:OPENAI_API_KEY) {
-        throw 'Set OPENAI_API_KEY in examples/langchain/.env before the AI run. Use start.bat -Smoke to test real device operations without a model key.'
+    if ($Target -eq 'windows') {
+        if (-not $Profiles) { $Profiles = $env:TOOLGATE_WINDOWS_PROFILES }
     }
-    if ($Target -eq 'windows' -and (-not $DeviceId -or -not $Profiles)) {
-        throw 'For Windows, enroll/approve the device and run prepare-windows.ps1, then supply -DeviceId and -Profiles.'
+    if ($Profiles -and -not (Test-Path -LiteralPath $Profiles -PathType Leaf)) {
+        throw "Device profiles not found: $Profiles. Run prepare-windows.ps1 on the Windows device to register its public profiles."
+    }
+    if (-not $Smoke -and -not $env:OPENROUTER_API_KEY) {
+        throw 'Set OPENROUTER_API_KEY in examples/langchain/.env (https://openrouter.ai/settings/keys). The free model still needs a key. Use start.bat -Smoke to test real device operations without a model key.'
     }
     if (-not $Python) {
         . (Join-Path $PSScriptRoot '../../debug/python.ps1')
@@ -61,9 +71,9 @@ try {
     $ErrorActionPreference = 'Stop'
     if (-not $imageExists) { Invoke-ImageCommand @('compose','pull','quickstart') }
     Invoke-ExampleCommand 'docker' @('compose','up','-d','--wait','--wait-timeout','180','quickstart','linux-device')
-    $setupArguments = @('manage.py','setup','--bootstrap-local','--target',$Target)
-    if ($Target -eq 'linux') { $setupArguments += '--approve-linux-device' }
-    else { $setupArguments += @('--device-id',$DeviceId,'--profiles',$Profiles) }
+    $setupArguments = @('manage.py','setup','--bootstrap-local','--approve-linux-device','--target',$Target)
+    if ($DeviceId) { $setupArguments += @('--device-id',$DeviceId) }
+    if ($Profiles) { $setupArguments += @('--profiles',$Profiles) }
     Invoke-ExampleCommand $Python $setupArguments
     Write-Host "Console: http://127.0.0.1:$($env:TOOLGATE_HTTP_PORT)/console/"
     $agentArguments = @('compose','run','--rm','-T','agent','--target',$Target,'--use-case',$UseCase)
