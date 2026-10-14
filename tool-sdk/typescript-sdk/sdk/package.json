@@ -56,7 +56,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/esm.cjs",
-    "test": "node --test --test-concurrency=4 test/",
+    "test": "node --test --test-concurrency=4 test/*.test.mjs",
     "check": "npm run build && npm test"
   },
   "dependencies": {
