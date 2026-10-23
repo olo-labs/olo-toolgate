@@ -1,0 +1,16 @@
+<!--
+  Copyright 2026 OLO Labs
+  SPDX-License-Identifier: Apache-2.0
+
+  Exact pins for every package; each project also commits a packages.lock.json.
+-->
+<Project>
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="[4.8.0]" />
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="[8.0.32]" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="[8.0.3]" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="[17.14.1]" />
+    <PackageVersion Include="xunit" Version="[2.9.3]" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="[2.8.2]" />
+  </ItemGroup>
+</Project>
