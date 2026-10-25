@@ -58,6 +58,8 @@ jobs:
         ref: ${{ steps.allocate.outputs.sourceCommit }}
         path: source
         persist-credentials: false
+    - name: Install release-note validation dependencies
+      run: python -m pip install -r tools/requirements.txt
     - name: Apply one release version to binaries, packages and configuration
       run: python tools/release/prepare.py stamp --root source
     - name: Create release branch and immutable preparation tag

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ToolGate release-note fragment",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["author", "category", "summary", "details", "breaking", "references"],
+  "properties": {
+    "author": {"type": "string", "pattern": "\\S", "maxLength": 120},
+    "category": {"enum": ["added", "changed", "deprecated", "removed", "fixed", "security", "docs", "internal"]},
+    "summary": {"type": "string", "pattern": "\\S", "not": {"pattern": "[\\r\\n]"}, "maxLength": 200},
+    "details": {"type": "string", "pattern": "\\S", "maxLength": 10000},
+    "breaking": {"type": "boolean"},
+    "references": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^(#[1-9][0-9]*|https://[^\\s<>]+)$"}
+    },
+    "component": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 80}
+  }
+}

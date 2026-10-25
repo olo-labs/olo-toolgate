@@ -1,0 +1,11 @@
+# Illustrative only: replace 123 with the actual PR number before copying.
+author: Rahul Nigam
+category: added
+summary: Add contributor-authored release-note fragments.
+details: |
+  Contributors can describe each change in a separate YAML file.
+  Release preparation validates and compiles the target version's fragments.
+breaking: false
+references:
+  - "#123"
+component: release

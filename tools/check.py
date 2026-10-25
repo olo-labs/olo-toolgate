@@ -154,6 +154,7 @@ def main():
         python('tools/ci/preflight.py')
         python('-m','unittest','discover','-s','tests/ci','-v')
     if part('python'):
+        python('tools/release/notes.py','validate')
         python('tools/ui/generate.py','--check')
         python('tools/quality.py')
         python('-m','unittest','discover','-s','tests/contracts','-v')

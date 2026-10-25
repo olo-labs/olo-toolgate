@@ -103,6 +103,15 @@ gh workflow run create-release-branch.yml --ref main \
 Replace the example SHA with a real ancestor of the selected branch.
 
 The summary reports the resulting branch, version, source commit and prepared commit.
+Before preparation, agree on the expected allocated version and add its
+[contributor release-note fragments](../../.changes/README.md) under
+`.changes/v<VERSION>/`. The exact version folder opts into compilation; invalid
+or empty folders stop preparation. If no matching folder exists, preparation
+retains the legacy changelog-based notes. Inspect the compiled notes in the
+prepared branch before building or publishing. Allocated build numbers are never
+reused, so move intended changes to the new target folder in the source branch
+when abandoning a preparation (retain historical folders).
+
 The branch contains `release.json`, synchronized versions/lockfiles/generated bindings,
 release notes and the source version's existing initial-configuration bundle mapping.
 Preparation carries current standalone packaging adapters into older source trees; the

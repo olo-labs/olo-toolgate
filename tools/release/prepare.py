@@ -14,7 +14,7 @@ from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from tools.release import identity
+from tools.release import identity, notes
 
 
 def run(*args, cwd=ROOT, input=None):
@@ -137,6 +137,9 @@ def write_json(path, value):
 def stamp(root, info):
     """Run source-compatible generators without registry credentials or network dependency updates."""
     identity.validate(info)
+    # Fold the selected fragments into the changelog before the existing version
+    # and binding generators distribute RELEASE-NOTES.md to every artifact.
+    notes.update_changelog(info['version'], root)
     stamp_versions(root, info)
 
 

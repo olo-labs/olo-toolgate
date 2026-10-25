@@ -38,6 +38,8 @@ Discuss large changes in an issue before implementation.
 - Add or update tests for changed behavior; cover integration and actual denied
   effects when crossing a trust boundary.
 - Update generated contracts and document compatibility or migration impact.
+- Add a [release-note fragment](.changes/README.md) to the agreed release's
+  `.changes/v<VERSION>/` folder, using a real PR/issue ID and a short slug.
 - Update the user/operator guide in the same change. Use the
   [documentation guide](docs/contributors/documentation-guide.md).
 - Explain what changed, why, and which checks passed. Identify checks not run.

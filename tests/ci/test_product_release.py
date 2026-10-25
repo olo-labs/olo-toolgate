@@ -153,7 +153,15 @@ class VersionPropagationTests(unittest.TestCase):
                     path.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copyfile(ROOT/name, path)
             before = {p.relative_to(target).as_posix():p.read_bytes() for p in (target/'packages/contracts/schemas').rglob('*.json')}
+            fragments = target/'.changes/v1.0.0-beta.42'
+            fragments.mkdir(parents=True)
+            shutil.copyfile(ROOT/'.changes/schema.json', target/'.changes/schema.json')
+            shutil.copyfile(ROOT/'.changes/examples/pr-123-release-note-fragments.yaml', fragments/'pr-123-release-notes.yaml')
             prepare.stamp(target, release())
+            self.assertIn('Author: Rahul Nigam', (target/'RELEASE-NOTES.md').read_text(encoding='utf-8'))
+            for language in ('java', 'rust', 'typescript', 'php'):
+                self.assertEqual((target/'RELEASE-NOTES.md').read_bytes(),
+                                 (target/'packages/contracts'/language/'RELEASE-NOTES.md').read_bytes())
             self.assertEqual((target/'VERSION').read_text().strip(), '1.0.0-beta.42')
             self.assertEqual((target/'packages/contracts/VERSION').read_text().strip(), '1.0.0-beta.42')
             self.assertEqual(tomllib.loads((target/'Cargo.toml').read_text())['workspace']['package']['version'], '1.0.0-beta.42')
