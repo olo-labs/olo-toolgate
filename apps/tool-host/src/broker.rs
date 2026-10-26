@@ -418,6 +418,7 @@ async fn send(invocation: &Invocation, body: &Value) -> Result<Sent, Value> {
                 &invocation.invocation_id,
                 &invocation.fencing_token,
                 audience,
+                invocation.deadline_unix_ms,
             )
             .await
             .map_err(|_| refused("downstream service authorization refused"))?;

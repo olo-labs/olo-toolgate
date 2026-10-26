@@ -6,6 +6,10 @@ The project follows semantic versioning once stable versioning begins.
 
 ## 0.10.0-dev
 
+- Tool Hosts retry admission-throttled service permit requests with bounded,
+  jittered backoff inside the invocation deadline. Authorization denials and
+  downstream effects are never retried by this recovery path.
+
 - Gateway validates the canonical cancellation acknowledgement, so a successful
   cancellation is returned to callers instead of an erroneous validation failure.
 

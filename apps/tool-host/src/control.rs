@@ -159,17 +159,44 @@ impl Control {
         invocation: &str,
         fence: &str,
         audience: olo_toolgate_contracts::ServiceAudience,
+        deadline_unix_ms: u64,
     ) -> Result<olo_toolgate_contracts::ServicePermit, ControlError> {
-        self.post(
-            "/service-permits/issue",
-            &olo_toolgate_contracts::ServicePermitIssue {
-                invocation_id: invocation.into(),
-                fencing_token: fence.into(),
-                audience,
-            },
-            None,
-        )
+        let request = olo_toolgate_contracts::ServicePermitIssue {
+            invocation_id: invocation.into(),
+            fencing_token: fence.into(),
+            audience,
+        };
+        // Tenant admission rejects 429 before entering the operation. Retrying this
+        // permit request cannot dispatch the downstream effect. Never retry a denial,
+        // transport ambiguity or a downstream write here.
+        let budget = Duration::from_millis(deadline_unix_ms.saturating_sub(crate::now_ms()))
+            .min(Duration::from_secs(3));
+        if budget.is_zero() {
+            return Err(ControlError::Unavailable(
+                "service permit deadline elapsed".into(),
+            ));
+        }
+        tokio::time::timeout(budget, async {
+            let delays = [100, 300, 900];
+            for attempt in 0..=delays.len() {
+                match self.post("/service-permits/issue", &request, None).await {
+                    Err(ControlError::Refused(429)) if attempt < delays.len() => {
+                        // Jitter avoids synchronizing hosts waiting on the same tenant.
+                        let mut jitter = [0u8; 1];
+                        use ring::rand::SecureRandom;
+                        let _ = ring::rand::SystemRandom::new().fill(&mut jitter);
+                        tokio::time::sleep(Duration::from_millis(
+                            delays[attempt] + u64::from(jitter[0] % 100),
+                        ))
+                        .await;
+                    }
+                    result => return result,
+                }
+            }
+            unreachable!("bounded permit attempts always return")
+        })
         .await
+        .map_err(|_| ControlError::Unavailable("service permit deadline elapsed".into()))?
     }
     fn client(&self) -> reqwest::Client {
         self.client
