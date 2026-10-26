@@ -244,6 +244,7 @@ pub(crate) fn status(code: &ErrorCode) -> StatusCode {
         ErrorCode::Unauthorized => StatusCode::UNAUTHORIZED,
         ErrorCode::Forbidden | ErrorCode::TenantMismatch => StatusCode::FORBIDDEN,
         ErrorCode::NotFound | ErrorCode::TenantUnavailable => StatusCode::NOT_FOUND,
+        ErrorCode::Conflict => StatusCode::CONFLICT,
         ErrorCode::MisdirectedRequest => StatusCode::MISDIRECTED_REQUEST,
         ErrorCode::Timeout => StatusCode::GATEWAY_TIMEOUT,
         ErrorCode::DependencyUnavailable => StatusCode::SERVICE_UNAVAILABLE,
@@ -564,6 +565,22 @@ async fn method_not_allowed(request: Request) -> Response {
     r.headers_mut()
         .insert("allow", HeaderValue::from_static("POST"));
     r
+}
+
+#[cfg(test)]
+mod error_status_tests {
+    #[tokio::test]
+    async fn cancelled_replay_conflicts_are_not_reported_as_server_failures() {
+        use olo_toolgate_contracts::ErrorCode;
+        let response = super::error(ErrorCode::Conflict, "cancelled-operation");
+        assert_eq!(response.status(), axum::http::StatusCode::CONFLICT);
+        let bytes = axum::body::to_bytes(response.into_body(), 4096)
+            .await
+            .unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["code"], "CONFLICT");
+        assert_eq!(body["retryable"], false);
+    }
 }
 
 #[cfg(test)]

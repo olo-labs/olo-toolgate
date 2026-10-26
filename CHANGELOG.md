@@ -6,6 +6,9 @@ The project follows semantic versioning once stable versioning begins.
 
 ## 0.10.0-dev
 
+- Gateway preserves Control conflicts as HTTP 409, including replay of a
+  cancelled operation, instead of incorrectly returning an internal error.
+
 - Tool Hosts retry admission-throttled service permit requests with bounded,
   jittered backoff inside the invocation deadline. Authorization denials and
   downstream effects are never retried by this recovery path.
