@@ -210,3 +210,13 @@ registry coordinates and container digests. Check these with the included checks
 Cross-registry publication is not atomic. A failed run can leave packages visible before
 the complete GitHub Release exists; use the original run and publication records to recover.
 The old `ci.yml` version-tag trigger is removed so these jobs own product release publication.
+
+## Contribution collections
+
+The shared `.changes/v1.0/` collection is included in each 1.0 beta, RC, stable
+and patch release from its selected source commit. Exact-version collections add
+release-specific notes. Other major/minor series remain separate. See the
+[contributor guide](../../.changes/README.md) and
+[annotated contribution template](../../.changes/RELEASE-NOTE-SAMPLE.yaml).
+Run `python tools/release/notes.py --check --version v1.0.0-beta.1`
+before preparation; CI and release source validation also validate contributions.
