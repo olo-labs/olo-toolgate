@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "baseVersion": "1.0.0",
+  "build": 1,
+  "channel": "Beta",
+  "version": "1.0.0-beta.1",
+  "displayVersion": "1.0.0-beta.1",
+  "numericVersion": "1.0.0.1",
+  "macosBuild": "1.0.1",
+  "branch": "release/1.0.0-beta.1",
+  "tag": "v1.0.0-beta.1",
+  "preparedTag": "prepared/1.0.0-beta.1",
+  "sourceBranch": "main",
+  "sourceCommit": "358e4d33524c53fd23fb1c4d28949a12e0cd46db",
+  "requestedCommit": "latest",
+  "prepareRun": "40694080410"
+}
