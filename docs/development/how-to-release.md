@@ -120,20 +120,21 @@ this branch: prepare a new release from a source branch containing the fixes.
 
 ## Job 2: build, inspect, and publish
 
-Open **Actions → Build and release binaries → Run workflow**, select workflow branch **main**:
+Open **Actions → Build and release binaries → Run workflow**, select the prepared workflow branch **release/<version>**:
 
 | Input | First build |
 |---|---|
-| `release_branch` | Branch from Job 1, e.g. `release/1.0.0-beta.42` |
+| Workflow branch | Branch from Job 1, e.g. `release/1.0.0-beta.42` |
 | `mode` | `build-only` |
 | `build_run_id` | Leave empty |
 
 ```sh
-gh workflow run build-release.yml --ref main \
-  -f release_branch=release/1.0.0-beta.42 -f mode=build-only
+gh workflow run build-release.yml --ref release/1.0.0-beta.42 \
+  -f mode=build-only
 ```
 
-The job runs metadata checks, foundation tests/scans, all six native platform builds and
+The workflow runs on the exact prepared release branch commit. It runs CI preflight,
+blocking coverage checks and the Sonar quality gate when configured, foundation tests/scans, all six native platform builds and
 installer checks, and production container validation. Build/test stages have no publishing
 credentials. Foundation and native builds reuse the existing workflows; publication does
 not rebuild Java libraries or containers.
@@ -149,8 +150,8 @@ Record the original build Actions run ID from the summary or run URL. To publish
 exact bytes, run **the same second workflow** again:
 
 ```sh
-gh workflow run build-release.yml --ref main \
-  -f release_branch=release/1.0.0-beta.42 -f mode=build-and-publish \
+gh workflow run build-release.yml --ref release/1.0.0-beta.42 \
+  -f mode=build-and-publish \
   -f build_run_id=123456789
 ```
 
