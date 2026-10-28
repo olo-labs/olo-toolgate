@@ -1,0 +1,23 @@
+<!--
+  Copyright 2026 OLO Labs
+  SPDX-License-Identifier: Apache-2.0
+-->
+<Project>
+  <PropertyGroup>
+    <!-- One version for the repository, read from the root VERSION file. -->
+    <Version>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)../../VERSION').Trim())</Version>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <Authors>OLO Labs</Authors>
+    <Company>OLO Labs</Company>
+    <Copyright>Copyright 2026 OLO Labs</Copyright>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);NU5105;NU5128</NoWarn>
+  </PropertyGroup>
+</Project>
