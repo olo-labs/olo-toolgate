@@ -265,6 +265,46 @@ def publish_images(info):
     return result
 
 
+def dockerhub_namespace():
+    namespace = os.environ.get('DOCKERHUB_NAMESPACE') or os.environ.get('DOCKERHUB_USERNAME', '')
+    if not re.fullmatch(r'[a-z0-9][a-z0-9_-]*', namespace):
+        raise ValueError('Set a valid Docker Hub namespace or username')
+    if not os.environ.get('DOCKERHUB_USERNAME') or not os.environ.get('DOCKERHUB_TOKEN'):
+        raise ValueError('Set DOCKERHUB_USERNAME and DOCKERHUB_TOKEN for production-release')
+    return namespace
+
+
+def publish_dockerhub(info):
+    namespace = dockerhub_namespace()
+    result = {}
+    run('docker', 'login', 'docker.io', '--username', os.environ['DOCKERHUB_USERNAME'],
+        '--password-stdin', input=os.environ['DOCKERHUB_TOKEN'])
+    try:
+        for component, (local, name) in IMAGES.items():
+            run('docker', 'load', '-i', str(OUTPUT/'images'/component/'image.tar'))
+            doc = json.loads(run('docker', 'image', 'inspect', local, capture=True).stdout)[0]
+            labels = doc['Config'].get('Labels') or {}
+            if (labels.get('org.opencontainers.image.version') != info['version']
+                    or labels.get('org.opencontainers.image.revision') != info['commit']):
+                raise ValueError('Docker Hub source image identity mismatch: '+component)
+            target = f'docker.io/{namespace}/{name}:{info["version"]}'
+            remote = remote_manifest(target, missing=True)
+            if remote is None:
+                run('docker', 'tag', local, target)
+                run('docker', 'push', target)
+                remote = remote_manifest(target)
+            manifest = remote.get('SchemaV2Manifest') or remote.get('OCIManifest') or {}
+            if manifest.get('config', {}).get('digest') != doc['Id']:
+                raise ValueError('Existing Docker Hub version contains a different image: '+target)
+            reference = target.rsplit(':', 1)[0]+'@'+remote['Descriptor']['digest']
+            prepare.create_tag('published/'+info['version']+'/dockerhub/'+component,
+                               info['commit'], dict(image=reference, config=doc['Id']))
+            result[component] = reference
+    finally:
+        run('docker', 'logout', 'docker.io')
+    return result
+
+
 def maven_request(url, data=None, authenticated=True):
     headers = {}
     if authenticated:
@@ -380,6 +420,7 @@ def publish():
     verify_packages(info, OUTPUT/'assets')
     from tools.release.development import validate_maven_repository
     validate_maven_repository()
+    dockerhub_namespace()
     default = 'https://maven.pkg.github.com/'+os.environ['GITHUB_REPOSITORY']
     if os.environ['MAVEN_REPOSITORY_URL'].rstrip('/') != default and (not os.environ.get('MAVEN_USERNAME') or not os.environ.get('MAVEN_PASSWORD')):
         raise ValueError('Custom Maven repositories require explicit MAVEN_USERNAME and MAVEN_PASSWORD')
@@ -391,7 +432,7 @@ def publish():
     # Work on a separate copy: the retained build bundle is never mutated.
     release = ROOT/'build/publication/assets'
     shutil.copytree(OUTPUT/'assets', release)
-    registries = dict(images=publish_images(info), maven=publish_maven(info), npm=publish_npm(info), helm=publish_helm(info))
+    registries = dict(images=publish_images(info), dockerhub=publish_dockerhub(info), maven=publish_maven(info), npm=publish_npm(info), helm=publish_helm(info))
     prepare.write_json(release/'registry-publication.json', dict(version=info['version'], commit=info['commit'], **registries))
     checksum_assets(release)
 
