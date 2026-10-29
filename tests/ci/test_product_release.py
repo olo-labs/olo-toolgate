@@ -366,6 +366,32 @@ class NpmChannelTests(unittest.TestCase):
                 self.assertEqual(run.call_count, 2 if writes else 1)
 
 
+class DockerHubPublicationTests(unittest.TestCase):
+    def test_resume_and_conflicting_images(self):
+        info = dict(release(), commit=PREPARED)
+        doc = dict(Id='sha256:checked', Config=dict(Labels={
+            'org.opencontainers.image.version':info['version'],
+            'org.opencontainers.image.revision':PREPARED}))
+        remote = dict(Descriptor=dict(digest='sha256:remote'), SchemaV2Manifest=dict(config=dict(digest=doc['Id'])))
+        with patch.dict(os.environ, DOCKERHUB_NAMESPACE='olo-labs', DOCKERHUB_USERNAME='publisher', DOCKERHUB_TOKEN='test'), \
+                patch.object(pipeline, 'IMAGES', {'control':('local:tested','olo-toolgate-control')}), \
+                patch.object(pipeline, 'run') as run, patch.object(pipeline, 'remote_manifest') as manifest, \
+                patch.object(prepare, 'create_tag') as tag:
+            run.return_value.stdout = json.dumps([doc])
+            for responses, pushes in [([None, remote],1), ([remote],0)]:
+                run.reset_mock()
+                manifest.side_effect = responses
+                result = pipeline.publish_dockerhub(info)
+                self.assertEqual(result['control'], 'docker.io/olo-labs/olo-toolgate-control@sha256:remote')
+                self.assertEqual(sum(c.args[:2] == ('docker','push') for c in run.call_args_list), pushes)
+                self.assertEqual(run.call_args_list[-1].args, ('docker','logout','docker.io'))
+            remote['SchemaV2Manifest']['config']['digest'] = 'sha256:wrong'
+            manifest.side_effect = [remote]
+            with self.assertRaisesRegex(ValueError, 'different image'):
+                pipeline.publish_dockerhub(info)
+            self.assertEqual(run.call_args_list[-1].args, ('docker','logout','docker.io'))
+
+
 class ProductWorkflowTests(unittest.TestCase):
     def test_quality_workflow_supports_explicit_blocking_checks(self):
         workflow = yaml.safe_load((ROOT/'.github/workflows/quality-summary.yml').read_text())
