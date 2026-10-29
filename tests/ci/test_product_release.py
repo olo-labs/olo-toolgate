@@ -339,6 +339,20 @@ class OriginalBuildGateTests(unittest.TestCase):
                 pipeline.verify_run('200',collected=True)
 
 
+class ImmutablePublicationTests(unittest.TestCase):
+    def test_publish_uses_prepared_identity_after_branch_advances(self):
+        info = dict(release(), commit=PREPARED)
+        with patch.object(prepare, 'tag', return_value=(PREPARED, info)) as tag, \
+                patch.object(prepare, 'resolve', side_effect=AssertionError('Moving branch must not be resolved')):
+            pipeline.verify_prepared_release(info)
+            tag.assert_called_once_with(info['preparedTag'])
+        for record in (None, (SHA, info), (PREPARED, dict(info, version='1.0.0-beta.99')),
+                       (PREPARED, dict(info, branch='release/2.x')), (PREPARED, dict(info, build=99))):
+            with self.subTest(record=record), patch.object(prepare, 'tag', return_value=record):
+                with self.assertRaisesRegex(ValueError, 'Immutable prepared tag'):
+                    pipeline.verify_prepared_release(info)
+
+
 class ProductWorkflowTests(unittest.TestCase):
     def test_quality_workflow_supports_explicit_blocking_checks(self):
         workflow = yaml.safe_load((ROOT/'.github/workflows/quality-summary.yml').read_text())

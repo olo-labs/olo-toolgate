@@ -368,6 +368,13 @@ def publish_helm(info):
     return registry+'/olo-toolgate:'+info['version']
 
 
+def verify_prepared_release(info):
+    prepared = prepare.tag(info['preparedTag'])
+    if (prepared is None or prepared[0] != info['commit']
+            or any(prepared[1].get(key) != info[key] for key in ('version', 'branch', 'build'))):
+        raise ValueError('Immutable prepared tag no longer identifies the release commit')
+
+
 def publish():
     info = validate_bundle()
     verify_packages(info, OUTPUT/'assets')
@@ -380,8 +387,7 @@ def publish():
     receipt = json.loads((OUTPUT/'assets/build-manifest.json').read_text())
     if receipt['controllerCommit'] != producer['head_sha']:
         raise ValueError('Bundle controller commit differs from original build workflow')
-    if prepare.resolve(info['branch'])[0] != info['commit']:
-        raise ValueError('Prepared branch no longer identifies the release commit')
+    verify_prepared_release(info)
     # Work on a separate copy: the retained build bundle is never mutated.
     release = ROOT/'build/publication/assets'
     shutil.copytree(OUTPUT/'assets', release)
