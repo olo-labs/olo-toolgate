@@ -403,6 +403,14 @@ def version_order(version):
     return (*map(int, match.groups()[:3]), {'beta':0, 'rc':1, None:2}[match[4]], int(match[5] or 0))
 
 
+def advance_npm_channel(info, registries):
+    # Advance only the matching npm channel, and never move an alias backwards.
+    alias = {'Beta':'beta', 'RC':'rc', 'Stable':'latest'}[info['channel']]
+    tags = json.loads(run('npm', 'view', registries['npm'], 'dist-tags', '--registry', 'https://npm.pkg.github.com', '--json', capture=True).stdout)
+    if alias not in tags or version_order(tags[alias]) < version_order(info['version']):
+        run('npm', 'dist-tag', 'add', registries['npm'], alias, '--registry', 'https://npm.pkg.github.com')
+
+
 def finalize():
     info = validate_bundle()
     release = ROOT/'build/publication/assets'
@@ -413,11 +421,7 @@ def finalize():
     prepare.create_tag(info['tag'], info['commit'], dict(version=info['version'], buildRun=info['buildRun']))
     github_release.publish(run, os.environ['GITHUB_REPOSITORY'], info['tag'], info['commit'], release,
                            'OLO ToolGate '+info['version'], release/'RELEASE-NOTES.md', prerelease=info['channel'] != 'Stable')
-    # Advance only the matching npm channel, and never move an alias backwards.
-    alias = {'Beta':'beta', 'RC':'rc', 'Stable':'latest'}[info['channel']]
-    tags = json.loads(run('npm', 'view', '@olo-labs/toolgate-contracts', 'dist-tags', '--registry', 'https://npm.pkg.github.com', '--json', capture=True).stdout)
-    if alias not in tags or version_order(tags[alias]) < version_order(info['version']):
-        run('npm', 'dist-tag', 'add', registries['npm'], alias, '--registry', 'https://npm.pkg.github.com')
+    advance_npm_channel(info, registries)
     prepare.emit(info, commit=info['commit'], buildRun=info['buildRun'])
 
 

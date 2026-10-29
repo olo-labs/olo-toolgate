@@ -353,6 +353,19 @@ class ImmutablePublicationTests(unittest.TestCase):
                     pipeline.verify_prepared_release(info)
 
 
+class NpmChannelTests(unittest.TestCase):
+    def test_query_uses_existing_version_without_relying_on_latest(self):
+        info = release()
+        coordinate = '@olo-labs/toolgate-contracts@'+info['version']
+        for tags, writes in [('{}', True), ('{"beta":"1.0.0-beta.9"}', True),
+                             ('{"beta":"1.0.0-beta.99"}', False)]:
+            with self.subTest(tags=tags), patch.object(pipeline, 'run') as run:
+                run.return_value.stdout = tags
+                pipeline.advance_npm_channel(info, dict(npm=coordinate))
+                self.assertEqual(run.call_args_list[0].args[:4], ('npm', 'view', coordinate, 'dist-tags'))
+                self.assertEqual(run.call_count, 2 if writes else 1)
+
+
 class ProductWorkflowTests(unittest.TestCase):
     def test_quality_workflow_supports_explicit_blocking_checks(self):
         workflow = yaml.safe_load((ROOT/'.github/workflows/quality-summary.yml').read_text())
