@@ -79,6 +79,8 @@ public class EnterpriseOperationResource {
     @POST @Path("permits/consume") @Consumes("application/json") @PermitAll
     public Response consume(String document){var certificate=peer();java.util.function.Function<Store.Session,String> device=tx->endpoints.authenticate(tx,certificate,System.currentTimeMillis()).deviceId();
         return reply(v2(document,"toolDescriptorDigest")?operations.consumeInvocation(tenant(),device,document):operations.consume(tenant(),device,body(document)));}
+    @POST @Path("invocations/{id}/heartbeat") @Consumes("application/json") @PermitAll
+    public Response heartbeat(@PathParam("id")String id,String document){var certificate=peer();return reply(operations.heartbeat(tenant(),tx->endpoints.authenticate(tx,certificate,System.currentTimeMillis()).deviceId(),id,body(document)));}
     @POST @Path("effects/report") @Consumes("application/json") @PermitAll
     public Response report(@HeaderParam("Toolgate-Fencing-Token")String fencingToken,String document){var certificate=peer();java.util.function.Function<Store.Session,String> device=tx->endpoints.authenticate(tx,certificate,System.currentTimeMillis()).deviceId();
         return reply(v2(document,"fencingToken")?operations.reportInvocation(tenant(),device,document,fencingToken==null?"":fencingToken):operations.report(tenant(),device,body(document)));}

@@ -30,6 +30,11 @@ import json, os, sys
 inp = json.loads(sys.stdin.readline())
 args = inp["arguments"]
 mode = args.get("since", 0)
+if mode == 7:
+    import time
+    print(json.dumps({"kind":"LOG","level":"info","message":"waiting for lease test"}),flush=True)
+    time.sleep(2)
+    open("post-lease-effect","w").write("effect")
 if mode == 2:
     sys.exit(3)
 if mode == 6:
@@ -101,6 +106,9 @@ fn put(dir: &Path, kind: &str, value: &Value) -> String {
 
 #[derive(Default)]
 struct Seen {
+    revoke: bool,
+    short_lease: bool,
+    partition: bool,
     /// Run-event batches, and the order in which events and reports reached Control.
     events: Vec<Value>,
     order: Vec<&'static str>,
@@ -125,6 +133,16 @@ async fn serve(router: Router) -> u16 {
 }
 
 async fn control(seen: Shared) -> u16 {
+    async fn heartbeat(
+        State(seen): State<Shared>,
+        Json(body): Json<Value>,
+    ) -> axum::response::Response {
+        let seen = seen.lock().unwrap();
+        if seen.partition {
+            return StatusCode::SERVICE_UNAVAILABLE.into_response();
+        }
+        Json(json!({"invocationId":body["invocationId"],"fencingToken":body["fencingToken"],"leaseExpiresAtUnixMs":tool_host::now_ms()+if seen.short_lease{600}else{10_000},"cancelRequested":seen.revoke})).into_response()
+    }
     async fn consume(State(seen): State<Shared>, Json(body): Json<Value>) -> impl IntoResponse {
         seen.lock().unwrap().consumed.push(body.clone());
         Json(
@@ -207,6 +225,10 @@ async fn control(seen: Shared) -> u16 {
                 post(result),
             )
             .route("/api/control/v1/access/permits/consume", post(consume))
+            .route(
+                "/api/control/v1/access/invocations/{id}/heartbeat",
+                post(heartbeat),
+            )
             .route("/api/control/v1/access/effects/report", post(report))
             .route(
                 "/api/control/v1/access/invocations/{id}/events",
@@ -675,6 +697,56 @@ async fn an_admitted_invocation_runs_calls_through_the_broker_and_reports() {
         std::fs::read_dir(rig.dir.join("work/i")).unwrap().count(),
         0
     );
+}
+
+#[tokio::test]
+async fn revoked_authority_never_starts_a_worker_or_contacts_the_target() {
+    let rig = rig!();
+    rig.seen.lock().unwrap().revoke = true;
+    let arguments = json!({"orderId":"123456"});
+    let (jws, _) = permit(&rig, &arguments, |_| {});
+    let lines = dispatch(&rig, &jws, &arguments).await;
+    assert_eq!(lines[0]["kind"], "ADMITTED");
+    assert_eq!(lines[1]["outcome"], "OUTCOME_UNKNOWN");
+    let seen = rig.seen.lock().unwrap();
+    assert!(seen.upstream.is_empty());
+    assert_eq!(seen.reports.len(), 1);
+}
+
+#[tokio::test]
+async fn revocation_and_control_partition_stop_a_live_worker_before_its_delayed_effect() {
+    for partition in [false, true] {
+        let rig = rig!();
+        rig.seen.lock().unwrap().short_lease = true;
+        let arguments = json!({"orderId":"123456","since":7});
+        let (jws, _) = permit(&rig, &arguments, |_| {});
+        let seen = rig.seen.clone();
+        let revoke = async move {
+            tokio::time::timeout(std::time::Duration::from_secs(5), async {
+                loop {
+                    if !seen.lock().unwrap().events.is_empty() {
+                        break;
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+                }
+            })
+            .await
+            .expect("worker did not start");
+            let mut state = seen.lock().unwrap();
+            if partition {
+                state.partition = true;
+            } else {
+                state.revoke = true;
+            }
+        };
+        let (lines, ()) = tokio::join!(dispatch(&rig, &jws, &arguments), revoke);
+        assert_eq!(lines[1]["outcome"], "OUTCOME_UNKNOWN");
+        tokio::time::sleep(std::time::Duration::from_millis(2100)).await;
+        assert!(rig.seen.lock().unwrap().upstream.is_empty());
+        for sandbox in std::fs::read_dir(rig.dir.join("work/i")).unwrap() {
+            assert!(!sandbox.unwrap().path().join("post-lease-effect").exists());
+        }
+    }
 }
 
 #[tokio::test]

@@ -7522,6 +7522,38 @@ paths:
                 $ref: ../schemas/v1/enterprise.schema.json#/$defs/EnterpriseInvocation
         '403':
           description: Another target device or inactive certificate
+  /api/control/v1/access/invocations/{id}/heartbeat:
+    post:
+      operationId: renewExecutionLease
+      description: Renew a running Tool Host lease against current authority. Expired leases cannot be resurrected. Progress and input requests are currently refused.
+      security:
+      - deviceCertificate: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/v2/permit.schema.json#/$defs/LeaseHeartbeat
+      responses:
+        '200':
+          description: Renewed lease or cancellation; no-store
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/v2/permit.schema.json#/$defs/LeaseRenewal
+        '400':
+          description: Invalid heartbeat or unsupported progress/input fields
+        '403':
+          description: Wrong device or fencing token
+        '503':
+          description: Authority unavailable; existing expiry remains binding
   /api/control/v1/access/effects/report:
     post:
       operationId: reportEnterpriseEffect

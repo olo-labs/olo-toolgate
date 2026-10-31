@@ -7,6 +7,11 @@ import java.util.List;
 
 /** All methods run inside the tenant transaction which also commits audit and directory state. */
 public interface EnterpriseStore {
+    record ExecutionLease(String invocationId,String fencingToken,String deviceId,long expiresAt) {}
+    default ExecutionLease executionLease(String invocationId){throw Failure.unavailable();}
+    default void saveExecutionLease(ExecutionLease lease){throw Failure.unavailable();}
+    /** Immutable original report bytes, retained independently of current execution authority. */
+    default void saveExecutionEvidence(String invocationId,String fence,String digest,String document,long recordedAt){throw Failure.unavailable();}
     /** Merges the caller's declared correlation into the invocation's first Insights fact (ADR 031); a no-op when Insights is off. */
     default void insightsContext(String invocationId,io.ololabs.toolgate.contracts.v2.ExecutionContext context){}
     Long userCredentialDeadline(String id);

@@ -74,6 +74,7 @@ public class ContractCodec implements Codec {
     static final java.util.List<String> V2_FILES = java.util.List.of("settings.schema.json", "profile.schema.json", "discovery.schema.json", "mcp-proxy.schema.json", "insights.schema.json");
     /** Single v2 definitions Control serves from files whose other names collide with v1 (package, protocol). */
     static final java.util.List<java.util.Map.Entry<String, String>> V2_NAMES = java.util.List.of(
+        java.util.Map.entry("permit.schema.json", "LeaseHeartbeat"), java.util.Map.entry("permit.schema.json", "LeaseRenewal"),
         java.util.Map.entry("permit.schema.json", "InvocationPermitClaims"), java.util.Map.entry("permit.schema.json", "PermitReservationRequest"),
         java.util.Map.entry("permit.schema.json", "PermitConsumption"), java.util.Map.entry("protocol.schema.json", "InvocationResultReport"), java.util.Map.entry("protocol.schema.json", "RunEventBatch"),
         java.util.Map.entry("protocol.schema.json", "ToolHostRegistration"), java.util.Map.entry("package.schema.json", "PackageDeploymentRequest"), java.util.Map.entry("package.schema.json", "ClientReleaseRequest"), java.util.Map.entry("package.schema.json", "ClientRelease"),

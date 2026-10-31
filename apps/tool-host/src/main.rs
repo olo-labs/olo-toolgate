@@ -34,6 +34,7 @@ async fn main() -> ExitCode {
         eprintln!("workload identity refused: {failure}");
         return ExitCode::from(78);
     }
+    tokio::spawn(tool_host::server::deliver_evidence(host.clone()));
     if config.enrollment.is_some() {
         match tool_host::device::Device::open(&config, host.control()) {
             Ok(device) => {

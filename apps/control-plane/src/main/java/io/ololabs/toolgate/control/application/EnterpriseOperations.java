@@ -57,7 +57,9 @@ public final class EnterpriseOperations {
         if(d.decision()==Decision.BLOCK)throw ManagementAccess.denied();return d;
     }
     private EnterpriseInvocation invocation(Store.Session tx,String id){var i=tx.enterprise().invocation(Ids.valid(id));if(i==null)throw new Failure(ErrorCode.NOT_FOUND,404,"Invocation not found");
-        long time=clock.millis();if(i.expiresAtUnixMs()<=time&&Set.of(EnterpriseInvocationState.PENDING_APPROVAL,EnterpriseInvocationState.QUEUED,EnterpriseInvocationState.RESERVED,EnterpriseInvocationState.EXECUTING).contains(i.state())){
+        long time=clock.millis();var executionLease=i.state()==EnterpriseInvocationState.EXECUTING?tx.enterprise().executionLease(i.id()):null;
+        boolean expired=i.expiresAtUnixMs()<=time||executionLease!=null&&executionLease.expiresAt()<=time;
+        if(expired&&Set.of(EnterpriseInvocationState.PENDING_APPROVAL,EnterpriseInvocationState.QUEUED,EnterpriseInvocationState.RESERVED,EnterpriseInvocationState.EXECUTING).contains(i.state())){
             var state=i.state()==EnterpriseInvocationState.EXECUTING?EnterpriseInvocationState.OUTCOME_UNKNOWN:EnterpriseInvocationState.EXPIRED;
             var next=changed(i,state,i.reservedNonce(),i.completedResources(),i.resultDigest());tx.enterprise().saveInvocation(next,time,i.revision());tx.audit("effect-watchdog","INVOCATION_"+state.name(),"invocation:"+id,next.revision(),i.evaluation().context().requestId(),i.requestDigest(),evidence(next));i=next;
         }return i;}
@@ -100,6 +102,8 @@ public final class EnterpriseOperations {
         String json=codec.json(m);if(json.length()<=4096)return json;m.remove("resources");return codec.json(m);}
     private void audit(Store.Session tx,DirectoryService.Actor actor,String operation,EnterpriseInvocation i){tx.audit(actor.id(),operation,"invocation:"+i.id(),i.revision(),i.evaluation().context().requestId(),i.requestDigest(),evidence(i));}
     private void fresh(Ids.TenantId tenant,Store.Session tx,EnterpriseInvocation i,long now){
+        var executionLease=tx.enterprise().executionLease(i.id());
+        if(executionLease!=null&&executionLease.expiresAt()<=now)throw ManagementAccess.denied();
         Long credentialDeadline=tx.enterprise().userCredentialDeadline(i.id());
         if(credentialDeadline!=null&&credentialDeadline<=now)throw ManagementAccess.denied();
         if(i.expiresAtUnixMs()<=now||i.authorizationEpoch()!=tx.enterprise().authorizationEpoch())throw ManagementAccess.denied();
@@ -228,14 +232,41 @@ public final class EnterpriseOperations {
                 ||lease==null||lease.consumedAt()!=null||!lease.invocationId().equals(i.id())||!java.util.Objects.equals(lease.authorizationEpoch(),i.authorizationEpoch())||!java.util.Objects.equals(lease.expiresAt(),claims.exp()))throw ManagementAccess.denied();
             fresh(tenant,tx,i,now);tx.enterprise().consumeNonce(claims.nonce(),now);var next=changed(i,EnterpriseInvocationState.EXECUTING,i.reservedNonce(),i.completedResources(),null);tx.enterprise().saveInvocation(next,now,i.revision());
             tx.audit(DirectoryService.digest(authenticatedDevice),"PERMIT_CONSUME","invocation:"+i.id(),next.revision(),e.context().requestId(),i.requestDigest(),evidence(next));
-            return reply(new io.ololabs.toolgate.contracts.v2.PermitConsumed(i.id(),claims.nonce(),i.expiresAtUnixMs()),next.revision());});
+            long leaseExpiry=Math.min(now+30000,i.expiresAtUnixMs());
+            tx.enterprise().saveExecutionLease(new EnterpriseStore.ExecutionLease(i.id(),claims.nonce(),authenticatedDevice,leaseExpiry));
+            return reply(new io.ololabs.toolgate.contracts.v2.PermitConsumed(i.id(),claims.nonce(),leaseExpiry),next.revision());});
+    }
+    /** Renewal is never replay-cached: each request checks current authority in the tenant transaction. */
+    public Store.Reply heartbeat(Ids.TenantId tenant,java.util.function.Function<Store.Session,String> certificate,String id,String document){
+        var request=codec.model(document,io.ololabs.toolgate.contracts.v2.LeaseHeartbeat.class);
+        if(!Ids.valid(id).equals(request.invocationId())||request.progress()!=null||request.inputRequest()!=null)throw Failure.validation();
+        return store.transaction(tenant,true,tx->{
+            long now=now(tx);String device=certificate.apply(tx);var i=invocation(tx,id);var lease=tx.enterprise().executionLease(id);
+            if(lease==null||!device.equals(lease.deviceId())||!device.equals(i.evaluation().context().deviceId())
+                ||!request.fencingToken().equals(lease.fencingToken())||!request.fencingToken().equals(i.reservedNonce()))throw ManagementAccess.denied();
+            boolean cancel=i.state()!=EnterpriseInvocationState.EXECUTING||lease.expiresAt()<=now||i.expiresAtUnixMs()<=now;
+            if(!cancel)try{fresh(tenant,tx,i,now);}catch(Failure denied){if(denied.status()!=403)throw denied;cancel=true;}
+            long expiry=cancel?Math.min(now,lease.expiresAt()):Math.min(now+30000,i.expiresAtUnixMs());
+            tx.enterprise().saveExecutionLease(new EnterpriseStore.ExecutionLease(id,lease.fencingToken(),device,expiry));
+            tx.audit(DirectoryService.digest(device),cancel?"EXECUTION_LEASE_REFUSED":"EXECUTION_LEASE_RENEW","invocation:"+id,i.revision(),i.evaluation().context().requestId(),i.requestDigest());
+            return reply(new io.ololabs.toolgate.contracts.v2.LeaseRenewal(id,lease.fencingToken(),expiry,cancel,null),i.revision());
+        });
     }
     /** v2 result from a Tool Host: COMPLETED completed every resource and FAILED none (the host reports a lost run of a
      *  tool that needs the execution ledger as OUTCOME_UNKNOWN); anything else may have had effects. */
     public Store.Reply reportInvocation(Ids.TenantId tenant,java.util.function.Function<Store.Session,String> certificate,String document,String fencingToken){var report=codec.model(document,io.ololabs.toolgate.contracts.v2.InvocationResultReport.class);
         if(!report.fencingToken().equals(fencingToken))throw ManagementAccess.denied();
         return authoritative(tenant,"device-effect",report.invocationId(),DirectoryService.digest(document),tx->{String device=certificate.apply(tx);var i=invocation(tx,report.invocationId());
-            if(!report.fencingToken().equals(i.reservedNonce())||tx.packages().toolHost(device)==null)throw ManagementAccess.denied();
+            if(!device.equals(i.evaluation().context().deviceId())||!report.fencingToken().equals(i.reservedNonce())||tx.packages().toolHost(device)==null)throw ManagementAccess.denied();
+            var admission=tx.enterprise().nonce(report.fencingToken());
+            if(admission==null||admission.consumedAt()==null||!admission.invocationId().equals(i.id()))throw ManagementAccess.denied();
+            tx.enterprise().saveExecutionEvidence(i.id(),report.fencingToken(),DirectoryService.digest(document),document,now(tx));
+            if(i.state()!=EnterpriseInvocationState.EXECUTING){
+                // Evidence may arrive after cancellation, expiry, or reconciliation. Keep
+                // the report without silently overriding a reviewed business outcome.
+                tx.audit(DirectoryService.digest(device),"LATE_EXECUTION_EVIDENCE","invocation:"+i.id(),i.revision(),i.evaluation().context().requestId(),DirectoryService.digest(document));
+                return reply(i,i.revision());
+            }
             var result=report.result()==null?null:(com.fasterxml.jackson.databind.JsonNode)codec.value(codec.json(report.result()));
             var state=switch(report.outcome()){case COMPLETED->EnterpriseInvocationState.SUCCEEDED;case FAILED->EnterpriseInvocationState.FAILED;default->EnterpriseInvocationState.OUTCOME_UNKNOWN;};
             if(state==EnterpriseInvocationState.SUCCEEDED&&result==null)throw Failure.validation();

@@ -203,6 +203,24 @@ impl Control {
         Ok(delivery.value)
     }
 
+    pub async fn heartbeat(
+        &self,
+        invocation_id: &str,
+        fencing_token: &str,
+    ) -> Result<olo_toolgate_contracts::v2::LeaseRenewal, ControlError> {
+        self.post(
+            &format!("/invocations/{invocation_id}/heartbeat"),
+            &olo_toolgate_contracts::v2::LeaseHeartbeat {
+                invocation_id: invocation_id.into(),
+                fencing_token: fencing_token.into(),
+                progress: None,
+                input_request: None,
+            },
+            Some(fencing_token),
+        )
+        .await
+    }
+
     pub async fn report(&self, report: &InvocationResultReport) -> Result<(), ControlError> {
         let _: serde_json::Value = self
             .post("/effects/report", report, Some(&report.fencing_token))

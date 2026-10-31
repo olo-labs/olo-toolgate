@@ -37,6 +37,8 @@ pub struct Host {
     store: Store,
     control: Arc<Control>,
     slots: Arc<Semaphore>,
+    outbox: crate::outbox::Outbox,
+    intents: crate::outbox::Outbox,
 }
 
 impl Host {
@@ -68,6 +70,9 @@ impl Host {
             .map_err(|e| format!("{}: {e}", config.work_dir.display()))?;
         let control = Control::new(&config.control)?;
         control.validate_host(&config.host_id)?;
+        let outbox = crate::outbox::Outbox::open(config.work_dir.join("result-outbox"))?;
+        let intents = crate::outbox::Outbox::open(config.work_dir.join("admission-spool"))?;
+        intents.recover_into(&outbox)?;
         Ok(Arc::new(Host {
             verifier: Verifier::new(
                 keys,
@@ -79,6 +84,8 @@ impl Host {
             store: Store::new(config.store_dir.clone(), config.work_dir.clone()),
             control: Arc::new(control),
             slots: Arc::new(Semaphore::new(config.limits.max_concurrent)),
+            outbox,
+            intents,
             config,
         }))
     }
@@ -328,6 +335,13 @@ pub async fn admit(host: &Arc<Host>, dispatch: Dispatch) -> Result<Admitted, Adm
             return Err(refusal(&id, RefusalReason::StoreUnavailable));
         }
     };
+    if host
+        .intents
+        .enqueue(&admission_intent(&id, &consumed.fencing_token))
+        .is_err()
+    {
+        return Err(refusal(&id, RefusalReason::StoreUnavailable));
+    }
     tracing::info!(
         target: "toolgate::audit",
         invocation_id = %id,
@@ -374,6 +388,36 @@ fn error_frame(code: &str, message: &str, retryable: bool) -> ResultFrame {
 
 /// Runs an admitted invocation and reports its outcome to Control.
 pub async fn run(host: Arc<Host>, admitted: Admitted) -> ResultMessage {
+    let id = admitted.claims.invocation_id.clone();
+    let fence = admitted.fencing_token.clone();
+    let deadline = admitted.claims.deadline_unix_ms;
+    let initial = host.control.heartbeat(&id, &fence).await;
+    if let Ok(initial) = initial {
+        let supervision = crate::lease::supervise(&host.control, &id, &fence, deadline, initial);
+        tokio::select! {
+            biased;
+            _=supervision=>{},
+            result=run_authorized(host.clone(),admitted)=>return result,
+        }
+    }
+    // Dropping the worker future kills its process. A revoked or partitioned run
+    // may already have produced effects; never turn lost authority into FAILED.
+    finish(
+        &host,
+        id,
+        fence,
+        InvocationOutcome::OutcomeUnknown,
+        error_frame(
+            "OUTCOME_UNKNOWN",
+            "Execution authority ended; reconcile any effects",
+            false,
+        ),
+        None,
+    )
+    .await
+}
+
+async fn run_authorized(host: Arc<Host>, admitted: Admitted) -> ResultMessage {
     let Admitted {
         claims,
         prepared,
@@ -652,6 +696,16 @@ fn send_spans(
 }
 
 /// Reports an invocation's outcome to Control and answers the dispatch with it.
+fn admission_intent(id: &str, fence: &str) -> InvocationResultReport {
+    InvocationResultReport {
+        invocation_id: id.into(),
+        fencing_token: fence.into(),
+        outcome: InvocationOutcome::OutcomeUnknown,
+        result: None,
+        not_started: None,
+    }
+}
+
 async fn finish(
     host: &Arc<Host>,
     id: String,
@@ -668,8 +722,23 @@ async fn finish(
         result: Some(result.clone()),
         not_started,
     };
-    if let Err(e) = host.control.report(&report).await {
-        tracing::warn!(invocation_id = %id, error = ?e, "Control did not take the result report");
+    match host.outbox.enqueue(&report) {
+        Ok(path) => {
+            if let Err(e) = host
+                .intents
+                .remove_report(&admission_intent(&id, &fencing_token))
+            {
+                tracing::warn!(invocation_id=%id,error=%e,"admission intent cleanup incomplete");
+            }
+            if host.control.report(&report).await.is_ok() {
+                if let Err(e) = host.outbox.acknowledge(&path) {
+                    tracing::warn!(invocation_id=%id,error=%e,"result acknowledgement not persisted");
+                }
+            }
+        }
+        Err(e) => {
+            tracing::error!(invocation_id=%id,error=%e,"result evidence could not be persisted");
+        }
     }
     ResultMessage {
         invocation_id: id,
@@ -681,6 +750,16 @@ async fn finish(
 
 /// How long pull mode waits before asking Control again when nothing is waiting.
 const PULL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(250);
+
+/// Retry evidence independently of execution authority, including after restart.
+pub async fn deliver_evidence(host: Arc<Host>) {
+    loop {
+        if let Err(e) = host.outbox.drain(&host.control).await {
+            tracing::warn!(error=%e,"result outbox delivery incomplete");
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    }
+}
 
 /// Pull mode: takes the calls Control holds for this host and answers each through Control, as
 /// [`dispatch`] answers the Gateway. Until the host is enrolled and registered Control refuses,

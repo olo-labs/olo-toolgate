@@ -6,6 +6,10 @@ The project follows semantic versioning once stable versioning begins.
 
 ## 0.10.0-dev
 
+- Tool Hosts renew durable, device-bound execution leases against current Control
+  authority and stop supervised workers on refusal or lease expiry. Admission
+  uncertainty records and exact result reports survive restart; late evidence is
+  retained without reopening execution. See `docs/operations/execution-leases.md`.
 - Tool schema for training: `toolgate pack` also writes `<name>-<version>.tool-schema.json` beside the `.tgpkg`
   (each tool's name, description, `useWhen`, effect, parameters with types, defaults, enums and bounds, and the
   input and output schemas), merging optional phrasing hints from the project's `training/annotations.json`.

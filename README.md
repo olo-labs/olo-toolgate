@@ -270,8 +270,11 @@ enforced today; the following are **not yet** in place:
 
 - **Tool Host isolation:** process launch and broker checks exist, but container
   and network isolation are unfinished. Enhancement: [#230](https://github.com/olo-labs/olo-toolgate/issues/230).
-- **Durable result retry:** the Tool Host result outbox is not implemented.
-  Enhancement: [#230](https://github.com/olo-labs/olo-toolgate/issues/230).
+- **Execution recovery:** Tool Hosts have renewable execution leases, an admission
+  spool and a durable result outbox ([operator guide](docs/operations/execution-leases.md)).
+  Per-effect authorization, consent, target fencing and operation-wide recovery
+  remain unfinished: [#230](https://github.com/olo-labs/olo-toolgate/issues/230)
+  ([claim inventory](docs/security/zero-trust-execution-status.md)).
 - **Offline protected effects:** unsupported; live Control authority remains
   required. Design review: [#239](https://github.com/olo-labs/olo-toolgate/issues/239).
 - **Nested or dynamic groups:** unsupported. Enhancement: [#240](https://github.com/olo-labs/olo-toolgate/issues/240).
