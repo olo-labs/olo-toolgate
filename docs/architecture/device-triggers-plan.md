@@ -1,6 +1,6 @@
 # OLO ToolGate — Triggers (v1 plan)
 
-**Status:** Draft for design review, revision 10. Supersedes "Governed Event Fabric and Registered AI Workflows" for v1.
+**Status:** Draft for design review, revision 11. Supersedes "Governed Event Fabric and Registered AI Workflows" for v1.
 **Performance:** **v1 has no performance check.** No load, throughput, latency or capacity target is a v1 gate or
 claim (section 20.1). Bounded **resource-safety** tests, which are functional and have no rate targets, are part of the
 gate (section 20.2).
@@ -8,6 +8,16 @@ gate (section 20.2).
 **Proposed ADR:** ADR 032 *Triggers* (amends ADR 013, ADR 014, ADR 027 and the Tool SDK authoring contract, so it
 reopens gate D0).
 **Date:** 2026-10-31
+
+**Changes in revision 11** (implementation plan)
+
+- **Section 24: implementation plan, one module at a time.** 18 modules built strictly in sequence, each with:
+  - an **effort percentage** (its share of total v1 effort including its own tests; the total is 100%);
+  - dependencies and a *Done when*;
+  - the M12 scenarios it owns.
+
+  Tests are written once, at the cheapest layer, with end-to-end runs only at four slice checkpoints (35%, 56%, 85%,
+  92%). Finished modules are trusted black boxes behind feature flags, and the final module re-runs the full gate once.
 
 **Changes in revision 10** (sixth design review)
 
@@ -2495,6 +2505,9 @@ None of these assertions compare against throughput.
 
 ## 21. Delivery plan
 
+The milestones below define **scope**. The **execution order**, one module at a time with each module's effort
+percentage and owned scenarios, is in section 24.
+
 Each milestone ends with automated tests on both databases where relevant. Milestones are numbered in dependency
 order, and **M12 is the release gate**.
 
@@ -2901,3 +2914,91 @@ Earlier questions:
 5. **Mixed packages.** Can one package contain tools and triggers (proposed: yes)?
 6. **Default ceilings.** 3 600 events per hour per instance, 50 000 per hour per tenant, 7-day retention, 24 h client
    lease.
+
+## 24. Implementation plan: one module at a time
+
+Section 21 groups the **scope** into milestones. This section fixes the **execution order**: modules are built
+strictly one at a time, and each is finished (implemented, tested, documented and merged) before the next starts. The
+point is to test each piece once, when it is built, and not re-test half-finished work across modules.
+
+### 24.1 Working rules
+
+1. **One module in progress.** Module *n+1* starts only when module *n* meets its *Done when*. Nothing runs in
+   parallel.
+2. **Vertical and complete.** Each module delivers working behavior through every layer it touches (contract, code,
+   tests, docs). No "tests later" and no stubs left for a later module to fill in, except the explicit fakes below.
+3. **Test once, at the cheapest layer.**
+   - Unit and property tests cover the module's own rules.
+   - One integration test covers each new boundary.
+   - End-to-end scenarios run only at **slice checkpoints** (marked ★), where a user-visible flow first works.
+   - A finished module's tests stay in CI as regression protection. They are never re-planned or rewritten by later
+     modules.
+4. **Finished modules are trusted black boxes.** Later modules use them through their public contract. A later module
+   that needs a not-yet-built neighbor uses a **fake** at that boundary: the router stores events with no deliveries,
+   and actions have no composite targets yet.
+5. **Behind feature flags.** Each module ships behind `toolgate.triggers.<module>` (off by default) until its slice
+   checkpoint passes, so `main` stays releasable after every module.
+6. **Scenario ownership.** Every M12 scenario is assigned to exactly one module (24.3), and passes when that module
+   finishes. The final module re-runs the whole suite once, as the release gate.
+7. **Effort percentages** are each module's estimated share of the **total** v1 implementation effort, including that
+   module's own tests and docs. They are relative estimates for planning and tracking progress, not calendar
+   commitments. The total is 100%.
+8. **Tenant isolation inside every module.** Each module's *Done when* includes the cross-tenant negative tests for
+   the routes, records and paths it adds (section 17). Scenario 13 is therefore completed incrementally, not in one
+   place.
+
+### 24.2 Module sequence
+
+| # | Module | Effort | Cumulative | Builds | Depends on | Done when |
+|---|---|---|---|---|---|---|
+| 1 | **Contracts, ADR and model** | 5% | 5% | ADR 032; `v2/trigger.schema.json` and protocol frames; generated Java, Rust, PHP and TS bindings; fixtures; proposed OpenAPI; descriptor keyword amendment; `trigger-delivery.tla` | — | Gate D0 approved; contract round-trip tests pass; the check-in and ack worst-case size contract test passes (8.5); TLC passes on the model (6.6.1) |
+| 2 | **Java SDK, POLL** | 6% | 11% | `@ClientTrigger` and `@ServerTrigger` (POLL), processor rules, `PollContext`, runtime loop and frames, `toolgate check` and `toolgate pack`, harness; sample `inbox-watch` in POLL form | 1 | Processor compile-error tests (5.8), runtime frame tests, harness tests for the sample; the package packs and verifies |
+| 3 | **Supervisor crate** | 8% | 19% | `crates/trigger-supervisor`: process lifecycle, frames, outbox with `outboxSeq`, the `LOCAL` barrier, rejection classes, loss records, backoff and crash loop, health, the sequence namespaces | 1 | Stateful property tests against the model (G-STATE item 2) with a fake runtime and a fake Control; crash-point tests T1–T5 and T10 |
+| 4 | **Control core for client triggers** | 8% | 27% | Package acceptance of trigger exports and the security delta; the definitions API; `TriggerAssignment` CRUD for **client** targets (ETag, idempotency, dry run); instances; the signed `TriggerDesiredDocument`; client leases; permissions; audit; tenant tables | 1, 2 | API tests including cross-tenant negatives; desired-document signing and verification tests |
+| 5 | ★ **Client integration and ingest** | 8% | 35% | The endpoint client links the supervisor, fetches desired state and adds `TriggerSync` to check-in; Control ingest (T6–T9, dedupe, `acceptedOutboxSeq`, acks, `retryLater`, dispositions); instance and event queries; derived `Stale` | 3, 4 | **Slice 1:** allocate a POLL trigger to a device, see `Running`, receive events, query status. Owned scenarios pass |
+| 6 | **Lifecycle, rollout and raw page** | 6% | 41% | `:action` with overrides and precedence; `excludeDevices`; rolling package upgrade and `:rollback`; the raw `#triggers` page (upload, assignments, actions, status) | 5 | Override-resolution unit tests; owned scenarios pass |
+| 7 | **PUSH mode and file watching** | 7% | 48% | Java `PushTrigger`, emitter, position barrier, `ACCEPTED` level (checkpoints ≤ 4 KiB inline), `requestReconcile`, `SnapshotState`; client `FILES_WATCH` and `FILES_INFO` `versionKey`; sample `inbox-watch` in PUSH form | 5 | Java part of the SDK trigger conformance fixtures (M2); owned scenarios pass |
+| 8 | ★ **Server triggers on the Tool Host** | 8% | 56% | Tool Host links the supervisor; server placement, singleton lease and failover; the lease-bound broker and secrets; snapshot paging with generations (8.5); chunked checkpoint transfer (8.6); compromise quarantine (T15); sample `mail-watch` (POLL) | 7 | **Slice 2:** a server mail trigger in a two-host pool, with failover. Owned scenarios pass |
+| 9 | **Python SDK parity** | 4% | 60% | `@server_trigger` and `@client_trigger`, POLL and PUSH, `SnapshotState`, and the Python twins of all samples | 2, 7 | The full shared SDK conformance fixtures pass for Python and Java |
+| 10 | **Event router and retention** | 4% | 64% | Transactional outbox, router workers, the delivery state machine (with `Held` and `Superseded`), dead letters and re-drive, retention, tombstones, purge (T11), bulkheads (20.1) | 5 | Router unit and integration tests; retention tests. Deliveries go to a test consumer only |
+| 11 | **Information flow, coarse mode** | 3% | 67% | Labels per event type and tool output, `dataClearance`, fail-closed defaults per integration kind, redacted views, restricted CEL environment (`dev.cel`) with limits | 10 | Coarse-mode tests and CEL limit tests. This is the safe baseline that lets the following modules be built without the field-level work |
+| 12 | **Subscriptions and WebSocket** | 5% | 72% | `TriggerSubscription` with CEL filters on the readable view; single-use tickets with log redaction; `toolgate.triggers.v1` with credits, resume, gaps and revocation; AsyncAPI; the console Live panel | 10, 11 | Protocol tests and ticket-hygiene tests; owned scenarios pass |
+| 13 | **Schedules (Quartz)** | 5% | 77% | Schedule source; configuration outbox and reconciliation controller; fire-time guard; catch-up identity (11.3); `status.schedule` | 10 | DST, race and catch-up tests; owned scenarios pass |
+| 14 | ★ **Actions** | 8% | 85% | Action revisions and pinning; Control-originated admission (`origin: TRIGGER`); the run-as Agent and `agent.delegate`; the operation ledger with `effectId`, `repeatId` and `attemptId`; `:redrive`, `:retry` and `:repeat`; dispatch re-authorization; effect rules; `OUTCOME_UNKNOWN` handling; authorization changes during runs (14.4.1); `OriginatingDevice` | 12, 13 | **Slice 3:** schedule → socket → MCP, and device trigger → authorized MCP. Owned scenarios pass |
+| 15 | ★ **Composite MCP** | 7% | 92% | Draft, validate, test and publish; canonical digest; CEL type-checking; globals; credential slots with provenance; the durable orchestrator; resource-scope rules (15.4.1); the Gateway admission change; composites as action targets | 14 | **Slice 4:** a composite run by an agent and by an action. Owned scenarios pass |
+| 16 | **Information flow, field-level mode** | 4% | 96% | The schema-walk labeller for nested data, binding floors, side-channel enforcement, and the full conformance and adversarial corpus | 11, 15 | **Gate G-IFC** passes and field-level mode is switched on. If it doesn't pass, v1 ships in coarse mode and this module moves after release |
+| 17 | **Resource safety and release gate** | 3% | 99% | Section 20.2 tests with accounting counters; the nightly deterministic simulation (G-STATE item 3); one full M12 run on the release commit | all above | **G-STATE**, **G-IFC** (or coarse mode) and every M12 scenario pass |
+| 18 | **IMAP PUSH sample** (blocked) | 1% | 100% | `mail-idle` in Java and Python, once Tool Host TCP tunnels (ADR 013) exist | 8, and Tool Host tunnels | IMAP scenarios pass. Not a v1 blocker: if tunnels aren't ready, it moves after release |
+
+**Progress view by slice:** Slice 1 at 35%, Slice 2 at 56%, Slice 3 at 85%, Slice 4 at 92%, release-ready at 99%.
+
+### 24.3 Which module owns which M12 scenario
+
+Each scenario must pass when its owning module finishes. Module 17 re-runs all of them once.
+
+| Module | Scenarios it closes |
+|---|---|
+| 5 Client integration and ingest | 9, 13 (allocation and ingest parts), 33, 38, 39 (client crash points) |
+| 6 Lifecycle, rollout and raw page | 10, 11 |
+| 7 PUSH and file watching | 7, 8, 29, 36, 42, 51, 55 (Java), 58 (outbox part) |
+| 8 Server triggers | 1–6 (POLL variants), 12, 45, 46, 49, 53, 56, 57 |
+| 9 Python parity | 55 (Python) |
+| 12 Subscriptions and WebSocket | 16, 31 |
+| 13 Schedules | 15, 26, 37 |
+| 14 Actions | 14, 17, 18, 19, 25, 30, 32, 34, 40, 43, 47, 48, 52 (non-composite part) |
+| 15 Composite MCP | 20–24, 27, 28, 52 (composite part) |
+| 16 IFC field-level | 35, 44, 50 |
+| 17 Resource safety and gate | 54, 58 (accounting), plus the full suite |
+| 18 IMAP PUSH | 41, plus the IMAP variants of 1–6 |
+
+### 24.4 What each module hands to the next
+
+| After module | The next module can rely on |
+|---|---|
+| 1 | Frozen contracts and generated bindings; no schema changes without an ADR amendment |
+| 3 | A supervisor that is correct against the model; executors only integrate it |
+| 5 | A working client trigger with status and events; later work only adds features |
+| 8 | Both executors on one protocol; server features need no new transport |
+| 10 | A durable event stream with deliveries; consumers (sockets, actions) plug in |
+| 11 | A safe expression environment; every CEL user from here on is protected |
+| 14 | Governed execution from events; composites are just one more target kind |
