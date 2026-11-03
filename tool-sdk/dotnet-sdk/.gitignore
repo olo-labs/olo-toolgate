@@ -1,0 +1,9 @@
+# .NET build outputs
+bin/
+obj/
+*.nupkg
+*.snupkg
+TestResults/
+.vs/
+# The SDK's MSBuild files live in folders named build/, which the root .gitignore excludes.
+!src/*/build/
