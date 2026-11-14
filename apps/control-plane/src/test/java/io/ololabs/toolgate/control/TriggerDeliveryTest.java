@@ -460,6 +460,7 @@ final class TriggerDeliveryTest {
             var runId = admitted.path("runId").asText();
             w.store().transaction(w.tenant(), false, tx -> {
                 var run = tx.workflowRuns().queued(runId);
+                assertEquals(runId, tx.workflowRuns().nextQueued().id());
                 assertEquals("investigate", run.workflowId());
                 assertEquals(digest, run.profileDigest());
                 assertEquals("alpha", new WorkflowRunInputs(codec, keys).open(tx, w.tenant(), run));
@@ -469,6 +470,23 @@ final class TriggerDeliveryTest {
             assertEquals("DUPLICATE", duplicate.path("disposition").asText());
             assertEquals(admitted.path("admissionId"), duplicate.path("admissionId"));
             assertEquals(admitted.path("runId"), duplicate.path("runId"));
+
+            var worker = new DirectoryService.Actor(w.tenant(), DirectoryService.digest("runtime-worker"), false);
+            var leases = new WorkflowLeases(w.store(), codec, w.clock(), profiles, keys);
+            var claim = leases.claim(worker, "claim");
+            assertEquals(200, claim.status());
+            var snapshot = JSON.readTree(claim.body());
+            assertEquals(runId, snapshot.path("runId").asText());
+            assertEquals("alpha", snapshot.path("message").asText());
+            assertEquals("investigator", snapshot.path("agents").path(0).path("agentId").asText());
+            assertFalse(claim.body().contains("https://models.example"));
+            assertEquals(204, leases.claim(worker, "claim-again").status());
+            var leaseId = snapshot.path("leaseId").asText();
+            var token = snapshot.path("leaseToken").asText();
+            assertEquals(403, status(() -> leases.finish(w.admin(), runId, leaseId, token, "SUCCEEDED", "foreign-finish")));
+            assertEquals(403, status(() -> leases.finish(worker, runId, leaseId, "x".repeat(43), "SUCCEEDED", "forged-finish")));
+            assertEquals(200, leases.finish(worker, runId, leaseId, token, "SUCCEEDED", "finish").status());
+            assertEquals(403, status(() -> leases.finish(worker, runId, leaseId, token, "SUCCEEDED", "repeat-finish")));
         }
     }
 

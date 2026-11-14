@@ -13,11 +13,15 @@ final class WorkflowServiceAccess {
     WorkflowServiceAccess(Codec codec) { this.codec = codec; }
 
     void require(Directory directory, WorkflowProfiles.DispatchTarget target, long now) {
-        var binding = target.binding();
-        var group = directory.entries().get(Kind.AGENT_GROUP.id(binding.serviceAgentGroupId()));
-        var agent = directory.entries().get(Kind.AGENT.id(binding.serviceAgentId()));
+        require(directory, target.binding().serviceAgentId(), target.binding().serviceAgentGroupId(), target.workflow(), now);
+    }
+
+    void require(Directory directory, String agentId, String groupId,
+                 io.ololabs.toolgate.contracts.v2.WorkflowDefinition workflow, long now) {
+        var group = directory.entries().get(Kind.AGENT_GROUP.id(groupId));
+        var agent = directory.entries().get(Kind.AGENT.id(agentId));
         if (agent == null || !agent.enabled() || group == null || !group.enabled()
-                || !GroupGraph.memberships(directory, codec, Kind.AGENT, binding.serviceAgentId(), true).contains(binding.serviceAgentGroupId()))
+                || !GroupGraph.memberships(directory, codec, Kind.AGENT, agentId, true).contains(groupId))
             throw ManagementAccess.denied();
         var roles = GroupGraph.roles(group, codec);
         var scopes = directory.entries().values().stream().filter(entry -> entry.enabled() && entry.id().kind() == Kind.GRANT)
@@ -25,8 +29,8 @@ final class WorkflowServiceAccess {
             .filter(grant -> grant.purpose() == EnterpriseGrantPurpose.SERVICE && grant.sourceType() == EnterpriseSourceType.ROLE)
             .filter(grant -> roles.contains(grant.sourceId()) && activeRole(directory, grant.sourceId()))
             .map(ControlAccessGrant::scope).filter(scope -> unconditionalTarget(scope, now)).toList();
-        if (scopes.stream().noneMatch(scope -> matches(scope, "workflow.execute", "workflow-group:" + target.workflow().workflowGroupId()))
-                || scopes.stream().noneMatch(scope -> matches(scope, "model.infer", "model-group:" + target.workflow().modelGroupId())))
+        if (scopes.stream().noneMatch(scope -> matches(scope, "workflow.execute", "workflow-group:" + workflow.workflowGroupId()))
+                || scopes.stream().noneMatch(scope -> matches(scope, "model.infer", "model-group:" + workflow.modelGroupId())))
             throw ManagementAccess.denied();
     }
 

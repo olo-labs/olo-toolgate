@@ -59,6 +59,22 @@ passed in Linux. Full component gates and live worker execution remain pending.
 The next increment needs workload claims, runtime step authorization and
 Gateway model and tool transport. Phase credit is unchanged.
 
+### Workload claim and completion
+
+The workload-only Control routes claim one queued run per request and return a
+snapshot of its pinned workflow and agent definitions. Claims recheck current
+publication, readiness, and service grants. Only the same workload principal
+holding the current lease token can record completion before expiry. The
+Python transport decodes the snapshot and sends completion using its separate
+workload credential. Worker step authorization and Gateway model and tool
+transport remain required before the container can run a claimed workflow.
+
+Verification on `bebfd374` with this increment applied: the focused admission,
+claim and completion test and both transaction tests passed with SQLite and
+disposable PostgreSQL. Two Python transport tests and four schema ownership
+and capacity tests passed. No live workload HTTP, model, or Gateway tool
+execution was exercised. Phase credit is unchanged.
+
 ## Published configuration in the console
 
 The Control API exposes tenant-scoped, read-only published workflow and agent

@@ -11,9 +11,16 @@ public interface WorkflowRunStore {
                      long keyVersion, String document) {
         @Override public String toString() { return "QueuedRun[id=" + id + "]"; }
     }
+    record Lease(String runId, String id, String ownerId, String tokenDigest, long expiresAt) {}
 
     Admission admission(String subscriptionUid, String cursor);
     void insertAdmission(Admission admission);
     void enqueue(QueuedRun run);
     QueuedRun queued(String id);
+    QueuedRun nextQueued();
+    void claim(Lease lease);
+    Lease activeLease(String runId);
+    void cancelQueued(String runId);
+    void finish(Lease lease, String state, long now);
+    void expire(long now);
 }

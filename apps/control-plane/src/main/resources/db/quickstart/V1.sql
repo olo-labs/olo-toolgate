@@ -1587,11 +1587,16 @@ CREATE TABLE control_workflow_runs(
  state varchar(24) NOT NULL CHECK(state IN('QUEUED','RUNNING','SUCCEEDED','FAILED','AWAITING_APPROVAL','CANCELLED','EXPIRED')),
  document text NOT NULL CHECK(length(CAST(document AS BLOB))<=65536), created_at bigint NOT NULL CHECK(created_at>=0),
  key_version bigint NOT NULL,
+ lease_id varchar(128), lease_owner varchar(128), lease_token_digest varchar(64), lease_expires_at bigint,
+ CHECK((state='RUNNING' AND lease_id IS NOT NULL AND lease_owner IS NOT NULL AND lease_token_digest IS NOT NULL AND lease_expires_at IS NOT NULL)
+    OR (state<>'RUNNING' AND lease_id IS NULL AND lease_owner IS NULL AND lease_token_digest IS NULL AND lease_expires_at IS NULL)),
  FOREIGN KEY(tenant_id,profile_id,profile_digest) REFERENCES control_workflow_profile_revisions(tenant_id,profile_id,digest),
  FOREIGN KEY(tenant_id,key_version) REFERENCES control_tenant_vault_keys(tenant_id,version),
  PRIMARY KEY(tenant_id,run_id));
 -- statement
 CREATE INDEX control_workflow_runs_queue ON control_workflow_runs(tenant_id,state,created_at,run_id);
+-- statement
+CREATE INDEX control_workflow_runs_expiry ON control_workflow_runs(tenant_id,state,lease_expires_at);
 -- statement
 CREATE TABLE control_workflow_admissions(
  tenant_id varchar(128) NOT NULL REFERENCES control_tenants(tenant_id),

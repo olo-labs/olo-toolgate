@@ -239,6 +239,14 @@ public final class WorkflowProfiles {
         Ids.valid(id);
         return published(tx, tenant, id, tx.workflowProfiles().publication(id));
     }
+    /** A pinned run can only use the reviewed revision while its publication and readiness are current. */
+    public DeploymentProfile runnableRevision(Store.Session tx, Ids.TenantId tenant, String id, String digest) {
+        Ids.valid(id);
+        digest(digest);
+        var head = tx.workflowProfiles().publication(id);
+        if (head == null || !head.digest().equals(digest)) throw ManagementAccess.denied();
+        return published(tx, tenant, id, head);
+    }
     private DeploymentProfile published(Store.Session tx, Ids.TenantId tenant, String id, WorkflowProfileStore.Publication head) {
         if (head == null) throw ManagementAccess.denied();
         var revision = revision(tx, tenant, id, head.digest());
