@@ -305,6 +305,15 @@ final class ClientReleasesTest {
         String extractor = rig.store.transaction(rig.tenant, false, tx -> tx.load().entries().get(Ids.Kind.EXTRACTOR.id(profile.tool().extractorId())).document());
         assertEquals(rig.codec.json(profile.extractor()), extractor);
         assertEquals(profile.tool().packageDigest(), rig.codec.model(entry.document(), ControlTool.class).packageDigest());
+        for (var tool : document.tools()) {
+            String key = Canonical.digest((JsonNode) rig.codec.value(rig.codec.json(List.of("client-release-effect/v1",
+                tool.toolId(), tool.authorizationProfile().tool().packageDigest()))));
+            String evidence = rig.store.transaction(rig.tenant, false, tx -> tx.packages().document(key));
+            var safety = JSON.readTree(evidence);
+            assertEquals(tool.toolId(), safety.path("toolId").asText());
+            assertTrue(safety.path("safety").isTextual());
+            assertEquals(2, safety.size());
+        }
 
         // The same package releases to the same image and document.
         var again = JSON.readTree(rig.releases.release(rig.admin, "{\"packageDigest\":\"" + rig.digest + "\"}", "release-2").body());

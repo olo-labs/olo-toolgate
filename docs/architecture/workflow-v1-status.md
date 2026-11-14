@@ -123,6 +123,8 @@ client releases use a managed deployment digest. The fix records effect
 evidence from the verified descriptor during client release and resolves it
 by the current tool ID and managed digest. The stored evidence contains only
 the tool ID and declared effect safety. Validation of this fix is pending.
+The client release suite also asserts that each released tool has the expected
+bounded effect record under its managed digest.
 
 ## Published configuration in the console
 
