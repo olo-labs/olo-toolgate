@@ -10,6 +10,11 @@ or executable profile expressions. It does not union different agents' tools.
 The worker uses the Control lease API and the Gateway model and MCP endpoints.
 The trigger subscriber uses the existing stream and the Control admission API.
 The first live profile qualification is tracked in the workflow v1 status.
+Each worker result includes an `execution` summary of completed inference
+responses and attempted tools, with subject IDs, tool IDs and outcome states.
+It excludes prompts, arguments, model/tool results and credentials. The summary
+is scoped to one run and bounded by its step limit. These are worker observations;
+independent server evidence is still required for full qualification.
 
 ## Install and verify outside containers
 

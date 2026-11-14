@@ -130,6 +130,66 @@ runtime tests passed with OpenSSL available. Quickstart image
 `sha256:03226d95d19d8b7addd982571e248f7d1ea6e9b6f048aa47c8786ba33bd7c25c`
 was built from `9bda47bc`. The live acceptance rerun is in progress.
 
+### Acceptance review and duplicate admission (2026-11-14)
+
+Review base: `3424a053f207a961af5bc149fe693deff9a4057d` on
+`codex/langgraph-workflow-execution`. The terminal-state-only acceptance check
+could pass without the configured agent or its context tool being exercised.
+The worker now reports per-run inference responses and tool attempts using only
+subject/tool IDs and outcome states. The fixture requires supervisor and agent
+inference plus a confirmed `examples.hotfolder/list` result; it also replays
+admission and requires the original admission/run coordinates. Observations are
+bounded by the runner step limit and exclude credentials, content and arguments.
+They are worker observations, not independent server attestation.
+
+The first review rerun admitted `run-cfe3486b-b556-4a60-9bd3-25d925f260a8`
+and stopped with `TOOL_OUTCOME_UNKNOWN`. The rebuilt worker rerun admitted
+`run-26019dff-97c8-4f11-b3a3-50c9f9c7b70b`; duplicate admission returned
+the original admission/run IDs. Its observations confirm supervisor inference
+and an agent-scoped `examples.hotfolder/list` attempt with `OUTCOME_UNKNOWN`.
+The ledger completion was acknowledged as `FAILED`; the fixture exited 1.
+The context failure prevented agent inference. Neither run qualifies the live
+slice. Each rerun used a new event; no uncertain operation was automatically
+retried. These runs reused the existing isolated SQLite installation; they are
+not fresh-store or PostgreSQL end-to-end qualification.
+
+Executed verification: `python tools/workflows/check.py` passed dependency
+installation and pip check, 51 runtime tests, 13 qualification tests (one host
+symlink skip), and three acceptance regression tests. Git's OpenSSL was added
+to PATH, so TLS tests executed on Windows. The seven new tests cover missing
+agent/tool observations, terminal-only false success, foreign IDs, unknown and
+denied outcomes without retry, per-run isolation, credential/content exclusion,
+and stable duplicate coordinates. The runtime image built successfully as
+`sha256:5fda72c8decbd3287803cadce1377fc3d32e79f8bda70205c4aa8c6c2ba4ec38`.
+The Quickstart services still used the previously recorded `9bda47bc` build;
+this change modifies only the worker, fixture and verification/docs.
+
+`python tools/check.py` was attempted and failed in the initial CI regression
+suite: 422 tests, ten errors and ten skips. Eight errors were Windows default
+encoding failures in release/PR-policy tests, one was a debug fixture's
+30-second subprocess timeout, and one was a device fixture lacking symlink
+privileges (WinError 1314). With `PYTHONUTF8=1`, isolated reruns passed all seven
+PR-policy, 14 release-notes and four debug-management tests. The symlink
+privilege limitation remains; the full gate's later component stages did not
+execute. No full repository pass or new Java/UI gate pass is claimed.
+Metadata/preflight (1521 bindings), source headers/licenses/obvious-secret
+policy, relative Markdown links (2896 files), staged PR policy, staged secret
+scan and whitespace checks passed. Logs are retained under ignored
+`build/workflow-*-review.log`. No Git hooks were configured in this checkout;
+no hook bypass was used.
+
+Known tested source SHA-256:
+
+- Worker: `d1f634684623cdf4b02ead6cef199ff0364d94b2ee9cbe67e8a9396c6f5ffc16`.
+- Live driver: `7e0af43db11a6dbcfd3fd05f951c5d5294cc5f5d24ff171ae7c67a19981b5f13`.
+
+Next: qualify native HotFolder finality under #230's own stage workflow, then
+complete the live agent/model/tool success path and authorization-negative
+scenarios. Full v1 phase acceptance, two-agent execution, complete profile
+provisioning and fresh-install qualification remain outstanding. No #230/#274
+stage/module or runtime security guarantee is completed by this change. Phase
+weights and overall earned completion remain **0 / 100**.
+
 ## Published configuration in the console
 
 The Control API exposes tenant-scoped, read-only published workflow and agent
@@ -162,7 +222,7 @@ Issue: [#295](https://github.com/olo-labs/olo-toolgate/issues/295) ·
 Integration: `feature/workflow-enhancement` ·
 Merged milestone: [PR #297](https://github.com/olo-labs/olo-toolgate/pull/297)
 
-Last updated: 2026-11-11. Baseline: **v1-effort-1**, 100 effort points.
+Last updated: 2026-11-14. Baseline: **v1-effort-1**, 100 effort points.
 Architecture and acceptance: [runtime plan, section 15](langgraph-runtime-plan.md#15-delivery-phases--minimal-end-to-end-v1).
 This is the authoritative live status for #295 v1; the architecture plan owns
 scope and acceptance. These estimates are relative shares of expected v1 work,
@@ -174,9 +234,9 @@ not elapsed time, deadlines, test coverage or measured productivity.
 |---|---:|---:|---|---:|
 | V1.0 — Contract decisions | 10% | 10% | In progress; source gap inventory, ADR 063 and acceptance scenarios proposed; review/harness pending | 0% |
 | V1.1 — Profile to effective configuration | 25% | 35% | In progress; dedicated workflow/group/agent pages and profile revision discovery extend durable staging/review/publication and package provisioning; complete directory/grant provisioning pending | 0% |
-| V1.2 — Message to governed result | 35% | 70% | In progress by requested phase jump; generic runner tested, server integration pending | 0% |
-| V1.3 — Trigger to the same run path | 20% | 90% | In progress; HTTPS/WSS listener and admission contract tested, Control durable admission/execution pending | 0% |
-| V1.4 — End-to-end qualification | 10% | 100% | In progress; scenario/evidence controller implemented; live driver and server prerequisites missing | 0% |
+| V1.2 — Message to governed result | 35% | 70% | In progress; one-agent server/worker path reaches real model and uncertain context-tool outcome; successful agent execution pending | 0% |
+| V1.3 — Trigger to the same run path | 20% | 90% | In progress; real trigger admission, duplicate receipt replay and fenced worker execution exercised; successful governed completion pending | 0% |
+| V1.4 — End-to-end qualification | 10% | 100% | In progress; one-agent live driver requires agent/tool observations; native finality blocks success; full fresh-install scenarios pending | 0% |
 | **Total** | **100%** | **100%** | **Planning baseline published; v1 not delivered** | **0%** |
 
 V1.2 carries the largest share because admission, runtime identity, model proxy,
@@ -202,9 +262,9 @@ changes require a baseline revision, reason and old/new allocations totaling
 |---|---|---|---|
 | V1.0 | Contract inventory; ADRs for canonical profile, listener registration/dispatch, identity, explicit models and minimal run state; executable positive/negative scenario specification | Proposal v0.9 at `7c4d2e85a9ce09fc2bef94e3f096d326bb03bb89`; no phase acceptance claimed | Review ADR 063, reconcile endpoint/schema details during implementation and bind scenarios to executable integration harness |
 | V1.1 | One upload closes references and provisions workflow/group, agents, models, prompts/context, packages/bindings, grants and default subscription; reviewed publish/readiness and tenant/user filtering | Current DeploymentProfile v2 carries workflow/model configuration; durable immutable staging, review, package provisioning adapter, atomic publication and live dependency checks; complete property editor, dedicated workflow/group/agent screens and tenant-scoped revision discovery implemented | Complete directory/grant/subscription provisioning, scoped workflow management/user filtering, executed readiness cases and whole-profile qualification remain |
-| V1.2 | Workflow ID plus message completes using configured supervisor and two agents, their models/context/distinct tools; current authorization, secret isolation, PREPARE/ASK/BLOCK respected | Fixed LangGraph execution core with two simulated profiles; 20 focused runner tests pass; no live ToolGate integration claimed | Server admission/ledger/leases and runtime identities, model proxy, canonical snapshot transport, V1.1 publication and real model/tool qualification |
-| V1.3 | Authenticated external listener registers, event selects bound default workflow and executes; durable admission/dedupe, disable/revocation/forgery denials and governed write-back | Existing stream/ticket client, immutable UID validation, admission request/receipt contract, serial commit-before-ACK bridge and host CLI; 41 runtime/listener tests pass | Implement Control admission transaction/binding resolution and queue/lease execution; qualify real authorization, dedupe, disablement and governed write-back |
-| V1.4 | Fresh supported store, ready infrastructure/secrets, one-upload profiles; two unrelated profiles use identical external code/dependency lock; message and trigger paths pass applicable checks with recorded revisions | Repeatable 16-scenario controller, source/artifact hashes, explicit blocked/error/failed reports and operator guide; controller tests use simulations | Implement server prerequisites and live-install driver/fresh provisioning with canonical example profiles; execute and review real integration evidence |
+| V1.2 | Workflow ID plus message completes using configured supervisor and two agents, their models/context/distinct tools; current authorization, secret isolation, PREPARE/ASK/BLOCK respected | One-agent admission/lease/step/model/MCP transport; live supervisor inference and agent context attempt stop at unknown outcome; per-run metadata regression coverage | Confirmed tool finality and agent completion, message admission, two-agent execution and complete runtime authorization qualification |
+| V1.3 | Authenticated external listener registers, event selects bound default workflow and executes; durable admission/dedupe, disable/revocation/forgery denials and governed write-back | Listener plus Control binding/admission/queue path; real trigger and duplicate receipt retain admission/run IDs; worker records FAILED on unknown tool outcome | Qualify successful trigger-to-result, live disable/revocation/forgery denials and governed write-back |
+| V1.4 | Fresh supported store, ready infrastructure/secrets, one-upload profiles; two unrelated profiles use identical external code/dependency lock; message and trigger paths pass applicable checks with recorded revisions | 16-scenario controller plus one-agent live fixture requiring configured inference/tool observations and duplicate coordinates; latest live attempt fails conservatively | Resolve native finality, complete fresh provisioning and two-profile live scenario coverage with independent server evidence and applicable full gates |
 
 ## Update required with every PR
 

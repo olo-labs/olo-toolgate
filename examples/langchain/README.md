@@ -111,6 +111,12 @@ setup below with all three overlays and `workflow-model` running. Put
 host environment, and run `python workflow_e2e.py`. The acceptance driver
 uses an isolated Quickstart fixture, stages and publishes a real workflow
 profile, and starts the worker container with a dedicated workload credential.
+It replays admission to require the same admission/run IDs, and requires worker
+observations of supervisor and configured-agent inference plus a confirmed
+`examples.hotfolder/list` call. Terminal success alone does not pass. These
+observations do not attest server deployment or replace the full v1 scenarios.
+The current native HotFolder finality limit can stop this run with
+`TOOL_OUTCOME_UNKNOWN`; the fixture fails and never retries that tool operation.
 
 A file dropped into the device's `inbox/` folder triggers a LangGraph flow
 ([trigger_agent.py](trigger_agent.py)). The flow displays the file's content and

@@ -20,6 +20,33 @@ PROFILE = 'hotfolder-workflow'
 SUBSCRIPTION = 'hotfolder-workflow-agent'
 
 
+def verify_duplicate(transport, receipt):
+    duplicate = transport.admit(receipt.subscription_uid, receipt.cursor, timeout_seconds=10)
+    if (duplicate.disposition != 'DUPLICATE' or
+            (duplicate.subscription_uid, duplicate.cursor, duplicate.admission_id, duplicate.run_id) !=
+            (receipt.subscription_uid, receipt.cursor, receipt.admission_id, receipt.run_id)):
+        raise ValueError('Duplicate delivery did not return the original admission and run')
+
+
+def verify_execution(result, run_id):
+    if not isinstance(result, dict) or (result.get('runId'), result.get('workflowId'), result.get('state')) != (run_id, WORKFLOW, 'SUCCEEDED'):
+        raise ValueError('Workflow did not complete successfully')
+    execution = result.get('execution', {})
+    if not isinstance(execution, dict):
+        raise ValueError('Invalid worker execution observations')
+    inferences = execution.get('inferences', [])
+    tools = execution.get('tools', [])
+    if any(not isinstance(items, list) or len(items) > 100 or any(not isinstance(item, dict) for item in items)
+           for items in (inferences, tools)):
+        raise ValueError('Invalid worker execution observations')
+    if (not any(item == {'subjectKind': 'WORKFLOW', 'subjectId': WORKFLOW} for item in inferences)
+            or not any(item == {'subjectKind': 'AGENT', 'subjectId': AGENT} for item in inferences)
+            or not any(item == {'subjectKind': 'AGENT', 'subjectId': AGENT,
+                                'toolId': 'examples.hotfolder/list', 'state': 'SUCCEEDED'} for item in tools)
+            or any(item.get('state') != 'SUCCEEDED' for item in tools)):
+        raise ValueError('Workflow lacks confirmed configured agent, model and tool observations')
+
+
 def provision(config):
     trigger_agent.ensure_subscription(config.api, int(time.time() * 1000), name=SUBSCRIPTION)
     assignment = config.api('/api/control/v1/triggers/assignments/' + trigger_agent.ASSIGNMENT)['metadata']['uid']
@@ -88,16 +115,19 @@ def run():
     _, receipt = TriggerListener(transport, Subscription(SUBSCRIPTION, subscription)).listen_once(max_events=1, idle_timeout=180)
     if receipt is None or receipt.disposition != 'ADMITTED':
         raise ValueError('The real trigger did not admit a workflow')
+    verify_duplicate(transport, receipt)
     print(f'Trigger admitted run {receipt.run_id}', flush=True)
+    print('Duplicate admission returned the original admission and run', flush=True)
     worker = subprocess.run(COMPOSE + ['run', '--rm', '-T', '--no-deps', 'workflow-worker'], cwd=manage.HERE,
                             capture_output=True, text=True, timeout=140)
     try:
         result = json.loads(worker.stdout.strip().splitlines()[-1])
     except (IndexError, ValueError):
         raise ValueError(f'Workflow worker returned no result (exit {worker.returncode})') from None
-    if worker.returncode != 0 or (result.get('runId'), result.get('workflowId'), result.get('state')) != (receipt.run_id, WORKFLOW, 'SUCCEEDED'):
-        raise ValueError('Workflow did not complete: ' + json.dumps(result))
+    if worker.returncode != 0:
+        raise ValueError(f'Workflow worker failed (exit {worker.returncode})')
     print(json.dumps(result, sort_keys=True))
+    verify_execution(result, receipt.run_id)
 
 
 if __name__ == '__main__':
