@@ -10,7 +10,7 @@
 # default core lock and profile.
 services:
   quickstart:
-    image: toolgate-langchain-quickstart-triggers:local
+    image: ${TOOLGATE_LANGCHAIN_TRIGGERS_IMAGE:-toolgate-langchain-quickstart-triggers:local}
     build:
       context: .
       dockerfile: triggers.Dockerfile

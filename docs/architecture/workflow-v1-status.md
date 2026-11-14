@@ -1,6 +1,293 @@
 <!-- Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0 -->
 # Workflow execution v1 — live delivery status
 
+## One-trigger, one-agent production slice (2026-11-14)
+
+The [delivery plan](../plans/langgraph-workflow-execution-plan.md) narrows the
+first live use case to one real trigger, one published workflow, one configured
+agent, and one approved model. It uses the existing #295 contracts and runtime.
+Phase weights and earned completion are unchanged.
+
+- V1.1 and V1.3 now have transaction-scoped resolution for an in-flight
+  delivery and its published binding. The resolver checks the immutable source,
+  subscription owner, current grants and clearance, and reviewed profile head.
+  Tests cover pending and acknowledged deliveries, a different subscription
+  owner, another tenant, and an unready or withdrawn binding.
+- The standalone image packages the existing listener and LangGraph executor
+  library under an unprivileged user. Its current entry point is the listener.
+
+Verification on base `f269293b` with this change applied: `WorkflowProfilesTest`
+and `TriggerDeliveryTest` passed all 23 tests with the disposable PostgreSQL
+fixture and SQLite. `python tools/workflows/check.py` passed with 32 runtime
+and 13 qualification tests executed, with 10 OpenSSL-dependent tests and one
+symlink test skipped on Windows. The digest-pinned runtime image built and
+printed listener help with a read-only root filesystem and dropped capabilities.
+The full component gates and live trigger-to-agent execution remain pending.
+
+Next is the Control admission transaction and its durable run ledger, then
+workload claim, step authorization, Gateway model transport, and live execution
+qualification. The resolvers currently have no public admission endpoint and
+return no runtime credential.
+
+### Durable run storage and input mapping
+
+The fresh SQLite and PostgreSQL schemas now store tenant-fenced admission and
+queued-run records. Runs pin a profile digest and encrypt the mapped message
+under tenant vault custody. The profile's JSON Pointer maps event data to the
+workflow's `message` input, which is validated against the pinned parameter
+schema. The store supports atomic enqueue and admission receipt persistence.
+
+Verification on `4630c600` with this increment applied: nine focused Java tests
+passed across the dispatch mapping, queue transaction, and tenant row security
+suites. The four schema inventory/capacity tests passed. Admission and run APIs,
+workflow service authorization, worker claims and live execution remain pending.
+
+### Trigger admission endpoint
+
+Control accepts the existing dispatch request over direct TLS. The listener
+supplies only the subscription UID and delivered cursor. Control verifies the
+current source and published binding, checks explicit service workflow and model
+grants, and commits the encrypted queued run, admission receipt and audit row
+in one tenant transaction. Duplicate requests return the original identifiers.
+The listener and Control use the same existing receipt contract.
+
+Verification on `5613d925` with this increment applied: the focused trigger
+admission test passed on SQLite and disposable PostgreSQL. It covers a live
+directory grant denial, a forged workflow field, a queued run with the pinned
+revision, and duplicate receipt replay. Both Quickstart direct TLS routing tests
+passed in Linux. Full component gates and live worker execution remain pending.
+The next increment needs workload claims, runtime step authorization and
+Gateway model and tool transport. Phase credit is unchanged.
+
+### Workload claim and completion
+
+The workload-only Control routes claim one queued run per request and return a
+snapshot of its pinned workflow and agent definitions. Claims recheck current
+publication, readiness, and service grants. Only the same workload principal
+holding the current lease token can record completion before expiry. The
+Python transport decodes the snapshot and sends completion using its separate
+workload credential. Worker step authorization and Gateway model and tool
+transport remain required before the container can run a claimed workflow.
+
+Verification on `bebfd374` with this increment applied: the focused admission,
+claim and completion test and both transaction tests passed with SQLite and
+disposable PostgreSQL. Two Python transport tests and four schema ownership
+and capacity tests passed. No live workload HTTP, model, or Gateway tool
+execution was exercised. Phase credit is unchanged.
+
+### One-agent step authorization and model selection
+
+The workload runtime can request a step token for the pinned supervisor or the
+entry agent when the agent is the trigger's service identity. Each new step
+replaces the previous token. Control checks current readiness, service grants,
+trigger data clearance at admission, and the tenant kill state at step issuance.
+The model resolver intersects the workflow and step model groups and selects the
+first permitted deployment in workflow order. It rejects superseded step tokens.
+
+Verification on `e8185ef7` with this increment applied: the focused trigger
+admission, claim, step, model-selection and completion scenario passed on
+SQLite and disposable PostgreSQL. Three Python transport tests and four schema
+ownership tests passed. Model selection was exercised inside Control. Gateway
+inference, MCP execution, and the container's live worker loop remain pending.
+
+### Gateway runtime transport
+
+The worker image now claims a run, executes the existing LangGraph runner,
+and sends inference and MCP calls to Gateway using the active step token.
+Gateway resolves the step with Control. Inference uses an operator-approved
+HTTPS origin and the current vault credential. MCP uses the existing Gateway
+catalog and invocation path. Control denies a PREPARE call when the signed
+package descriptor does not establish a read-only tool.
+
+Verification on `362f7c5e` with this increment applied: Control compilation,
+the Gateway Rust test suite, five focused Python transport tests, and a
+read-only worker image help smoke passed. The model response and MCP adapter
+tests use transport fixtures. A fresh real trigger, model, and tool run
+remains the next acceptance step. Phase credit is unchanged.
+
+### Live acceptance fixture and model trust
+
+The Compose fixture runs the real listener, worker and external llama.cpp
+server. The first attempt admitted a real hot-folder event, claimed the
+published `hotfolder-intake` run, and recorded `FAILED` at inference. The
+Gateway now accepts an operator-mounted PEM trust bundle for approved HTTPS
+model origins. The fixture uses an isolated CA and mounts the workload and
+model credentials separately. Verification on `5c55cc07` with this increment
+applied includes a rebuilt Quickstart image, a loaded llama.cpp model, Python
+syntax checks, and `git diff --check`. The live retry is pending. No phase
+credit is claimed.
+
+The retry on `c2b25e74` admitted a second real event and reached agent tool
+discovery after model inference. PREPARE refused the context tool because
+client releases use a managed deployment digest. The fix records effect
+evidence from the verified descriptor during client release and resolves it
+by the current tool ID and managed digest. The stored evidence contains only
+the tool ID and declared effect safety. Validation of this fix is pending.
+On `a5afb7b1`, all 11 client release tests and the focused workflow admission
+test passed with the disposable PostgreSQL fixture. The client release suite
+asserts the bounded effect record under each managed digest. All 47 Python
+runtime tests passed with OpenSSL available. Quickstart image
+`sha256:03226d95d19d8b7addd982571e248f7d1ea6e9b6f048aa47c8786ba33bd7c25c`
+was built from `9bda47bc`. The live acceptance rerun is in progress.
+
+### Acceptance review and duplicate admission (2026-11-14)
+
+Review base: `3424a053f207a961af5bc149fe693deff9a4057d` on
+`codex/langgraph-workflow-execution`. The terminal-state-only acceptance check
+could pass without the configured agent or its context tool being exercised.
+The worker now reports per-run inference responses and tool attempts using only
+subject/tool IDs and outcome states. The fixture requires supervisor and agent
+inference plus a confirmed `examples.hotfolder/list` result; it also replays
+admission and requires the original admission/run coordinates. Observations are
+bounded by the runner step limit and exclude credentials, content and arguments.
+They are worker observations, not independent server attestation.
+
+The first review rerun admitted `run-cfe3486b-b556-4a60-9bd3-25d925f260a8`
+and stopped with `TOOL_OUTCOME_UNKNOWN`. The rebuilt worker rerun admitted
+`run-26019dff-97c8-4f11-b3a3-50c9f9c7b70b`; duplicate admission returned
+the original admission/run IDs. Its observations confirm supervisor inference
+and an agent-scoped `examples.hotfolder/list` attempt with `OUTCOME_UNKNOWN`.
+The ledger completion was acknowledged as `FAILED`; the fixture exited 1.
+The context failure prevented agent inference. Neither run qualifies the live
+slice. Each rerun used a new event; no uncertain operation was automatically
+retried. These runs reused the existing isolated SQLite installation; they are
+not fresh-store or PostgreSQL end-to-end qualification.
+
+Executed verification: `python tools/workflows/check.py` passed dependency
+installation and pip check, 51 runtime tests, 13 qualification tests (one host
+symlink skip), and three acceptance regression tests. Git's OpenSSL was added
+to PATH, so TLS tests executed on Windows. The seven new tests cover missing
+agent/tool observations, terminal-only false success, foreign IDs, unknown and
+denied outcomes without retry, per-run isolation, credential/content exclusion,
+and stable duplicate coordinates. The runtime image built successfully as
+`sha256:5fda72c8decbd3287803cadce1377fc3d32e79f8bda70205c4aa8c6c2ba4ec38`.
+The Quickstart services still used the previously recorded `9bda47bc` build;
+this change modifies only the worker, fixture and verification/docs.
+
+`python tools/check.py` was attempted and failed in the initial CI regression
+suite: 422 tests, ten errors and ten skips. Eight errors were Windows default
+encoding failures in release/PR-policy tests, one was a debug fixture's
+30-second subprocess timeout, and one was a device fixture lacking symlink
+privileges (WinError 1314). With `PYTHONUTF8=1`, isolated reruns passed all seven
+PR-policy, 14 release-notes and four debug-management tests. The symlink
+privilege limitation remains; the full gate's later component stages did not
+execute. No full repository pass or new Java/UI gate pass is claimed.
+Metadata/preflight (1521 bindings), source headers/licenses/obvious-secret
+policy, relative Markdown links (2896 files), staged PR policy, staged secret
+scan and whitespace checks passed. Logs are retained under ignored
+`build/workflow-*-review.log`. No Git hooks were configured in this checkout;
+no hook bypass was used.
+
+Known tested source SHA-256:
+
+- Worker: `d1f634684623cdf4b02ead6cef199ff0364d94b2ee9cbe67e8a9396c6f5ffc16`.
+- Live driver: `7e0af43db11a6dbcfd3fd05f951c5d5294cc5f5d24ff171ae7c67a19981b5f13`.
+
+Next: qualify native HotFolder finality under #230's own stage workflow, then
+complete the live agent/model/tool success path and authorization-negative
+scenarios. Full v1 phase acceptance, two-agent execution, complete profile
+provisioning and fresh-install qualification remain outstanding. No #230/#274
+stage/module or runtime security guarantee is completed by this change. Phase
+weights and overall earned completion remain **0 / 100**.
+
+### CI repair and standalone image release wiring (2026-11-14)
+
+Review base: `f02a0c45c7c074aba5e5d250ab855da61cc56652`.
+[Rust job 132444767419](https://github.com/olo-labs/olo-toolgate/actions/runs/43593600248/job/132444767419)
+failed on Clippy's redundant-closure and nonminimal-boolean warnings in the
+workflow Gateway adapter. Both expressions are simplified without changing
+validation behavior. Its missing containment artifact was a downstream failure:
+the producing checks were skipped after Clippy failed.
+
+The standalone image previously had no release publication wiring. It now uses
+the existing tested image/evidence gate, immutable release bundle, GHCR and
+Docker Hub publishers, and provenance steps as `olo-toolgate-langgraph-runtime`.
+The manual development build/save/publish path includes it too. Product release
+coordinates are `ghcr.io/olo-labs/olo-toolgate-langgraph-runtime:<version>` and
+`docker.io/<namespace>/olo-toolgate-langgraph-runtime:<version>`; the latter
+uses `DOCKERHUB_NAMESPACE` or the configured Docker Hub username. No namespace
+secret value is assumed. Ordinary branch CI does not publish images.
+
+The Debian base scan found 49 HIGH/CRITICAL package findings; available Debian
+updates left 47 without available fixes. The image now uses digest-pinned Python
+3.12 Alpine, applies available OS updates and installs the unchanged Python
+lock using musllinux wheels. Final Linux amd64 image
+`sha256:55207450127637bc1ef313484debde6f28a168f3b62a42743f1271e4b7259098`
+built with version `1.0.0-dev.1` and the known review-base revision label.
+Trivy 0.61.1 reported zero HIGH/CRITICAL findings in that image, and CycloneDX
+SBOM generation passed. Trivy warned that Alpine 3.24 was absent from its EOL
+list; this result is not lifecycle certification or a security guarantee.
+
+Executed checks: Rust workspace formatting and Clippy with all targets and
+`-D warnings` passed using Rust 1.94.1 in Docker.
+`cargo test --workspace --locked` also passed: 410 tests passed and 17 were
+ignored across unit, integration and documentation test summaries. Ignored
+tests and the separate containment/conformance checks are not qualified by this
+run. Release regression suites
+passed: image wiring/registry identity 2, product release 25, unified CI 16,
+tagged release 23, manual development 8, shared release jobs 5, and local CI
+35 tests (one symlink skip). Tests cover required runtime image bytes,
+registry push coordinates, refusal of mismatched image revisions, and CI gate
+ownership. The final image passed worker/listener help and pip check with a
+read-only root, no network, dropped capabilities and no-new-privileges. Its
+runtime suite passed 41 tests with ten OpenSSL-dependent skips; the foundation
+host runtime gate remains responsible for TLS fixtures.
+
+`PYTHONUTF8=1 python tools/check.py` was rerun after correcting a new mock's
+serialized response and registering the image job in local CI policy. It ran
+424 CI tests with one error and ten skips: the existing Windows device fixture
+cannot create its Docker socket symlink (WinError 1314). Later component gates
+did not execute. Focused release checks, workflow actionlint, metadata/preflight,
+source policy, relative links and whitespace passed. No full repository pass,
+actual registry push or release provenance execution is claimed by local
+publisher simulations. Publication awaits a successful authorized release run.
+
+Known tested source SHA-256:
+
+- Gateway HTTP: `79f28149d901fbfba5e4607cfafb742bbbea18e1af2b0b53c0db26bdd1252fea`.
+- Gateway relay: `2b7c1f6808eb5dc9529dcf926f0cec93e779e06e46472b72286c38b82231d0e7`.
+- Runtime Dockerfile: `bdaeebb209d7a703ffe5cff97a4ea72843248d15a01fe5c52733ab980fed8bbf`.
+- Image workflow: `5643d9ebed42234a8765ad564f4e47665d829eea9946e6ca3b1e113f832b9b9a`.
+
+This delivers distribution wiring, not successful workflow execution. The live
+context-tool finality blocker, full authorization-negative scenarios,
+fresh-install/two-profile acceptance and original phase exit criteria remain.
+No phase weight or #230/#274 completion is credited; overall earned completion
+remains **0 / 100**.
+
+### Explicit image test-mode guard follow-up (2026-11-14)
+
+Delivery: draft [PR #309](https://github.com/olo-labs/olo-toolgate/pull/309)
+into `feature/workflow-enhancement`; full live acceptance remains outstanding.
+
+Review base: `6d4812cf5bd6296ddb967afd27e32f10c8239e00`.
+[Run 43596899996](https://github.com/olo-labs/olo-toolgate/actions/runs/43596899996)
+failed its manual-release admission regression before Rust or image jobs ran.
+The final in-image unittest command needs an explicit step-level
+`if: inputs.run_tests`, in addition to the existing job condition. That guard is
+now present; the regression is retained. The earlier local full-check run had
+evaluated admission before that unittest command was added, so it did not
+establish final-workflow admission coverage.
+
+Executed checks on the corrected workflow: actionlint, source policy and Linux
+metadata/preflight passed. Linux Python 3.12 ran all 424 CI tests with two errors
+and 17 skips; both errors were fixtures writing temporary files under the
+read-only checkout's `.dev`. With writable isolated `.dev` temporary storage,
+the admission and affected coverage/debug-asset suites passed 39 executed tests
+(44 discovered, five PowerShell skips), including the originally failing
+admission test. No production source was changed to accommodate those fixtures.
+The Windows `PYTHONUTF8=1 python tools/check.py` attempt ran 424 CI tests with
+one existing device-symlink privilege error and ten skips; later component gates
+did not execute. No complete repository or complete local Linux-suite pass is
+claimed. Staged PR policy, secret scan and whitespace checks passed.
+
+Corrected image workflow SHA-256:
+`f095e85df91c0f49e3bb63d8afb34e73bb17d786310312d59b5dfef10b6ad812`.
+Next verification is hosted preflight on the corrected commit. Runtime/image
+publication still requires all release gates, and live workflow finality and
+full-phase exit criteria remain outstanding. Baseline weights and earned
+completion remain **0 / 100**.
+
 ## Published configuration in the console
 
 The Control API exposes tenant-scoped, read-only published workflow and agent
@@ -33,7 +320,7 @@ Issue: [#295](https://github.com/olo-labs/olo-toolgate/issues/295) ·
 Integration: `feature/workflow-enhancement` ·
 Merged milestone: [PR #297](https://github.com/olo-labs/olo-toolgate/pull/297)
 
-Last updated: 2026-11-11. Baseline: **v1-effort-1**, 100 effort points.
+Last updated: 2026-11-14. Baseline: **v1-effort-1**, 100 effort points.
 Architecture and acceptance: [runtime plan, section 15](langgraph-runtime-plan.md#15-delivery-phases--minimal-end-to-end-v1).
 This is the authoritative live status for #295 v1; the architecture plan owns
 scope and acceptance. These estimates are relative shares of expected v1 work,
@@ -45,9 +332,9 @@ not elapsed time, deadlines, test coverage or measured productivity.
 |---|---:|---:|---|---:|
 | V1.0 — Contract decisions | 10% | 10% | In progress; source gap inventory, ADR 063 and acceptance scenarios proposed; review/harness pending | 0% |
 | V1.1 — Profile to effective configuration | 25% | 35% | In progress; dedicated workflow/group/agent pages and profile revision discovery extend durable staging/review/publication and package provisioning; complete directory/grant provisioning pending | 0% |
-| V1.2 — Message to governed result | 35% | 70% | In progress by requested phase jump; generic runner tested, server integration pending | 0% |
-| V1.3 — Trigger to the same run path | 20% | 90% | In progress; HTTPS/WSS listener and admission contract tested, Control durable admission/execution pending | 0% |
-| V1.4 — End-to-end qualification | 10% | 100% | In progress; scenario/evidence controller implemented; live driver and server prerequisites missing | 0% |
+| V1.2 — Message to governed result | 35% | 70% | In progress; one-agent server/worker path reaches real model and uncertain context-tool outcome; successful agent execution pending | 0% |
+| V1.3 — Trigger to the same run path | 20% | 90% | In progress; real trigger admission, duplicate receipt replay and fenced worker execution exercised; successful governed completion pending | 0% |
+| V1.4 — End-to-end qualification | 10% | 100% | In progress; runtime image/release evidence gate and one-agent live driver delivered; native finality blocks live success; full fresh-install scenarios pending | 0% |
 | **Total** | **100%** | **100%** | **Planning baseline published; v1 not delivered** | **0%** |
 
 V1.2 carries the largest share because admission, runtime identity, model proxy,
@@ -73,9 +360,9 @@ changes require a baseline revision, reason and old/new allocations totaling
 |---|---|---|---|
 | V1.0 | Contract inventory; ADRs for canonical profile, listener registration/dispatch, identity, explicit models and minimal run state; executable positive/negative scenario specification | Proposal v0.9 at `7c4d2e85a9ce09fc2bef94e3f096d326bb03bb89`; no phase acceptance claimed | Review ADR 063, reconcile endpoint/schema details during implementation and bind scenarios to executable integration harness |
 | V1.1 | One upload closes references and provisions workflow/group, agents, models, prompts/context, packages/bindings, grants and default subscription; reviewed publish/readiness and tenant/user filtering | Current DeploymentProfile v2 carries workflow/model configuration; durable immutable staging, review, package provisioning adapter, atomic publication and live dependency checks; complete property editor, dedicated workflow/group/agent screens and tenant-scoped revision discovery implemented | Complete directory/grant/subscription provisioning, scoped workflow management/user filtering, executed readiness cases and whole-profile qualification remain |
-| V1.2 | Workflow ID plus message completes using configured supervisor and two agents, their models/context/distinct tools; current authorization, secret isolation, PREPARE/ASK/BLOCK respected | Fixed LangGraph execution core with two simulated profiles; 20 focused runner tests pass; no live ToolGate integration claimed | Server admission/ledger/leases and runtime identities, model proxy, canonical snapshot transport, V1.1 publication and real model/tool qualification |
-| V1.3 | Authenticated external listener registers, event selects bound default workflow and executes; durable admission/dedupe, disable/revocation/forgery denials and governed write-back | Existing stream/ticket client, immutable UID validation, admission request/receipt contract, serial commit-before-ACK bridge and host CLI; 41 runtime/listener tests pass | Implement Control admission transaction/binding resolution and queue/lease execution; qualify real authorization, dedupe, disablement and governed write-back |
-| V1.4 | Fresh supported store, ready infrastructure/secrets, one-upload profiles; two unrelated profiles use identical external code/dependency lock; message and trigger paths pass applicable checks with recorded revisions | Repeatable 16-scenario controller, source/artifact hashes, explicit blocked/error/failed reports and operator guide; controller tests use simulations | Implement server prerequisites and live-install driver/fresh provisioning with canonical example profiles; execute and review real integration evidence |
+| V1.2 | Workflow ID plus message completes using configured supervisor and two agents, their models/context/distinct tools; current authorization, secret isolation, PREPARE/ASK/BLOCK respected | One-agent admission/lease/step/model/MCP transport; live supervisor inference and agent context attempt stop at unknown outcome; per-run metadata regression coverage | Confirmed tool finality and agent completion, message admission, two-agent execution and complete runtime authorization qualification |
+| V1.3 | Authenticated external listener registers, event selects bound default workflow and executes; durable admission/dedupe, disable/revocation/forgery denials and governed write-back | Listener plus Control binding/admission/queue path; real trigger and duplicate receipt retain admission/run IDs; worker records FAILED on unknown tool outcome | Qualify successful trigger-to-result, live disable/revocation/forgery denials and governed write-back |
+| V1.4 | Fresh supported store, ready infrastructure/secrets, one-upload profiles; two unrelated profiles use identical external code/dependency lock; message and trigger paths pass applicable checks with recorded revisions | 16-scenario controller, one-agent live fixture, and standalone runtime image/release evidence gate; local image tests/scan pass, live context attempt fails conservatively | Resolve native finality, complete fresh provisioning and two-profile live scenario coverage with independent server evidence and applicable full gates; execute registry publication through an authorized release |
 
 ## Update required with every PR
 

@@ -375,6 +375,138 @@ final class TriggerDeliveryTest {
         }
     }
 
+    @Test
+    void workflowDispatchResolvesOnlyAnInFlightDeliveryForItsCurrentOwner() throws Exception {
+        for (var backend : stores()) {
+            var w = world(backend.store(), "tenant-a", null, List.of());
+            subscription(w, w.admin(), "agent", "event.type == 'examples.files.observed.v1'");
+            String uid = JSON.readTree(w.subscriptions().get(w.admin(), "agent").body()).path("metadata").path("uid").asText();
+            sync(w, List.of(fired(w, 1, "a")));
+            w.router().route();
+            String cursor = "0000000000000001";
+            java.util.function.Function<DirectoryService.Actor, TriggerStream.DispatchEvent> resolve = actor ->
+                w.store().transaction(w.tenant(), false, tx -> w.stream().dispatchEvent(tx, actor, uid, cursor));
+            assertEquals(404, status(() -> resolve.apply(w.admin())), "pending delivery was not sent");
+
+            var session = w.stream().open(ticket(w, w.admin(), null), null);
+            session.receive("{\"type\":\"subscribe\",\"subscription\":\"agent\"}");
+            var event = parse(session.pump()).getFirst().path("event");
+            var target = resolve.apply(w.admin());
+            assertEquals(event, target.event());
+            assertEquals("a", target.event().path("id").asText());
+            assertTrue(target.assignmentUid().startsWith("ta-"));
+
+            var other = new DirectoryService.Actor(w.tenant(), DirectoryService.digest("other"), true, false, "other");
+            assertEquals(404, status(() -> resolve.apply(other)));
+            session.receive("{\"type\":\"ack\",\"subscription\":\"agent\",\"cursor\":\"" + cursor + "\"}");
+            assertEquals(404, status(() -> resolve.apply(w.admin())), "new admission requires an unacknowledged delivery");
+        }
+    }
+
+    @Test
+    void workflowAdmissionUsesLiveServiceGrantsAndReplaysTheDurableReceipt() throws Exception {
+        for (var backend : stores()) {
+            var w = world(backend.store(), "tenant-a", null, List.of());
+            subscription(w, w.admin(), "agent", "event.type == 'examples.files.observed.v1'");
+            String uid = JSON.readTree(w.subscriptions().get(w.admin(), "agent").body()).path("metadata").path("uid").asText();
+            String assignment = JSON.readTree(w.triggers().get(w.admin(), "inbox").body()).path("metadata").path("uid").asText();
+            var path = Path.of(System.getProperty("toolgate.fixtures")).getParent().resolve("../v2/valid.json");
+            var config = JSON.readTree(Files.readString(path)).path("WorkflowConfiguration");
+            ((ObjectNode) config.path("dispatchBindings").get(0)).put("subscriptionUid", uid)
+                .put("sourceAssignmentUid", assignment).put("messagePointer", "/name")
+                .put("serviceAgentId", "investigator").put("serviceAgentGroupId", "support-agents");
+            var profile = JSON.createObjectNode().put("profileVersion", 2).put("profileId", "support");
+            profile.putArray("packages");
+            profile.set("workflows", config);
+            var keys = new TenantVaultKeys(codec, new LocalVaultWrappingProvider("fixture", Map.of("fixture", new byte[32])));
+            // This test qualifies admission independently of external model and tool readiness.
+            var profiles = new WorkflowProfiles(w.store(), codec, (tx, desired, digest) -> true, keys);
+            var staged = JSON.readTree(profiles.upload(w.admin(), profile.toString(), "stage").body());
+            String digest = staged.path("profileDigest").asText();
+            profiles.review(w.admin(), "support", codec.json(Map.of("profileDigest", digest)), "review");
+            profiles.publish(w.admin(), "support", codec.json(Map.of("profileDigest", digest, "expectedGeneration", 0)), "publish");
+
+            sync(w, List.of(fired(w, 1, "alpha")));
+            w.router().route();
+            var session = w.stream().open(ticket(w, w.admin(), null), null);
+            session.receive("{\"type\":\"subscribe\",\"subscription\":\"agent\"}");
+            String cursor = parse(session.pump()).getFirst().path("cursor").asText();
+            var service = new WorkflowAdmissions(w.store(), codec, w.clock(), w.stream(), profiles, keys);
+            String request = codec.json(Map.of("subscriptionUid", uid, "cursor", cursor));
+            assertEquals(403, status(() -> service.admit(w.admin(), request, "denied")));
+            assertEquals(400, status(() -> service.admit(w.admin(), request.replace("}", ",\"workflowId\":\"forged\"}"), "forged")));
+
+            w.store().transaction(w.tenant(), true, tx -> {
+                var before = tx.load();
+                var entries = new HashMap<>(before.entries());
+                TestSupport.put(entries, codec, Ids.Kind.AGENT, new ControlAgent("investigator", "Investigator", null, true, 1L, "root"));
+                TestSupport.put(entries, codec, Ids.Kind.AGENT_GROUP, new ControlAgentGroup("support-agents", "Support", null, true,
+                    1L, List.of("investigator"), List.of("workflow-service-role"), null));
+                TestSupport.put(entries, codec, Ids.Kind.ROLE, new ControlRole("workflow-service-role", "Workflow service", true, 1L,
+                    UserRole.BASIC, EnterpriseRoleType.ACTOR_SERVICE, List.of()));
+                var scope = new EnterpriseScope(new GroupSelection(List.of(), true), new GroupSelection(List.of(), true),
+                    List.of("workflow.execute", "model.infer"), false,
+                    List.of(new EnterpriseResourceRule(ResourceKind.CUSTOM, "workflow-group:support", EnterpriseResourceMatch.EXACT),
+                            new EnterpriseResourceRule(ResourceKind.CUSTOM, "model-group:models", EnterpriseResourceMatch.EXACT)),
+                    new EnterpriseConditions(0L, 0L, List.of(), List.of(), List.of(), List.of(), false, false, null, null));
+                TestSupport.put(entries, codec, Ids.Kind.GRANT, new ControlAccessGrant("workflow-service-grant", "Workflow service", true,
+                    1L, EnterpriseSourceType.ROLE, "workflow-service-role", EnterpriseGrantPurpose.SERVICE, scope));
+                tx.save(before, new Directory(before.revision() + 1, entries));
+                return null;
+            });
+            var response = service.admit(w.admin(), request, "admit");
+            assertEquals(201, response.status());
+            var admitted = JSON.readTree(response.body());
+            assertEquals("ADMITTED", admitted.path("disposition").asText());
+            var runId = admitted.path("runId").asText();
+            w.store().transaction(w.tenant(), false, tx -> {
+                var run = tx.workflowRuns().queued(runId);
+                assertEquals(runId, tx.workflowRuns().nextQueued().id());
+                assertEquals("investigate", run.workflowId());
+                assertEquals(digest, run.profileDigest());
+                assertEquals("alpha", new WorkflowRunInputs(codec, keys).open(tx, w.tenant(), run));
+                return null;
+            });
+            var duplicate = JSON.readTree(service.admit(w.admin(), request, "duplicate").body());
+            assertEquals("DUPLICATE", duplicate.path("disposition").asText());
+            assertEquals(admitted.path("admissionId"), duplicate.path("admissionId"));
+            assertEquals(admitted.path("runId"), duplicate.path("runId"));
+
+            var worker = new DirectoryService.Actor(w.tenant(), DirectoryService.digest("runtime-worker"), false);
+            var leases = new WorkflowLeases(w.store(), codec, w.clock(), profiles, keys);
+            var claim = leases.claim(worker, "claim");
+            assertEquals(200, claim.status());
+            var snapshot = JSON.readTree(claim.body());
+            assertEquals(runId, snapshot.path("runId").asText());
+            assertEquals("alpha", snapshot.path("message").asText());
+            assertEquals("investigator", snapshot.path("agents").path(0).path("agentId").asText());
+            assertFalse(claim.body().contains("https://models.example"));
+            assertEquals(204, leases.claim(worker, "claim-again").status());
+            var leaseId = snapshot.path("leaseId").asText();
+            var token = snapshot.path("leaseToken").asText();
+            assertEquals(403, status(() -> leases.authorizeStep(worker, runId, leaseId, token, "WORKFLOW", "other", "models")));
+            assertEquals(403, status(() -> leases.authorizeStep(worker, runId, leaseId, token, "WORKFLOW", "investigate", "other")));
+            assertEquals(403, status(() -> leases.authorizeStep(worker, runId, leaseId, token, "AGENT", "other", "models")));
+            var grant = JSON.readTree(leases.authorizeStep(worker, runId, leaseId, token, "WORKFLOW", "investigate", "models").body());
+            assertEquals("investigate", grant.path("subjectId").asText());
+            var agentGrant = JSON.readTree(leases.authorizeStep(worker, runId, leaseId, token, "AGENT", "investigator", "models").body());
+            assertEquals("investigator", agentGrant.path("subjectId").asText());
+            w.store().transaction(w.tenant(), false, tx -> {
+                assertEquals(DirectoryService.digest(agentGrant.path("token").asText()), tx.workflowRuns().activeStep(runId).tokenDigest());
+                assertFalse(grant.path("token").asText().equals(agentGrant.path("token").asText()));
+                var models = new WorkflowModelSelection(profiles, codec, w.clock());
+                assertEquals("deployment-1", models.resolve(tx, w.tenant(), runId, agentGrant.path("token").asText()).id());
+                assertEquals(403, status(() -> models.resolve(tx, w.tenant(), runId, grant.path("token").asText())));
+                return null;
+            });
+            assertEquals(403, status(() -> leases.finish(w.admin(), runId, leaseId, token, "SUCCEEDED", "foreign-finish")));
+            assertEquals(403, status(() -> leases.finish(worker, runId, leaseId, "x".repeat(43), "SUCCEEDED", "forged-finish")));
+            assertEquals(200, leases.finish(worker, runId, leaseId, token, "SUCCEEDED", "finish").status());
+            assertEquals(403, status(() -> leases.authorizeStep(worker, runId, leaseId, token, "WORKFLOW", "investigate", "models")));
+            assertEquals(403, status(() -> leases.finish(worker, runId, leaseId, token, "SUCCEEDED", "repeat-finish")));
+        }
+    }
+
     /** M12 scenario 16: removing the subscriber's grant sends revoked and closes; a replayed ticket is refused. */
     @Test
     void scenario16RevokedGrantClosesTheSocketAndTicketsAreSingleUse() throws Exception {
