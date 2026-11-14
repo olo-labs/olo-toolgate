@@ -190,6 +190,71 @@ provisioning and fresh-install qualification remain outstanding. No #230/#274
 stage/module or runtime security guarantee is completed by this change. Phase
 weights and overall earned completion remain **0 / 100**.
 
+### CI repair and standalone image release wiring (2026-11-14)
+
+Review base: `f02a0c45c7c074aba5e5d250ab855da61cc56652`.
+[Rust job 132444767419](https://github.com/olo-labs/olo-toolgate/actions/runs/43593600248/job/132444767419)
+failed on Clippy's redundant-closure and nonminimal-boolean warnings in the
+workflow Gateway adapter. Both expressions are simplified without changing
+validation behavior. Its missing containment artifact was a downstream failure:
+the producing checks were skipped after Clippy failed.
+
+The standalone image previously had no release publication wiring. It now uses
+the existing tested image/evidence gate, immutable release bundle, GHCR and
+Docker Hub publishers, and provenance steps as `olo-toolgate-langgraph-runtime`.
+The manual development build/save/publish path includes it too. Product release
+coordinates are `ghcr.io/olo-labs/olo-toolgate-langgraph-runtime:<version>` and
+`docker.io/<namespace>/olo-toolgate-langgraph-runtime:<version>`; the latter
+uses `DOCKERHUB_NAMESPACE` or the configured Docker Hub username. No namespace
+secret value is assumed. Ordinary branch CI does not publish images.
+
+The Debian base scan found 49 HIGH/CRITICAL package findings; available Debian
+updates left 47 without available fixes. The image now uses digest-pinned Python
+3.12 Alpine, applies available OS updates and installs the unchanged Python
+lock using musllinux wheels. Final Linux amd64 image
+`sha256:55207450127637bc1ef313484debde6f28a168f3b62a42743f1271e4b7259098`
+built with version `1.0.0-dev.1` and the known review-base revision label.
+Trivy 0.61.1 reported zero HIGH/CRITICAL findings in that image, and CycloneDX
+SBOM generation passed. Trivy warned that Alpine 3.24 was absent from its EOL
+list; this result is not lifecycle certification or a security guarantee.
+
+Executed checks: Rust workspace formatting and Clippy with all targets and
+`-D warnings` passed using Rust 1.94.1 in Docker.
+`cargo test --workspace --locked` also passed: 410 tests passed and 17 were
+ignored across unit, integration and documentation test summaries. Ignored
+tests and the separate containment/conformance checks are not qualified by this
+run. Release regression suites
+passed: image wiring/registry identity 2, product release 25, unified CI 16,
+tagged release 23, manual development 8, shared release jobs 5, and local CI
+35 tests (one symlink skip). Tests cover required runtime image bytes,
+registry push coordinates, refusal of mismatched image revisions, and CI gate
+ownership. The final image passed worker/listener help and pip check with a
+read-only root, no network, dropped capabilities and no-new-privileges. Its
+runtime suite passed 41 tests with ten OpenSSL-dependent skips; the foundation
+host runtime gate remains responsible for TLS fixtures.
+
+`PYTHONUTF8=1 python tools/check.py` was rerun after correcting a new mock's
+serialized response and registering the image job in local CI policy. It ran
+424 CI tests with one error and ten skips: the existing Windows device fixture
+cannot create its Docker socket symlink (WinError 1314). Later component gates
+did not execute. Focused release checks, workflow actionlint, metadata/preflight,
+source policy, relative links and whitespace passed. No full repository pass,
+actual registry push or release provenance execution is claimed by local
+publisher simulations. Publication awaits a successful authorized release run.
+
+Known tested source SHA-256:
+
+- Gateway HTTP: `79f28149d901fbfba5e4607cfafb742bbbea18e1af2b0b53c0db26bdd1252fea`.
+- Gateway relay: `2b7c1f6808eb5dc9529dcf926f0cec93e779e06e46472b72286c38b82231d0e7`.
+- Runtime Dockerfile: `bdaeebb209d7a703ffe5cff97a4ea72843248d15a01fe5c52733ab980fed8bbf`.
+- Image workflow: `5643d9ebed42234a8765ad564f4e47665d829eea9946e6ca3b1e113f832b9b9a`.
+
+This delivers distribution wiring, not successful workflow execution. The live
+context-tool finality blocker, full authorization-negative scenarios,
+fresh-install/two-profile acceptance and original phase exit criteria remain.
+No phase weight or #230/#274 completion is credited; overall earned completion
+remains **0 / 100**.
+
 ## Published configuration in the console
 
 The Control API exposes tenant-scoped, read-only published workflow and agent
@@ -236,7 +301,7 @@ not elapsed time, deadlines, test coverage or measured productivity.
 | V1.1 — Profile to effective configuration | 25% | 35% | In progress; dedicated workflow/group/agent pages and profile revision discovery extend durable staging/review/publication and package provisioning; complete directory/grant provisioning pending | 0% |
 | V1.2 — Message to governed result | 35% | 70% | In progress; one-agent server/worker path reaches real model and uncertain context-tool outcome; successful agent execution pending | 0% |
 | V1.3 — Trigger to the same run path | 20% | 90% | In progress; real trigger admission, duplicate receipt replay and fenced worker execution exercised; successful governed completion pending | 0% |
-| V1.4 — End-to-end qualification | 10% | 100% | In progress; one-agent live driver requires agent/tool observations; native finality blocks success; full fresh-install scenarios pending | 0% |
+| V1.4 — End-to-end qualification | 10% | 100% | In progress; runtime image/release evidence gate and one-agent live driver delivered; native finality blocks live success; full fresh-install scenarios pending | 0% |
 | **Total** | **100%** | **100%** | **Planning baseline published; v1 not delivered** | **0%** |
 
 V1.2 carries the largest share because admission, runtime identity, model proxy,
@@ -264,7 +329,7 @@ changes require a baseline revision, reason and old/new allocations totaling
 | V1.1 | One upload closes references and provisions workflow/group, agents, models, prompts/context, packages/bindings, grants and default subscription; reviewed publish/readiness and tenant/user filtering | Current DeploymentProfile v2 carries workflow/model configuration; durable immutable staging, review, package provisioning adapter, atomic publication and live dependency checks; complete property editor, dedicated workflow/group/agent screens and tenant-scoped revision discovery implemented | Complete directory/grant/subscription provisioning, scoped workflow management/user filtering, executed readiness cases and whole-profile qualification remain |
 | V1.2 | Workflow ID plus message completes using configured supervisor and two agents, their models/context/distinct tools; current authorization, secret isolation, PREPARE/ASK/BLOCK respected | One-agent admission/lease/step/model/MCP transport; live supervisor inference and agent context attempt stop at unknown outcome; per-run metadata regression coverage | Confirmed tool finality and agent completion, message admission, two-agent execution and complete runtime authorization qualification |
 | V1.3 | Authenticated external listener registers, event selects bound default workflow and executes; durable admission/dedupe, disable/revocation/forgery denials and governed write-back | Listener plus Control binding/admission/queue path; real trigger and duplicate receipt retain admission/run IDs; worker records FAILED on unknown tool outcome | Qualify successful trigger-to-result, live disable/revocation/forgery denials and governed write-back |
-| V1.4 | Fresh supported store, ready infrastructure/secrets, one-upload profiles; two unrelated profiles use identical external code/dependency lock; message and trigger paths pass applicable checks with recorded revisions | 16-scenario controller plus one-agent live fixture requiring configured inference/tool observations and duplicate coordinates; latest live attempt fails conservatively | Resolve native finality, complete fresh provisioning and two-profile live scenario coverage with independent server evidence and applicable full gates |
+| V1.4 | Fresh supported store, ready infrastructure/secrets, one-upload profiles; two unrelated profiles use identical external code/dependency lock; message and trigger paths pass applicable checks with recorded revisions | 16-scenario controller, one-agent live fixture, and standalone runtime image/release evidence gate; local image tests/scan pass, live context attempt fails conservatively | Resolve native finality, complete fresh provisioning and two-profile live scenario coverage with independent server evidence and applicable full gates; execute registry publication through an authorized release |
 
 ## Update required with every PR
 

@@ -104,6 +104,19 @@ See the [live status](../../docs/architecture/workflow-v1-status.md) and
 ## V1.3 trigger subscriber
 
 The standalone image packages the worker, listener, and LangGraph executor.
+Release builds publish `olo-toolgate-langgraph-runtime:<release-version>` to
+`ghcr.io/olo-labs` and the configured Docker Hub namespace
+(`DOCKERHUB_NAMESPACE`, or `DOCKERHUB_USERNAME` when unset). For example, a
+namespace of `ololab` produces
+`docker.io/ololab/olo-toolgate-langgraph-runtime:<release-version>`.
+Ordinary branch CI builds and verifies the image but does not publish it.
+Publication requires the release workflow and all its required gates; adding
+the image does not qualify the currently incomplete live workflow slice.
+The image uses digest-pinned Python 3.12 on Alpine, applies available OS package
+updates and installs the unchanged dependency lock. CI executes runtime tests
+inside the image; TLS fixtures skip there when the OpenSSL CLI is unavailable,
+and the foundation runtime gate exercises them on its OpenSSL-equipped host.
+
 Build it and inspect both entry points from the repository root:
 
 ```sh

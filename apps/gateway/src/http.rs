@@ -188,7 +188,7 @@ async fn workflow_inference(State(s): State<Arc<AppState>>, request: Request) ->
         .clone();
     let result = async {
         let run = single_header(request.headers(), "x-toolgate-run-id").filter(|value| {
-            value.strip_prefix("run-").is_some_and(|id| crate::tenancy::canonical_uuid(id))
+            value.strip_prefix("run-").is_some_and(crate::tenancy::canonical_uuid)
         }).ok_or(ErrorCode::Validation)?;
         let token = single_header(request.headers(), "authorization").and_then(|value| value.strip_prefix("Bearer "))
             .filter(|value| value.len() == 43 && value.bytes().all(|byte| byte.is_ascii_alphanumeric() || b"_-".contains(&byte)))

@@ -38,11 +38,11 @@ pub(crate) async fn read_workflow_body(
     mut response: reqwest::Response,
     limit: usize,
 ) -> Result<Vec<u8>, ErrorCode> {
-    if !response
+    if response
         .headers()
         .get("content-type")
         .and_then(|value| value.to_str().ok())
-        .is_some_and(|value| value.split(';').next() == Some("application/json"))
+        .is_none_or(|value| value.split(';').next() != Some("application/json"))
         || response
             .content_length()
             .is_some_and(|length| length > limit as u64)
