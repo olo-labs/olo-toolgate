@@ -152,7 +152,8 @@ public final class ClientReleases {
             tools.add(registration);
             var example = examples.get(toolId.substring(toolId.indexOf('/') + 1));
             tests.addObject().put("toolId", toolId).<ObjectNode>set("arguments", example[0]).set("expectedOutput", example[1]);
-            records.add(new ObjectNode[]{controlTool, extractor});
+            var effect = JSON.objectNode().put("toolId", toolId).put("safety", d.path("effect").path("safety").asText("UNKNOWN"));
+            records.add(new ObjectNode[]{controlTool, extractor, effect});
         }
         if (!triggers.isEmpty()) {
             var registrations = document.putArray("triggers");
@@ -310,6 +311,11 @@ public final class ClientReleases {
             var before = tx.load(); var entries = new HashMap<>(before.entries()); boolean changed = false; var stored = new HashMap<String, JsonNode>();
             for (var pair : records) {
                 var tool = pair[0].deepCopy(); var extractor = pair[1].deepCopy(); String toolId = tool.get("id").asText();
+                String evidence = effectEvidenceKey(codec, toolId, tool.path("packageDigest").asText());
+                String descriptor = codec.json(pair[2]);
+                String previousEvidence = tx.packages().document(evidence);
+                if (previousEvidence == null) tx.packages().saveDocument(evidence, descriptor);
+                else if (!previousEvidence.equals(descriptor)) throw Failure.conflict();
                 changed |= put(entries, Kind.EXTRACTOR, extractor.get("id").asText(), extractor, true);
                 stored.put(toolId, node(entries.get(Kind.EXTRACTOR.id(extractor.get("id").asText())).document()));
                 boolean added = !entries.containsKey(Kind.TOOL.id(toolId));
@@ -323,6 +329,9 @@ public final class ClientReleases {
             tx.audit(actor.id(), "PACKAGE_CLIENT_RELEASE", "package:" + packageId, after.revision(), requestId, DirectoryService.digest(codec.json(stored)));
             return stored;
         });
+    }
+    static String effectEvidenceKey(Codec codec, String toolId, String managedDigest) {
+        return Canonical.digest((JsonNode) codec.value(codec.json(List.of("client-release-effect/v1", toolId, managedDigest))));
     }
     private boolean put(Map<Ids.RecordId, Directory.Entry> entries, Kind kind, String id, ObjectNode document, boolean enabled) {
         var previous = entries.get(kind.id(id));

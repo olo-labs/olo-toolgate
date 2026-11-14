@@ -6,6 +6,13 @@ The project follows semantic versioning once stable versioning begins.
 
 ## 0.10.0-dev
 
+- Include `olo-toolgate-langgraph-runtime` in container release builds, image
+  verification, SBOM/provenance and Docker Hub/GHCR publication.
+
+- Report workflow worker inference/tool observations without content or credentials.
+  Require configured-agent/tool evidence and stable duplicate admission IDs in
+  the one-agent acceptance fixture; uncertain tool outcomes fail acceptance.
+
 - Move standard debug scripts into `debug/standard` and add a separate
   `debug/hotfolder` lab with a host-mounted inbox and a real trigger smoke check.
 

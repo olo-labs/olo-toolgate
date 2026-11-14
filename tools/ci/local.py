@@ -55,6 +55,7 @@ POLICY = {
     'images.device': 'artifacts',
     'images.secured-device': 'artifacts',
     'images.langchain': 'artifacts',
+    'images.langgraph-runtime': 'artifacts',
     'images.build': 'artifacts',
     'images.verify': 'artifacts',
     'gateway.container-and-replicas': 'legacy',
