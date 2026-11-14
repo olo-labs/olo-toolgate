@@ -255,6 +255,39 @@ fresh-install/two-profile acceptance and original phase exit criteria remain.
 No phase weight or #230/#274 completion is credited; overall earned completion
 remains **0 / 100**.
 
+### Explicit image test-mode guard follow-up (2026-11-14)
+
+Delivery: draft [PR #309](https://github.com/olo-labs/olo-toolgate/pull/309)
+into `feature/workflow-enhancement`; full live acceptance remains outstanding.
+
+Review base: `6d4812cf5bd6296ddb967afd27e32f10c8239e00`.
+[Run 43596899996](https://github.com/olo-labs/olo-toolgate/actions/runs/43596899996)
+failed its manual-release admission regression before Rust or image jobs ran.
+The final in-image unittest command needs an explicit step-level
+`if: inputs.run_tests`, in addition to the existing job condition. That guard is
+now present; the regression is retained. The earlier local full-check run had
+evaluated admission before that unittest command was added, so it did not
+establish final-workflow admission coverage.
+
+Executed checks on the corrected workflow: actionlint, source policy and Linux
+metadata/preflight passed. Linux Python 3.12 ran all 424 CI tests with two errors
+and 17 skips; both errors were fixtures writing temporary files under the
+read-only checkout's `.dev`. With writable isolated `.dev` temporary storage,
+the admission and affected coverage/debug-asset suites passed 39 executed tests
+(44 discovered, five PowerShell skips), including the originally failing
+admission test. No production source was changed to accommodate those fixtures.
+The Windows `PYTHONUTF8=1 python tools/check.py` attempt ran 424 CI tests with
+one existing device-symlink privilege error and ten skips; later component gates
+did not execute. No complete repository or complete local Linux-suite pass is
+claimed. Staged PR policy, secret scan and whitespace checks passed.
+
+Corrected image workflow SHA-256:
+`f095e85df91c0f49e3bb63d8afb34e73bb17d786310312d59b5dfef10b6ad812`.
+Next verification is hosted preflight on the corrected commit. Runtime/image
+publication still requires all release gates, and live workflow finality and
+full-phase exit criteria remain outstanding. Baseline weights and earned
+completion remain **0 / 100**.
+
 ## Published configuration in the console
 
 The Control API exposes tenant-scoped, read-only published workflow and agent

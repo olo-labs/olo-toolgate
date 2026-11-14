@@ -468,6 +468,7 @@ jobs:
         python -m pip install -r tools/release/notes-requirements.txt
         python tools/release/config.py
     - name: Build and verify the standalone LangGraph image
+      if: ${{ inputs.run_tests }}
       env:
         RELEASE_SHA: ${{ inputs.source_sha || github.sha }}
       run: |
