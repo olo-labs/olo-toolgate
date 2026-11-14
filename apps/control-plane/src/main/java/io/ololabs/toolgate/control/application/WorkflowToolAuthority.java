@@ -59,7 +59,12 @@ public final class WorkflowToolAuthority {
         var tool = codec.model(entry.document(), ControlTool.class);
         String digest = tool.packageDigest().startsWith("sha256:") ? tool.packageDigest() : "sha256:" + tool.packageDigest();
         var version = tx.packages().version(digest);
-        if (version == null) return false;
+        if (version == null) {
+            String evidence = tx.packages().document(ClientReleases.effectEvidenceKey(codec, id, tool.packageDigest()));
+            if (evidence == null) return false;
+            var descriptor = (JsonNode) codec.value(evidence);
+            return id.equals(descriptor.path("toolId").asText()) && "READ_ONLY".equals(descriptor.path("effect").path("safety").asText());
+        }
         var manifest = ((JsonNode) codec.value(version.document())).path("manifest");
         for (var item : manifest.path("tools")) {
             var descriptor = item.path("descriptor");
