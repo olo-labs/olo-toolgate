@@ -4,7 +4,8 @@
   "version": "1.0.0-dev.1",
   "workspaces": [
     "packages/contracts/typescript",
-    "apps/admin-ui"
+    "apps/admin-ui",
+    "tool-sdk/typescript-sdk/sdk"
   ],
   "scripts": {
     "contracts:build": "npm --workspace @olo-labs/toolgate-contracts run build",
