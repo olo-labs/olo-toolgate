@@ -14,4 +14,4 @@ COPY --from=dependencies /opt/toolgate-runtime /opt/toolgate-runtime
 COPY src/ ./src/
 ENV PYTHONPATH=/app/src PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 USER 65532:65532
-ENTRYPOINT ["/opt/toolgate-runtime/bin/python", "-m", "toolgate_runtime.trigger_listener"]
+ENTRYPOINT ["/opt/toolgate-runtime/bin/python", "-m", "toolgate_runtime.worker"]

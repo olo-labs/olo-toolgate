@@ -5,8 +5,8 @@ from email.message import Message
 from io import BytesIO
 import unittest
 
-from toolgate_runtime.run_transport import ControlRuns, RunTransportError
-from toolgate_runtime.runner import RunOutcome
+from toolgate_runtime.run_transport import ControlRuns, GatewayRuntime, RunTransportError
+from toolgate_runtime.runner import Candidate, RunOutcome, StepGrant
 
 
 class Response(BytesIO):
@@ -64,3 +64,43 @@ class RunTransportTests(unittest.TestCase):
         self.assertEqual(("https://control.example/internal/v1/runtime/runs/run-1/steps:authorize", "Bearer workload.credential",
                           {"leaseId": "lease-1", "leaseToken": "x" * 43, "subjectKind": "AGENT", "subjectId": "agent-1",
                            "modelGroupId": "models"}, 4), self.requests[-1])
+
+    def test_inference_sends_step_identity_and_messages_to_the_gateway(self):
+        self.responses.extend([Response(200, self.snapshot), Response(200, {"kind": "delegate", "agentId": "agent-1", "input": "test"})])
+        lease = self.control.claim()
+        gateway = GatewayRuntime("https://gateway.example")
+        gateway._opener = self
+        grant = StepGrant("run-1", "lease-1", "WORKFLOW", "workflow-1", "models", "y" * 43)
+        decision = gateway.infer(lease, grant, system_prompt="Delegate", messages=[{"role": "user", "content": "test"}],
+                                 tools=(), candidates=(Candidate("agent-1"),), timeout_seconds=4)
+        self.assertEqual("agent-1", decision["agentId"])
+        url, auth, payload, timeout = self.requests[-1]
+        self.assertEqual("https://gateway.example/v1/chat/completions", url)
+        self.assertEqual("Bearer " + "y" * 43, auth)
+        self.assertEqual(4, timeout)
+        self.assertEqual({"messages"}, payload.keys())
+        self.assertIn("agent-1", payload["messages"][0]["content"])
+
+    def test_tool_requests_use_gateway_mcp_and_keep_unknown_outcomes(self):
+        self.responses.append(Response(200, self.snapshot))
+        lease = self.control.claim()
+        gateway = GatewayRuntime("https://gateway.example")
+        grant = StepGrant("run-1", "lease-1", "AGENT", "agent-1", "models", "y" * 43)
+
+        def open_mcp(request, timeout):
+            self.assertEqual("https://gateway.example/mcp", request.full_url)
+            self.assertEqual("Bearer " + "y" * 43, request.get_header("Authorization"))
+            self.assertEqual("run-1", request.get_header("X-toolgate-run-id"))
+            body = json.loads(request.data)
+            reply = {"jsonrpc": "2.0", "id": body["id"]}
+            if body["method"] == "tools/list":
+                reply["result"] = {"tools": [{"name": "files/read", "description": "Read", "inputSchema": {},
+                                             "annotations": {"readOnlyHint": True}}]}
+            else:
+                self.assertEqual("files/read", body["params"]["name"])
+                reply["error"] = {"data": {"state": "OUTCOME_UNKNOWN"}}
+            return Response(200, reply)
+
+        gateway._opener = type("Opener", (), {"open": staticmethod(open_mcp)})()
+        self.assertTrue(gateway.discover_tools(lease, grant, timeout_seconds=4)[0].read_only)
+        self.assertEqual("OUTCOME_UNKNOWN", gateway.call_tool(lease, grant, "files/read", {}, timeout_seconds=4).state)

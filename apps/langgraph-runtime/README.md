@@ -7,13 +7,9 @@ eligibility, remediation mode and execution limits come from a leased snapshot.
 The graph has no use-case IDs, provider keys, provider clients, arbitrary imports
 or executable profile expressions. It does not union different agents' tools.
 
-**Integration is pending.** This is a tested executor library, not a working
-ToolGate run executor, live LangChain/model-proxy integration or complete
-end-to-end standalone workflow program. The trigger subscriber described below
-uses the existing stream and the Control admission API. There is no default fake adapter, local authority
-fallback or runnable-profile claim. Complete V1.1 provisioning/readiness and V1.2 server
-admission/leases, runtime identities, model proxy and real transport must be
-implemented before the external message/trigger demo can run end to end.
+The worker uses the Control lease API and the Gateway model and MCP endpoints.
+The trigger subscriber uses the existing stream and the Control admission API.
+The first live profile qualification is tracked in the workflow v1 status.
 
 ## Install and verify outside containers
 
@@ -42,8 +38,8 @@ must decode the canonical server contract, cap input/response bytes, verify TLS,
 use configured infrastructure endpoints, and enforce deadlines without redirects,
 credential logging or automatic retries. Prompts and results are sensitive.
 
-The adapter must implement `authorize_step`, `discover_agents`, `discover_tools`, `infer`,
-`call_tool` and `finish`. ToolGate must independently enforce current tenant,
+The adapter implements `authorize_step`, `discover_agents`, `discover_tools`, `infer`,
+`call_tool` and `finish`. ToolGate independently enforces current tenant,
 run ownership, delegation, model/tool permissions, profile readiness and kill
 switches at every protected operation. It must bind mutations to existing
 single-use effect/consent identities and record authoritative outcomes. The
@@ -68,8 +64,8 @@ tools. It may return exactly `finish` as above or:
 
 All decisions and tool results are treated as untrusted bounded JSON. Unknown
 agents, tools, extra model-selection fields and malformed decisions fail closed.
-The future model adapter must validate/translate these decisions from the governed
-model response; no such adapter is included yet.
+The Gateway requests a structured decision from the configured model and the
+runner validates it before taking the next step.
 
 ## Stop and completion semantics
 
@@ -102,16 +98,25 @@ See the [live status](../../docs/architecture/workflow-v1-status.md) and
 
 ## V1.3 trigger subscriber
 
-The standalone image packages the real listener and executor library. To build
-it and inspect the listener entry point from the repository root:
+The standalone image packages the worker, listener, and LangGraph executor.
+Build it and inspect both entry points from the repository root:
 
 ```sh
 docker build -t toolgate-langgraph-runtime:local apps/langgraph-runtime
 docker run --rm --read-only toolgate-langgraph-runtime:local --help
+docker run --rm --read-only --entrypoint /opt/toolgate-runtime/bin/python \
+  toolgate-langgraph-runtime:local -m toolgate_runtime.trigger_listener --help
 ```
 
-The image runs as UID 65532. Mount the Gateway CA read-only and provide the
-listener credential through the process environment.
+The image runs as UID 65532. The listener uses a subscription owner credential
+provided through the process environment. The worker takes a separate mounted
+`--token-file` containing a short-lived `toolgate-workflow-runtime` credential
+for the configured tenant, plus `--control-origin`, `--gateway-origin`, and the
+respective CA files. Provide the worker with direct TLS access to Control's
+internal runtime listener. The worker reloads the mounted credential on every
+request. Configure `TOOLGATE_WORKFLOW_MODEL_ORIGINS` on the Gateway as a
+comma-separated list of approved HTTPS origins. Model containers supply a
+TLS-protected OpenAI-compatible completion endpoint trusted by the Gateway.
 
 The generic listener reuses the current authenticated subscription/ticket APIs and
 `toolgate.triggers.v1`. Obtain the subscription name and immutable UID from the

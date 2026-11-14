@@ -90,6 +90,21 @@ SQLite and disposable PostgreSQL. Three Python transport tests and four schema
 ownership tests passed. Model selection was exercised inside Control. Gateway
 inference, MCP execution, and the container's live worker loop remain pending.
 
+### Gateway runtime transport
+
+The worker image now claims a run, executes the existing LangGraph runner,
+and sends inference and MCP calls to Gateway using the active step token.
+Gateway resolves the step with Control. Inference uses an operator-approved
+HTTPS origin and the current vault credential. MCP uses the existing Gateway
+catalog and invocation path. Control denies a PREPARE call when the signed
+package descriptor does not establish a read-only tool.
+
+Verification on `362f7c5e` with this increment applied: Control compilation,
+the Gateway Rust test suite, five focused Python transport tests, and a
+read-only worker image help smoke passed. The model response and MCP adapter
+tests use transport fixtures. A fresh real trigger, model, and tool run
+remains the next acceptance step. Phase credit is unchanged.
+
 ## Published configuration in the console
 
 The Control API exposes tenant-scoped, read-only published workflow and agent

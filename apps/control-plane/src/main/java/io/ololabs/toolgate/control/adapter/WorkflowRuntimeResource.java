@@ -13,9 +13,8 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Response;
 import java.time.Clock;
 
-/** Workload-only claim and completion. A listener credential has no access to run inputs. */
+/** Separate workload and Gateway service roles for workflow runtime operations. */
 @Path("/internal/v1/runtime") @Produces("application/json") @Blocking
-@RolesAllowed(WorkflowRuntimeResource.ROLE)
 public class WorkflowRuntimeResource {
     static final String ROLE = "toolgate-workflow-runtime";
 
@@ -35,18 +34,21 @@ public class WorkflowRuntimeResource {
     private WorkflowLeases leases(DirectoryService.Actor worker) {
         var clock = Clock.systemUTC();
         var vault = keys.required();
-        var profiles = new WorkflowProfiles(store, codec, new WorkflowProfileDependencies(codec, clock,
-            triggers.subscriptions(worker.tenant()), triggers.forTenant(worker.tenant()), worker.tenant()), vault);
-        return new WorkflowLeases(store, codec, clock, profiles, vault);
+        return new WorkflowLeases(store, codec, clock, profiles(worker, clock, vault), vault);
     }
 
-    @POST @Path("claim")
+    private WorkflowProfiles profiles(DirectoryService.Actor actor, Clock clock, TenantVaultKeys vault) {
+        return new WorkflowProfiles(store, codec, new WorkflowProfileDependencies(codec, clock,
+            triggers.subscriptions(actor.tenant()), triggers.forTenant(actor.tenant()), actor.tenant()), vault);
+    }
+
+    @POST @Path("claim") @RolesAllowed(ROLE)
     public Response claim() {
         var worker = worker();
         return reply(leases(worker).claim(worker, correlation.id()));
     }
 
-    @POST @Path("runs/{runId}/finish") @Consumes("application/json")
+    @POST @Path("runs/{runId}/finish") @Consumes("application/json") @RolesAllowed(ROLE)
     public Response finish(@PathParam("runId") String runId, String document) {
         var worker = worker();
         if (document == null || document.length() > 1024) throw Failure.validation();
@@ -57,7 +59,7 @@ public class WorkflowRuntimeResource {
             value.path("state").textValue(), correlation.id()));
     }
 
-    @POST @Path("runs/{runId}/steps:authorize") @Consumes("application/json")
+    @POST @Path("runs/{runId}/steps:authorize") @Consumes("application/json") @RolesAllowed(ROLE)
     public Response authorizeStep(@PathParam("runId") String runId, String document) {
         var worker = worker();
         if (document == null || document.length() > 2048) throw Failure.validation();
@@ -67,6 +69,41 @@ public class WorkflowRuntimeResource {
             throw Failure.validation();
         return reply(leases(worker).authorizeStep(worker, runId, value.path("leaseId").textValue(), value.path("leaseToken").textValue(),
             value.path("subjectKind").textValue(), value.path("subjectId").textValue(), value.path("modelGroupId").textValue()));
+    }
+
+    @POST @Path("model:resolve") @Consumes("application/json") @RolesAllowed("toolgate-relay-gateway")
+    public Response resolveModel(String document) {
+        var gateway = actors.service("toolgate-relay-gateway");
+        if (document == null || document.length() > 1024 || !(codec.value(document) instanceof JsonNode value)
+                || !value.isObject() || value.size() != 2 || !value.path("runId").isTextual() || !value.path("stepToken").isTextual())
+            throw Failure.validation();
+        String runId = value.path("runId").textValue();
+        if (!runId.matches("run-[0-9a-f-]{36}")) throw Failure.validation();
+        var clock = Clock.systemUTC();
+        var vault = keys.required();
+        var selection = new WorkflowModelSelection(profiles(gateway, clock, vault), codec, clock);
+        return reply(store.transaction(gateway.tenant(), false, tx -> {
+            var model = selection.resolve(tx, gateway.tenant(), runId, value.path("stepToken").textValue());
+            var credential = new VaultService(store, codec, vault).workflowModelCredential(gateway.tenant(), tx, model);
+            return new Store.Reply(200, codec.json(java.util.Map.of("origin", model.origin(), "modelId", model.modelId(),
+                "credential", credential)), 0);
+        }));
+    }
+
+    @POST @Path("tool:resolve") @Consumes("application/json") @RolesAllowed("toolgate-relay-gateway")
+    public Response resolveTool(String document) {
+        var gateway = actors.service("toolgate-relay-gateway");
+        if (document == null || document.length() > 1024 || !(codec.value(document) instanceof JsonNode value)
+                || !value.isObject() || value.size() != 3 || !value.path("runId").isTextual() || !value.path("stepToken").isTextual()
+                || !value.has("toolId") || !(value.get("toolId").isNull() || value.get("toolId").isTextual())) throw Failure.validation();
+        String runId = value.path("runId").textValue();
+        String toolId = value.path("toolId").textValue();
+        if (!runId.matches("run-[0-9a-f-]{36}") || toolId != null && !toolId.matches("[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}"))
+            throw Failure.validation();
+        var clock = Clock.systemUTC();
+        var authority = new WorkflowToolAuthority(codec, new WorkflowModelSelection(profiles(gateway, clock, keys.required()), codec, clock), clock);
+        return reply(store.transaction(gateway.tenant(), false, tx -> new Store.Reply(200, codec.json(authority.resolve(tx,
+            gateway.tenant(), runId, value.path("stepToken").textValue(), toolId, correlation.id())), 0)));
     }
 
     private static Response reply(Store.Reply value) {

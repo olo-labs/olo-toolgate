@@ -94,6 +94,7 @@ public final class WorkflowLeases {
             var runs = tx.workflowRuns();
             long now = clock.millis();
             var lease = requireLease(runs, worker, runId, leaseId, leaseToken, now);
+            if ("SUCCEEDED".equals(state) && runs.activeStep(runId) == null) throw ManagementAccess.denied();
             runs.finish(lease, state, now);
             tx.audit(worker.id(), "WORKFLOW_RUN_FINISH", "workflow-run:" + runId, 2, requestId, DirectoryService.digest(state));
             return new Store.Reply(200, codec.json(Map.of("runId", runId, "leaseId", leaseId, "state", state)), 0);

@@ -173,10 +173,66 @@ pub fn runtime_router(state: Arc<AppState>) -> Router {
         .route("/access/invocations/{id}/history", get(operation_history))
         .route("/access/catalog", post(catalog))
         .route("/mcp", post(crate::mcp::ingress))
+        .route("/v1/chat/completions", post(workflow_inference))
         .fallback(not_found)
         .method_not_allowed_fallback(method_not_allowed)
         .layer(middleware::from_fn_with_state(state.clone(), guard))
         .with_state(state)
+}
+
+async fn workflow_inference(State(s): State<Arc<AppState>>, request: Request) -> Response {
+    let correlation = request
+        .extensions()
+        .get::<Correlation>()
+        .expect("guard correlation")
+        .clone();
+    let result = async {
+        let run = single_header(request.headers(), "x-toolgate-run-id").filter(|value| {
+            value.strip_prefix("run-").is_some_and(|id| crate::tenancy::canonical_uuid(id))
+        }).ok_or(ErrorCode::Validation)?;
+        let token = single_header(request.headers(), "authorization").and_then(|value| value.strip_prefix("Bearer "))
+            .filter(|value| value.len() == 43 && value.bytes().all(|byte| byte.is_ascii_alphanumeric() || b"_-".contains(&byte)))
+            .ok_or(ErrorCode::Unauthorized)?;
+        if single_header(request.headers(), "content-type") != Some("application/json") || request.headers().contains_key("content-encoding") {
+            return Err(ErrorCode::Validation);
+        }
+        let (run, token) = (run.to_owned(), token.to_owned());
+        let bytes = to_bytes(request.into_body(), s.config.limits.max_body_bytes.min(98_304)).await.map_err(|_| ErrorCode::Validation)?;
+        let value = crate::validation::strict_json(&bytes).map_err(|_| ErrorCode::Validation)?;
+        let messages = value.as_object().filter(|object| object.len() == 1).and_then(|object| object.get("messages"))
+            .and_then(Value::as_array).filter(|messages| !messages.is_empty() && messages.len() <= 64).ok_or(ErrorCode::Validation)?;
+        if messages.iter().any(|message| !message.as_object().is_some_and(|object| object.len() == 2
+            && object.get("role").and_then(Value::as_str).is_some_and(|role| ["system", "user", "assistant"].contains(&role))
+            && object.get("content").is_some_and(Value::is_string))) {
+            return Err(ErrorCode::Validation);
+        }
+        let model = s.gateway.authority.workflow_model(&run, &token).await?;
+        let origin = reqwest::Url::parse(&model.origin).map_err(|_| ErrorCode::DependencyUnavailable)?;
+        let approved = std::env::var("TOOLGATE_WORKFLOW_MODEL_ORIGINS").unwrap_or_default();
+        if origin.scheme() != "https" || origin.host_str().is_none() || origin.path() != "/" || !origin.username().is_empty()
+            || origin.password().is_some() || origin.query().is_some() || origin.fragment().is_some()
+            || !approved.split(',').map(str::trim).any(|entry| entry == origin.origin().ascii_serialization()) {
+            return Err(ErrorCode::Forbidden);
+        }
+        let client = reqwest::Client::builder().no_proxy().redirect(reqwest::redirect::Policy::none())
+            .retry(reqwest::retry::never()).tls_sslkeylogfile(false).connect_timeout(Duration::from_secs(3))
+            .timeout(Duration::from_secs(30)).build().map_err(|_| ErrorCode::DependencyUnavailable)?;
+        let response = client.post(origin.join("v1/chat/completions").map_err(|_| ErrorCode::Validation)?)
+            .bearer_auth(model.credential).header("Content-Type", "application/json")
+            .header("traceparent", &correlation.traceparent)
+            .body(serde_json::json!({"model":model.model_id,"messages":messages,"stream":false,"max_tokens":512,
+                "response_format":{"type":"json_object"}}).to_string())
+            .send().await.map_err(|_| ErrorCode::DependencyUnavailable)?;
+        if !response.status().is_success() { return Err(ErrorCode::DependencyUnavailable); }
+        let body = crate::relay::read_workflow_body(response, 98_304).await?;
+        let value = crate::validation::strict_json(&body).map_err(|_| ErrorCode::Validation)?;
+        let content = value["choices"][0]["message"]["content"].as_str().ok_or(ErrorCode::Validation)?;
+        crate::validation::strict_json(content.as_bytes()).map_err(|_| ErrorCode::Validation)
+    }.await;
+    match result {
+        Ok(decision) => ([("cache-control", "no-store")], Json(decision)).into_response(),
+        Err(code) => error(code, &correlation.request_id),
+    }
 }
 
 async fn public_document(s: &AppState) -> Result<crate::discovery::Document, ErrorCode> {
@@ -385,6 +441,19 @@ async fn guard(State(s): State<Arc<AppState>>, mut request: Request, next: Next)
                 "/.well-known/olo-toolgate-client" | "/api/public/v1/clients/configuration"
             )
         {
+            return timeout(
+                Duration::from_millis(s.config.limits.request_timeout_ms),
+                next.run(request),
+            )
+            .await
+            .unwrap_or_else(|_| error(ErrorCode::Timeout, &correlation.request_id));
+        }
+        if request.method() == axum::http::Method::POST
+            && (request.uri().path() == "/v1/chat/completions"
+                || request.uri().path() == "/mcp"
+                    && request.headers().contains_key("x-toolgate-run-id"))
+        {
+            // Control checks the run-bound step credential before releasing model routing or vault data.
             return timeout(
                 Duration::from_millis(s.config.limits.request_timeout_ms),
                 next.run(request),

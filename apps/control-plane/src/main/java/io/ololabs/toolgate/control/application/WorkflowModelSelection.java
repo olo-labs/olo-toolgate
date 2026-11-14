@@ -19,6 +19,22 @@ public final class WorkflowModelSelection {
     }
 
     public WorkflowModelDeployment resolve(Store.Session tx, Ids.TenantId tenant, String runId, String stepToken) {
+        var runtime = context(tx, tenant, runId, stepToken);
+        var config = runtime.config();
+        var workflowModels = config.modelGroups().stream().filter(group -> group.id().equals(runtime.workflow().modelGroupId()))
+            .findFirst().orElseThrow(Failure::unavailable).deploymentIds();
+        var stepModels = config.modelGroups().stream().filter(group -> group.id().equals(runtime.step().modelGroupId()))
+            .findFirst().orElseThrow(Failure::unavailable).deploymentIds();
+        var model = workflowModels.stream().filter(stepModels::contains).findFirst().orElseThrow(ManagementAccess::denied);
+        return config.modelDeployments().stream().filter(deployment -> deployment.id().equals(model))
+            .findFirst().orElseThrow(Failure::unavailable);
+    }
+
+    record Runtime(WorkflowRunStore.QueuedRun run, WorkflowRunStore.Step step,
+                   io.ololabs.toolgate.contracts.v2.WorkflowConfiguration config,
+                   io.ololabs.toolgate.contracts.v2.WorkflowDefinition workflow) {}
+
+    Runtime context(Store.Session tx, Ids.TenantId tenant, String runId, String stepToken) {
         long now = clock.millis();
         var runs = tx.workflowRuns();
         var step = WorkflowLeases.requireStep(runs, runId, stepToken, now);
@@ -31,12 +47,6 @@ public final class WorkflowModelSelection {
         var directory = tx.load();
         access.require(directory, run.serviceAgentId(), run.serviceAgentGroupId(), workflow, now);
         access.requireGrant(directory, run.serviceAgentGroupId(), "model.infer", "model-group:" + step.modelGroupId(), now);
-        var workflowModels = config.modelGroups().stream().filter(group -> group.id().equals(workflow.modelGroupId()))
-            .findFirst().orElseThrow(Failure::unavailable).deploymentIds();
-        var stepModels = config.modelGroups().stream().filter(group -> group.id().equals(step.modelGroupId()))
-            .findFirst().orElseThrow(Failure::unavailable).deploymentIds();
-        var model = workflowModels.stream().filter(stepModels::contains).findFirst().orElseThrow(ManagementAccess::denied);
-        return config.modelDeployments().stream().filter(deployment -> deployment.id().equals(model))
-            .findFirst().orElseThrow(Failure::unavailable);
+        return new Runtime(run, step, config, workflow);
     }
 }

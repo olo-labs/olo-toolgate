@@ -5,10 +5,11 @@ from __future__ import annotations
 
 import json
 import re
+import uuid
 from urllib.error import HTTPError
 from urllib.request import Request
 
-from .runner import Agent, CompletionAck, ContextSource, ID, Limits, OwnershipLost, RunLease, StepGrant
+from .runner import Agent, Candidate, CompletionAck, ContextSource, Denied, ID, Limits, OwnershipLost, RunLease, StepGrant, Tool, ToolOutcome
 from .trigger_bridge import _constant, _object
 from .trigger_transport import ControlTriggers
 
@@ -122,3 +123,126 @@ class ControlRuns(ControlTriggers):
             return CompletionAck(ack["runId"], ack["leaseId"], ack["state"])
         except ValueError:
             raise RunTransportError("Invalid Control completion acknowledgement") from None
+
+
+class GatewayRuntime(ControlTriggers):
+    """Inference and tools through Gateway using the active step credential."""
+
+    def __init__(self, origin, *, ca_file=None, timeout_seconds=30):
+        super().__init__(origin, lambda: "", ca_file=ca_file, timeout_seconds=timeout_seconds)
+
+    def infer(self, lease, grant, *, system_prompt, messages, tools, candidates, timeout_seconds):
+        decisions = ['{"kind":"finish","result":{...}}']
+        if grant.subject_kind == "WORKFLOW":
+            decisions.append('{"kind":"delegate","agentId":"<available agent>","input":"..."}')
+        elif tools:
+            decisions.append('{"kind":"tool","toolId":"<available tool>","arguments":{...}}')
+        guidance = {"instruction": "Return exactly one JSON object following a listed decision shape.",
+                    "decisions": decisions, "agents": [{"id": item.agent_id, "description": item.description} for item in candidates],
+                    "tools": [{"id": item.tool_id, "description": item.description, "inputSchema": item.input_schema} for item in tools]}
+        conversation = [{"role": "system", "content": system_prompt + "\n" + json.dumps(guidance, allow_nan=False)}]
+        for message in messages:
+            # Encode tool results as data. The proxy accepts text messages and structured decisions.
+            role = "assistant" if message["role"] == "assistant" else "user"
+            conversation.append({"role": role, "content": json.dumps(message, allow_nan=False)})
+        try:
+            timeout = min(self.timeout, timeout_seconds)
+            if timeout <= 0:
+                raise ValueError("Invalid inference deadline")
+            body = json.dumps({"messages": conversation}, allow_nan=False).encode()
+            if len(body) > 98304:
+                raise ValueError("Inference request exceeds limit")
+            request = Request(self.origin + "/v1/chat/completions", body,
+                              {"Authorization": "Bearer " + grant.token, "X-ToolGate-Run-Id": lease.run_id,
+                               "Content-Type": "application/json", "Accept": "application/json"}, method="POST")
+            with self._opener.open(request, timeout=timeout) as response:
+                if response.status != 200 or response.headers.get_content_type() != "application/json":
+                    raise ValueError("Invalid inference response")
+                raw = response.read(98305)
+                if len(raw) > 98304:
+                    raise ValueError("Inference response exceeds limit")
+                value = json.loads(raw, object_pairs_hook=_object, parse_constant=_constant)
+                if not isinstance(value, dict):
+                    raise ValueError("Invalid model decision")
+                return value
+        except HTTPError as failure:
+            with failure:
+                if failure.code in (401, 403):
+                    raise Denied("Gateway refused inference") from None
+            raise RunTransportError("Gateway inference failed") from None
+        except Exception:
+            raise RunTransportError("Gateway inference failed") from None
+
+    def _mcp(self, lease, grant, method, timeout_seconds, *, tool_id=None, arguments=None):
+        version = "2026-07-28"
+        rpc_id = str(uuid.uuid4())
+        params = {"_meta": {"io.modelcontextprotocol/protocolVersion": version,
+                            "io.modelcontextprotocol/clientCapabilities": {"tools": {}},
+                            "io.ololabs.toolgate/agentRunId": lease.run_id}}
+        headers = {"Authorization": "Bearer " + grant.token, "X-ToolGate-Run-Id": lease.run_id,
+                   "Content-Type": "application/json", "Accept": "application/json, text/event-stream",
+                   "MCP-Protocol-Version": version, "MCP-Method": method}
+        if tool_id is not None:
+            params.update(name=tool_id, arguments=arguments)
+            headers["MCP-Name"] = tool_id
+        body = json.dumps({"jsonrpc": "2.0", "id": rpc_id, "method": method, "params": params}, allow_nan=False).encode()
+        try:
+            timeout = min(self.timeout, timeout_seconds)
+            if len(body) > 98304 or timeout <= 0:
+                raise ValueError("Invalid MCP request")
+            request = Request(self.origin + "/mcp", body, headers, method="POST")
+            with self._opener.open(request, timeout=timeout) as response:
+                raw = response.read(98305)
+                if response.status != 200 or len(raw) > 98304 or response.headers.get_content_type() != "application/json":
+                    raise ValueError("Invalid MCP response")
+                value = json.loads(raw, object_pairs_hook=_object, parse_constant=_constant)
+                if value.get("jsonrpc") != "2.0" or value.get("id") != rpc_id:
+                    raise ValueError("Invalid MCP reply identity")
+                if isinstance(value.get("error"), dict) and value["error"].get("data", {}).get("state") == "OUTCOME_UNKNOWN":
+                    return {"_meta": {"io.ololabs.toolgate/operationOutcome": {"state": "OUTCOME_UNKNOWN"}}}
+                if not isinstance(value.get("result"), dict) or "error" in value:
+                    raise ValueError("Invalid MCP result")
+                return value["result"]
+        except HTTPError as failure:
+            with failure:
+                if failure.code in (401, 403):
+                    raise Denied("Gateway refused the tool request") from None
+            raise RunTransportError("Gateway tool request failed") from None
+        except Exception:
+            raise RunTransportError("Gateway tool request failed") from None
+
+    def discover_tools(self, lease, grant, *, timeout_seconds):
+        result = self._mcp(lease, grant, "tools/list", timeout_seconds)
+        tools = result.get("tools")
+        if not isinstance(tools, list) or len(tools) > 64:
+            raise RunTransportError("Invalid Gateway tool catalog")
+        return tuple(Tool(item["name"], item.get("annotations", {}).get("readOnlyHint") is True,
+                          item["description"], item["inputSchema"]) for item in tools)
+
+    def call_tool(self, lease, grant, tool_id, arguments, *, timeout_seconds):
+        result = self._mcp(lease, grant, "tools/call", timeout_seconds, tool_id=tool_id, arguments=arguments)
+        outcome = result.get("_meta", {}).get("io.ololabs.toolgate/operationOutcome", {})
+        structured = result.get("structuredContent")
+        if isinstance(structured, dict) and structured.get("state") == "PENDING_APPROVAL" and result.get("isError") is True:
+            return ToolOutcome("AWAITING_APPROVAL")
+        if outcome.get("state") == "OUTCOME_UNKNOWN":
+            return ToolOutcome("OUTCOME_UNKNOWN")
+        if outcome.get("state") == "SUCCEEDED" and outcome.get("finalized") is True and not result.get("isError"):
+            return ToolOutcome("SUCCEEDED", structured if structured is not None else result.get("content"))
+        return ToolOutcome("FAILED")
+
+
+class WorkflowGateway:
+    """Bind the graph ports to the Control ledger and the Gateway runtime."""
+
+    def __init__(self, control, gateway):
+        self.authorize_step = control.authorize_step
+        self.finish = control.finish
+        self.infer = gateway.infer
+        self.discover_tools = gateway.discover_tools
+        self.call_tool = gateway.call_tool
+
+    def discover_agents(self, lease, grant, *, timeout_seconds):
+        if grant.subject_kind != "WORKFLOW":
+            raise Denied("Agent discovery requires the workflow step")
+        return tuple(Candidate(agent.agent_id) for agent in lease.agents)
