@@ -1,6 +1,34 @@
 <!-- Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0 -->
 # Workflow execution v1 — live delivery status
 
+## One-trigger, one-agent production slice (2026-11-14)
+
+The [delivery plan](../plans/langgraph-workflow-execution-plan.md) narrows the
+first live use case to one real trigger, one published workflow, one configured
+agent, and one approved model. It uses the existing #295 contracts and runtime.
+Phase weights and earned completion are unchanged.
+
+- V1.1 and V1.3 now have transaction-scoped resolution for an in-flight
+  delivery and its published binding. The resolver checks the immutable source,
+  subscription owner, current grants and clearance, and reviewed profile head.
+  Tests cover pending and acknowledged deliveries, a different subscription
+  owner, another tenant, and an unready or withdrawn binding.
+- The standalone image packages the existing listener and LangGraph executor
+  library under an unprivileged user. Its current entry point is the listener.
+
+Verification on base `f269293b` with this change applied: `WorkflowProfilesTest`
+and `TriggerDeliveryTest` passed all 23 tests with the disposable PostgreSQL
+fixture and SQLite. `python tools/workflows/check.py` passed with 32 runtime
+and 13 qualification tests executed, with 10 OpenSSL-dependent tests and one
+symlink test skipped on Windows. The digest-pinned runtime image built and
+printed listener help with a read-only root filesystem and dropped capabilities.
+The full component gates and live trigger-to-agent execution remain pending.
+
+Next is the Control admission transaction and its durable run ledger, then
+workload claim, step authorization, Gateway model transport, and live execution
+qualification. The resolvers currently have no public admission endpoint and
+return no runtime credential.
+
 ## Published configuration in the console
 
 The Control API exposes tenant-scoped, read-only published workflow and agent

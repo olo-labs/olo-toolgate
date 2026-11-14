@@ -92,15 +92,27 @@ model response; no such adapter is included yet.
   tracing was enabled by the host. This does not sandbox a hostile host or stop
   an application from explicitly logging its own inputs.
 
-No durable workflow checkpoint, automatic workflow failover/replay, cancellation
-propagation, model streaming or container image is delivered here.
+Durable workflow checkpoints, automatic workflow failover/replay, cancellation
+propagation, and model streaming remain pending.
 The [v1 qualification guide](../../docs/testing/workflow-v1-qualification.md)
 describes the repeatable scenario controller, private evidence reports and
 explicit blocked outcomes while live server integration is missing.
 See the [live status](../../docs/architecture/workflow-v1-status.md) and
 [architecture plan](../../docs/architecture/langgraph-runtime-plan.md).
 
-## V1.3 host trigger subscriber
+## V1.3 trigger subscriber
+
+The standalone image packages the real listener and executor library. To build
+it and inspect the listener entry point from the repository root:
+
+```sh
+docker build -t toolgate-langgraph-runtime:local apps/langgraph-runtime
+docker run --rm --read-only toolgate-langgraph-runtime:local --help
+```
+
+The image runs as UID 65532. Mount the Gateway CA read-only and provide the
+listener credential through the process environment. Live admission still
+requires the Control route described below.
 
 The generic listener reuses the current authenticated subscription/ticket APIs and
 `toolgate.triggers.v1`. Obtain the subscription name and immutable UID from the

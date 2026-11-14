@@ -375,6 +375,34 @@ final class TriggerDeliveryTest {
         }
     }
 
+    @Test
+    void workflowDispatchResolvesOnlyAnInFlightDeliveryForItsCurrentOwner() throws Exception {
+        for (var backend : stores()) {
+            var w = world(backend.store(), "tenant-a", null, List.of());
+            subscription(w, w.admin(), "agent", "event.type == 'examples.files.observed.v1'");
+            String uid = JSON.readTree(w.subscriptions().get(w.admin(), "agent").body()).path("metadata").path("uid").asText();
+            sync(w, List.of(fired(w, 1, "a")));
+            w.router().route();
+            String cursor = "0000000000000001";
+            java.util.function.Function<DirectoryService.Actor, TriggerStream.DispatchEvent> resolve = actor ->
+                w.store().transaction(w.tenant(), false, tx -> w.stream().dispatchEvent(tx, actor, uid, cursor));
+            assertEquals(404, status(() -> resolve.apply(w.admin())), "pending delivery was not sent");
+
+            var session = w.stream().open(ticket(w, w.admin(), null), null);
+            session.receive("{\"type\":\"subscribe\",\"subscription\":\"agent\"}");
+            var event = parse(session.pump()).getFirst().path("event");
+            var target = resolve.apply(w.admin());
+            assertEquals(event, target.event());
+            assertEquals("a", target.event().path("id").asText());
+            assertTrue(target.assignmentUid().startsWith("ta-"));
+
+            var other = new DirectoryService.Actor(w.tenant(), DirectoryService.digest("other"), true, false, "other");
+            assertEquals(404, status(() -> resolve.apply(other)));
+            session.receive("{\"type\":\"ack\",\"subscription\":\"agent\",\"cursor\":\"" + cursor + "\"}");
+            assertEquals(404, status(() -> resolve.apply(w.admin())), "new admission requires an unacknowledged delivery");
+        }
+    }
+
     /** M12 scenario 16: removing the subscriber's grant sends revoked and closes; a replayed ticket is refused. */
     @Test
     void scenario16RevokedGrantClosesTheSocketAndTicketsAreSingleUse() throws Exception {

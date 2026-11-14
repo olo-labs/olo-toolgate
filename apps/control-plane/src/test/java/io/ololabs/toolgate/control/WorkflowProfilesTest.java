@@ -56,6 +56,47 @@ final class WorkflowProfilesTest {
     @Test void postgresLifecycleIsAtomicAndPublishedSeparately() throws Exception { lifecycle(true); }
     @Test void sqliteCatalogIsPagedPrivateAndTenantScoped() throws Exception { catalog(false); }
     @Test void postgresCatalogIsPagedPrivateAndTenantScoped() throws Exception { catalog(true); }
+    @Test void sqliteDispatchResolutionFollowsPublication() throws Exception { dispatchResolution(false); }
+    @Test void postgresDispatchResolutionFollowsPublication() throws Exception { dispatchResolution(true); }
+
+    private void dispatchResolution(boolean postgres) throws Exception {
+        var rig = rig(postgres);
+        var ready = new AtomicBoolean(true);
+        var service = new WorkflowProfiles(rig.store, codec, (tx, p, digest) -> ready.get(), keys());
+        var document = profile();
+        var binding = document.path("workflows").path("dispatchBindings").get(0);
+        String subscription = binding.path("subscriptionUid").asText();
+        String assignment = binding.path("sourceAssignmentUid").asText();
+        var resolve = (java.util.function.Supplier<WorkflowProfiles.DispatchTarget>) () -> rig.store.transaction(rig.tenant, false,
+            tx -> service.dispatchTarget(tx, rig.tenant, subscription, assignment));
+
+        String digest = node(service.upload(rig.admin, document.toString(), "dispatch-stage")).path("profileDigest").asText();
+        assertEquals(403, assertThrows(Failure.class, resolve::get).status());
+        service.review(rig.admin, "support", review(digest), "dispatch-review");
+        service.publish(rig.admin, "support", publish(digest, 0), "dispatch-publish");
+        var target = resolve.get();
+        assertEquals("support", target.profileId());
+        assertEquals(digest, target.profileDigest());
+        assertEquals(binding.path("workflowId").asText(), target.binding().workflowId());
+        assertEquals(binding.path("workflowVersionId").asText(), target.binding().workflowVersionId());
+        assertEquals(403, assertThrows(Failure.class, () -> rig.store.transaction(rig.tenant, false,
+            tx -> service.dispatchTarget(tx, rig.tenant, subscription, "other-assignment"))).status());
+
+        var foreignTenant = Tenants.id("other");
+        TestSupport.seed(rig.store, codec, foreignTenant, "root");
+        assertEquals(403, assertThrows(Failure.class, () -> rig.store.transaction(foreignTenant, false,
+            tx -> service.dispatchTarget(tx, foreignTenant, subscription, assignment))).status());
+
+        ready.set(false);
+        assertEquals(403, assertThrows(Failure.class, resolve::get).status());
+        ready.set(true);
+        ((ObjectNode) document.path("workflows")).putArray("dispatchBindings");
+        String replacement = node(service.upload(rig.admin, document.toString(), "withdraw-stage")).path("profileDigest").asText();
+        service.review(rig.admin, "support", review(replacement), "withdraw-review");
+        service.publish(rig.admin, "support", publish(replacement, 1), "withdraw-publish");
+        assertEquals(403, assertThrows(Failure.class, resolve::get).status());
+    }
+
     @Test void malformedPackageDeclarationsCannotBeStaged() throws Exception {
         var rig = rig(false);
         var service = new WorkflowProfiles(rig.store, codec, (tx, p, digest) -> true, keys());
