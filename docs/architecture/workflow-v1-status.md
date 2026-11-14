@@ -123,8 +123,12 @@ client releases use a managed deployment digest. The fix records effect
 evidence from the verified descriptor during client release and resolves it
 by the current tool ID and managed digest. The stored evidence contains only
 the tool ID and declared effect safety. Validation of this fix is pending.
-The client release suite also asserts that each released tool has the expected
-bounded effect record under its managed digest.
+On `a5afb7b1`, all 11 client release tests and the focused workflow admission
+test passed with the disposable PostgreSQL fixture. The client release suite
+asserts the bounded effect record under each managed digest. All 47 Python
+runtime tests passed with OpenSSL available. Quickstart image
+`sha256:03226d95d19d8b7addd982571e248f7d1ea6e9b6f048aa47c8786ba33bd7c25c`
+was built from `9bda47bc`. The live acceptance rerun is in progress.
 
 ## Published configuration in the console
 
