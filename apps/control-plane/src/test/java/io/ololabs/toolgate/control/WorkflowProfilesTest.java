@@ -58,12 +58,58 @@ final class WorkflowProfilesTest {
     @Test void postgresCatalogIsPagedPrivateAndTenantScoped() throws Exception { catalog(true); }
     @Test void sqliteDispatchResolutionFollowsPublication() throws Exception { dispatchResolution(false); }
     @Test void postgresDispatchResolutionFollowsPublication() throws Exception { dispatchResolution(true); }
+    @Test void sqliteRunAndAdmissionShareOneTenantTransaction() throws Exception { durableRun(false); }
+    @Test void postgresRunAndAdmissionShareOneTenantTransaction() throws Exception { durableRun(true); }
+
+    private void durableRun(boolean postgres) throws Exception {
+        var rig = rig(postgres);
+        var vault = keys();
+        var profiles = new WorkflowProfiles(rig.store, codec, (tx, p, digest) -> true, vault);
+        String digest = node(profiles.upload(rig.admin, profile().toString(), "run-stage")).path("profileDigest").asText();
+        var inputs = new WorkflowRunInputs(codec, vault);
+        var admission = new WorkflowRunStore.Admission("ts-123", "0000000000000001", "root", "admission-1", "ADMITTED", "run-1");
+        java.util.function.Function<Store.Session, WorkflowRunStore.QueuedRun> queue = tx -> {
+            var sealed = inputs.seal(tx, rig.tenant, "run-1", digest, "Private event message");
+            var run = new WorkflowRunStore.QueuedRun("run-1", "support", digest, "investigate", "revision-1",
+                "automation", "automation-group", "PREPARE", 1234, sealed.keyVersion(), sealed.ciphertext());
+            tx.workflowRuns().enqueue(run);
+            tx.workflowRuns().insertAdmission(admission);
+            return run;
+        };
+        assertThrows(Failure.class, () -> rig.store.transaction(rig.tenant, true, tx -> {
+            queue.apply(tx);
+            throw Failure.conflict();
+        }));
+        rig.store.transaction(rig.tenant, true, tx -> {
+            assertNull(tx.workflowRuns().queued("run-1"));
+            assertNull(tx.workflowRuns().admission(admission.subscriptionUid(), admission.cursor()));
+            return queue.apply(tx);
+        });
+        rig.store.transaction(rig.tenant, false, tx -> {
+            var run = tx.workflowRuns().queued("run-1");
+            assertEquals(digest, run.profileDigest());
+            assertFalse(run.document().contains("Private event message"));
+            assertEquals("Private event message", inputs.open(tx, rig.tenant, run));
+            assertEquals(admission, tx.workflowRuns().admission(admission.subscriptionUid(), admission.cursor()));
+            return null;
+        });
+        var foreignTenant = Tenants.id("other");
+        TestSupport.seed(rig.store, codec, foreignTenant, "root");
+        rig.store.transaction(foreignTenant, false, tx -> {
+            assertNull(tx.workflowRuns().queued("run-1"));
+            assertNull(tx.workflowRuns().admission(admission.subscriptionUid(), admission.cursor()));
+            return null;
+        });
+    }
 
     private void dispatchResolution(boolean postgres) throws Exception {
         var rig = rig(postgres);
         var ready = new AtomicBoolean(true);
         var service = new WorkflowProfiles(rig.store, codec, (tx, p, digest) -> ready.get(), keys());
         var document = profile();
+        ((ObjectNode) document.path("workflows").path("workflows").get(0)).set("parameterSchema", JSON.readTree("""
+            {"type":"object","required":["message"],"properties":{"message":{"type":"string","minLength":4}}}
+            """));
         var binding = document.path("workflows").path("dispatchBindings").get(0);
         String subscription = binding.path("subscriptionUid").asText();
         String assignment = binding.path("sourceAssignmentUid").asText();
@@ -79,6 +125,15 @@ final class WorkflowProfilesTest {
         assertEquals(digest, target.profileDigest());
         assertEquals(binding.path("workflowId").asText(), target.binding().workflowId());
         assertEquals(binding.path("workflowVersionId").asText(), target.binding().workflowVersionId());
+        assertEquals("Inspect the inbox", WorkflowDispatchInput.message(codec, target, new TriggerStream.DispatchEvent(assignment,
+            JSON.readTree("""
+                {"summary":"ignored envelope","data":{"summary":"Inspect the inbox"}}
+                """))));
+        for (String event : List.of("{\"summary\":\"missing data\"}", "{\"data\":{\"summary\":7}}",
+                "{\"data\":{\"summary\":\"   \"}}", "{\"data\":{\"summary\":\"hi\"}}")) {
+            var delivery = new TriggerStream.DispatchEvent(assignment, JSON.readTree(event));
+            assertEquals(400, assertThrows(Failure.class, () -> WorkflowDispatchInput.message(codec, target, delivery)).status());
+        }
         assertEquals(403, assertThrows(Failure.class, () -> rig.store.transaction(rig.tenant, false,
             tx -> service.dispatchTarget(tx, rig.tenant, subscription, "other-assignment"))).status());
 

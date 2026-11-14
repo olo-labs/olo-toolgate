@@ -78,7 +78,7 @@ public final class WorkflowProfiles {
     }
 
     /** Configuration selected inside the admission transaction. This carries no execution authority. */
-    public record DispatchTarget(String profileId, String profileDigest, WorkflowDispatchBinding binding) {}
+    public record DispatchTarget(String profileId, String profileDigest, WorkflowDispatchBinding binding, WorkflowDefinition workflow) {}
 
     public DispatchTarget dispatchTarget(Store.Session tx, Ids.TenantId tenant, String subscriptionUid, String assignmentUid) {
         Ids.valid(subscriptionUid);
@@ -90,7 +90,10 @@ public final class WorkflowProfiles {
         var binding = profile.workflows().dispatchBindings().stream()
             .filter(candidate -> candidate.subscriptionUid().equals(subscriptionUid) && candidate.sourceAssignmentUid().equals(assignmentUid))
             .findFirst().orElseThrow(ManagementAccess::denied);
-        return new DispatchTarget(head.profileId(), head.digest(), binding);
+        var workflow = profile.workflows().workflows().stream()
+            .filter(candidate -> candidate.id().equals(binding.workflowId()) && candidate.versionId().equals(binding.workflowVersionId()))
+            .findFirst().orElseThrow(Failure::unavailable);
+        return new DispatchTarget(head.profileId(), head.digest(), binding, workflow);
     }
     private WorkflowProfileStatus status(Store.Session tx, Ids.TenantId tenant, WorkflowProfileStore.Revision revision) {
         var head = tx.workflowProfiles().publication(revision.profileId());

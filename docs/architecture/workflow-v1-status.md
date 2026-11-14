@@ -29,6 +29,19 @@ workload claim, step authorization, Gateway model transport, and live execution
 qualification. The resolvers currently have no public admission endpoint and
 return no runtime credential.
 
+### Durable run storage and input mapping
+
+The fresh SQLite and PostgreSQL schemas now store tenant-fenced admission and
+queued-run records. Runs pin a profile digest and encrypt the mapped message
+under tenant vault custody. The profile's JSON Pointer maps event data to the
+workflow's `message` input, which is validated against the pinned parameter
+schema. The store supports atomic enqueue and admission receipt persistence.
+
+Verification on `4630c600` with this increment applied: nine focused Java tests
+passed across the dispatch mapping, queue transaction, and tenant row security
+suites. The four schema inventory/capacity tests passed. Admission and run APIs,
+workflow service authorization, worker claims and live execution remain pending.
+
 ## Published configuration in the console
 
 The Control API exposes tenant-scoped, read-only published workflow and agent
