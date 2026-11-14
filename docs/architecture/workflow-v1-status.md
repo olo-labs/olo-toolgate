@@ -121,7 +121,8 @@ The retry on `c2b25e74` admitted a second real event and reached agent tool
 discovery after model inference. PREPARE refused the context tool because
 client releases use a managed deployment digest. The fix records effect
 evidence from the verified descriptor during client release and resolves it
-by the current tool ID and managed digest. Validation of this fix is pending.
+by the current tool ID and managed digest. The stored evidence contains only
+the tool ID and declared effect safety. Validation of this fix is pending.
 
 ## Published configuration in the console
 

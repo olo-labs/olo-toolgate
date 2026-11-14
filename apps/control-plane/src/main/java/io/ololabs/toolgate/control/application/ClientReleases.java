@@ -152,7 +152,8 @@ public final class ClientReleases {
             tools.add(registration);
             var example = examples.get(toolId.substring(toolId.indexOf('/') + 1));
             tests.addObject().put("toolId", toolId).<ObjectNode>set("arguments", example[0]).set("expectedOutput", example[1]);
-            records.add(new ObjectNode[]{controlTool, extractor, d.deepCopy()});
+            var effect = JSON.objectNode().put("toolId", toolId).put("safety", d.path("effect").path("safety").asText("UNKNOWN"));
+            records.add(new ObjectNode[]{controlTool, extractor, effect});
         }
         if (!triggers.isEmpty()) {
             var registrations = document.putArray("triggers");
