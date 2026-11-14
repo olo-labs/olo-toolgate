@@ -98,6 +98,20 @@ docker compose exec linux-device cat /var/lib/olo-toolgate/hotfolder/langchain-s
 
 ## Hot-folder trigger (in progress, issue #274)
 
+For the one-agent workflow acceptance run, use `compose.workflow.yaml` together
+with the base and trigger Compose files. Supply `TOOLGATE_WORKFLOW_LLAMA_IMAGE`
+and `TOOLGATE_WORKFLOW_MODEL_FILE` for a llama.cpp server image and an instruct
+GGUF. Under the example state directory, place the model CA at
+`workflow/model-ca.crt` and the TLS certificate, key, and API key at
+`workflow/model/model.crt`, `workflow/model/model.key`, and
+`workflow/model/model.token`. The certificate must cover `workflow-model`.
+Build Quickstart from the same checkout, then run the base preparation and
+setup below with all three overlays and `workflow-model` running. Put
+`apps/langgraph-runtime/src` on `PYTHONPATH`, install the runtime lock in the
+host environment, and run `python workflow_e2e.py`. The acceptance driver
+uses an isolated Quickstart fixture, stages and publishes a real workflow
+profile, and starts the worker container with a dedicated workload credential.
+
 A file dropped into the device's `inbox/` folder triggers a LangGraph flow
 ([trigger_agent.py](trigger_agent.py)). The flow displays the file's content and
 then moves it to `processed/`. The feature is enabled by a deployment profile, not by a flag:

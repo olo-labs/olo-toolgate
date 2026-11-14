@@ -117,6 +117,8 @@ internal runtime listener. The worker reloads the mounted credential on every
 request. Configure `TOOLGATE_WORKFLOW_MODEL_ORIGINS` on the Gateway as a
 comma-separated list of approved HTTPS origins. Model containers supply a
 TLS-protected OpenAI-compatible completion endpoint trusted by the Gateway.
+Set `TOOLGATE_WORKFLOW_MODEL_CA_FILE` to a mounted PEM trust bundle for model
+endpoints using a private CA.
 
 The generic listener reuses the current authenticated subscription/ticket APIs and
 `toolgate.triggers.v1`. Obtain the subscription name and immutable UID from the

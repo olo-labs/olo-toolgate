@@ -81,7 +81,9 @@ class ControlRuns(ControlTriggers):
         except HTTPError as failure:
             with failure:
                 if failure.code in (401, 403, 409) and not allow_empty:
-                    raise OwnershipLost("Run lease is unavailable") from None
+                    if path.endswith("/finish"):
+                        raise OwnershipLost("Run lease is unavailable") from None
+                    raise Denied("Control refused the workflow step") from None
             raise RunTransportError("Control rejected the runtime request") from None
         except Exception:
             raise RunTransportError("Control runtime request failed") from None

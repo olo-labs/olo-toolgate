@@ -214,9 +214,16 @@ async fn workflow_inference(State(s): State<Arc<AppState>>, request: Request) ->
             || !approved.split(',').map(str::trim).any(|entry| entry == origin.origin().ascii_serialization()) {
             return Err(ErrorCode::Forbidden);
         }
-        let client = reqwest::Client::builder().no_proxy().redirect(reqwest::redirect::Policy::none())
+        let mut builder = reqwest::Client::builder().no_proxy().redirect(reqwest::redirect::Policy::none())
             .retry(reqwest::retry::never()).tls_sslkeylogfile(false).connect_timeout(Duration::from_secs(3))
-            .timeout(Duration::from_secs(30)).build().map_err(|_| ErrorCode::DependencyUnavailable)?;
+            .timeout(Duration::from_secs(30));
+        if let Some(path) = std::env::var_os("TOOLGATE_WORKFLOW_MODEL_CA_FILE") {
+            let bytes = crate::config::read_bytes(std::path::Path::new(&path)).map_err(|_| ErrorCode::DependencyUnavailable)?;
+            let roots = reqwest::Certificate::from_pem_bundle(&bytes).map_err(|_| ErrorCode::DependencyUnavailable)?;
+            if roots.is_empty() { return Err(ErrorCode::DependencyUnavailable); }
+            builder = builder.tls_certs_only(roots);
+        }
+        let client = builder.build().map_err(|_| ErrorCode::DependencyUnavailable)?;
         let response = client.post(origin.join("v1/chat/completions").map_err(|_| ErrorCode::Validation)?)
             .bearer_auth(model.credential).header("Content-Type", "application/json")
             .header("traceparent", &correlation.traceparent)

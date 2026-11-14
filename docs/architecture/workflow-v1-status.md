@@ -105,6 +105,18 @@ read-only worker image help smoke passed. The model response and MCP adapter
 tests use transport fixtures. A fresh real trigger, model, and tool run
 remains the next acceptance step. Phase credit is unchanged.
 
+### Live acceptance fixture and model trust
+
+The Compose fixture runs the real listener, worker and external llama.cpp
+server. The first attempt admitted a real hot-folder event, claimed the
+published `hotfolder-intake` run, and recorded `FAILED` at inference. The
+Gateway now accepts an operator-mounted PEM trust bundle for approved HTTPS
+model origins. The fixture uses an isolated CA and mounts the workload and
+model credentials separately. Verification on `5c55cc07` with this increment
+applied includes a rebuilt Quickstart image, a loaded llama.cpp model, Python
+syntax checks, and `git diff --check`. The live retry is pending. No phase
+credit is claimed.
+
 ## Published configuration in the console
 
 The Control API exposes tenant-scoped, read-only published workflow and agent
