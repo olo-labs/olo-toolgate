@@ -8,9 +8,9 @@ The graph has no use-case IDs, provider keys, provider clients, arbitrary import
 or executable profile expressions. It does not union different agents' tools.
 
 **Integration is pending.** This is a tested executor library, not a working
-ToolGate run API, live LangChain/model-proxy integration or complete
+ToolGate run executor, live LangChain/model-proxy integration or complete
 end-to-end standalone workflow program. The trigger subscriber described below
-uses the existing stream, but durable workflow admission still needs server implementation. There is no default fake adapter, local authority
+uses the existing stream and the Control admission API. There is no default fake adapter, local authority
 fallback or runnable-profile claim. Complete V1.1 provisioning/readiness and V1.2 server
 admission/leases, runtime identities, model proxy and real transport must be
 implemented before the external message/trigger demo can run end to end.
@@ -111,8 +111,7 @@ docker run --rm --read-only toolgate-langgraph-runtime:local --help
 ```
 
 The image runs as UID 65532. Mount the Gateway CA read-only and provide the
-listener credential through the process environment. Live admission still
-requires the Control route described below.
+listener credential through the process environment.
 
 The generic listener reuses the current authenticated subscription/ticket APIs and
 `toolgate.triggers.v1`. Obtain the subscription name and immutable UID from the
@@ -152,8 +151,8 @@ DUPLICATE refers to the original durable outcome and may have no run for an
 original rejection/filter. The listener never substitutes its event payload for
 that authoritative lookup.
 
-**That Control endpoint is not implemented by this slice.** A current server's
-404/401/503, a timeout, or any non-durable/mismatched receipt stops the connection
+Control now implements the admission endpoint. A server's 404/401/503,
+a timeout, or any non-durable/mismatched receipt stops the connection
 without ACK. There is no local admission ledger, fake production success or
 fallback workflow. Registration plus an uploaded profile is not yet enough for
 end-to-end execution: complete V1.1 provisioning/readiness and V1.2 admission/run/lease/model transport

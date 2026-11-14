@@ -1,6 +1,6 @@
 # Copyright 2026 OLO Labs
 # SPDX-License-Identifier: Apache-2.0
-"""Host-run trigger subscriber. Durable workflow admission requires the pending Control endpoint."""
+"""Subscribe to ToolGate trigger events and obtain durable Control admission receipts."""
 import argparse
 import json
 import os

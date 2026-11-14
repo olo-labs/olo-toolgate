@@ -403,6 +403,75 @@ final class TriggerDeliveryTest {
         }
     }
 
+    @Test
+    void workflowAdmissionUsesLiveServiceGrantsAndReplaysTheDurableReceipt() throws Exception {
+        for (var backend : stores()) {
+            var w = world(backend.store(), "tenant-a", null, List.of());
+            subscription(w, w.admin(), "agent", "event.type == 'examples.files.observed.v1'");
+            String uid = JSON.readTree(w.subscriptions().get(w.admin(), "agent").body()).path("metadata").path("uid").asText();
+            String assignment = JSON.readTree(w.triggers().get(w.admin(), "inbox").body()).path("metadata").path("uid").asText();
+            var path = Path.of(System.getProperty("toolgate.fixtures")).getParent().resolve("../v2/valid.json");
+            var config = JSON.readTree(Files.readString(path)).path("WorkflowConfiguration");
+            ((ObjectNode) config.path("dispatchBindings").get(0)).put("subscriptionUid", uid)
+                .put("sourceAssignmentUid", assignment).put("messagePointer", "/name");
+            var profile = JSON.createObjectNode().put("profileVersion", 2).put("profileId", "support");
+            profile.putArray("packages");
+            profile.set("workflows", config);
+            var keys = new TenantVaultKeys(codec, new LocalVaultWrappingProvider("fixture", Map.of("fixture", new byte[32])));
+            // This test qualifies admission independently of external model and tool readiness.
+            var profiles = new WorkflowProfiles(w.store(), codec, (tx, desired, digest) -> true, keys);
+            var staged = JSON.readTree(profiles.upload(w.admin(), profile.toString(), "stage").body());
+            String digest = staged.path("profileDigest").asText();
+            profiles.review(w.admin(), "support", codec.json(Map.of("profileDigest", digest)), "review");
+            profiles.publish(w.admin(), "support", codec.json(Map.of("profileDigest", digest, "expectedGeneration", 0)), "publish");
+
+            sync(w, List.of(fired(w, 1, "alpha")));
+            w.router().route();
+            var session = w.stream().open(ticket(w, w.admin(), null), null);
+            session.receive("{\"type\":\"subscribe\",\"subscription\":\"agent\"}");
+            String cursor = parse(session.pump()).getFirst().path("cursor").asText();
+            var service = new WorkflowAdmissions(w.store(), codec, w.clock(), w.stream(), profiles, keys);
+            String request = codec.json(Map.of("subscriptionUid", uid, "cursor", cursor));
+            assertEquals(403, status(() -> service.admit(w.admin(), request, "denied")));
+            assertEquals(400, status(() -> service.admit(w.admin(), request.replace("}", ",\"workflowId\":\"forged\"}"), "forged")));
+
+            w.store().transaction(w.tenant(), true, tx -> {
+                var before = tx.load();
+                var entries = new HashMap<>(before.entries());
+                TestSupport.put(entries, codec, Ids.Kind.AGENT, new ControlAgent("automation", "Automation", null, true, 1L, "root"));
+                TestSupport.put(entries, codec, Ids.Kind.AGENT_GROUP, new ControlAgentGroup("automation-group", "Automation", null, true,
+                    1L, List.of("automation"), List.of("workflow-service-role"), null));
+                TestSupport.put(entries, codec, Ids.Kind.ROLE, new ControlRole("workflow-service-role", "Workflow service", true, 1L,
+                    UserRole.BASIC, EnterpriseRoleType.ACTOR_SERVICE, List.of()));
+                var scope = new EnterpriseScope(new GroupSelection(List.of(), true), new GroupSelection(List.of(), true),
+                    List.of("workflow.execute", "model.infer"), false,
+                    List.of(new EnterpriseResourceRule(ResourceKind.CUSTOM, "workflow-group:support", EnterpriseResourceMatch.EXACT),
+                            new EnterpriseResourceRule(ResourceKind.CUSTOM, "model-group:models", EnterpriseResourceMatch.EXACT)),
+                    new EnterpriseConditions(0L, 0L, List.of(), List.of(), List.of(), List.of(), false, false, null, null));
+                TestSupport.put(entries, codec, Ids.Kind.GRANT, new ControlAccessGrant("workflow-service-grant", "Workflow service", true,
+                    1L, EnterpriseSourceType.ROLE, "workflow-service-role", EnterpriseGrantPurpose.SERVICE, scope));
+                tx.save(before, new Directory(before.revision() + 1, entries));
+                return null;
+            });
+            var response = service.admit(w.admin(), request, "admit");
+            assertEquals(201, response.status());
+            var admitted = JSON.readTree(response.body());
+            assertEquals("ADMITTED", admitted.path("disposition").asText());
+            var runId = admitted.path("runId").asText();
+            w.store().transaction(w.tenant(), false, tx -> {
+                var run = tx.workflowRuns().queued(runId);
+                assertEquals("investigate", run.workflowId());
+                assertEquals(digest, run.profileDigest());
+                assertEquals("alpha", new WorkflowRunInputs(codec, keys).open(tx, w.tenant(), run));
+                return null;
+            });
+            var duplicate = JSON.readTree(service.admit(w.admin(), request, "duplicate").body());
+            assertEquals("DUPLICATE", duplicate.path("disposition").asText());
+            assertEquals(admitted.path("admissionId"), duplicate.path("admissionId"));
+            assertEquals(admitted.path("runId"), duplicate.path("runId"));
+        }
+    }
+
     /** M12 scenario 16: removing the subscriber's grant sends revoked and closes; a replayed ticket is refused. */
     @Test
     void scenario16RevokedGrantClosesTheSocketAndTicketsAreSingleUse() throws Exception {

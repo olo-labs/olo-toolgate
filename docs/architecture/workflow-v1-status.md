@@ -42,6 +42,23 @@ passed across the dispatch mapping, queue transaction, and tenant row security
 suites. The four schema inventory/capacity tests passed. Admission and run APIs,
 workflow service authorization, worker claims and live execution remain pending.
 
+### Trigger admission endpoint
+
+Control accepts the existing dispatch request over direct TLS. The listener
+supplies only the subscription UID and delivered cursor. Control verifies the
+current source and published binding, checks explicit service workflow and model
+grants, and commits the encrypted queued run, admission receipt and audit row
+in one tenant transaction. Duplicate requests return the original identifiers.
+The listener and Control use the same existing receipt contract.
+
+Verification on `5613d925` with this increment applied: the focused trigger
+admission test passed on SQLite and disposable PostgreSQL. It covers a live
+directory grant denial, a forged workflow field, a queued run with the pinned
+revision, and duplicate receipt replay. Both Quickstart direct TLS routing tests
+passed in Linux. Full component gates and live worker execution remain pending.
+The next increment needs workload claims, runtime step authorization and
+Gateway model and tool transport. Phase credit is unchanged.
+
 ## Published configuration in the console
 
 The Control API exposes tenant-scoped, read-only published workflow and agent

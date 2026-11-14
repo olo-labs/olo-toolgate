@@ -1,6 +1,6 @@
 # Copyright 2026 OLO Labs
 # SPDX-License-Identifier: Apache-2.0
-"""TLS-only trigger transport; workflow dispatch admission remains a pending Control API."""
+"""TLS-only transport for trigger subscriptions and workflow dispatch admission."""
 from __future__ import annotations
 
 import json
@@ -37,7 +37,7 @@ def _quiet_logger():
 
 
 class ControlTriggers:
-    """Existing subscription/ticket APIs plus the proposed ADR-063 admission path.
+    """Subscription, ticket and ADR 063 dispatch admission APIs.
 
     404/501/503, redirects, auth failures and malformed responses fail closed.
     No API availability, persistence or workflow execution is simulated here.
