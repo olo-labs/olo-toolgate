@@ -119,6 +119,13 @@ requires unrestricted tool and device selectors because it has no tool or
 device target. Time conditions are evaluated using Control's clock. Runtime
 model and tool calls require their own current authorization.
 
+The initial one-agent slice binds the trigger's service Agent to the same
+entry-eligible agent and group declared on the workflow. Control authorizes
+the workflow supervisor and that agent through the lease-bound step endpoint.
+Issuing a new step replaces the previous token, and closing the run clears
+the token. Cross-agent delegation requires a separate runtime authorization
+path before it can be enabled.
+
 ## Decision: message admission, runner identity and execution
 
 `POST /api/control/v1/workflows/{id}/runs` accepts message, optional thread

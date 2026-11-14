@@ -8,7 +8,7 @@ import re
 from urllib.error import HTTPError
 from urllib.request import Request
 
-from .runner import Agent, CompletionAck, ContextSource, ID, Limits, OwnershipLost, RunLease
+from .runner import Agent, CompletionAck, ContextSource, ID, Limits, OwnershipLost, RunLease, StepGrant
 from .trigger_bridge import _constant, _object
 from .trigger_transport import ControlTriggers
 
@@ -94,10 +94,27 @@ class ControlRuns(ControlTriggers):
         except (ValueError, TypeError):
             raise RunTransportError("Invalid Control run snapshot") from None
 
-    def finish(self, lease, outcome, *, timeout_seconds):
+    @staticmethod
+    def _run_path(lease, operation):
         if not isinstance(lease.run_id, str) or not ID.fullmatch(lease.run_id) or any(c in lease.run_id for c in ":/"):
             raise RunTransportError("Invalid run identity")
-        value = self._runtime_request(f"runs/{lease.run_id}/finish",
+        return f"runs/{lease.run_id}/{operation}"
+
+    def authorize_step(self, lease, subject_kind, subject_id, model_group_id, *, timeout_seconds):
+        value = self._runtime_request(self._run_path(lease, "steps:authorize"),
+                                      {"leaseId": lease.lease_id, "leaseToken": lease.lease_token, "subjectKind": subject_kind,
+                                       "subjectId": subject_id, "modelGroupId": model_group_id}, timeout_seconds=timeout_seconds)
+        try:
+            grant = _record(value, "runId leaseId subjectKind subjectId modelGroupId token")
+            if not isinstance(grant["token"], str) or not re.fullmatch(r"[A-Za-z0-9_-]{43}", grant["token"]):
+                raise ValueError("Invalid step token")
+            return StepGrant(grant["runId"], grant["leaseId"], grant["subjectKind"], grant["subjectId"],
+                             grant["modelGroupId"], grant["token"])
+        except ValueError:
+            raise RunTransportError("Invalid Control step grant") from None
+
+    def finish(self, lease, outcome, *, timeout_seconds):
+        value = self._runtime_request(self._run_path(lease, "finish"),
                                       {"leaseId": lease.lease_id, "leaseToken": lease.lease_token, "state": outcome.state},
                                       timeout_seconds=timeout_seconds)
         try:

@@ -4532,6 +4532,9 @@ CREATE TABLE control_workflow_runs(
  document text NOT NULL CHECK(octet_length(document)<=65536), created_at bigint NOT NULL CHECK(created_at>=0),
  key_version bigint NOT NULL,
  lease_id varchar(128), lease_owner varchar(128), lease_token_digest varchar(64), lease_expires_at bigint,
+ step_kind varchar(16) CHECK(step_kind IN('WORKFLOW','AGENT')), step_subject varchar(128), step_model_group varchar(128), step_token_digest varchar(64),
+ CHECK((step_kind IS NULL AND step_subject IS NULL AND step_model_group IS NULL AND step_token_digest IS NULL)
+    OR (state='RUNNING' AND step_kind IS NOT NULL AND step_subject IS NOT NULL AND step_model_group IS NOT NULL AND step_token_digest IS NOT NULL)),
  CHECK((state='RUNNING' AND lease_id IS NOT NULL AND lease_owner IS NOT NULL AND lease_token_digest IS NOT NULL AND lease_expires_at IS NOT NULL)
     OR (state<>'RUNNING' AND lease_id IS NULL AND lease_owner IS NULL AND lease_token_digest IS NULL AND lease_expires_at IS NULL)),
  FOREIGN KEY(tenant_id,profile_id,profile_digest) REFERENCES control_workflow_profile_revisions(tenant_id,profile_id,digest),

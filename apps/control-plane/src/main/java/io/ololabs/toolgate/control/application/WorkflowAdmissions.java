@@ -5,6 +5,7 @@ package io.ololabs.toolgate.control.application;
 import io.ololabs.toolgate.contracts.v2.WorkflowDispatchDisposition;
 import io.ololabs.toolgate.contracts.v2.WorkflowDispatchReceipt;
 import io.ololabs.toolgate.contracts.v2.WorkflowDispatchRequest;
+import io.ololabs.toolgate.contracts.v2.TriggerClassification;
 import io.ololabs.toolgate.control.domain.Ids;
 import java.time.Clock;
 import java.util.UUID;
@@ -44,7 +45,11 @@ public final class WorkflowAdmissions {
             var delivery = stream.dispatchEvent(tx, actor, request.subscriptionUid(), request.cursor());
             var target = profiles.dispatchTarget(tx, actor.tenant(), request.subscriptionUid(), delivery.assignmentUid());
             long now = clock.millis();
-            access.require(tx.load(), target, now);
+            var directory = tx.load();
+            access.require(directory, target, now);
+            var label = TriggerClassification.valueOf(delivery.event().path("tgclassification").asText());
+            if (!TriggerLabels.covers(TriggerLabels.clearance(directory, codec, null, target.binding().serviceAgentId()), label))
+                throw ManagementAccess.denied();
 
             String admissionId = "admission-" + UUID.randomUUID();
             String message;

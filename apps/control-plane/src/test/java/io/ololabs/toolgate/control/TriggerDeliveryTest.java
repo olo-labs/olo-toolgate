@@ -413,7 +413,8 @@ final class TriggerDeliveryTest {
             var path = Path.of(System.getProperty("toolgate.fixtures")).getParent().resolve("../v2/valid.json");
             var config = JSON.readTree(Files.readString(path)).path("WorkflowConfiguration");
             ((ObjectNode) config.path("dispatchBindings").get(0)).put("subscriptionUid", uid)
-                .put("sourceAssignmentUid", assignment).put("messagePointer", "/name");
+                .put("sourceAssignmentUid", assignment).put("messagePointer", "/name")
+                .put("serviceAgentId", "investigator").put("serviceAgentGroupId", "support-agents");
             var profile = JSON.createObjectNode().put("profileVersion", 2).put("profileId", "support");
             profile.putArray("packages");
             profile.set("workflows", config);
@@ -438,9 +439,9 @@ final class TriggerDeliveryTest {
             w.store().transaction(w.tenant(), true, tx -> {
                 var before = tx.load();
                 var entries = new HashMap<>(before.entries());
-                TestSupport.put(entries, codec, Ids.Kind.AGENT, new ControlAgent("automation", "Automation", null, true, 1L, "root"));
-                TestSupport.put(entries, codec, Ids.Kind.AGENT_GROUP, new ControlAgentGroup("automation-group", "Automation", null, true,
-                    1L, List.of("automation"), List.of("workflow-service-role"), null));
+                TestSupport.put(entries, codec, Ids.Kind.AGENT, new ControlAgent("investigator", "Investigator", null, true, 1L, "root"));
+                TestSupport.put(entries, codec, Ids.Kind.AGENT_GROUP, new ControlAgentGroup("support-agents", "Support", null, true,
+                    1L, List.of("investigator"), List.of("workflow-service-role"), null));
                 TestSupport.put(entries, codec, Ids.Kind.ROLE, new ControlRole("workflow-service-role", "Workflow service", true, 1L,
                     UserRole.BASIC, EnterpriseRoleType.ACTOR_SERVICE, List.of()));
                 var scope = new EnterpriseScope(new GroupSelection(List.of(), true), new GroupSelection(List.of(), true),
@@ -483,9 +484,25 @@ final class TriggerDeliveryTest {
             assertEquals(204, leases.claim(worker, "claim-again").status());
             var leaseId = snapshot.path("leaseId").asText();
             var token = snapshot.path("leaseToken").asText();
+            assertEquals(403, status(() -> leases.authorizeStep(worker, runId, leaseId, token, "WORKFLOW", "other", "models")));
+            assertEquals(403, status(() -> leases.authorizeStep(worker, runId, leaseId, token, "WORKFLOW", "investigate", "other")));
+            assertEquals(403, status(() -> leases.authorizeStep(worker, runId, leaseId, token, "AGENT", "other", "models")));
+            var grant = JSON.readTree(leases.authorizeStep(worker, runId, leaseId, token, "WORKFLOW", "investigate", "models").body());
+            assertEquals("investigate", grant.path("subjectId").asText());
+            var agentGrant = JSON.readTree(leases.authorizeStep(worker, runId, leaseId, token, "AGENT", "investigator", "models").body());
+            assertEquals("investigator", agentGrant.path("subjectId").asText());
+            w.store().transaction(w.tenant(), false, tx -> {
+                assertEquals(DirectoryService.digest(agentGrant.path("token").asText()), tx.workflowRuns().activeStep(runId).tokenDigest());
+                assertFalse(grant.path("token").asText().equals(agentGrant.path("token").asText()));
+                var models = new WorkflowModelSelection(profiles, codec, w.clock());
+                assertEquals("deployment-1", models.resolve(tx, w.tenant(), runId, agentGrant.path("token").asText()).id());
+                assertEquals(403, status(() -> models.resolve(tx, w.tenant(), runId, grant.path("token").asText())));
+                return null;
+            });
             assertEquals(403, status(() -> leases.finish(w.admin(), runId, leaseId, token, "SUCCEEDED", "foreign-finish")));
             assertEquals(403, status(() -> leases.finish(worker, runId, leaseId, "x".repeat(43), "SUCCEEDED", "forged-finish")));
             assertEquals(200, leases.finish(worker, runId, leaseId, token, "SUCCEEDED", "finish").status());
+            assertEquals(403, status(() -> leases.authorizeStep(worker, runId, leaseId, token, "WORKFLOW", "investigate", "models")));
             assertEquals(403, status(() -> leases.finish(worker, runId, leaseId, token, "SUCCEEDED", "repeat-finish")));
         }
     }

@@ -92,15 +92,70 @@ public final class WorkflowLeases {
         if (leaseToken == null || !leaseToken.matches("[A-Za-z0-9_-]{43}")) throw ManagementAccess.denied();
         return store.transaction(worker.tenant(), true, tx -> {
             var runs = tx.workflowRuns();
-            var lease = runs.activeLease(runId);
             long now = clock.millis();
-            if (lease == null || lease.expiresAt() <= now || !lease.id().equals(leaseId) || !lease.ownerId().equals(worker.id())
-                    || !MessageDigest.isEqual(lease.tokenDigest().getBytes(StandardCharsets.US_ASCII),
-                        DirectoryService.digest(leaseToken).getBytes(StandardCharsets.US_ASCII))) throw ManagementAccess.denied();
+            var lease = requireLease(runs, worker, runId, leaseId, leaseToken, now);
             runs.finish(lease, state, now);
             tx.audit(worker.id(), "WORKFLOW_RUN_FINISH", "workflow-run:" + runId, 2, requestId, DirectoryService.digest(state));
             return new Store.Reply(200, codec.json(Map.of("runId", runId, "leaseId", leaseId, "state", state)), 0);
         });
+    }
+
+    /** Issue a step token for the service agent itself or its workflow supervisor. */
+    public Store.Reply authorizeStep(DirectoryService.Actor worker, String runId, String leaseId, String leaseToken,
+                                    String kind, String subjectId, String modelGroupId) {
+        return store.transaction(worker.tenant(), true, tx -> {
+            var runs = tx.workflowRuns();
+            long now = clock.millis();
+            var lease = requireLease(runs, worker, runId, leaseId, leaseToken, now);
+            var run = runs.running(runId);
+            if (run == null) throw ManagementAccess.denied();
+            var config = profiles.runnableRevision(tx, worker.tenant(), run.profileId(), run.profileDigest()).workflows();
+            var workflow = config.workflows().stream().filter(candidate -> candidate.id().equals(run.workflowId())
+                && candidate.versionId().equals(run.workflowVersionId())).findFirst().orElseThrow(Failure::unavailable);
+            if (tx.kills().effective().stream().anyMatch(kill -> "TENANT".equals(kill.scope()))) throw ManagementAccess.denied();
+            access.require(tx.load(), run.serviceAgentId(), run.serviceAgentGroupId(), workflow, now);
+
+            String allowedModelGroup = switch (kind) {
+                case "WORKFLOW" -> {
+                    if (!workflow.id().equals(subjectId)) throw ManagementAccess.denied();
+                    yield workflow.modelGroupId();
+                }
+                case "AGENT" -> {
+                    if (!run.serviceAgentId().equals(subjectId) || workflow.agents().stream().noneMatch(binding ->
+                            binding.agentId().equals(subjectId) && binding.agentGroupId().equals(run.serviceAgentGroupId())
+                            && binding.entryEligible())) throw ManagementAccess.denied();
+                    yield config.agentDefinitions().stream().filter(agent -> agent.agentId().equals(subjectId)).findFirst()
+                        .orElseThrow(Failure::unavailable).modelGroupId();
+                }
+                default -> throw Failure.validation();
+            };
+            if (!allowedModelGroup.equals(modelGroupId)) throw ManagementAccess.denied();
+            access.requireGrant(tx.load(), run.serviceAgentGroupId(), "model.infer", "model-group:" + allowedModelGroup, now);
+            String stepToken = token();
+            runs.authorizeStep(lease, new WorkflowRunStore.Step(runId, kind, subjectId, modelGroupId,
+                DirectoryService.digest(stepToken)), now);
+            return new Store.Reply(200, codec.json(Map.of("runId", runId, "leaseId", leaseId, "subjectKind", kind,
+                "subjectId", subjectId, "modelGroupId", modelGroupId, "token", stepToken)), 0);
+        });
+    }
+
+    static WorkflowRunStore.Lease requireLease(WorkflowRunStore runs, DirectoryService.Actor worker, String runId,
+                                               String leaseId, String leaseToken, long now) {
+        var lease = runs.activeLease(runId);
+        if (lease == null || lease.expiresAt() <= now || !lease.id().equals(leaseId) || !lease.ownerId().equals(worker.id())
+                || leaseToken == null || !leaseToken.matches("[A-Za-z0-9_-]{43}")
+                || !MessageDigest.isEqual(lease.tokenDigest().getBytes(StandardCharsets.US_ASCII),
+                    DirectoryService.digest(leaseToken).getBytes(StandardCharsets.US_ASCII))) throw ManagementAccess.denied();
+        return lease;
+    }
+
+    static WorkflowRunStore.Step requireStep(WorkflowRunStore runs, String runId, String stepToken, long now) {
+        var lease = runs.activeLease(runId);
+        var step = runs.activeStep(runId);
+        if (lease == null || lease.expiresAt() <= now || step == null || stepToken == null || !stepToken.matches("[A-Za-z0-9_-]{43}")
+                || !MessageDigest.isEqual(step.tokenDigest().getBytes(StandardCharsets.US_ASCII),
+                    DirectoryService.digest(stepToken).getBytes(StandardCharsets.US_ASCII))) throw ManagementAccess.denied();
+        return step;
     }
 
     private static AgentSnapshot snapshot(WorkflowAgentBinding binding, WorkflowAgentDefinition definition) {

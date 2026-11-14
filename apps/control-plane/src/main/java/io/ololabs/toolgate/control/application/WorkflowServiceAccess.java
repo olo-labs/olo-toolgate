@@ -23,15 +23,28 @@ final class WorkflowServiceAccess {
         if (agent == null || !agent.enabled() || group == null || !group.enabled()
                 || !GroupGraph.memberships(directory, codec, Kind.AGENT, agentId, true).contains(groupId))
             throw ManagementAccess.denied();
+        var scopes = scopes(directory, groupId, now);
+        require(scopes, "workflow.execute", "workflow-group:" + workflow.workflowGroupId());
+        require(scopes, "model.infer", "model-group:" + workflow.modelGroupId());
+    }
+
+    void requireGrant(Directory directory, String groupId, String action, String locator, long now) {
+        require(scopes(directory, groupId, now), action, locator);
+    }
+
+    private java.util.List<EnterpriseScope> scopes(Directory directory, String groupId, long now) {
+        var group = directory.entries().get(Kind.AGENT_GROUP.id(groupId));
+        if (group == null || !group.enabled()) throw ManagementAccess.denied();
         var roles = GroupGraph.roles(group, codec);
-        var scopes = directory.entries().values().stream().filter(entry -> entry.enabled() && entry.id().kind() == Kind.GRANT)
-            .map(entry -> codec.model(entry.document(), ControlAccessGrant.class))
-            .filter(grant -> grant.purpose() == EnterpriseGrantPurpose.SERVICE && grant.sourceType() == EnterpriseSourceType.ROLE)
-            .filter(grant -> roles.contains(grant.sourceId()) && activeRole(directory, grant.sourceId()))
-            .map(ControlAccessGrant::scope).filter(scope -> unconditionalTarget(scope, now)).toList();
-        if (scopes.stream().noneMatch(scope -> matches(scope, "workflow.execute", "workflow-group:" + workflow.workflowGroupId()))
-                || scopes.stream().noneMatch(scope -> matches(scope, "model.infer", "model-group:" + workflow.modelGroupId())))
-            throw ManagementAccess.denied();
+        return directory.entries().values().stream().filter(entry -> entry.enabled() && entry.id().kind() == Kind.GRANT)
+                .map(entry -> codec.model(entry.document(), ControlAccessGrant.class))
+                .filter(grant -> grant.purpose() == EnterpriseGrantPurpose.SERVICE && grant.sourceType() == EnterpriseSourceType.ROLE)
+                .filter(grant -> roles.contains(grant.sourceId()) && activeRole(directory, grant.sourceId()))
+                .map(ControlAccessGrant::scope).filter(scope -> unconditionalTarget(scope, now)).toList();
+    }
+
+    private static void require(java.util.List<EnterpriseScope> scopes, String action, String locator) {
+        if (scopes.stream().noneMatch(scope -> matches(scope, action, locator))) throw ManagementAccess.denied();
     }
 
     private boolean activeRole(Directory directory, String id) {

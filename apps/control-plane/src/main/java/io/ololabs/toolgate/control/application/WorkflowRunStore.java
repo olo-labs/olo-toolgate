@@ -12,14 +12,18 @@ public interface WorkflowRunStore {
         @Override public String toString() { return "QueuedRun[id=" + id + "]"; }
     }
     record Lease(String runId, String id, String ownerId, String tokenDigest, long expiresAt) {}
+    record Step(String runId, String kind, String subjectId, String modelGroupId, String tokenDigest) {}
 
     Admission admission(String subscriptionUid, String cursor);
     void insertAdmission(Admission admission);
     void enqueue(QueuedRun run);
     QueuedRun queued(String id);
+    QueuedRun running(String id);
     QueuedRun nextQueued();
     void claim(Lease lease);
     Lease activeLease(String runId);
+    Step activeStep(String runId);
+    void authorizeStep(Lease lease, Step step, long now);
     void cancelQueued(String runId);
     void finish(Lease lease, String state, long now);
     void expire(long now);

@@ -75,6 +75,21 @@ disposable PostgreSQL. Two Python transport tests and four schema ownership
 and capacity tests passed. No live workload HTTP, model, or Gateway tool
 execution was exercised. Phase credit is unchanged.
 
+### One-agent step authorization and model selection
+
+The workload runtime can request a step token for the pinned supervisor or the
+entry agent when the agent is the trigger's service identity. Each new step
+replaces the previous token. Control checks current readiness, service grants,
+trigger data clearance at admission, and the tenant kill state at step issuance.
+The model resolver intersects the workflow and step model groups and selects the
+first permitted deployment in workflow order. It rejects superseded step tokens.
+
+Verification on `e8185ef7` with this increment applied: the focused trigger
+admission, claim, step, model-selection and completion scenario passed on
+SQLite and disposable PostgreSQL. Three Python transport tests and four schema
+ownership tests passed. Model selection was exercised inside Control. Gateway
+inference, MCP execution, and the container's live worker loop remain pending.
+
 ## Published configuration in the console
 
 The Control API exposes tenant-scoped, read-only published workflow and agent

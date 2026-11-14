@@ -57,6 +57,18 @@ public class WorkflowRuntimeResource {
             value.path("state").textValue(), correlation.id()));
     }
 
+    @POST @Path("runs/{runId}/steps:authorize") @Consumes("application/json")
+    public Response authorizeStep(@PathParam("runId") String runId, String document) {
+        var worker = worker();
+        if (document == null || document.length() > 2048) throw Failure.validation();
+        if (!(codec.value(document) instanceof JsonNode value) || !value.isObject() || value.size() != 5
+                || !value.path("leaseId").isTextual() || !value.path("leaseToken").isTextual()
+                || !value.path("subjectKind").isTextual() || !value.path("subjectId").isTextual() || !value.path("modelGroupId").isTextual())
+            throw Failure.validation();
+        return reply(leases(worker).authorizeStep(worker, runId, value.path("leaseId").textValue(), value.path("leaseToken").textValue(),
+            value.path("subjectKind").textValue(), value.path("subjectId").textValue(), value.path("modelGroupId").textValue()));
+    }
+
     private static Response reply(Store.Reply value) {
         return Response.status(value.status()).header("Cache-Control", "no-store").entity(value.body()).build();
     }

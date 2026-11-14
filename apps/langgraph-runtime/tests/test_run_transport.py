@@ -54,3 +54,13 @@ class RunTransportTests(unittest.TestCase):
         self.assertIsNone(self.control.claim())
         with self.assertRaisesRegex(RunTransportError, "Invalid Control run snapshot"):
             self.control.claim()
+
+    def test_step_authorization_is_bound_to_the_claimed_run(self):
+        self.responses.extend([Response(200, self.snapshot), Response(200, {"runId": "run-1", "leaseId": "lease-1",
+            "subjectKind": "AGENT", "subjectId": "agent-1", "modelGroupId": "models", "token": "y" * 43})])
+        lease = self.control.claim()
+        grant = self.control.authorize_step(lease, "AGENT", "agent-1", "models", timeout_seconds=4)
+        self.assertEqual("y" * 43, grant.token)
+        self.assertEqual(("https://control.example/internal/v1/runtime/runs/run-1/steps:authorize", "Bearer workload.credential",
+                          {"leaseId": "lease-1", "leaseToken": "x" * 43, "subjectKind": "AGENT", "subjectId": "agent-1",
+                           "modelGroupId": "models"}, 4), self.requests[-1])
