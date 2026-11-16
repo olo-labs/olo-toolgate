@@ -13,6 +13,21 @@ scenario acceptance remain outstanding. No #295 phase earns weight, and no
 existing baseline is changed. Full component gates must execute before M7
 completion and its required push/PR delivery.
 
+The next local M7 fragment adds a bounded, process-local emission barrier.
+It distinguishes contiguous LOCAL durability from supervisor-attested Control
+acceptance, preserves retry sequences and refuses closed-owner callbacks.
+The runtime does not use it yet; no webhook callback endpoint or runnable PUSH
+profile is enabled. Known tested base `28f965b1`; the two Java source files have
+normalized manifest SHA-256
+`d5b1562de1bb5b477661ff5927d90a6bdd18b28ca3b0046f2e1643bfff267d00`.
+The SDK runtime/processor/harness checks passed (208 tests, no failures or
+skips), including ten barrier tests with 400 deterministic randomized
+scenarios. The direct broad `javaCheck` attempt did not pass: it lacked the
+Control PostgreSQL fixture and encountered the Windows POSIX-permission
+limitation plus an overlapping SDK test-runner failure. The SDK suites were
+rerun successfully. See the trigger record for details and remaining gates.
+No #295 phase earns weight.
+
 ## Published configuration in the console
 
 The Control API exposes tenant-scoped, read-only published workflow and agent

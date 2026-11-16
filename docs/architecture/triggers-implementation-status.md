@@ -20,6 +20,37 @@ bound, the complete SDK runtime (123 tests), processor (62) and testing harness
 (13) suites passed: **198 tests, no failures/errors/skips**. This includes all
 eight new snapshot tests. Full `javaCheck` and M7 acceptance were not run.
 
+The next local fragment adds an internal `TriggerEmitBarrier`: bounded process-local
+emit reservations, retry-preserving sequences, contiguous LOCAL progress and
+separate supervisor-attested ACCEPTED progress. HALT cannot cross a terminal
+rejection. SKIP_AND_RECORD still requires Control acceptance of the recorded
+disposition. Closing the owner refuses late callbacks; a fresh process starts
+at sequence one and infers no checkpoint from lost local bookkeeping. There
+is no storage or transport in this helper, and `TriggerRuntime` does not use
+it yet. It does not validate opaque source-position ordering or implement
+explicit checkpoint ACKs, asynchronous futures or lifecycle scheduling.
+
+Known tested base for this fragment: `28f965b1`. The two changed Java source
+files have normalized manifest SHA-256
+`d5b1562de1bb5b477661ff5927d90a6bdd18b28ca3b0046f2e1643bfff267d00`
+(sorted path + NUL + normalized-file SHA-256 + newline). Executed checks: the SDK runtime (133), processor (62) and harness (13) suites
+passed: **208 tests, no failures/errors/skips**. The ten new barrier tests
+include 400 deterministic randomized completion scenarios (SKIP_AND_RECORD
+and HALT/process-loss cases). The first combined run overlapped `javaCheck`
+and ended with a test-runner `EOFException`; the affected SDK suites were
+rerun after the broad run's SDK task ended, producing the passing reports.
+The relative Markdown link check passed for 332 files. The staged secret scan
+and public-key/credential/private-key regression checks passed.
+
+`javaCheck --continue` was attempted directly without the Control PostgreSQL
+fixture. It did not pass: PostgreSQL tests require `CONTROL_TEST_URL` and
+`CONTROL_TEST_PASSWORD`, which were absent, and the Windows mTLS fixture
+reported `UnsupportedOperationException` for POSIX file permissions. Its
+SDK task also encountered the overlapping-run failure above. The misconfigured
+broad run was stopped after confirming these failures; no full-suite totals
+are claimed. This is not a completed component gate; full verification with the documented database
+fixture and the owned M7 scenarios remains required before module delivery.
+
 This is an unfinished local M7 fragment, not a runnable PUSH source or module
 completion. The SDK emitter, accepted-position barrier, reconcile/lifecycle
 loop, durable overflow/rescan handling, confined native file subscription broker,
@@ -144,7 +175,7 @@ evidence. No module weight or baseline denominator changes; earned progress stay
 | 4 | Control core for client triggers | D | 8% | ✅ Merged (via #285) | 8% | #284, #285 |
 | 5 | ★ Client integration and ingest | E | 8% | 🔵 Merged (#286) without evidence; end-to-end fixes in the PR from `fix/triggers-desired-404` | 0% | #286 |
 | 6 | Lifecycle, rollout and raw page | D | 6% | 🔵 In this PR | 0% | This PR |
-| 7 | PUSH mode and file watching | B/E | 7% | ⏳ Pending | 0% | — |
+| 7 | PUSH mode and file watching | B/E | 7% | In progress locally: snapshot and emission-barrier primitives; runtime/acceptance pending | 0% | — |
 | 8 | ★ Server triggers on the Tool Host | E | 8% | ⏳ Pending | 0% | — |
 | 9 | Python SDK parity | B | 4% | ⏳ Pending | 0% | — |
 | 10 | Event router and retention | D | 4% | 🔵 Merged (#286) without evidence; end-to-end fixes in the PR from `fix/triggers-desired-404` | 0% | #286 |

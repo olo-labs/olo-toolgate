@@ -230,3 +230,22 @@ A tool that requires a business key (by default `NON_IDEMPOTENT` and destructive
 
 - Literal error codes in `ToolBusinessError` are not yet checked against the tool's declared errors at build time; the runtime reports them as `UNDECLARED_ERROR`.
 - The analyser needs the javac Tree API. Under another compiler it prints a warning and checks nothing, and the runtime's own checks remain.
+
+## PUSH implementation status
+
+PUSH exports are still refused by the annotation processor and trigger runtime.
+The local M7 groundwork includes exact `SnapshotState` and an internal,
+process-local `TriggerEmitBarrier`. The latter tracks bounded emit reservations,
+retryable versus resolved acknowledgements, contiguous local durability and
+separate Control acceptance. Under HALT it cannot advance past a terminal
+rejection; under SKIP_AND_RECORD only a supervisor-supplied acceptance watermark
+attests that Control recorded a disposition. Capacity remains occupied until
+acceptance, so offline Control cannot grow the bookkeeping without bound.
+Closing the owner rejects stale callbacks; a fresh owner starts its sequence at
+one and never infers restored state from the previous process's local progress.
+
+This helper has no storage, transport, user callbacks or provider-specific logic.
+It is not wired into `TriggerRuntime` yet. PUSH lifecycle, asynchronous emitter
+futures, source-position ordering, checkpoint acknowledgements, native file
+subscriptions and conformance acceptance remain required. The authoritative
+progress record is [the trigger status](../../docs/architecture/triggers-implementation-status.md#m7-local-work--2026-11-16).
