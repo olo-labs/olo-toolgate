@@ -1,6 +1,24 @@
 <!-- Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0 -->
 # Workflow execution v1 — live delivery status
 
+## Webhook PUSH authentication prerequisite, local M8 work — 2026-11-16
+
+On `feature/triggers-m08-server-triggers`, based on main `f269293b`, draft
+[ADR 067](../adr/067-authenticated-trigger-http-ingress.md) specifies proposed
+callback/profile ownership and a canonical authenticated HTTP adapter. Its
+internal Rust authentication library passes 14 deterministic tests, clippy
+with warnings denied, rustfmt and documentation links. The verified result
+carries tenant/binding/delivery identity and raw-body digest but is not an
+admission receipt. No route, secret distribution, PUSH package or runnable
+workflow is delivered by this primitive. Broker lifecycle, current authority,
+durable replay/admission and source-to-configured-agent acceptance remain
+outstanding. Original #274/#295 baselines and **0/100** workflow earned points
+are unchanged; inbound HTTP catalog work adds no silent baseline weight.
+Known tested base: `f269293bade964bad321455f203939603b77143d`.
+The ten changed non-Markdown source files have normalized manifest digest
+`3ab564656f0f454dd91b9987808cbcaad65abdfffc8c5b19119f5e136a2c5ea1`
+(sorted path + NUL + per-file SHA-256 + newline, CRLF normalized to LF).
+
 ## Published configuration in the console
 
 The Control API exposes tenant-scoped, read-only published workflow and agent

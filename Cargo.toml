@@ -6,6 +6,7 @@ members = [
   "packages/contracts/rust",
   "packages/tenant-identity/rust",
   "crates/trigger-supervisor",
+  "crates/trigger-ingress",
   "apps/gateway",
   "apps/endpoint-client",
   "apps/tool-host",

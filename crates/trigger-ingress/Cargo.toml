@@ -1,0 +1,12 @@
+# Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0
+[package]
+name = "olo-toolgate-trigger-ingress"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Bounded request authentication for the trusted generic trigger ingress broker"
+publish = false
+
+[dependencies]
+ring.workspace = true

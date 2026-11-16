@@ -8,6 +8,7 @@ COPY Cargo.toml Cargo.lock rust-toolchain.toml VERSION TOOL-SDK-GUIDE.md ./
 COPY packages/contracts/rust packages/contracts/rust
 COPY packages/tenant-identity/rust packages/tenant-identity/rust
 COPY crates/trigger-supervisor crates/trigger-supervisor
+COPY crates/trigger-ingress crates/trigger-ingress
 COPY apps/gateway apps/gateway
 COPY apps/endpoint-client/Cargo.toml apps/endpoint-client/Cargo.toml
 COPY apps/endpoint-client/src apps/endpoint-client/src

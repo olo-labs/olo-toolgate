@@ -1472,6 +1472,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "olo-toolgate-trigger-ingress"
+version = "1.0.0-dev.1"
+dependencies = [
+ "ring",
+]
+
+[[package]]
 name = "olo-toolgate-trigger-supervisor"
 version = "1.0.0-dev.1"
 dependencies = [

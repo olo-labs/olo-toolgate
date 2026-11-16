@@ -116,3 +116,5 @@ Use `000-template.md`.
 - [ADR 062: Signed external audit anchors](062-signed-audit-anchors.md)
 
 - [ADR 063: Profile-driven external workflow execution](063-profile-driven-workflow-execution.md)
+
+- [ADR 067: Authenticated generic trigger HTTP ingress](067-authenticated-trigger-http-ingress.md)

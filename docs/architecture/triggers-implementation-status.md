@@ -5,6 +5,39 @@ This is the live progress document for issue #274 (server and client triggers). 
 [`device-triggers-plan.md`](device-triggers-plan.md) (revision 12). Module scope, weights, dependencies and
 *Done when* criteria come from its section 24.2; nothing here changes them silently.
 
+## M8 local HTTP ingress prerequisite — 2026-11-16
+
+Branch `feature/triggers-m08-server-triggers` starts at main `f269293b`.
+[Draft ADR 067](../adr/067-authenticated-trigger-http-ingress.md) records the
+proposed shared HTTPS callback, workflow-owned source config, broker-only key
+custody and the distinction between authentication and durable admission.
+The initial internal `crates/trigger-ingress` library authenticates bounded
+canonical HMAC requests. It signs tenant/binding/delivery identity and the exact
+raw body, checks canonical encodings/freshness, supports a two-key rotation
+overlap, and carries verified owner identity into a non-publicly-constructible
+result. It exposes no listener and grants no runtime authority.
+
+Executed on Rust **1.94.1**: 14 deterministic authentication tests pass, including
+an independently generated Python HMAC/body-digest fixture, modified signatures/
+body/identity, cross-tenant/source negatives, boundary/encoding checks, key
+removal and diagnostic redaction. Scoped clippy with warnings denied and
+workspace rustfmt checks pass. The Rust workspace Docker regression initially
+caught four recipes missing the new workspace member; all five applicable
+source-copy recipes were updated, and both regression tests now pass.
+Documentation links pass (334 files before this progress update). This is
+library evidence, not mock HTTP or configured-workflow acceptance. No external
+provider credentials are needed or used.
+
+**Baseline changes:** inbound HTTP is requested catalog work beyond the
+original module baseline. This local shared prerequisite earns no weight and
+does not silently add to or replace M8's original mail/failover, lease/broker,
+snapshot/checkpoint, quarantine and owned-scenario Done-when. Overall remains
+**27%**. M7 PUSH and original M8 requirements remain incomplete; no module PR
+or completion push is made for this fragment. No public route/wire contract,
+durable replay store/admission, runnable webhook package, package mock matrix
+entry or workflow profile is claimed. Those are the next integration work,
+alongside authority/revocation/overload and two-host failover verification.
+
 ## Device-scoped trigger management
 
 The console discovers client trigger exports from packages assigned to the
@@ -120,7 +153,7 @@ evidence. No module weight or baseline denominator changes; earned progress stay
 | 5 | ★ Client integration and ingest | E | 8% | 🔵 Merged (#286) without evidence; end-to-end fixes in the PR from `fix/triggers-desired-404` | 0% | #286 |
 | 6 | Lifecycle, rollout and raw page | D | 6% | 🔵 In this PR | 0% | This PR |
 | 7 | PUSH mode and file watching | B/E | 7% | ⏳ Pending | 0% | — |
-| 8 | ★ Server triggers on the Tool Host | E | 8% | ⏳ Pending | 0% | — |
+| 8 | ★ Server triggers on the Tool Host | E | 8% | Local ingress-auth prerequisite only; M7 dependency and original M8 acceptance pending | 0% | — |
 | 9 | Python SDK parity | B | 4% | ⏳ Pending | 0% | — |
 | 10 | Event router and retention | D | 4% | 🔵 Merged (#286) without evidence; end-to-end fixes in the PR from `fix/triggers-desired-404` | 0% | #286 |
 | 11 | Information flow, coarse mode | D | 3% | 🔵 Merged (#286) without evidence; end-to-end fixes in the PR from `fix/triggers-desired-404` | 0% | #286 |
