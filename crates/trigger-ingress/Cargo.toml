@@ -9,4 +9,5 @@ description = "Bounded request authentication for the trusted generic trigger in
 publish = false
 
 [dependencies]
+http.workspace = true
 ring.workspace = true

@@ -70,6 +70,14 @@ The proposed HTTP adapter reads exactly one `Olo-Delivery-Id`, `Olo-Timestamp`
 and `Olo-Signature` header and requires `Content-Type: application/json`.
 Duplicate/ambiguous headers and framing are refused before authentication;
 JSON/event-schema validation follows successful raw-body authentication.
+The local HTTP-envelope adapter accepts JSON with an optional single UTF-8
+charset parameter and absent/identity content encoding. It rejects duplicate
+authentication, Host, content and framing fields, conflicting Content-Length/
+Transfer-Encoding, mismatched decoded length and unsupported transfer encodings.
+The adapter receives body bytes after the trusted server's transfer decoding;
+it does not implement an HTTP parser or streaming input limits. Metadata limits
+are 32 values, 64 bytes per name, 1024 per value, 8192 total decoded name/value
+bytes. The server must independently bound headers/body before allocating them.
 These headers do not select tenant or binding: the callback lookup supplies
 that context. Provisioning gives the producer their non-secret signing IDs.
 IDs contain 1–128 ASCII letters/digits/dot/underscore/hyphen, with no whitespace.

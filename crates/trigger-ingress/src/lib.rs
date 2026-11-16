@@ -6,6 +6,8 @@
 use ring::{digest, hmac};
 use std::fmt;
 
+mod http_request;
+
 pub const MAX_BODY_BYTES: usize = 16_384;
 pub const MAX_FRESHNESS_SECONDS: u64 = 300;
 const MAX_TIMESTAMP: u64 = 9_007_199_254_740_991;
@@ -16,6 +18,8 @@ pub enum Refusal {
     InvalidPolicy,
     InvalidScope,
     MalformedRequest,
+    MethodNotAllowed,
+    UnsupportedMediaType,
     BodyTooLarge,
     NotFresh,
     Unauthenticated,

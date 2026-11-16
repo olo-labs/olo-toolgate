@@ -28,6 +28,15 @@ Documentation links pass (334 files before this progress update). This is
 library evidence, not mock HTTP or configured-workflow acceptance. No external
 provider credentials are needed or used.
 
+A subsequent local change adds parsed HTTP-envelope authentication: POST/media
+type/content encoding, duplicate authentication/Host/content/framing refusal,
+consistent length/transfer framing and bounded metadata. All **26 tests** pass
+(14 cryptographic and 12 HTTP-envelope cases), with scoped clippy denying
+warnings and workspace rustfmt passing on Rust 1.94.1. These tests construct
+mock HTTP headers/body; they do not expose a listener, validate JSON/event
+schemas or qualify wire parsing/streaming limits, replay persistence or lease
+authority. The trusted HTTP server and admission integration remain required.
+
 **Baseline changes:** inbound HTTP is requested catalog work beyond the
 original module baseline. This local shared prerequisite earns no weight and
 does not silently add to or replace M8's original mail/failover, lease/broker,
