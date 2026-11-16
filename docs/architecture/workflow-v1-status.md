@@ -1,6 +1,18 @@
 <!-- Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0 -->
 # Workflow execution v1 — live delivery status
 
+## Shared PUSH prerequisite, local M7 work — 2026-11-16
+
+The independent `feature/triggers-m07-push-file-watching` branch starts from
+main `f269293b`. It adds exact Java snapshot storage and eight tests as a local
+fragment of #274 M7; see the [trigger progress record](triggers-implementation-status.md#m7-local-work--2026-11-16).
+The SDK runtime/processor/harness suites pass (198 tests, no skips). This does
+not enable PUSH, native host-log access, provider connectors or new runnable
+workflow profiles. Emitter/lifecycle/broker/version-key integration and owned
+scenario acceptance remain outstanding. No #295 phase earns weight, and no
+existing baseline is changed. Full component gates must execute before M7
+completion and its required push/PR delivery.
+
 ## Published configuration in the console
 
 The Control API exposes tenant-scoped, read-only published workflow and agent

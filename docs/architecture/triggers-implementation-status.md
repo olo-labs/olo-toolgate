@@ -5,6 +5,31 @@ This is the live progress document for issue #274 (server and client triggers). 
 [`device-triggers-plan.md`](device-triggers-plan.md) (revision 12). Module scope, weights, dependencies and
 *Done when* criteria come from its section 24.2; nothing here changes them silently.
 
+## M7 local work — 2026-11-16
+
+Branch `feature/triggers-m07-push-file-watching` starts from main
+`f269293b`. The first local change implements exact Java `SnapshotState`
+storage: canonical un-hashed keys, deterministic checkpoints, declared and
+runtime byte bounds, immutable checkpoint values, complete-listing pruning,
+atomic overflow refusal and strict current-format restoration. Eight focused
+tests passed on Windows with Java 21 using
+`:sdk-java-runtime-mcp:test --tests io.ololabs.toolgate.runtime.SnapshotStateTest`.
+An initial compile failed on the exception's missing serialization identifier;
+that was corrected before the passing run. After adding a pre-decode key-length
+bound, the complete SDK runtime (123 tests), processor (62) and testing harness
+(13) suites passed: **198 tests, no failures/errors/skips**. This includes all
+eight new snapshot tests. Full `javaCheck` and M7 acceptance were not run.
+
+This is an unfinished local M7 fragment, not a runnable PUSH source or module
+completion. The SDK emitter, accepted-position barrier, reconcile/lifecycle
+loop, durable overflow/rescan handling, confined native file subscription broker,
+executor-computed version keys, sample conversion, conformance and owned M12
+scenarios remain outstanding. No Gateway-to-client transport or per-watch
+platform service is introduced. Native observations must remain behind the
+generic runtime subscription interface and existing trigger delivery/admission
+path. Per-module gates and the module PR are required before pushing completion.
+Overall earned progress remains **27%**; no denominator or package weight changes.
+
 ## Device-scoped trigger management
 
 The console discovers client trigger exports from packages assigned to the
