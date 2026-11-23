@@ -1,0 +1,85 @@
+{
+  "name": "@olo-labs/toolgate-sdk",
+  "version": "0.10.0-dev",
+  "description": "ToolGate Tool SDK for TypeScript: declarations, descriptor generation and the MCP runtime",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/olo-labs/olo-toolgate.git",
+    "directory": "tool-sdk/typescript-sdk/sdk"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.mts",
+        "default": "./dist/esm/index.mjs"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    },
+    "./internal": {
+      "import": {
+        "types": "./dist/esm/internal.d.mts",
+        "default": "./dist/esm/internal.mjs"
+      },
+      "require": {
+        "types": "./dist/cjs/internal.d.ts",
+        "default": "./dist/cjs/internal.js"
+      }
+    },
+    "./build": {
+      "import": {
+        "types": "./dist/esm/build.d.mts",
+        "default": "./dist/esm/build.mjs"
+      },
+      "require": {
+        "types": "./dist/cjs/build.d.ts",
+        "default": "./dist/cjs/build.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "toolgate-ts": "./bin/toolgate-ts.cjs"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/esm.cjs",
+    "test": "node --test --test-concurrency=4 test/*.test.mjs",
+    "check": "npm run build && npm test"
+  },
+  "dependencies": {
+    "zod": "3.25.76"
+  },
+  "peerDependencies": {
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3"
+  },
+  "peerDependenciesMeta": {
+    "esbuild": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "26.6.4",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
