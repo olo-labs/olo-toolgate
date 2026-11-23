@@ -16,6 +16,94 @@ export interface AdmissionResponse {
   readonly reason?: RefusalReason;
 }
 export type ApiChange = "NONE" | "PATCH" | "MINOR" | "MAJOR";
+/** Short-lived signed user/tenant access token. Obtain a new token through password login after expiry. */
+export interface ApplicationAccessToken {
+  readonly accessToken: string;
+  readonly tokenType: string;
+  readonly expiresIn: number;
+}
+/** Durable structural notification. RESULT announces an available result; read the separately authorized result endpoint for private output. */
+export interface ApplicationEvent {
+  readonly eventId: string;
+  readonly tenantId: string;
+  readonly sourceType: ApplicationEventSource;
+  readonly sourceId: string;
+  readonly sequence: number;
+  readonly kind: ApplicationEventKind;
+  readonly createdAtUnixMs: number;
+  readonly data: Record<string, unknown>;
+}
+export type ApplicationEventKind = "PROGRESS" | "RESULT" | "TRIGGER_STATUS";
+/** Bounded durable source events in sequence order. Cursors are scoped to one authorized source. */
+export interface ApplicationEventPage {
+  readonly items: ReadonlyArray<ApplicationEvent>;
+  readonly nextCursor: number;
+}
+export type ApplicationEventSource = "WORKFLOW" | "TRIGGER";
+/** V1 existing-user password login. Tenant is required in Toolgate-Tenant-ID; OAuth is not required. */
+export interface ApplicationPasswordLoginRequest {
+  readonly username: string;
+  readonly password: string;
+}
+/** Structural status for one readable trigger assignment, without configuration or source event payloads. */
+export interface ApplicationTriggerStatus {
+  readonly assignmentId: string;
+  readonly status: TriggerAssignmentStatus;
+}
+/** Caller-owned registration metadata; no signing key or user token is exposed. */
+export interface ApplicationWebhook {
+  readonly id: string;
+  readonly sourceType: ApplicationEventSource;
+  readonly sourceId: string;
+  readonly eventKinds: ReadonlyArray<ApplicationEventKind>;
+  readonly callbackUrl: string;
+  readonly expiresAtUnixMs: number;
+  readonly state: ApplicationWebhookState;
+  readonly nextCursor: number;
+  readonly attempts: number;
+}
+/** Signed destination-ownership challenge. Return HMAC-SHA256(secret, verify.subscriptionId.challenge) using the supplied subscription ID and challenge as proof. */
+export interface ApplicationWebhookChallenge {
+  readonly type: string;
+  readonly subscriptionId: string;
+  readonly challenge: string;
+}
+/** Caller-owned HTTPS notification subscription. Source ID is a run ID or trigger assignment name. Verification and current source permissions are required before delivery. */
+export interface ApplicationWebhookCreate {
+  readonly sourceType: ApplicationEventSource;
+  readonly sourceId: string;
+  readonly eventKinds: ReadonlyArray<ApplicationEventKind>;
+  readonly callbackUrl: string;
+  readonly expiresAtUnixMs: number;
+  readonly after: number;
+}
+/** Signed webhook delivery envelope. Use subscriptionId to select the signing key, verify timestamp and raw-body signature, then deduplicate by event.eventId. */
+export interface ApplicationWebhookDelivery {
+  readonly subscriptionId: string;
+  readonly event: ApplicationEvent;
+}
+/** V1 external application ApplicationWebhookPage contract; current tenant and user authorization remain required. */
+export interface ApplicationWebhookPage {
+  readonly items: ReadonlyArray<ApplicationWebhook>;
+}
+/** Registration response, including a private per-subscription signing secret. Exact authenticated retries may recover the same secret; it is encrypted at rest and absent from list/read responses. */
+export interface ApplicationWebhookRegistration {
+  readonly id: string;
+  readonly sourceType: ApplicationEventSource;
+  readonly sourceId: string;
+  readonly eventKinds: ReadonlyArray<ApplicationEventKind>;
+  readonly callbackUrl: string;
+  readonly expiresAtUnixMs: number;
+  readonly state: ApplicationWebhookState;
+  readonly nextCursor: number;
+  readonly attempts: number;
+  readonly signingSecret: string;
+}
+export type ApplicationWebhookState = "PENDING" | "ACTIVE" | "REVOKED" | "FAILED" | "EXPIRED";
+/** V1 external application ApplicationWebhookVerificationProof contract; current tenant and user authorization remain required. */
+export interface ApplicationWebhookVerificationProof {
+  readonly proof: string;
+}
 export type AuthType = "API_KEY" | "BASIC" | "OAUTH2_CLIENT_CREDENTIALS" | "TOKEN_EXCHANGE" | "CONNECTION" | "CUSTOM";
 /** Exact JCS offline approval payload. Issued-to-expiry window is at most ten minutes; two or three distinct current operator keys must approve identical claims. */
 export interface BreakGlassApprovalClaims {
@@ -1187,6 +1275,66 @@ export interface McpVerification {
 export type McpVerificationStatus = "CURRENT" | "UNVERIFIED";
 export type MissingKeyPolicy = "REJECT" | "ASK" | "ALLOW_WITH_DEDUPE";
 export type NamespacePrefix = string;
+/** ADR 075 NativeFileAck; only protected qualified filesystem broker evidence. */
+export interface NativeFileAck {
+  readonly accepted: true;
+}
+/** Current installed file-only candidate; metadata is not execution authority. */
+export interface NativeFileCandidate {
+  readonly deviceId: string;
+  readonly toolId: string;
+  readonly managedDigest: string;
+  readonly imageDigest: string;
+  readonly writeAccess: boolean;
+}
+/** Bounded metadata for explicit operator qualification. */
+export interface NativeFileCandidatePage {
+  readonly items: ReadonlyArray<NativeFileCandidate>;
+}
+/** ADR 075 NativeFileEffectBegin; only protected qualified filesystem broker evidence. */
+export interface NativeFileEffectBegin {
+  readonly requestId: string;
+  readonly leaseId: string;
+  readonly fencingToken: string;
+  readonly ordinal: number;
+  readonly intent: NativeFileIntent;
+}
+/** ADR 075 NativeFileEffectGrant; only protected qualified filesystem broker evidence. */
+export interface NativeFileEffectGrant {
+  readonly effectId: string;
+  readonly intentDigest: string;
+}
+/** ADR 075 NativeFileEffectReceipt; only protected qualified filesystem broker evidence. */
+export interface NativeFileEffectReceipt {
+  readonly requestId: string;
+  readonly leaseId: string;
+  readonly fencingToken: string;
+  readonly effectId: string;
+  readonly beforeSha256?: string;
+  readonly afterSha256: string;
+}
+/** ADR 075 NativeFileIntent; only protected qualified filesystem broker evidence. */
+export interface NativeFileIntent {
+  readonly operation: NativeFileOperation;
+  readonly path: string;
+  readonly destination?: string;
+  readonly contentSha256?: string;
+}
+export type NativeFileOperation = "WRITE" | "RENAME";
+/** ADR 075 NativeFileQualification; only protected qualified filesystem broker evidence. */
+export interface NativeFileQualification {
+  readonly deviceId: string;
+  readonly deviceGroupId: string;
+  readonly imageDigest: string;
+  readonly expiresAtUnixMs: number;
+  readonly acknowledgedRisk: "UNFENCED_FILESYSTEM";
+}
+/** ADR 075 NativeFileScopeClosed; only protected qualified filesystem broker evidence. */
+export interface NativeFileScopeClosed {
+  readonly requestId: string;
+  readonly leaseId: string;
+  readonly fencingToken: string;
+}
 /** Control-created stamp for an immutable generated MCP tool policy; not accepted from approval or package authors. */
 export interface NativeMcpEffectReview {
   readonly toolId: string;
@@ -1377,7 +1525,7 @@ export interface ProfileChange {
   readonly packageDigest?: string;
 }
 export type ProfileChangeKind = "ADDED" | "CHANGED" | "REMOVED";
-/** One package the profile requires, pinned to an exact version. A MARKETPLACE entry must also pin its package digest; a PREBUILT_CORE entry resolves its digest from the sealed image lock, and a declared digest must equal it. hostIds names the Tool Hosts that receive its eligible ServerTool exports; ClientTool exports never deploy to a Tool Host. deviceGroupIds names the device groups whose active, approved devices receive its device-runnable exports as a signed client release (ADR 026), including devices that join later. An entry that activates exports needs hostIds or deviceGroupIds. bindingIds have their allowed package digests set to exactly the profile packages that name them. triggers declares client trigger assignments of its exports for those device groups. */
+/** One package the profile requires, pinned to an exact version. A MARKETPLACE entry must also pin its package digest; a PREBUILT_CORE entry resolves its digest from the sealed image lock, and a declared digest must equal it. hostIds names the Tool Hosts that receive its eligible ServerTool exports; ClientTool exports never deploy to a Tool Host. deviceGroupIds names eligible groups for one durably selected profile device receiving its device-runnable exports as a signed client release (ADR 026). One selected device must belong to at least one enabled group in each package group list, with no automatic failover. An entry that activates exports needs hostIds or deviceGroupIds. bindingIds have their allowed package digests set to exactly the profile packages that name them. triggers declares client trigger assignments of its exports for those device groups. */
 export interface ProfilePackage {
   readonly packageId: string;
   readonly source: ProfilePackageSource;
@@ -1391,7 +1539,7 @@ export interface ProfilePackage {
   readonly bindingIds?: ReadonlyArray<string>;
   readonly triggers?: ReadonlyArray<ProfileTrigger>;
 }
-export type ProfilePackageSource = "PREBUILT_CORE" | "MARKETPLACE";
+export type ProfilePackageSource = "PREBUILT_CORE" | "MARKETPLACE" | "BUNDLE";
 /** A call the deployment makes through the Gateway, as the named agent, to declare the profile ready. Arguments are explicit; expected names fields the structured result must contain with these exact values. */
 export interface ProfileReadinessCase {
   readonly toolId: string;
@@ -1404,7 +1552,7 @@ export interface ProfileToolActivation {
   readonly toolId: string;
   readonly toolGroupId: string;
 }
-/** A client trigger assignment the profile declares for one of its package's trigger exports (ADR 058). It targets the entry's deviceGroupIds; a profile that declares any trigger enables triggers for the deployment. */
+/** A client trigger assignment colocated with the profile device packages on one persistently selected eligible device. Independently managed group membership remains a live constraint. */
 export interface ProfileTrigger {
   readonly assignment: string;
   readonly triggerId: string;
@@ -2603,6 +2751,7 @@ export interface TriggerTarget {
   readonly devices?: ReadonlyArray<string>;
   readonly deviceGroups?: ReadonlyArray<string>;
   readonly excludeDevices?: ReadonlyArray<string>;
+  readonly requiredDeviceGroupSets?: ReadonlyArray<ReadonlyArray<string>>;
 }
 export type TriggerTerminalRejectionPolicy = "HALT" | "SKIP_AND_RECORD";
 export type TriggerTimestamp = string;
@@ -2643,6 +2792,40 @@ export interface WorkflowAgentStage {
   readonly agentId: string;
   readonly resultMode: WorkflowAgentResultMode;
 }
+/** WorkflowBundleBuild portable metadata. */
+export interface WorkflowBundleBuild {
+  readonly version: string;
+  readonly sourceCommit: string;
+  readonly build: string;
+}
+/** Logical trigger mappings restored to destination identities. */
+export interface WorkflowBundleConnection {
+  readonly id: string;
+  readonly assignment: string;
+  readonly subscription: string;
+  readonly assignmentSpec: TriggerAssignmentSpec;
+  readonly subscriptionSpec: TriggerSubscriptionSpec;
+}
+/** WorkflowBundleManifest portable metadata. */
+export interface WorkflowBundleManifest {
+  readonly format: "olo-workflow";
+  readonly version: 2;
+  readonly workflowId: string;
+  readonly sha256: string;
+  readonly referencesSha256: string;
+  readonly build?: WorkflowBundleBuild;
+  readonly connections: ReadonlyArray<WorkflowBundleConnection>;
+  readonly packages: ReadonlyArray<WorkflowBundlePackage>;
+}
+/** WorkflowBundlePackage portable metadata. */
+export interface WorkflowBundlePackage {
+  readonly packageId: string;
+  readonly version: string;
+  readonly packageDigest: string;
+  readonly sha256: string;
+  readonly bytes: number;
+  readonly path: string;
+}
 /** Profile declaration for WorkflowConfiguration; eligibility and configuration confer no runtime authority. */
 export interface WorkflowConfiguration {
   readonly workflowGroups: ReadonlyArray<WorkflowGroupDefinition>;
@@ -2682,6 +2865,7 @@ export interface WorkflowDefinition {
   readonly agents: ReadonlyArray<WorkflowAgentBinding>;
   readonly agentStages?: ReadonlyArray<WorkflowAgentStage>;
   readonly deployment?: WorkflowStackDeployment;
+  readonly graph: WorkflowGraphSelection;
 }
 /** Bounded delegate model proposal; never execution authority. */
 export interface WorkflowDelegateDecision {
@@ -2726,11 +2910,85 @@ export interface WorkflowFinishDecision {
   readonly kind: "finish";
   readonly result: unknown;
 }
+/** Control-authorized immutable candidate reference. Contains no arbitrary Python, paths, secrets or live clients. */
+export interface WorkflowGraphBuildRequest {
+  readonly tenantId: string;
+  readonly profileId: string;
+  readonly profileDigest: string;
+  readonly workflowId: string;
+  readonly expectedGeneration: number;
+}
+/** Compilation receipt; this neither publishes configuration nor grants runtime authority. */
+export interface WorkflowGraphBuildResult {
+  readonly tenantId: string;
+  readonly profileId: string;
+  readonly profileDigest: string;
+  readonly workflowId: string;
+  readonly generation: number;
+  readonly specificationDigest: string;
+  readonly compilerDigest: string;
+  readonly features: ReadonlyArray<string>;
+  readonly state: "READY";
+}
+/** Reviewed immutable graph candidate read by a verified tenant runtime service. Carries configuration only, never execution credentials. */
+export interface WorkflowGraphCandidate {
+  readonly tenantId: string;
+  readonly profileId: string;
+  readonly profileDigest: string;
+  readonly workflowId: string;
+  readonly generation: number;
+  readonly graph: WorkflowGraphSelection;
+  readonly agentIds: ReadonlyArray<string>;
+}
+/** Actual JSON compiler features and disposable cache statistics. This is not a readiness or execution grant. */
+export interface WorkflowGraphCapabilities {
+  readonly entries: number;
+  readonly capacity: 128;
+  readonly compilerDigest: string;
+  readonly features: ReadonlyArray<string>;
+}
+/** Pinned operator-installed native LangGraph factory. Configuration grants no runtime authority. */
+export interface WorkflowGraphSelection {
+  readonly packageId: string;
+  readonly version: string;
+  readonly digest: string;
+  readonly entryPoint: string;
+  readonly config: Record<string, unknown>;
+}
 /** Profile declaration for WorkflowGroupDefinition; eligibility and configuration confer no runtime authority. */
 export interface WorkflowGroupDefinition {
   readonly id: string;
   readonly displayName: string;
 }
+/** Boolean branch destinations in the configured graph. */
+export interface WorkflowJsonBranchRoutes {
+  readonly true: string;
+  readonly false: string;
+}
+/** One edge or explicit all-predecessor join. START and END are reserved boundary names. */
+export interface WorkflowJsonEdge {
+  readonly from: ReadonlyArray<string>;
+  readonly to: string;
+}
+/** Versioned, bounded JSON topology for the installed generic LangGraph compiler. Structure alone establishes no execution authority. */
+export interface WorkflowJsonGraph {
+  readonly schemaVersion: 1;
+  readonly nodes: ReadonlyArray<WorkflowJsonNode>;
+  readonly edges: ReadonlyArray<WorkflowJsonEdge>;
+  readonly output: Record<string, unknown>;
+  readonly outputSchema: Record<string, unknown>;
+}
+/** Pure node declaration; per-run capabilities are injected by the runtime, never captured in topology. */
+export interface WorkflowJsonNode {
+  readonly id: string;
+  readonly kind: WorkflowJsonNodeKind;
+  readonly input: Record<string, unknown>;
+  readonly agentId?: string;
+  readonly toolRef?: string;
+  readonly resultMode?: WorkflowAgentResultMode;
+  readonly routes?: WorkflowJsonBranchRoutes;
+}
+export type WorkflowJsonNodeKind = "value" | "agent" | "model" | "tool" | "branch";
 /** An explicitly assigned model deployment. Only server-owned TLS origin, model name and vault reference are configuration; no provider key reaches a runner. */
 export interface WorkflowModelDeployment {
   readonly id: string;
@@ -2743,13 +3001,38 @@ export interface WorkflowModelDeployment {
 }
 /** Explicit bounded inference parameters selected from the pinned model deployment, never from a runner request. */
 export interface WorkflowModelGeneration {
+  readonly reasoningEffort?: string;
   readonly maxOutputTokens: number;
   readonly temperature: number;
 }
-/** Profile declaration for WorkflowModelGroupDefinition; eligibility and configuration confer no runtime authority. */
+/** Ordered model candidates; selection intersects this order with the pinned workflow ceiling. Only provider inference failures permit fallback; effects are never retried. */
 export interface WorkflowModelGroupDefinition {
   readonly id: string;
   readonly deploymentIds: ReadonlyArray<string>;
+  readonly standby?: boolean;
+}
+/** Gateway-only resolution of one authorized inference candidate, with current authority checked on every attempt. */
+export interface WorkflowModelResolveRequest {
+  readonly runId: string;
+  readonly stepToken: string;
+  readonly candidateIndex: number;
+}
+/** Private Gateway response; credentials must never be forwarded to runtime workers or logged. */
+export interface WorkflowModelResolveResponse {
+  readonly origin: string;
+  readonly modelId: string;
+  readonly credential: string;
+  readonly generation: WorkflowModelGeneration;
+  readonly deploymentId: string;
+  readonly candidateIndex: number;
+  readonly candidateCount: number;
+  readonly resultSchema: Record<string, unknown>;
+}
+/** Current tenant-scoped publication blockers, without credentials or remote payloads. Observational only; publication rechecks readiness. */
+export interface WorkflowProfileDiagnostics {
+  readonly profileId: string;
+  readonly profileDigest: string;
+  readonly blockers: ReadonlyArray<string>;
 }
 /** Workflow profile lifecycle metadata; publication requires current authorization, reviewed content and dependency readiness. */
 export interface WorkflowProfilePublishRequest {
@@ -2770,7 +3053,50 @@ export interface WorkflowProfileStatus {
   readonly dependenciesReady: boolean;
   readonly reviewedBy?: string;
 }
+export type WorkflowProgressKind = "NODE_COMPLETED" | "AGENT_STARTED" | "AGENT_COMPLETED" | "MODEL_STARTED" | "MODEL_COMPLETED" | "TOOL_STARTED" | "TOOL_COMPLETED" | "TOOL_FAILED";
+export type WorkflowProgressSource = "CONTROL" | "RUNTIME";
 export type WorkflowRemediationMode = "PREPARE" | "APPLY";
+/** Backend-recorded structural progress. Runtime reports do not attest tool effects or finality. */
+export interface WorkflowRunProgressEvent {
+  readonly sequence: number;
+  readonly occurredAt: string;
+  readonly source: WorkflowProgressSource;
+  readonly kind: string;
+  readonly nodeId?: string;
+  readonly subjectId?: string;
+  readonly toolRef?: string;
+}
+/** Ordered durable progress for one tenant/run; cursor advances only through returned events. */
+export interface WorkflowRunProgressPage {
+  readonly items: ReadonlyArray<WorkflowRunProgressEvent>;
+  readonly nextCursor: number;
+}
+/** Lease-authenticated structural runtime observation. No input, output, provider text or credential is retained in progress evidence. */
+export interface WorkflowRunProgressRequest {
+  readonly leaseId: string;
+  readonly leaseToken: string;
+  readonly eventId: string;
+  readonly kind: WorkflowProgressKind;
+  readonly nodeId?: string;
+  readonly subjectId?: string;
+  readonly toolRef?: string;
+}
+/** Durable acceptance receipt; it is not evidence of execution success. */
+export interface WorkflowRunStartReceipt {
+  readonly runId: string;
+  readonly profileId: string;
+  readonly profileDigest: string;
+  readonly workflowId: string;
+  readonly state: "QUEUED";
+}
+/** Explicit text input for one published bot. Backend derives service group and configured mode; current authority and idempotency remain required. */
+export interface WorkflowRunStartRequest {
+  readonly profileDigest: string;
+  readonly expectedGeneration: number;
+  readonly entryAgentId: string;
+  readonly message: string;
+  readonly dispatchBindingId?: string;
+}
 /** Complete workflow-scoped local deployment declaration. Operator images and custody remain explicitly trusted; this grants no model or tool authority. */
 export interface WorkflowStackDeployment {
   readonly enabled: boolean;
@@ -2848,4 +3174,21 @@ export interface WorkflowToolDecision {
   readonly kind: "tool";
   readonly toolId: string;
   readonly arguments: Record<string, unknown>;
+}
+/** Control-owned manual-run user and admitted resource ceiling, including a universal human/secret scope when admitted under live tenant Super Admin membership. Current grants or Super Admin membership and identity must still be checked. Never accepted from an external caller. */
+export interface WorkflowUserAuthority {
+  readonly userId: string;
+  readonly principalId: string;
+  readonly identityDigest: string;
+  readonly humanScopes: ReadonlyArray<V1.EnterpriseScope>;
+  readonly secretScopes: ReadonlyArray<V1.EnterpriseScope>;
+  readonly agentScopes: ReadonlyArray<V1.EnterpriseScope>;
+  readonly agentSecretScopes: ReadonlyArray<V1.EnterpriseScope>;
+  readonly requiredScopes: ReadonlyArray<V1.EnterpriseScope>;
+}
+/** Authenticated worker capabilities. Control only leases runs pinned to this compiler and an installed graph digest; this grants no model or tool authority. */
+export interface WorkflowWorkerCapabilities {
+  readonly compilerDigest: string;
+  readonly graphDigests: ReadonlyArray<string>;
+  readonly instanceId: string;
 }

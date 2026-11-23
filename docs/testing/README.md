@@ -9,10 +9,19 @@ first failure. JUnit gives each test and lifecycle method six minutes by default
 so a stalled test can fail with its name and stack trace. The Java workflow step
 also has a 35-minute cap for stalls outside JUnit.
 
+PostgreSQL enterprise fixtures drop their owned databases only after runtime
+connections close, waiting up to five seconds for server-side backend exit.
+They do not force termination or give the migration role process-signalling
+privileges. Other SQL errors and connections still present after that bound
+fail cleanup.
+
 The production Gateway image smoke test (`python tools/gateway/container.py`)
-also qualifies offline SQLite backup and restore. The backup check inspects
-containers listed for the source volume to confirm they have stopped. Docker
-can briefly list a stopped container as running.
+checks that password replacement invalidates a captured delegated session even
+after grants and delegation are approved. It then reloads a credential with the
+current human session epoch and checks discovery, execution and delegation
+revocation. It also qualifies offline SQLite backup and restore. The backup
+check inspects containers listed for the source volume to confirm they have
+stopped. Docker can briefly list a stopped container as running.
 
 | Scope | Entry point |
 |---|---|
@@ -27,7 +36,7 @@ can briefly list a stopped container as running.
 | Enterprise acceptance | `python tools/enterprise/finish.py`; [scope and limits](../enterprise-access-control/README.md) |
 | SDK conformance | [Cases and runner contract](../../tool-sdk/conformance/README.md) |
 | Performance | [Gateway methodology](../gateway/performance.md) |
-| Release checks and scans | [Release process](../development/release-process.md) |
+| Release checks and scans | [Release process](../development/how-to-release.md) |
 | Zero Trust diagnostic scorecard | [Runner, nonzero results and CI publication](zero-trust-scorecard.md) |
 | Documentation | `make docs` |
 

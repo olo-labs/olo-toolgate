@@ -43,6 +43,22 @@ final class WorkflowProfilesTest {
         var store = new PostgresStore(data, codec); var tenant = Tenants.id("tenant");
         return new Rig(store, data, tenant, TestSupport.seed(store, codec, tenant, "root"));
     }
+    @Test void superuserEntitlementDoesNotLeakForTheSameUserIdAcrossTenantsOnBothStores() throws Exception {
+        for (boolean postgres : List.of(false, true)) {
+            var rig = rig(postgres); var other = Tenants.id("other");
+            rig.store.transaction(other, true, tx -> {
+                var before = tx.load(); var entries = new HashMap<>(before.entries());
+                GroupGraph.defaults(entries, codec);
+                TestSupport.put(entries, codec, Ids.Kind.USER, new io.ololabs.toolgate.contracts.ControlUser(
+                    "root", "Different tenant user", true, 1L, null, null, null));
+                GroupGraph.addDefault(entries, codec, Ids.Kind.USER, "root");
+                tx.save(before, new io.ololabs.toolgate.control.domain.Directory(before.revision()+1, entries));
+                return null;
+            });
+            assertFalse(rig.store.transaction(rig.tenant, false, tx -> TenantSuperuser.grants(tx.load(), codec, "root")).isEmpty());
+            assertTrue(rig.store.transaction(other, false, tx -> TenantSuperuser.grants(tx.load(), codec, "root")).isEmpty());
+        }
+    }
     private ObjectNode profile() throws Exception {
         var path = Path.of(System.getProperty("toolgate.fixtures")).getParent().resolve("../v2/valid.json");
         var profile = JSON.createObjectNode().put("profileVersion", 2).put("profileId", "support");
@@ -52,6 +68,83 @@ final class WorkflowProfilesTest {
     private JsonNode node(Store.Reply reply) { return (JsonNode)codec.value(reply.body()); }
     private String review(String digest) { return codec.json(Map.of("profileDigest", digest)); }
     private String publish(String digest, long generation) { return codec.json(Map.of("profileDigest", digest, "expectedGeneration", generation)); }
+    private io.ololabs.toolgate.contracts.v2.WorkflowGraphBuildResult compiled(io.ololabs.toolgate.contracts.v2.WorkflowGraphBuildRequest request) {
+        return new io.ololabs.toolgate.contracts.v2.WorkflowGraphBuildResult(request.tenantId(), request.profileId(), request.profileDigest(),
+            request.workflowId(), request.expectedGeneration(), "sha256:" + "a".repeat(64), "sha256:" + "b".repeat(64), List.of("fixture"), "READY");
+    }
+    @Test void sqliteGraphPreparationIsCompleteTenantScopedAndGenerationFenced() throws Exception { prepareGraphs(false); }
+    @Test void postgresGraphPreparationIsCompleteTenantScopedAndGenerationFenced() throws Exception { prepareGraphs(true); }
+    private void prepareGraphs(boolean postgres) throws Exception {
+        var rig = rig(postgres);
+        var service = new WorkflowProfiles(rig.store, codec, (tx, p, digest) -> true, keys());
+        var value = profile();
+        var second = value.path("workflows").path("workflows").get(0).deepCopy();
+        ((ObjectNode)second).put("id", "second-workflow");
+        ((ArrayNode)value.path("workflows").path("workflows")).add(second);
+        String digest = node(service.upload(rig.admin, value.toString(), "stage-graphs")).path("profileDigest").asText();
+        var calls = new java.util.concurrent.atomic.AtomicInteger();
+        var prepare = new WorkflowGraphPreparation(codec, service, request -> { calls.incrementAndGet(); return compiled(request); });
+        assertEquals(409, assertThrows(Failure.class, () -> prepare.prepare(rig.admin, "support", publish(digest, 0), "draft-graphs")).status());
+        assertEquals(0, calls.get());
+        service.review(rig.admin, "support", review(digest), "review-graphs");
+        assertEquals(409, assertThrows(Failure.class, () -> prepare.prepare(rig.admin, "support", publish(digest, 1), "stale-graphs")).status());
+        assertEquals(0, calls.get());
+        var invalid = new WorkflowGraphPreparation(codec, service, request -> {
+            if (request.workflowId().equals("second-workflow")) throw Failure.unavailable();
+            return compiled(request);
+        });
+        assertThrows(Failure.class, () -> invalid.prepare(rig.admin, "support", publish(digest, 0), "partial-graphs"));
+        rig.store.transaction(rig.tenant, false, tx -> { assertNull(tx.workflowProfiles().graphBuild("support", digest, "investigate")); return null; });
+        assertEquals(2, node(prepare.prepare(rig.admin, "support", publish(digest, 0), "prepare-graphs")).size());
+        assertEquals(2, calls.get());
+        var reopened = new PostgresStore(rig.data, codec);
+        reopened.transaction(rig.tenant, false, tx -> {
+            assertEquals(digest, node(new Store.Reply(200, tx.workflowProfiles().graphBuild("support", digest, "investigate"), 0)).path("profileDigest").asText());
+            return null;
+        });
+        var foreign = TestSupport.seed(rig.store, codec, Tenants.id("other"), "foreign-owner");
+        assertEquals(404, assertThrows(Failure.class, () -> prepare.prepare(foreign, "support", publish(digest, 0), "foreign-graphs")).status());
+        var mismatched = new WorkflowGraphPreparation(codec, service, request -> compiled(
+            new io.ololabs.toolgate.contracts.v2.WorkflowGraphBuildRequest(foreign.tenant().value(), request.profileId(), request.profileDigest(), request.workflowId(), request.expectedGeneration())));
+        assertEquals(503, assertThrows(Failure.class, () -> mismatched.prepare(rig.admin, "support", publish(digest, 0), "wrong-tenant-graphs")).status());
+        // A publication racing a remote compile cannot persist stale preparation.
+        var raced = new AtomicBoolean();
+        var racing = new WorkflowGraphPreparation(codec, service, request -> {
+            if (raced.compareAndSet(false, true)) service.publish(rig.admin, "support", publish(digest, 0), "racing-publish");
+            return compiled(request);
+        });
+        assertEquals(409, assertThrows(Failure.class, () -> racing.prepare(rig.admin, "support", publish(digest, 0), "racing-graphs")).status());
+        rig.store.transaction(rig.tenant, false, tx -> {
+            assertEquals(0, node(new Store.Reply(200, tx.workflowProfiles().graphBuild("support", digest, "investigate"), 0)).path("generation").asLong());
+            return null;
+        });
+    }
+    @Test void sqliteGraphCandidateRequiresReviewedExactTenantWorkflowAndGeneration() throws Exception { graphCandidate(false); }
+    @Test void postgresGraphCandidateRequiresReviewedExactTenantWorkflowAndGeneration() throws Exception { graphCandidate(true); }
+
+    private void graphCandidate(boolean postgres) throws Exception {
+        var rig = rig(postgres);
+        var service = new WorkflowProfiles(rig.store, codec, (tx, p, digest) -> true, keys());
+        String digest = node(service.upload(rig.admin, profile().toString(), "graph-stage")).path("profileDigest").asText();
+        var worker = new DirectoryService.Actor(rig.tenant, "a".repeat(64), false);
+        assertEquals(409, assertThrows(Failure.class, () -> service.graphCandidate(worker, "support", digest, "investigate", 0)).status());
+        service.review(rig.admin, "support", review(digest), "graph-review");
+        var first = node(service.graphCandidate(worker, "support", digest, "investigate", 0));
+        assertEquals(rig.tenant.value(), first.path("tenantId").asText());
+        assertEquals(digest, first.path("profileDigest").asText());
+        assertEquals("investigate", first.path("workflowId").asText());
+        assertTrue(first.path("graph").isObject());
+        assertEquals(profile().path("workflows").path("workflows").get(0).path("agents").size(),first.path("agentIds").size());
+        assertFalse(first.has("workflows"));
+        assertFalse(first.has("credential"));
+        assertEquals(404, assertThrows(Failure.class, () -> service.graphCandidate(worker, "support", digest, "missing", 0)).status());
+        var foreign = TestSupport.seed(rig.store, codec, Tenants.id("other"), "foreign-owner");
+        assertEquals(404, assertThrows(Failure.class, () -> service.graphCandidate(foreign, "support", digest, "investigate", 0)).status());
+        service.publish(rig.admin, "support", publish(digest, 0), "graph-publish");
+        assertEquals(409, assertThrows(Failure.class, () -> service.graphCandidate(worker, "support", digest, "investigate", 0)).status());
+        assertEquals(1, node(service.graphCandidate(worker, "support", digest, "investigate", 1)).path("generation").asLong());
+    }
+
     @Test void sqliteLifecycleIsAtomicAndPublishedSeparately() throws Exception { lifecycle(false); }
     @Test void postgresLifecycleIsAtomicAndPublishedSeparately() throws Exception { lifecycle(true); }
     @Test void sqliteCatalogIsPagedPrivateAndTenantScoped() throws Exception { catalog(false); }
@@ -89,7 +182,7 @@ final class WorkflowProfilesTest {
         java.util.function.Function<Store.Session, WorkflowRunStore.QueuedRun> queue = tx -> {
             var sealed = inputs.seal(tx, rig.tenant, "run-1", digest, "Private event message");
             var run = new WorkflowRunStore.QueuedRun("run-1", "support", digest, "investigate", "revision-1",
-                "automation", "automation-group", "PREPARE", 1234, sealed.keyVersion(), sealed.ciphertext());
+                "automation", "automation-group", "PREPARE", 1234, sealed.keyVersion(), sealed.ciphertext(), "sha256:" + "b".repeat(64), "sha256:" + "c".repeat(64), null);
             tx.workflowRuns().enqueue(run);
             tx.workflowRuns().insertAdmission(admission);
             return run;
@@ -288,7 +381,7 @@ final class WorkflowProfilesTest {
             assertTrue(access.canReadPublishedWorkflows(directory, reader.userId(), now));
             return null;
         });
-        assertEquals(403, assertThrows(Failure.class, () -> service.listPublished(scopedReader, null, 50)).status());
+        assertEquals(0, node(service.listPublished(scopedReader, null, 50)).size());
         assertEquals(403, assertThrows(Failure.class, () -> service.publishedConfiguration(scopedReader, "support", digest)).status());
         var outsider = new DirectoryService.Actor(rig.tenant, DirectoryService.digest("forged"), true, true, "intruder");
         assertEquals(403, assertThrows(Failure.class, () -> service.listPublished(outsider, null, 50)).status());
@@ -394,8 +487,10 @@ final class WorkflowProfilesTest {
             assertEquals(Set.of(200, 201), Set.of(a.get(15, java.util.concurrent.TimeUnit.SECONDS), b.get(15, java.util.concurrent.TimeUnit.SECONDS)));
         } finally { executor.shutdownNow(); }
     }
-    @Test void realDependencyChecksRequireVaultScopeAndCurrentAgentMembership() throws Exception {
-        var rig = rig(false); var deps = new WorkflowProfileDependencies(codec, java.time.Clock.systemUTC(), null, null, rig.tenant);
+    @Test void realDependencyChecksRequireVaultScopeAndCurrentAgentMembership() throws Exception { dependencyDiagnostics(false); }
+    @Test void postgresDependencyDiagnosticsAreTenantScopedAndCurrent() throws Exception { dependencyDiagnostics(true); }
+    private void dependencyDiagnostics(boolean postgres) throws Exception {
+        var rig = rig(postgres); var deps = new WorkflowProfileDependencies(codec, java.time.Clock.systemUTC(), null, null, rig.tenant);
         var service = new WorkflowProfiles(rig.store, codec, deps, keys()); var value = profile();
         value.putArray("packages").addObject().put("packageId", "examples.hotfolder-watch")
             .put("version", "0.1.0").put("source", "PREBUILT_CORE").put("required", true);
@@ -410,6 +505,17 @@ final class WorkflowProfilesTest {
             tx.save(before, new io.ololabs.toolgate.control.domain.Directory(before.revision() + 1, entries)); return null;
         });
         String digest = node(service.upload(rig.admin, value.toString(), "stage")).path("profileDigest").asText();
+        var initialDiagnostics = node(service.diagnostics(rig.admin, "support", digest));
+        assertTrue(initialDiagnostics.path("blockers").toString().contains("Review this exact"));
+        assertTrue(initialDiagnostics.path("blockers").toString().contains("graph is not prepared"));
+        assertTrue(initialDiagnostics.path("blockers").toString().contains("missing vault secret model-key"));
+        assertTrue(initialDiagnostics.path("blockers").toString().contains("Packages have not been provisioned"));
+        assertEquals(digest, initialDiagnostics.path("profileDigest").asText());
+        var noAdmin = new DirectoryService.Actor(rig.tenant, DirectoryService.digest("not-admin"), true, false, "not-admin");
+        assertEquals(403, assertThrows(Failure.class, () -> service.diagnostics(noAdmin, "support", digest)).status());
+        var foreign = new DirectoryService.Actor(Tenants.id("foreign"), DirectoryService.digest("foreign-root"), true, false, "root");
+        assertTrue(Set.of(403, 404).contains(assertThrows(Failure.class, () -> service.diagnostics(foreign, "support", digest)).status()));
+        rig.store.transaction(rig.tenant, false, tx -> { assertNull(tx.workflowProfiles().publication("support")); return null; });
         service.review(rig.admin, "support", review(digest), "review");
         rig.store.transaction(rig.tenant, true, tx -> {
             tx.packages().saveProvisioning(new PackageStore.Provisioning("support", 1, digest, "{\"state\":\"READY\"}"));
@@ -420,6 +526,9 @@ final class WorkflowProfilesTest {
         new VaultService(rig.store, codec, keys).write(rig.admin,
             codec.json(Map.of("name", "model-key", "toolGroupId", "default-tools", "deviceGroupId", "default-devices", "value", "fixture-value")), "wrong-scope");
         assertEquals(409, assertThrows(Failure.class, () -> service.publish(rig.admin, "support", publish(digest, 0), "wrong-secret-scope")).status());
+        var wrongScope = node(service.diagnostics(rig.admin, "support", digest)).path("blockers").toString();
+        assertTrue(wrongScope.contains("different tool/device group scope"));
+        assertFalse(wrongScope.contains("fixture-value"));
         new VaultService(rig.store, codec, keys).write(rig.admin,
             codec.json(Map.of("name", "model-key", "toolGroupId", "model-tools", "deviceGroupId", "model-devices", "value", "fixture-value")), "secret");
         rig.store.transaction(rig.tenant, true, tx -> {
@@ -433,13 +542,31 @@ final class WorkflowProfilesTest {
             tx.packages().saveProvisioning(new PackageStore.Provisioning("support", 3, digest, "{\"state\":\"READY\"}"));
             return null;
         });
+        assertEquals(409, assertThrows(Failure.class,
+            () -> service.publish(rig.admin, "support", publish(digest, 0), "uncompiled-graphs")).status());
+        new WorkflowGraphPreparation(codec, service, this::compiled).prepare(rig.admin, "support", publish(digest, 0), "prepare-graphs");
+        assertEquals(409, assertThrows(Failure.class, () -> service.publish(rig.admin, "support", publish(digest, 0), "no-worker")).status());
+        String graphDigest = value.path("workflows").path("workflows").get(0).path("graph").path("digest").asText();
+        rig.store.transaction(rig.tenant, true, tx -> {
+            tx.workflowRuns().reportWorker(new WorkflowRunStore.Worker("worker-a", "a".repeat(64), "sha256:" + "b".repeat(64), List.of(graphDigest), System.currentTimeMillis()+60000), System.currentTimeMillis()); return null;
+        });
+        assertTrue(node(service.diagnostics(rig.admin, "support", digest)).path("blockers").isEmpty());
         assertTrue(node(service.publish(rig.admin, "support", publish(digest, 0), "publish")).path("dependenciesReady").asBoolean());
+        rig.store.transaction(rig.tenant, true, tx -> {
+            tx.workflowRuns().reportWorker(new WorkflowRunStore.Worker("worker-a", "a".repeat(64), "sha256:" + "b".repeat(64), List.of(graphDigest), System.currentTimeMillis()-1), System.currentTimeMillis()); return null;
+        });
+        assertFalse(node(service.get(rig.admin, "support", digest)).path("dependenciesReady").asBoolean(), "expired worker presence blocks new admission even before cleanup");
+        rig.store.transaction(rig.tenant, true, tx -> {
+            tx.workflowRuns().reportWorker(new WorkflowRunStore.Worker("worker-a", "a".repeat(64), "sha256:" + "b".repeat(64), List.of(graphDigest), System.currentTimeMillis()+60000), System.currentTimeMillis()); return null;
+        });
+        assertTrue(node(service.get(rig.admin, "support", digest)).path("dependenciesReady").asBoolean());
         rig.store.transaction(rig.tenant, true, tx -> {
             var before = tx.load(); var entries = new HashMap<>(before.entries());
             TestSupport.put(entries, codec, Ids.Kind.AGENT_GROUP, new io.ololabs.toolgate.contracts.ControlAgentGroup("support-agents", "Support", null, true, 2L, List.of(), List.of(), null));
             tx.save(before, new io.ololabs.toolgate.control.domain.Directory(before.revision() + 1, entries)); return null;
         });
         assertFalse(node(service.get(rig.admin, "support", digest)).path("dependenciesReady").asBoolean());
+        assertTrue(node(service.diagnostics(rig.admin, "support", digest)).path("blockers").toString().contains("not a member of configured agent group"));
         assertEquals(403, assertThrows(Failure.class, () -> rig.store.transaction(rig.tenant, false, tx -> service.published(tx, rig.tenant, "support"))).status());
     }
     @Test void privateDocumentsAreEncryptedBoundToTenantAndSurviveReadOnlyKeyRotation() throws Exception {

@@ -29,6 +29,8 @@ private/
 # Local ToolGate state
 # -----------------------------------------------------------------------------
 .dev/
+/debug/profiled/state/
+/debug/profiled/installation.env
 .toolgate/
 toolgate.dev.json
 .data/
@@ -42,7 +44,6 @@ hotfolder/
 HotFolder/
 # The HotFolder example package is code, not a local files area.
 !examples/java-tools/hotfolder/
-!debug/hotfolder/
 !**/src/**/hotfolder/
 logs/
 # Java source packages named logs are code, not local log output.
@@ -243,8 +244,15 @@ deploy/compose/WorkflowStack/models/
 deploy/compose/WorkflowStack/monitoring/collector-vendors.yaml
 deploy/compose/WorkflowStack/monitoring/credentials.env
 
-*.tgpkg
+*.olo
+*.olotool
 .seed
 
 # Generated build identity; version.json is the tracked source of truth.
 /release.json
+
+/bot/bin/
+/debug/profiled/monitoring/collector.yaml
+/debug/profiled/monitoring/prometheus.yaml
+!tests/fixtures/packages/cases/*.olotool
+!tool-sdk/conformance/fixtures/packages/*.olotool

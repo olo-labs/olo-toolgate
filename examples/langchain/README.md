@@ -14,7 +14,7 @@ It requires current signed-tool discovery and an authenticated non-retryable
 OUTCOME_UNKNOWN/REPORTED result. It submits no write, retry or model call.
 This is the release gate for the unqualified native boundary, not qualification
 of native file-operation completion. Native finality remains outstanding in the
-[execution status](../../docs/security/zero-trust-execution-status.md).
+[execution status](../../docs/security/zero-trust-boundaries.md).
 Do not retry an unknown operation to make the positive smoke test pass.
 
 
@@ -31,6 +31,11 @@ Use Docker with Linux containers and Compose 2.24+, and host Python 3.11+.
 The package is built inside a pinned JDK container using the selected Quickstart's
 CLI and this checkout's SDK source. No host JDK, Rust compiler or Marketplace
 account is needed. Keep the checkout and selected Quickstart/device versions aligned.
+
+The package builder requests the root-qualified `:publishJavaSdkLocally` task
+with the SDK isolation guard. SDK publication must not configure Control Plane
+or load its Quarkus/analysis plugins; dependency, compilation and package
+validation failures still stop the build.
 
 The local evaluation executor explicitly mounts the system Docker socket to run
 signed OCI packages. Tools run in separate confined containers with no socket or
@@ -56,7 +61,7 @@ docker compose run --rm -T agent --target linux --smoke
 On Windows, `deploy.bat -Target linux` performs deployment; `execute.bat -Target
 linux -Smoke` runs the smoke test against it. `start.bat` combines both steps.
 
-Preparation builds `hotfolder.tgpkg`, mirrors the approved digest-pinned JRE to
+Preparation builds `hotfolder.olotool`, mirrors the approved digest-pinned JRE to
 the local registry and writes the client-image settings in `.state/client-images.env`.
 Setup logs in using the isolated installation's real credentials, verifies the
 Linux enrollment fingerprint before approval, copies only PUBLIC release and
@@ -194,7 +199,7 @@ Status (issue #274, draft PR #286):
     `TriggerIngestTest` and `ClientReleasesTest`.
 
   The hot-folder trigger path has been executed locally with the file-permission and
-  background WebSocket connection fixes (see the [validation record](../../docs/architecture/triggers-implementation-status.md)).
+  background WebSocket connection fixes (see the [validation record](../../docs/architecture/triggers.md)).
 - **Native HotFolder finality** (see the note at the top): until it is qualified, the Gateway reports `read_text`
   and `move` as `OUTCOME_UNKNOWN`. The agent then shows `read-unconfirmed` or `move-unconfirmed` and leaves the file
   in `inbox/`.

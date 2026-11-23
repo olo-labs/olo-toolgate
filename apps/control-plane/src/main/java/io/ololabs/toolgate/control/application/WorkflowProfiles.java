@@ -13,7 +13,12 @@ import java.util.Objects;
 
 /** Immutable staged profile revisions. Publication is separate from package provisioning and live authority. */
 public final class WorkflowProfiles {
-    @FunctionalInterface public interface Readiness { boolean ready(Store.Session tx, DeploymentProfile profile, String profileDigest); }
+    @FunctionalInterface public interface Readiness {
+        boolean ready(Store.Session tx, DeploymentProfile profile, String profileDigest);
+        default java.util.List<String> blockers(Store.Session tx, DeploymentProfile profile, String profileDigest) {
+            return ready(tx, profile, profileDigest) ? java.util.List.of() : java.util.List.of("Bot dependencies are not ready. Check its installation configuration.");
+        }
+    }
     private final Store store;
     private final Codec codec;
     private final Readiness readiness;
@@ -107,6 +112,19 @@ public final class WorkflowProfiles {
         var status = status(tx, tenant, revision);
         return new Store.Reply(code, codec.json(status), status.generation());
     }
+    public Store.Reply diagnostics(DirectoryService.Actor actor, String id, String digest) {
+        return store.transaction(actor.tenant(), false, tx -> {
+            require(tx, actor);
+            var revision = revision(tx, actor.tenant(), id, digest);
+            var issues = new java.util.LinkedHashSet<String>();
+            if (revision.state().equals("DRAFT")) issues.add("Review this exact bot revision before publication.");
+            issues.addAll(readiness.blockers(tx, profile(documents.open(tx, actor.tenant(), revision)), digest));
+            var bounded = issues.stream().limit(127).map(message -> message.length() > 512 ? message.substring(0, 509) + "..." : message)
+                .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+            if (issues.size() > 127) bounded.add("Additional dependencies are blocked. Resolve the listed issues and refresh.");
+            return new Store.Reply(200, codec.json(new WorkflowProfileDiagnostics(id, digest, bounded)), 0);
+        });
+    }
     public Store.Reply upload(DirectoryService.Actor actor, String document, String requestId) {
         Ids.valid(requestId);
         // Authenticate before parsing profile data or disclosing any reference information.
@@ -153,6 +171,48 @@ public final class WorkflowProfiles {
             return new Store.Reply(200, codec.json(statuses), 0);
         });
     }
+    /** Read-only reviewed candidate for a verified tenant runtime service; no secrets or execution authority. */
+    public Store.Reply graphCandidate(DirectoryService.Actor worker, String id, String digest, String workflowId, long expectedGeneration) {
+        Ids.valid(workflowId);
+        if (expectedGeneration < 0 || expectedGeneration > 9007199254740991L) throw Failure.validation();
+        // Called only by the verified runtime-service adapter, never by public profile authors.
+        return store.transaction(worker.tenant(), false, tx -> {
+            var revision = revision(tx, worker.tenant(), id, digest);
+            if (!revision.state().equals("REVIEWED")) throw Failure.conflict();
+            var head = tx.workflowProfiles().publication(id);
+            long generation = head == null ? 0L : head.generation();
+            if (generation != expectedGeneration) throw Failure.conflict();
+            var value = profile(documents.open(tx, worker.tenant(), revision));
+            var workflow = value.workflows().workflows().stream().filter(item -> item.id().equals(workflowId)).findFirst()
+                .orElseThrow(() -> new Failure(ErrorCode.NOT_FOUND, 404, "Graph candidate unavailable"));
+            return new Store.Reply(200, codec.json(new WorkflowGraphCandidate(worker.tenant().value(), id, digest,
+                workflowId, generation, workflow.graph(), workflow.agents().stream().map(WorkflowAgentBinding::agentId).toList())), generation);
+        });
+    }
+
+    Store.Reply recordGraphBuilds(DirectoryService.Actor actor, String id, String digest, long expectedGeneration,
+            java.util.List<WorkflowGraphBuildResult> receipts, String requestId) {
+        return store.transaction(actor.tenant(), true, tx -> {
+            require(tx, actor);
+            var revision = revision(tx, actor.tenant(), id, digest);
+            if (!revision.state().equals("REVIEWED")) throw Failure.conflict();
+            var head = tx.workflowProfiles().publication(id);
+            if ((head == null ? 0L : head.generation()) != expectedGeneration) throw Failure.conflict();
+            var desired = profile(documents.open(tx, actor.tenant(), revision));
+            var ids = desired.workflows().workflows().stream().map(WorkflowDefinition::id).collect(java.util.stream.Collectors.toSet());
+            if (receipts.size() != ids.size() || !receipts.stream().map(WorkflowGraphBuildResult::workflowId)
+                    .collect(java.util.stream.Collectors.toSet()).equals(ids)) throw Failure.unavailable();
+            for (var receipt : receipts) {
+                if (!actor.tenant().value().equals(receipt.tenantId()) || !id.equals(receipt.profileId())
+                        || !digest.equals(receipt.profileDigest()) || receipt.generation() != expectedGeneration) throw Failure.unavailable();
+                tx.workflowProfiles().graphBuild(id, digest, receipt.workflowId(), codec.json(receipt));
+            }
+            tx.audit(actor.id(), "WORKFLOW_GRAPH_PREPARE", "profile:" + id, expectedGeneration,
+                requestId, digest.substring(7));
+            return new Store.Reply(200, codec.json(receipts), expectedGeneration);
+        });
+    }
+
     /** Reviewed document retrieval stays behind current management authorization; prompts are private configuration. */
     public Store.Reply document(DirectoryService.Actor actor, String id, String digest, boolean reviewed) {
         return store.transaction(actor.tenant(), false, tx -> {
@@ -166,15 +226,23 @@ public final class WorkflowProfiles {
         if (limit < 1 || limit > 50) throw Failure.validation();
         if (after != null) Ids.valid(after);
         return store.transaction(actor.tenant(), false, tx -> {
-            requirePublishedRead(tx, actor);
-            var result = tx.workflowProfiles().publications(after == null ? "" : after, limit);
+            new ManagementAccess(codec).access(tx.load(),actor.userId());
+            var result = new java.util.ArrayList<WorkflowProfileStore.Publication>();
+            String cursor = after == null ? "" : after;
+            for (int scanned = 0; scanned < 1000 && result.size() < limit; scanned++) {
+                var page = tx.workflowProfiles().publications(cursor, 1);
+                if (page.isEmpty()) break;
+                var publication = page.getFirst(); cursor = publication.profileId();
+                if (publishedReadable(tx, actor, publication.profileId(), publication.digest())) result.add(publication);
+                if (scanned == 999 && result.size() < limit) throw Failure.unavailable();
+            }
             return new Store.Reply(200, codec.json(result), 0);
         });
     }
     public Store.Reply publishedConfiguration(DirectoryService.Actor actor, String id, String digest) {
         return store.transaction(actor.tenant(), false, tx -> {
-            requirePublishedRead(tx, actor);
             Ids.valid(id); digest(digest);
+            if (!publishedReadable(tx, actor, id, digest)) throw ManagementAccess.denied();
             var head = tx.workflowProfiles().publication(id);
             if (head == null || !head.digest().equals(digest))
                 throw new Failure(ErrorCode.NOT_FOUND, 404, "Published workflow profile unavailable");
@@ -197,9 +265,15 @@ public final class WorkflowProfiles {
             return new Store.Reply(200, codec.json(workflows), head.generation());
         });
     }
-    private void requirePublishedRead(Store.Session tx, DirectoryService.Actor actor) {
-        if (!new ManagementAccess(codec).canReadPublishedWorkflows(tx.load(), actor.userId(), System.currentTimeMillis()))
-            throw ManagementAccess.denied();
+    private boolean publishedReadable(Store.Session tx, DirectoryService.Actor actor, String id, String digest) {
+        var access = new ManagementAccess(codec);
+        if (access.canReadPublishedWorkflows(tx.load(), actor.userId(), System.currentTimeMillis())) return true;
+        var profile = runConfiguration(tx, actor.tenant(), id, digest);
+        try {
+            for (var workflow : profile.workflows().workflows())
+                new WorkflowUserAccess(codec).capture(tx.load(), actor, profile.workflows(), workflow, System.currentTimeMillis());
+            return true;
+        } catch (Failure denied) { if (denied.status() != 403) throw denied; return false; }
     }
     private static void redactContext(JsonNode entries) {
         for (var entry : entries) ((com.fasterxml.jackson.databind.node.ObjectNode)entry).remove("arguments");
@@ -239,13 +313,22 @@ public final class WorkflowProfiles {
         Ids.valid(id);
         return published(tx, tenant, id, tx.workflowProfiles().publication(id));
     }
-    /** A pinned run can only use the reviewed revision while its publication and readiness are current. */
-    public DeploymentProfile runnableRevision(Store.Session tx, Ids.TenantId tenant, String id, String digest) {
-        Ids.valid(id);
-        digest(digest);
-        var head = tx.workflowProfiles().publication(id);
-        if (head == null || !head.digest().equals(digest)) throw ManagementAccess.denied();
-        return published(tx, tenant, id, head);
+    /** An admitted run pins its reviewed configuration; publication controls new admissions only.
+     * Live service grants, agent eligibility, secrets and effect/lease authority are rechecked by callers. */
+    public DeploymentProfile admittedRevision(Store.Session tx, Ids.TenantId tenant, WorkflowRunStore.QueuedRun run) {
+        if (run == null || !run.equals(tx.workflowRuns().get(run.id()))
+                || !java.util.Set.of("QUEUED", "RUNNING").contains(tx.workflowRuns().state(run.id())))
+            throw ManagementAccess.denied();
+        var revision = revision(tx, tenant, run.profileId(), run.profileDigest());
+        if (!revision.state().equals("REVIEWED")) throw ManagementAccess.denied();
+        return profile(documents.open(tx, tenant, revision));
+    }
+
+    /** Internal pinned configuration for authorization/result reads, including terminal runs. */
+    public DeploymentProfile runConfiguration(Store.Session tx, Ids.TenantId tenant, String id, String digest) {
+        var revision = revision(tx, tenant, id, digest);
+        if (!revision.state().equals("REVIEWED")) throw ManagementAccess.denied();
+        return profile(documents.open(tx, tenant, revision));
     }
     private DeploymentProfile published(Store.Session tx, Ids.TenantId tenant, String id, WorkflowProfileStore.Publication head) {
         if (head == null) throw ManagementAccess.denied();

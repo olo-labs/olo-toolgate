@@ -20,6 +20,26 @@ final class WorkflowConfigurationsTest {
         var path = Path.of(System.getProperty("toolgate.fixtures")).getParent().resolve("../v2/valid.json");
         return (ObjectNode) JSON.readTree(Files.readString(path)).get("WorkflowConfiguration");
     }
+    @Test void unattachedStandbyIsValidatedButDoesNotRequireLiveCredentials() throws Exception {
+        var node = config();
+        var standby = node.path("modelDeployments").get(0).deepCopy();
+        ((ObjectNode) standby).put("id", "premium-standby").put("secretName", "not-configured");
+        ((com.fasterxml.jackson.databind.node.ArrayNode) node.path("modelDeployments")).add(standby);
+        var group = ((com.fasterxml.jackson.databind.node.ArrayNode) node.path("modelGroups")).addObject().put("id", "standby").put("standby", true);
+        group.putArray("deploymentIds").add("premium-standby");
+        var references = new HashSet<WorkflowConfigurations.Reference>();
+        VALIDATOR.validate(node.toString(), r -> { references.add(r); return !r.id().equals("premium-standby"); });
+        assertFalse(references.stream().anyMatch(r -> r.id().equals("premium-standby")));
+        var workflow=(ObjectNode) node.path("workflows").get(0);
+        String currentGroup=workflow.path("modelGroupId").asText();
+        workflow.put("modelGroupId", "standby");
+        assertThrows(Failure.class, () -> VALIDATOR.validate(node.toString(), r -> true));
+        workflow.put("modelGroupId", currentGroup);
+        ((com.fasterxml.jackson.databind.node.ArrayNode) node.path("modelGroups").get(0).path("deploymentIds")).add("premium-standby");
+        assertThrows(Failure.class, () -> VALIDATOR.validate(node.toString(), r -> !r.id().equals("premium-standby")));
+        ((ObjectNode) standby).put("origin", "http://unsafe.example");
+        assertThrows(Failure.class, () -> VALIDATOR.validate(node.toString(), r -> true));
+    }
     @Test void modelGenerationIsExplicitAndBounded() throws Exception {
         var node = config();
         var deployment = (ObjectNode) node.path("modelDeployments").get(0);
@@ -107,6 +127,17 @@ final class WorkflowConfigurationsTest {
         }
         var node = config(); ((ObjectNode)node.path("workflows").get(0).path("limits")).put("maxSteps", 0);
         assertThrows(Failure.class, () -> VALIDATOR.validate(node.toString(), r -> true));
+    }
+    @Test void graphSelectionIsRequiredAndPinsConfigurationWithoutGrantingAuthority() throws Exception {
+        var node = config();
+        var workflow = (ObjectNode)node.path("workflows").get(0);
+        var graph = workflow.remove("graph");
+        assertThrows(Failure.class, () -> VALIDATOR.validate(node.toString(), r -> true));
+        workflow.set("graph", graph);
+        ((ObjectNode)graph).put("digest", "unverified");
+        assertThrows(Failure.class, () -> VALIDATOR.validate(node.toString(), r -> true));
+        ((ObjectNode)graph).put("digest", "sha256:" + "a".repeat(64));
+        assertEquals("sha256:" + "a".repeat(64), VALIDATOR.validate(node.toString(), r -> true).workflows().getFirst().graph().digest());
     }
     @Test void wrongVersionNoEntryAndInvalidLimitsDeny() throws Exception {
         var node = config(); ((ObjectNode)node.path("dispatchBindings").get(0)).put("workflowVersionId", "wrong");

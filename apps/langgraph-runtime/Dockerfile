@@ -2,7 +2,17 @@
 # SPDX-License-Identifier: Apache-2.0
 ARG PYTHON_IMAGE=python:3.12-alpine@sha256:c5ba3deef00c7758561a0f03c26f44f10589263d40e732b8748e0d1f38f6dd89
 FROM ${PYTHON_IMAGE} AS base
-RUN apk upgrade --no-cache
+# Retry transient repository/TLS outages, but require a successful verified upgrade.
+RUN set -eu; \
+    for attempt in 1 2 3; do \
+        if apk --timeout 20 upgrade --no-cache; then exit 0; fi; \
+        if [ "$attempt" -eq 3 ]; then \
+            echo "Alpine upgrade failed after 3 attempts; check Docker build network, proxy and CA trust." >&2; \
+            exit 1; \
+        fi; \
+        echo "Alpine upgrade attempt $attempt failed; retrying in 5 seconds." >&2; \
+        sleep 5; \
+    done
 
 FROM base AS dependencies
 WORKDIR /app
@@ -11,7 +21,7 @@ RUN python -m venv /opt/toolgate-runtime \
     && /opt/toolgate-runtime/bin/python -m pip install --no-cache-dir -r requirements.lock \
     && /opt/toolgate-runtime/bin/python -m pip check
 
-FROM base
+FROM base AS runtime
 ARG VERSION=dev
 ARG REVISION=unknown
 LABEL org.opencontainers.image.title="OLO ToolGate LangGraph runtime" \
@@ -24,4 +34,13 @@ COPY --from=dependencies /opt/toolgate-runtime /opt/toolgate-runtime
 COPY src/ ./src/
 ENV PYTHONPATH=/app/src PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 USER 65532:65532
-ENTRYPOINT ["/opt/toolgate-runtime/bin/python", "-m", "toolgate_runtime.worker"]
+HEALTHCHECK --interval=10s --timeout=3s --start-period=180s --retries=3 CMD ["/opt/toolgate-runtime/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:19461/health/live',timeout=2).read()"]
+ENTRYPOINT ["/opt/toolgate-runtime/bin/python", "-m", "toolgate_runtime.service"]
+
+# TLS test certificates require the CLI; it is excluded from the published image.
+FROM runtime AS verification
+USER 0:0
+RUN apk add --no-cache openssl
+USER 65532:65532
+
+FROM runtime AS production

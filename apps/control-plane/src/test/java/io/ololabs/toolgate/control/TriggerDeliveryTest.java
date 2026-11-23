@@ -5,6 +5,7 @@ package io.ololabs.toolgate.control;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -141,6 +142,143 @@ final class TriggerDeliveryTest {
         return codec.model("{\"instanceId\":\"" + w.instance() + "\",\"event\":" + event + "}", TriggerOutboxRecord.class);
     }
     private TriggerOutboxRecord fired(World w, long seq, String id) { return fired(w, seq, id, "{\"name\":\"" + id + "\",\"path\":\"inbox/" + id + "\",\"size\":1}"); }
+
+    @Test void workflowTriggerReadinessRequiresCurrentReportsAndLeases() throws Exception {
+        for (var backend : stores()) {
+            var w = world(backend.store(), "tenant-a", null, List.of());
+            java.util.function.BooleanSupplier ready = () -> w.store().transaction(w.tenant(), false,
+                tx -> w.triggers().prepared(tx, "inbox", "acme.watch/new-file", "1.0.0", (JsonNode)codec.value("{\"folder\":\"inbox\"}"), List.of("device-a")));
+            assertFalse(ready.getAsBoolean(), "desired state and a lease alone do not prove running");
+            String report = """
+                {"observedGeneration":1,"pending":0,"snapshot":{
+                  "snapshotGeneration":1,"snapshotDigest":"sha256:%s","page":1,"pageCount":1,"pageDigest":"sha256:%s","instances":[{
+                    "instanceId":"%s","configRevision":1,"phase":"Running",
+                    "conditions":[{"type":"Ready","status":"True","reason":"Started","lastTransitionTime":"2023-11-14T22:13:20Z"}],
+                    "counters":{"emitted":0,"rejected":0,"dropped":0,"restarts":0},"outbox":{"depth":0,"oldestAgeMs":0}
+                  }]}}
+                """.formatted("1".repeat(64), "2".repeat(64), w.instance());
+            var document = codec.model(report, TriggerSync.class);
+            w.store().transaction(w.tenant(), true, tx -> w.ingest().sync(tx, device(w, "device-a"), document, "report"));
+            assertTrue(ready.getAsBoolean());
+            assertFalse((boolean)w.store().transaction(w.tenant(), false, tx -> w.triggers().prepared(tx, "inbox", "acme.watch/new-file", "1.0.0",
+                (JsonNode)codec.value("{\"folder\":\"inbox\"}"), List.of("device-c"))), "trigger and package devices must be colocated");
+            assertFalse((boolean)w.store().transaction(w.tenant(), false, tx -> w.triggers().prepared(tx, "inbox", "acme.watch/new-file", "1.0.0",
+                (JsonNode)codec.value("{\"folder\":\"other\"}"), List.of("device-a"))));
+            w.clock().millis += 300001;
+            assertFalse(ready.getAsBoolean(), "expired leases/stale reports cannot authorize publication");
+            w.clock().millis = T0;
+            var current = w.triggers().get(w.admin(), "inbox");
+            w.triggers().patch(w.admin(), "inbox", "{\"spec\":{\"config\":{\"folder\":\"other\"}}}", "W/\"" + current.revision() + "\"", null, false, "change");
+            assertFalse((boolean)w.store().transaction(w.tenant(), false, tx -> w.triggers().prepared(tx, "inbox", "acme.watch/new-file", "1.0.0",
+                (JsonNode)codec.value("{\"folder\":\"other\"}"), List.of("device-a"))), "the old Ready report cannot satisfy new configuration");
+            var foreign = io.ololabs.toolgate.control.fixtures.Tenants.id("tenant-b");
+            TestSupport.seed(w.store(), codec, foreign, "root");
+            assertFalse((boolean)w.store().transaction(foreign, false, tx -> w.triggers().prepared(tx, "inbox", "acme.watch/new-file", "1.0.0",
+                (JsonNode)codec.value("{\"folder\":\"inbox\"}"), List.of("device-a"))));
+        }
+    }
+
+    @Test void workflowDevicePlacementIsDurableColocatedAndDoesNotFailOver() throws Exception {
+        for (var backend : stores()) {
+            var w = world(backend.store(), "tenant-a", null, List.of());
+            TestSupport.pool(w.store(), codec, w.tenant(), "finance", "device-a", "device-c");
+            String source = """
+                {"profileVersion":2,"profileId":"device-profile","packages":[{
+                  "packageId":"acme.watch","version":"1.0.0","source":"PREBUILT_CORE","required":true,"deviceGroupIds":["finance"]}]}
+                """;
+            var profile = codec.model(source, io.ololabs.toolgate.contracts.v2.DeploymentProfile.class);
+            var placement = new WorkflowDevicePlacement(w.store(), codec, w.clock());
+            w.store().transaction(w.tenant(), true, tx -> {
+                var before = tx.load(); var entries = new HashMap<>(before.entries());
+                TestSupport.put(entries, codec, Ids.Kind.USER, new ControlUser("reader", "Reader", true, 1L, null, null, null));
+                tx.save(before, new Directory(before.revision()+1, entries)); return null;
+            });
+            var staleRole = new DirectoryService.Actor(w.tenant(), "b".repeat(64), true, true, "reader");
+            assertEquals(403, assertThrows(Failure.class, () -> placement.resolve(staleRole, profile)).status(), "cached administrator flags cannot select a device");
+            assertNull(w.store().transaction(w.tenant(), false, tx -> tx.workflowProfiles().devicePlacement(profile.profileId())));
+            long directoryRevision = w.store().transaction(w.tenant(), false, tx -> tx.load().revision());
+            var selected = placement.resolve(w.admin(), profile);
+            assertEquals("device-a", selected.deviceId()); assertNull(selected.blocker());
+            assertEquals(directoryRevision, (long)w.store().transaction(w.tenant(), false, tx -> tx.load().revision()), "selection never enables/approves devices or changes membership");
+            assertEquals(selected, new WorkflowDevicePlacement(w.store(), codec, w.clock()).resolve(w.admin(), profile));
+            var executor = java.util.concurrent.Executors.newFixedThreadPool(2);
+            try {
+                var raced = codec.model(source.replace("device-profile", "race-profile"), io.ololabs.toolgate.contracts.v2.DeploymentProfile.class);
+                var a = executor.submit(() -> placement.resolve(w.admin(), raced));
+                var b = executor.submit(() -> placement.resolve(w.admin(), raced));
+                assertEquals(a.get(15, java.util.concurrent.TimeUnit.SECONDS), b.get(15, java.util.concurrent.TimeUnit.SECONDS));
+            } finally { executor.shutdownNow(); }
+            var colocated = (ObjectNode)codec.value(source.replace("device-profile", "colocated"));
+            ((com.fasterxml.jackson.databind.node.ArrayNode)colocated.path("packages")).addObject()
+                .put("packageId", "acme.files").put("version", "1.0.0").put("source", "PREBUILT_CORE").put("required", true).putArray("deviceGroupIds").add("spare");
+            assertEquals("device-c", placement.resolve(w.admin(), codec.model(codec.json(colocated), io.ololabs.toolgate.contracts.v2.DeploymentProfile.class)).deviceId(), "one device must satisfy every package group set");
+            colocated.put("profileId", "optional-device");
+            ((ObjectNode)colocated.path("packages").get(1)).put("required", false);
+            assertEquals("device-a", placement.resolve(w.admin(), codec.model(codec.json(colocated), io.ololabs.toolgate.contracts.v2.DeploymentProfile.class)).deviceId(), "optional packages must not constrain required placement");
+            // Constrain the watch to the selected device and its independently managed group.
+            var current = w.triggers().get(w.admin(), "inbox");
+            w.triggers().patch(w.admin(), "inbox", "{\"spec\":{\"target\":{\"executor\":\"CLIENT\",\"devices\":[\"device-a\"],\"requiredDeviceGroupSets\":[[\"finance\"]]}}}",
+                "W/\"" + current.revision() + "\"", null, false, "constrain");
+            sync(w, List.of());
+            // A different connected member cannot take over when the selected device is offline.
+            w.store().transaction(w.tenant(), true, tx -> {
+                var row = tx.endpoint("device-a"); var value = (ObjectNode)codec.value(row.document()); value.put("lastSeenUnixMs", T0 - 180001);
+                tx.saveEndpoint(new Store.EndpointRecord(row.id(), row.fingerprint(), codec.json(value), row.csr(), row.reportDigest(), row.acknowledgment())); return null;
+            });
+            assertEquals("device-a", placement.resolve(w.admin(), profile).deviceId());
+            assertTrue(placement.resolve(w.admin(), profile).blocker().contains("check in"));
+            TestSupport.pool(w.store(), codec, w.tenant(), "finance", "device-c");
+            assertEquals("device-a", placement.resolve(w.admin(), profile).deviceId());
+            assertTrue(placement.resolve(w.admin(), profile).blocker().contains("reassignment"));
+            var ack = w.store().transaction(w.tenant(), true, tx -> w.ingest().sync(tx, device(w, "device-a"), new TriggerSync(0L, null, null, null, 0L), "group-removed"));
+            assertNull(ack.leases());
+            assertNotNull(ack.revoked(), "group removal fences the old watch on its next existing check-in");
+            assertEquals(w.instance(), ack.revoked().getFirst().instanceId());
+            var foreign = io.ololabs.toolgate.control.fixtures.Tenants.id("tenant-b");
+            TestSupport.seed(w.store(), codec, foreign, "root");
+            assertNull(w.store().transaction(foreign, false, tx -> tx.workflowProfiles().devicePlacement("device-profile")));
+            assertEquals(0, (long)w.store().transaction(w.tenant(), false, tx -> tx.fleet().count(FleetStore.Kind.ROLLOUT)), "selection itself never installs a package");
+        }
+    }
+
+    @Test void workerPresenceIsBoundedTenantOwnerAndCompilerScopedAndExpires() throws Exception {
+        for (var backend : stores()) {
+            var w = world(backend.store(), "tenant-a", null, List.of());
+            var keys = new TenantVaultKeys(codec, new LocalVaultWrappingProvider("fixture", Map.of("fixture", new byte[32])));
+            var profiles = new WorkflowProfiles(w.store(), codec, (tx,p,digest) -> true, keys);
+            var leases = new WorkflowLeases(w.store(), codec, w.clock(), profiles, keys);
+            var worker = new DirectoryService.Actor(w.tenant(), "b".repeat(64), false);
+            String compiler = "sha256:" + "a".repeat(64), graph = "sha256:" + "c".repeat(64);
+            java.util.function.IntSupplier ready = () -> w.store().transaction(w.tenant(), false, tx -> tx.workflowRuns().compatibleWorkers(compiler,graph,w.clock().millis()));
+            assertEquals(0,ready.getAsInt());
+            assertEquals(204,leases.heartbeat(worker,"worker-a",compiler,List.of(graph),"heartbeat").status());
+            assertEquals(1,ready.getAsInt());
+            assertEquals(204,leases.heartbeat(worker,"worker-a",compiler,List.of(graph),"renew").status());
+            assertEquals(1,ready.getAsInt(),"one instance cannot count as two replicas");
+            var impostor = new DirectoryService.Actor(w.tenant(), "d".repeat(64), false);
+            assertEquals(403,assertThrows(Failure.class,() -> leases.heartbeat(impostor,"worker-a",compiler,List.of(graph),"steal")).status());
+            assertEquals(1,ready.getAsInt());
+            assertEquals(0,(int)w.store().transaction(w.tenant(),false,tx -> tx.workflowRuns().compatibleWorkers("sha256:"+"f".repeat(64),graph,w.clock().millis())));
+            assertEquals(0,(int)w.store().transaction(w.tenant(),false,tx -> tx.workflowRuns().compatibleWorkers(compiler,"sha256:"+"f".repeat(64),w.clock().millis())));
+            var other = io.ololabs.toolgate.control.fixtures.Tenants.id("tenant-b");
+            TestSupport.seed(w.store(),codec,other,"root");
+            assertEquals(0,(int)w.store().transaction(other,false,tx -> tx.workflowRuns().compatibleWorkers(compiler,graph,w.clock().millis())));
+            w.clock().millis += 30000;
+            assertEquals(0,ready.getAsInt(),"expiry is evaluated during readiness without a cleanup sweep");
+            assertEquals(204,leases.heartbeat(worker,"worker-a",compiler,List.of(),"no-graphs").status());
+            assertEquals(0,ready.getAsInt());
+            w.store().transaction(w.tenant(),true,tx -> {
+                for(int i=1;i<256;i++) tx.workflowRuns().reportWorker(new WorkflowRunStore.Worker("worker-"+i,worker.id(),compiler,List.of(graph),w.clock().millis()+30000),w.clock().millis());
+                return null;
+            });
+            assertEquals(409,assertThrows(Failure.class,() -> leases.heartbeat(worker,"overflow",compiler,List.of(graph),"overflow")).status());
+            assertEquals(204,leases.heartbeat(worker,"worker-a",compiler,List.of(graph),"existing-at-limit").status());
+            assertEquals(256,ready.getAsInt());
+            w.clock().millis += 30000;
+            assertEquals(204,leases.heartbeat(worker,"replacement",compiler,List.of(graph),"expired-cleanup").status());
+            assertEquals(1,ready.getAsInt());
+        }
+    }
 
     private long rows(World w, TriggerStore.Kind kind) { return w.store().transaction(w.tenant(), false, tx -> tx.triggers().count(kind)); }
 
@@ -412,6 +550,11 @@ final class TriggerDeliveryTest {
             String assignment = JSON.readTree(w.triggers().get(w.admin(), "inbox").body()).path("metadata").path("uid").asText();
             var path = Path.of(System.getProperty("toolgate.fixtures")).getParent().resolve("../v2/valid.json");
             var config = JSON.readTree(Files.readString(path)).path("WorkflowConfiguration");
+            var fallback = config.path("modelDeployments").get(0).deepCopy();
+            ((ObjectNode) fallback).put("id", "fallback-model").put("modelId", "lightweight-model");
+            ((com.fasterxml.jackson.databind.node.ArrayNode) config.path("modelDeployments")).add(fallback);
+            ((com.fasterxml.jackson.databind.node.ArrayNode) config.path("modelGroups").get(0).path("deploymentIds"))
+                .add("fallback-model");
             ((ObjectNode) config.path("dispatchBindings").get(0)).put("subscriptionUid", uid)
                 .put("sourceAssignmentUid", assignment).put("messagePointer", "/name")
                 .put("serviceAgentId", "investigator").put("serviceAgentGroupId", "support-agents");
@@ -430,6 +573,10 @@ final class TriggerDeliveryTest {
             var staged = JSON.readTree(profiles.upload(w.admin(), profile.toString(), "stage").body());
             String digest = staged.path("profileDigest").asText();
             profiles.review(w.admin(), "support", codec.json(Map.of("profileDigest", digest)), "review");
+            var graphPreparation = new WorkflowGraphPreparation(codec, profiles, build ->
+                new io.ololabs.toolgate.contracts.v2.WorkflowGraphBuildResult(build.tenantId(), build.profileId(), build.profileDigest(),
+                    build.workflowId(), build.expectedGeneration(), "sha256:" + "b".repeat(64), "sha256:" + "c".repeat(64), List.of("fixture"), "READY"));
+            graphPreparation.prepare(w.admin(), "support", codec.json(Map.of("profileDigest", digest, "expectedGeneration", 0)), "prepare");
             profiles.publish(w.admin(), "support", codec.json(Map.of("profileDigest", digest, "expectedGeneration", 0)), "publish");
 
             sync(w, List.of(fired(w, 1, "alpha")));
@@ -439,6 +586,8 @@ final class TriggerDeliveryTest {
             String cursor = parse(session.pump()).getFirst().path("cursor").asText();
             var service = new WorkflowAdmissions(w.store(), codec, w.clock(), w.stream(), profiles, keys);
             String request = codec.json(Map.of("subscriptionUid", uid, "cursor", cursor));
+            var backendDispatch=new WorkflowTriggerDispatch(w.store(),codec,w.stream(),w.subscriptions(),profiles,service);
+            assertEquals(0,backendDispatch.tick(w.tenant()),"missing service authority cannot admit or ACK");
             assertEquals(403, status(() -> service.admit(w.admin(), request, "denied")));
             assertEquals(400, status(() -> service.admit(w.admin(), request.replace("}", ",\"workflowId\":\"forged\"}"), "forged")));
 
@@ -475,14 +624,16 @@ final class TriggerDeliveryTest {
                 tx.save(before, new Directory(before.revision() + 1, entries));
                 return null;
             });
+            assertEquals(1,backendDispatch.tick(w.tenant()),"backend dispatch needs no external listener or Admin token");
+            assertEquals(0,backendDispatch.tick(w.tenant()),"durable ACK prevents redispatch after a fresh tick");
             var response = service.admit(w.admin(), request, "admit");
-            assertEquals(201, response.status());
+            assertEquals(200, response.status());
             var admitted = JSON.readTree(response.body());
-            assertEquals("ADMITTED", admitted.path("disposition").asText());
+            assertEquals("DUPLICATE", admitted.path("disposition").asText());
             var runId = admitted.path("runId").asText();
             w.store().transaction(w.tenant(), false, tx -> {
                 var run = tx.workflowRuns().queued(runId);
-                assertEquals(runId, tx.workflowRuns().nextQueued().id());
+                assertEquals(runId, tx.workflowRuns().nextQueued("sha256:" + "c".repeat(64), List.of(config.path("workflows").get(0).path("graph").path("digest").asText())).id());
                 assertEquals("investigate", run.workflowId());
                 assertEquals(digest, run.profileDigest());
                 assertEquals("alpha", new WorkflowRunInputs(codec, keys).open(tx, w.tenant(), run));
@@ -493,25 +644,105 @@ final class TriggerDeliveryTest {
             assertEquals(admitted.path("admissionId"), duplicate.path("admissionId"));
             assertEquals(admitted.path("runId"), duplicate.path("runId"));
 
+            var manual=new WorkflowManualRuns(w.store(),codec,w.clock(),profiles,keys);
+            w.store().transaction(w.tenant(),true,tx->{
+                var before=tx.load();var entries=new HashMap<>(before.entries());
+                var all=new GroupSelection(List.of(),true);
+                var scope=new EnterpriseScope(all,all,List.of("workflow.execute","workflow.progress.read","workflow.result.read","workflow.subscribe","agent.execute","model.infer","read"),false,
+                    List.of(new EnterpriseResourceRule(ResourceKind.CUSTOM,"workflow:investigate",EnterpriseResourceMatch.EXACT),
+                        new EnterpriseResourceRule(ResourceKind.CUSTOM,"workflow-group:support",EnterpriseResourceMatch.EXACT),
+                        new EnterpriseResourceRule(ResourceKind.CUSTOM,"model-group:models",EnterpriseResourceMatch.EXACT),
+                        new EnterpriseResourceRule(ResourceKind.CUSTOM,"agent:investigator",EnterpriseResourceMatch.EXACT),
+                        new EnterpriseResourceRule(ResourceKind.CUSTOM,"agent:summarizer",EnterpriseResourceMatch.EXACT),
+                        new EnterpriseResourceRule(ResourceKind.CUSTOM,"tool://files/read",EnterpriseResourceMatch.EXACT)),
+                    new EnterpriseConditions(0L,0L,List.of(),List.of(),List.of(),List.of(),false,false,null,null));
+                TestSupport.put(entries,codec,Ids.Kind.GRANT,new ControlAccessGrant("manual-human","Explicit manual caller",true,1L,
+                    EnterpriseSourceType.TEAM,"test-recovery-team",EnterpriseGrantPurpose.HUMAN,scope));
+                tx.save(before,new Directory(before.revision()+1,entries));return null;
+            });
+            var manualBody=codec.json(Map.of("profileDigest",digest,"expectedGeneration",1,"entryAgentId","investigator","message","Private manual input"));
+            var manualReceipt=JSON.readTree(manual.start(w.admin(),"support","investigate",manualBody,"manual-key","manual-start").body());
+            String manualId=manualReceipt.path("runId").asText();
+            assertEquals(manualId,JSON.readTree(manual.start(w.admin(),"support","investigate",manualBody,"manual-key","manual-replay").body()).path("runId").asText());
+            assertEquals(409,status(()->manual.start(w.admin(),"support","investigate",manualBody.replace("Private manual input","changed"),"manual-key","manual-conflict")));
+            assertEquals(409,status(()->manual.start(w.admin(),"support","investigate",manualBody.replace("\"expectedGeneration\":1","\"expectedGeneration\":2"),"stale-key","manual-stale")));
+            assertEquals(403,status(()->manual.start(new DirectoryService.Actor(w.tenant(),DirectoryService.digest("not-admin"),false),"support","investigate",manualBody,"forbidden-key","manual-denied")));
+            assertEquals(403,status(()->manual.start(w.admin(),"support","investigate",manualBody.replace("investigator","summarizer"),"ineligible-key","manual-ineligible")));
+            var foreignWorld=world(w.store(),"tenant-b",null,List.of());
+            assertEquals(404,status(()->manual.start(foreignWorld.admin(),"support","investigate",manualBody,"foreign-key","manual-foreign")));
+            var progress=new WorkflowProgress(w.store(),codec,w.clock());
+            var queued=JSON.readTree(progress.read(w.admin(),manualId,0).body());
+            assertEquals("QUEUED",queued.path("items").get(0).path("kind").asText());
+            assertEquals("CONTROL",queued.path("items").get(0).path("source").asText());
+            assertFalse(queued.toString().contains("Private manual input"));
+            assertEquals(404,status(()->progress.read(foreignWorld.admin(),manualId,0)));
+            w.store().transaction(w.tenant(),true,tx->{
+                assertFalse(tx.workflowRuns().get(manualId).document().contains("Private manual input"));
+                assertEquals("Private manual input",new WorkflowRunInputs(codec,keys).open(tx,w.tenant(),tx.workflowRuns().get(manualId)));
+                tx.workflowRuns().cancelQueued(manualId);return null;
+            });
             var worker = new DirectoryService.Actor(w.tenant(), DirectoryService.digest("runtime-worker"), false);
             var leases = new WorkflowLeases(w.store(), codec, w.clock(), profiles, keys);
-            var claim = leases.claim(worker, "claim");
+            var compiler = "sha256:" + "c".repeat(64);
+            var graphs = List.of(config.path("workflows").get(0).path("graph").path("digest").asText());
+            assertEquals(204, leases.heartbeat(worker, "worker-a", compiler, graphs, "heartbeat-before-claim").status());
+            assertEquals("QUEUED", w.store().transaction(w.tenant(), false, tx -> tx.workflowRuns().state(runId)), "heartbeats must not claim queued work");
+            assertEquals(204, leases.claim(worker, "worker-a", "sha256:" + "0".repeat(64), graphs, "wrong-compiler").status());
+            assertEquals(204, leases.claim(worker, "worker-a", compiler, List.of("sha256:" + "0".repeat(64)), "wrong-graph").status());
+            assertEquals(204, leases.claim(worker, "worker-a", compiler, List.of(), "no-graphs").status());
+            assertEquals(400, status(() -> leases.claim(worker, "worker-a", compiler, List.of(graphs.getFirst(), graphs.getFirst()), "duplicate-graphs")));
+            assertEquals(400, status(() -> leases.claim(worker, "worker-a", "bad", graphs, "malformed-compiler")));
+            w.store().transaction(w.tenant(), false, tx -> {
+                assertEquals("QUEUED", tx.workflowRuns().state(runId), "incompatible requests must not consume or fail the run");
+                return null;
+            });
+            var claim = leases.claim(worker, "worker-a", compiler, graphs, "claim");
             assertEquals(200, claim.status());
             var snapshot = JSON.readTree(claim.body());
             assertEquals(runId, snapshot.path("runId").asText());
             assertEquals("alpha", snapshot.path("message").asText());
             assertEquals("investigator", snapshot.path("agents").path(0).path("agentId").asText());
             assertFalse(claim.body().contains("https://models.example"));
-            assertEquals(204, leases.claim(worker, "claim-again").status());
+            assertEquals(204, leases.claim(worker, "worker-a", compiler, graphs, "claim-again").status());
             var leaseId = snapshot.path("leaseId").asText();
             var token = snapshot.path("leaseToken").asText();
+            String progressBody=codec.json(Map.of("leaseId",leaseId,"leaseToken",token,"eventId","node-1","kind","NODE_COMPLETED","nodeId","read"));
+            assertEquals(204,progress.report(worker,runId,progressBody,"progress-first").status());
+            int progressCount=JSON.readTree(progress.read(w.admin(),runId,0).body()).path("items").size();
+            assertEquals(204,progress.report(worker,runId,progressBody,"progress-replay").status());
+            assertEquals(progressCount,JSON.readTree(progress.read(w.admin(),runId,0).body()).path("items").size());
+            assertEquals(403,status(()->progress.report(worker,runId,progressBody.replace(token,"x".repeat(43)),"progress-forged")));
+            assertEquals(403,status(()->progress.read(worker,runId,0)));
+            assertEquals(400,status(()->progress.report(worker,runId,progressBody.replace("}",",\"message\":\"private\"}"),"progress-private")));
+            assertFalse(progress.read(w.admin(),runId,0).body().contains(token));
+            // Publishing B changes new admissions, while the leased A run keeps its exact configuration.
+            var replacement = profile.deepCopy();
+            ((ObjectNode)replacement.path("workflows").path("workflows").get(0))
+                .put("versionId", "revision-2").put("systemPrompt", "Replacement supervisor");
+            ((ObjectNode)replacement.path("workflows").path("dispatchBindings").get(0)).put("workflowVersionId", "revision-2");
+            ((ObjectNode)replacement.path("workflows").path("modelDeployments").get(0)).put("modelId", "replacement-model");
+            String nextDigest = JSON.readTree(profiles.upload(w.admin(), replacement.toString(), "next-stage").body()).path("profileDigest").asText();
+            profiles.review(w.admin(), "support", codec.json(Map.of("profileDigest", nextDigest)), "next-review");
+            graphPreparation.prepare(w.admin(), "support", codec.json(Map.of("profileDigest", nextDigest, "expectedGeneration", 1)), "next-prepare");
+            profiles.publish(w.admin(), "support", codec.json(Map.of("profileDigest", nextDigest, "expectedGeneration", 1)), "next-publish");
+            var replayAfterSwap = JSON.readTree(service.admit(w.admin(), request, "duplicate-after-swap").body());
+            assertEquals(runId, replayAfterSwap.path("runId").asText());
+            assertEquals("DUPLICATE", replayAfterSwap.path("disposition").asText());
             assertEquals(403, status(() -> leases.authorizeStep(worker, runId, leaseId, token, "WORKFLOW", "other", "models")));
             assertEquals(403, status(() -> leases.authorizeStep(worker, runId, leaseId, token, "WORKFLOW", "investigate", "other")));
             assertEquals(403, status(() -> leases.authorizeStep(worker, runId, leaseId, token, "AGENT", "other", "models")));
             var summaryGrant = JSON.readTree(leases.authorizeStep(worker, runId, leaseId, token, "AGENT", "summarizer", "models").body());
             w.store().transaction(w.tenant(), false, tx -> {
                 var models = new WorkflowModelSelection(profiles, codec, w.clock());
-                assertEquals("deployment-1", models.resolve(tx, w.tenant(), runId, summaryGrant.path("token").asText()).id());
+                assertEquals("deployment-1", models.resolve(tx, w.tenant(), runId, summaryGrant.path("token").asText(), 0).deployment().id());
+                var second = models.resolve(tx, w.tenant(), runId, summaryGrant.path("token").asText(), 1);
+                assertEquals("lightweight-model", second.deployment().modelId());
+                assertEquals(1, second.candidateIndex());
+                assertEquals(2, second.candidateCount());
+                assertEquals(403, status(() -> models.resolve(tx, w.tenant(), runId, summaryGrant.path("token").asText(), 2)));
+                assertEquals(403, status(() -> models.resolve(tx, w.tenant(), runId, summaryGrant.path("token").asText(), -1)));
+                assertEquals(config.path("modelDeployments").get(0).path("modelId").asText(),
+                    models.resolve(tx, w.tenant(), runId, summaryGrant.path("token").asText(), 0).deployment().modelId());
                 assertEquals(403, status(() -> new WorkflowToolAuthority(codec, models, w.clock()).resolve(tx, w.tenant(), runId,
                     summaryGrant.path("token").asText(), "files/read", "summary-no-tools")));
                 return null;
@@ -526,7 +757,9 @@ final class TriggerDeliveryTest {
             assertEquals(403, status(() -> leases.authorizeStep(worker, runId, leaseId, token, "AGENT", "summarizer", "models")));
             w.store().transaction(w.tenant(), false, tx -> {
                 assertEquals(403, status(() -> new WorkflowModelSelection(profiles, codec, w.clock()).resolve(tx, w.tenant(), runId,
-                    summaryGrant.path("token").asText())));
+                    summaryGrant.path("token").asText(), 0)));
+                assertEquals(403, status(() -> new WorkflowModelSelection(profiles, codec, w.clock()).resolve(tx, w.tenant(), runId,
+                    summaryGrant.path("token").asText(), 1)), "fallback must recheck revoked agent authority");
                 return null;
             });
             var grant = JSON.readTree(leases.authorizeStep(worker, runId, leaseId, token, "WORKFLOW", "investigate", "models").body());
@@ -537,12 +770,12 @@ final class TriggerDeliveryTest {
                 assertEquals(DirectoryService.digest(agentGrant.path("token").asText()), tx.workflowRuns().activeStep(runId).tokenDigest());
                 assertFalse(grant.path("token").asText().equals(agentGrant.path("token").asText()));
                 var models = new WorkflowModelSelection(profiles, codec, w.clock());
-                assertEquals("deployment-1", models.resolve(tx, w.tenant(), runId, agentGrant.path("token").asText()).id());
+                assertEquals("deployment-1", models.resolve(tx, w.tenant(), runId, agentGrant.path("token").asText(), 0).deployment().id());
                 var toolContext = new WorkflowToolAuthority(codec, models, w.clock()).resolve(tx, w.tenant(), runId,
                     agentGrant.path("token").asText(), null, "file-tools");
                 assertEquals("investigator", toolContext.context().agentId());
                 assertEquals("files-workload", toolContext.context().workloadBindingId());
-                assertEquals(403, status(() -> models.resolve(tx, w.tenant(), runId, grant.path("token").asText())));
+                assertEquals(403, status(() -> models.resolve(tx, w.tenant(), runId, grant.path("token").asText(), 0).deployment()));
                 return null;
             });
             var result = JSON.createObjectNode().put("issueId", "issue-123").put("summary", "Timeout investigated");
@@ -550,6 +783,7 @@ final class TriggerDeliveryTest {
             assertEquals(403, status(() -> leases.finish(worker, runId, leaseId, "x".repeat(43), "SUCCEEDED", result, null, "forged-finish")));
             assertEquals(400, status(() -> leases.finish(worker, runId, leaseId, token, "SUCCEEDED", result, "DENIED", "bad-result")));
             assertEquals(200, leases.finish(worker, runId, leaseId, token, "SUCCEEDED", result, null, "finish").status());
+            assertEquals(403,status(()->progress.report(worker,runId,progressBody,"progress-after-finish")));
             var saved = JSON.readTree(leases.result(w.admin(), runId).body());
             assertEquals(result, saved.path("outcome").path("result"));
             assertEquals("alpha", saved.path("message").asText());
@@ -557,6 +791,22 @@ final class TriggerDeliveryTest {
             assertEquals(403, status(() -> leases.result(worker, runId)));
             assertEquals(403, status(() -> leases.authorizeStep(worker, runId, leaseId, token, "WORKFLOW", "investigate", "models")));
             assertEquals(403, status(() -> leases.finish(worker, runId, leaseId, token, "SUCCEEDED", result, null, "repeat-finish")));
+            sync(w, List.of(fired(w, 2, "beta")));
+            w.router().route();
+            String nextCursor = parse(session.pump()).getLast().path("cursor").asText();
+            var nextAdmission = JSON.readTree(service.admit(w.admin(), codec.json(Map.of("subscriptionUid", uid, "cursor", nextCursor)), "admit-next").body());
+            var nextSnapshot = JSON.readTree(leases.claim(worker, "worker-a", compiler, graphs, "claim-next").body());
+            assertEquals(nextAdmission.path("runId"), nextSnapshot.path("runId"));
+            assertEquals(nextDigest, nextSnapshot.path("profileDigest").asText());
+            assertEquals("revision-2", nextSnapshot.path("workflowVersionId").asText());
+            assertEquals("Replacement supervisor", nextSnapshot.path("supervisorPrompt").asText());
+            var nextGrant = JSON.readTree(leases.authorizeStep(worker, nextSnapshot.path("runId").asText(),
+                nextSnapshot.path("leaseId").asText(), nextSnapshot.path("leaseToken").asText(), "AGENT", "investigator", "models").body());
+            w.store().transaction(w.tenant(), false, tx -> {
+                assertEquals("replacement-model", new WorkflowModelSelection(profiles, codec, w.clock()).resolve(tx, w.tenant(),
+                    nextSnapshot.path("runId").asText(), nextGrant.path("token").asText(), 0).deployment().modelId());
+                return null;
+            });
         }
     }
 

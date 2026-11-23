@@ -1,323 +1,214 @@
-# OLO ToolGate
+# OLO
 
-> **Zero Trust for Agentic AI.**
-> **Secure Every Tool Boundary.**
+Open-source, self-hosted orchestration and governed tool execution for AI agents.
 
-OLO ToolGate is an open-source, self-hosted security gateway for AI agents, MCP
-servers and tool execution.
+**OLO Orchestration** runs bots with configured agents, models and triggers.
+**OLO ToolGate** controls which identities may use which tools, on which devices
+and resources. The console provides authoring, access review and execution history.
 
-Enforce identity, least-privilege access, runtime authorization, human approvals and
-auditable execution at every governed tool boundary.
-
-**Status:** ToolGate is in Beta Release.
-
-**Version and channel:** see this branch's [version configuration](version.json) and the
-[published releases](https://github.com/olo-labs/olo-toolgate/releases). For deployment
-readiness, see [current limits](#production-and-security-status).
-
-[Quickstart](#quickstart) · [Documentation](docs/README.md) ·
-[Security model](docs/security/README.md) ·
-[Enterprise evaluation](docs/enterprise-access-control/README.md) ·
-[Build a tool](TOOL-SDK-GUIDE.md) · [Contribute](CONTRIBUTING.md)
-
-## Why ToolGate
-
-AI agents act through tools: they write files, call APIs and change systems. Each
-tool call crosses a trust boundary. ToolGate sits on that boundary and decides, at
-the moment of the call, whether it may proceed. The executor cannot act without
-that decision.
-
-- **Verified identities.** Each call is checked against the identities that apply
-  to it: the calling agent or workload, the human it acts for when there is one, and
-  the executor (an enrolled device or a Tool Host). New users and agents start
-  disabled; device approval alone never grants access.
-- **Policy at every call.** ALLOW, ASK or BLOCK is evaluated against current
-  authority before any protected effect. ASK routes the call to independent human
-  approval.
-- **Least privilege by default.** Fresh installations grant nothing. Access comes
-  only from explicit group grants, delegated scopes and execution bindings.
-- **Enforced at the executor.** Executors run a call only under a single-use permit
-  from Control, consumed online. If Control is unavailable, nothing runs; cached
-  metadata never authorizes offline execution.
-- **End-to-end auditability.** Requests, approvals, decisions and outcomes are
-  recorded per tenant and correlated to the identities involved.
+[Quickstart](#quickstart) · [Contribute](#contribute) ·
+[Documentation](docs/README.md) · [Architecture](ARCHITECTURE.md) ·
+[Tool SDK](TOOL-SDK-GUIDE.md) · [Security](SECURITY.md)
 
 ## Quickstart
 
-Quickstart is a local, single-node evaluation. It runs Control, Gateway, the console
-and local execution in one container with SQLite.
+**New to Docker or Git?** Use the [beginner bot walkthroughs](bot/README.md#first-time-users-choose-a-bot)
+for download links, installation, first login and instructions for each bot.
 
-**Prerequisites:** Docker with Compose, and Git.
+Use the published-image launcher in
+[deploy/docker/quickstart/dev](deploy/docker/quickstart/dev/README.md).
+You need Git and Docker with its Linux engine and current Compose support.
+Windows startup can install its own private Python runtime; Linux/macOS need
+Python 3.11 or newer. Host Java, Node and Rust are not needed to run these images.
 
-```bash
+On Windows:
+
+```powershell
 git clone https://github.com/olo-labs/olo-toolgate.git
-cd olo-toolgate/deploy/compose/QuickStart
-sh manage.sh deploy        # Windows: .\manage.ps1 deploy
+cd olo-toolgate\deploy\docker\quickstart\dev
+.\start.bat
 ```
 
-The helper creates `.env` from `.env.example` on first run and keeps the data volume
-across restarts. The default image, `ololab/olo-toolgate-quickstart:dev`, is a mutable
-development tag, so its version can change between deployments; check the
-version and build on the console's **About** page after deployment. For a
-reproducible evaluation, copy `.env.example` to `.env` first and set `QUICKSTART_IMAGE`
-to a versioned tag or an image digest (`ololab/olo-toolgate-quickstart@sha256:…`); see
-[development releases](docs/development/development-releases.md).
+On Linux/macOS, from the cloned repository:
 
-**What you get:** the console at `http://localhost:8080/console/`, with separate
-`admin`, `reviewer-1` and `reviewer-2` accounts. Their generated passwords are in the
-container's private `/data/credentials.json`; see [first login](docs/getting-started/first-login.md).
-
-**What you still do:** a fresh installation runs nothing. Tools and the local agent
-start disabled with zero runtime rights, by design. Follow
-[your first tool](docs/getting-started/first-tool.md) to enroll a device, grant
-access and make a governed call. The full walkthrough is in the
-[Quickstart guide](docs/getting-started/one-minute-quickstart.md).
-
-## Architecture
-
-The call and the authorization travel separate paths. Gateway dispatches the call;
-Control decides and issues the permit; the executor will not act until it redeems
-that permit with Control.
-
-```mermaid
-block-beta
-  columns 5
-  space:2 A["<b>AI Agent / MCP Client</b>"] space:2
-  space:5
-  space:2 G["<b>ToolGate Gateway</b><br/>Authenticated request routing"] space:2
-  space:5
-  X["<b>Tool Host / Endpoint</b><br/>Permit-enforced execution"] space:3 C["<b>Control Plane</b><br/>Policy / permits"]
-  space:5
-  R["Target Resource"] space:4
-
-  A --> G
-  G -- "Dispatch" --> X
-  G -- "Authorize" --> C
-  C -- "permit authority" --> X
-  X --> R
-
-  classDef gateway fill:#2563eb22,stroke:#3b82f6,stroke-width:1.5px
-  classDef control fill:#d49b3622,stroke:#d49b36,stroke-width:1.5px
-  classDef executor fill:#13856622,stroke:#138566,stroke-width:1.5px
-  classDef resource fill:#8881,stroke:#8889,stroke-width:1px
-  class A,G gateway
-  class C control
-  class X executor
-  class R resource
+```sh
+cd deploy/docker/quickstart/dev
+sh start.sh
 ```
 
-Control never forwards calls, and Gateway never signs permits or authorizes from a
-cached policy. See [architecture](ARCHITECTURE.md),
-[core data flows](docs/architecture/data-flows.md) and
-[trust boundaries](docs/architecture/trust-boundaries.md).
+### Try the standard demo bots
 
-## Capabilities
+For a first look, the launcher can install and configure ready-to-use demo bots
+for you. No application or bot compilation is needed. It offers a numbered menu
+from [bot/AutoConfigure.yaml](bot/AutoConfigure.yaml):
 
-| Capability | What it does | Status |
+| Choose | Demo | Try it with |
 |---|---|---|
-| [MCP governance](docs/gateway/mcp-proxy.md) | Put existing MCP servers behind ToolGate policy, approval and audit without changing them | Available |
-| [Runtime policy](docs/security/README.md) | ALLOW / ASK / BLOCK on every tool invocation, against current authority | Available |
-| [Delegated authority](docs/security/enterprise-access-control.md) | Constrain what an agent may do on behalf of a person or another agent | Available |
-| [Zero-trust execution](docs/control-plane/approvals.md) | Single-use permits, renewable leases and qualified Python OCI containment | Partial; per-effect consent/fencing remain in [#230](https://github.com/olo-labs/olo-toolgate/issues/230) |
-| [Human approval](docs/control-plane/approvals.md) | Independent review of sensitive calls before they run | Available |
-| [Tool distribution](docs/client/package-deployment.md) | Package, version and deliver signed tools to devices and Tool Hosts | Available; Java and Python authoring; TypeScript [#242](https://github.com/olo-labs/olo-toolgate/issues/242) and .NET [#243](https://github.com/olo-labs/olo-toolgate/issues/243) are specifications |
-| [Audit and analytics](docs/control-plane/insights.md) | Correlate identities, decisions and outcomes; tenant Analytics and Operator Insights | Available |
+| `0` (default) | None: start a blank workspace | Import your own bot later |
+| `1` | Interactive summary | Paste a paragraph and get a short summary |
+| `2` | Ollama summary | Summarize text with the local model |
+| `3` | Multi-agent incident | Ask two agents to assess an incident and prepare a handover |
+| `4`–`8` | File and log demos | Watch sample files or logs and inspect the generated results |
+| `9` or `10` | Bot hotswap demo A or B | Explore two configurations of the same bot; choose one at a time |
 
-### Governing an MCP server in five steps
+Enter **`2,3` to set up both bots in one run**. The launcher downloads their
+verified bundles from the release matching the running application images,
+prepares the local models, imports their configuration and publishes each bot
+after its readiness checks pass. File/log selections also prepare their local
+device, folders and watchers. The local `admin` has live tenant Super Admin
+authority to run the demos; other users need their own runtime grants.
+Wait for **All selected bots are ready to run**;
+a failed dependency stops setup and is not reported as success.
 
-1. **Register** the server's HTTPS URL, credential and Tool Host pool. Control contacts nothing.
-2. **Scan.** A Tool Host lists the server's tools; Control stores an immutable snapshot with a digest per tool.
-3. **Approve** the tools to expose. ToolGate packages them, and each starts disabled.
-4. **Grant** them to agent groups like any other tool, under ALLOW / ASK / BLOCK policies.
-5. **Execute and audit.** Agents call through the Gateway. The Tool Host runs each call under its
-   permit, validates the arguments and connects with the approved key pins; every call is recorded.
+The first local-model setup downloads several GB and can take time. Allow at
+least 8 GB of memory for model preparation. Ollama uses Docker NVIDIA GPU access
+when available and otherwise uses CPU, which can be slower.
 
-Details: [MCP proxy guide](docs/gateway/mcp-proxy.md).
+Credentials are requested during setup. Press **Enter** to reuse an existing
+credential. OpenRouter is optional standby; the standard local demos do not
+need a paid model key. LangSmith, Langfuse and Phoenix tracing are optional.
+The local LangGraph service token is provisioned automatically. Secrets stay in
+the installation's private custody and never enter bot bundles or the menu file.
+
+You can also start the same setup from the repository root with `bot\start.bat`
+on Windows, or `sh bot/start.sh` on Linux/macOS. The
+[deployment guide](deploy/docker/quickstart/dev/README.md#choose-demo-bots)
+covers unattended selection and standalone bot setup.
+
+1. Open **http://127.0.0.1:18090/console/**.
+2. Sign in as `admin`. Read the generated password from
+   `credentials/admin/password.txt` inside the launcher directory.
+3. Open **Bots**, choose an installed demo and click **Run**. For `2,3`, try:
+   “The database connection pool was exhausted. Restarting the pool restored
+   service. Summarize the incident and suggest an investigation.”
+4. Inspect its result and run history. For file/log bots, use the sample input
+   and output instructions in the [bot's guide](bot/README.md#first-time-users-choose-a-bot).
+   With `0 None`, import your own `.olo` and complete its readiness checks first.
+
+A fresh installation with `0 None` has no imported bot. Its live tenant Super
+Admin has runtime authority; other users receive no runtime grants from startup.
+Restarts preserve credentials and data. Use matching image versions or digest
+pins; startup refreshes mutable development tags and rejects missing required
+image capabilities. Registry availability is not end-to-end qualification.
+
+Continue with [running bots](docs/help/run-bots.md),
+[device setup](docs/help/device.md), [models](docs/help/models.md),
+[examples](bot/README.md) and [troubleshooting](docs/help/troubleshooting.md).
+For source-built development, use [debug/profiled](debug/profiled/README.md).
+Production requires [external identity, database, TLS and key custody](docs/deployment/production.md).
+
+## How it works
+
+```text
+Bot / MCP client -> Gateway -> registered Tool Host or Device -> approved resource
+                      |                    |
+                      +---- Control <------+
+                            current authorization, permits and durable evidence
+```
+
+Control owns authorization and tenant state. Gateway authenticates and routes
+requests. Executors check Control-issued authority before protected effects;
+they run outside the Control process. A live Super Admin has human runtime
+authority throughout its tenant. Ordinary administrator access, device approval
+and package installation do not grant tool execution rights.
+
+The local bot installation has three core services: Quickstart (Gateway,
+Control, console and SQLite), LangGraph runtime, and Device. Optional model and
+collector services are separate. Package executors may create additional containers.
+
+Read the [component map](docs/architecture/component-map.md),
+[workflow architecture](docs/architecture/workflows.md),
+[trigger architecture](docs/architecture/triggers.md) and
+[trust boundaries](docs/architecture/trust-boundaries.md) before changing an interface.
+
+## What OLO supports
+
+Select a capability to open its screenshot-rich explanation and operating guides.
+
+| Capability | What it supports |
+|---|---|
+| [Bot authoring and portable bundles](docs/media/bots-and-models.md#author-and-transfer-a-bot) | Import/export `.olo` bundles, configure graph/agent references, prepare and publish |
+| [Manual and multi-agent runs](docs/media/bots-and-models.md#follow-a-run-from-input-to-result) | Submit input and inspect queued, running and terminal results |
+| [Models and agent configuration](docs/media/bots-and-models.md#configure-models-and-agents) | Model groups, agent prompts, routing and workflow mappings |
+| [Devices and package delivery](docs/media/devices-and-packages.md#enroll-and-configure-a-device) | Review enrollment, assign device groups and reconcile signed packages |
+| [Managed-file triggers](docs/media/devices-and-packages.md#connect-a-trigger-to-a-bot) | Configure package-backed watchers and authorized workflow bindings |
+| [Tools, packages and MCP servers](docs/media/tools-and-access.md#register-and-prepare-tools) | Tool catalog, Tool Builder, server packages and governed upstream MCP servers |
+| [Group grants and runtime access](docs/media/tools-and-access.md#bind-complete-runtime-access) | Agent/workload identities, execution bindings, resource scopes and policy |
+| [Review, approvals and audit](docs/media/audit-and-approvals.md) | Configuration review, pending operations, outcome evidence and audit inspection |
+| [Workspace administration](docs/media/administration.md) | Users, teams, roles, identity/delegation, installation settings and custody |
+| [Monitoring and tracing](docs/help/observability.md#screenshots) | Workflow traces, Operator Insights and optional collector destinations |
+| [Performance and analytics](docs/operations/performance.md#screenshots) | Inspect tool activity and evidence; configure and measure deployment performance |
+
+These guides describe current scope and setup requirements. A screenshot or
+demonstration does not qualify every runtime, integration or production topology.
 
 ## See it work
 
-<p align="center">
-  <img src="docs/media/audit-flow.gif" width="100%" alt="Audit flow: requests, independent approval, outcomes, Analytics tool calls and Operator Insights">
-</p>
+**Bot execution:** input, agent execution and the recorded result.
 
-**Audit, approvals and tool calls.** A live remediation call waits on an `ASK`
-policy, an independent reviewer checks the exact invocation, and the approved call
-resumes through ToolGate into its outcome, audit trail and Analytics. The example
-uses Qwen2.5 7B through Ollama; scripted acceptance traffic is labelled.
+![Bot execution slideshow](docs/media/orchestration-flow.gif)
 
-> 💡 **Tip:** For individual, high-resolution step frames or manual navigation, browse the
-> [Step-by-Step Tour Guide](docs/media/TOURS.md). Every snapshot is in the repository:
-> console and operator screens in [`docs/media/screenshots`](docs/media/screenshots) and
-> device/client captures in [`docs/media`](docs/media).
+**Device operation:** registered devices, group assignment and package delivery.
 
-<details>
-<summary><strong>💻 Devices and device client</strong>: enroll, verify and approve a device</summary>
-<br>
+![Device operation slideshow](docs/media/device-flow.gif)
 
-<p align="center">
-  <img src="docs/media/device-flow.gif" width="100%" alt="Device flow: native client, enrollment, fingerprint review, approval, connection, activity log and device administration">
-</p>
+These slideshows show a configured development installation, not fresh-install
+defaults or production certification. Additional screenshots, console tours,
+monitoring views and videos are in the [media guide](docs/media/README.md).
 
-**What to look for in the loop:**
+## Contribute
 
-- 💻 The device client opening from the tray and reporting its status.
-- 🔑 Enrollment pausing until an administrator compares the key fingerprint.
-- ✅ The approved device connecting, with its details and activity log.
-- 🗂️ Devices, device groups, device evidence and packages in the console.
+Contribute a bug fix, tool package, bot example, documentation improvement or
+integration. Start with one component; you do not need to learn the entire
+repository first.
 
-Earlier enrollment/client captures are labelled in the tour guide.
+| Work on | Start here |
+|---|---|
+| Console | [React/TypeScript UI](apps/admin-ui/README.md) |
+| Authorization, persistence or API | [Java Control Plane](apps/control-plane/README.md) |
+| MCP ingress and routing | [Rust Gateway](apps/gateway/README.md) |
+| Devices and execution | [Endpoint Client](apps/endpoint-client/README.md), [Tool Host](apps/tool-host/README.md) |
+| Workflow execution | [Python/LangGraph runtime](apps/langgraph-runtime/README.md) |
+| A tool or bot | [Tool author guide](TOOL-SDK-GUIDE.md), [bot authoring](docs/help/author-bots.md) |
+| Deployment and verification | [Deployment](docs/deployment/README.md), [testing](docs/testing/README.md) |
 
-</details>
+Source development needs Java 21, Node 22, Python 3.12+, Docker and the Rust
+toolchain pinned in `rust-toolchain.toml`. Use the Gradle wrapper.
+The [development guide](docs/development/README.md) lists setup and check-specific dependencies.
 
-<details>
-<summary><strong>🧰 Tools and delegated access</strong>: least privilege from tool to execution binding</summary>
-<br>
+```sh
+npm ci
+python -m pip install -r tools/requirements.txt
+python tools/check.py
+```
 
-<p align="center">
-  <img src="docs/media/console-tools-tour.gif" width="100%" alt="Tools and access flow: authoring, packages, groups, agents, delegation, grants, policies, execution bindings and access simulation">
-</p>
+Run component checks as you work; the full repository gate needs the additional
+tools and services in the [testing guide](docs/testing/README.md).
+Include current operating instructions and actual validation results in your PR.
+Contract changes start in `packages/contracts/`; regenerate bindings instead
+of editing generated models.
 
-**What to look for in the loop:**
-
-- 🧰 Tools built, packaged and grouped, with resource extractors.
-- 🤖 Agents, agent groups and workload identities.
-- 🤝 Human and agent delegations constraining what an agent may act on.
-- 📜 Grants, ALLOW / ASK / BLOCK policies and execution bindings.
-- 🔍 Access simulation showing the final decision before anything runs.
-
-</details>
-
-<details>
-<summary><strong>⚙️ Workspace administration</strong>: people, identities and server settings</summary>
-<br>
-
-<p align="center">
-  <img src="docs/media/console-administration.gif" width="100%" alt="Workspace administration flow: sign-in, overview, themes, people, identities, MCP servers, settings, backup, vault and version">
-</p>
-
-**What to look for in the loop:**
-
-- 🔐 Tenant sign-in and the workspace overview, in dark and light themes.
-- 👥 Users, teams, typed roles and human identities.
-- 🔌 MCP servers and server settings.
-- 💾 Backup/restore, the local vault and the About page.
-
-</details>
-
-Screens were captured from a local `0.10.0-dev` installation on October 27, 2026.
-Enabled tools and grants are fictional demo configuration, not installation defaults.
-
-### Observability: Grafana, Prometheus and New Relic
-
-ToolGate exports OpenTelemetry traces and metrics through a collector, so the same
-gateway request, authorization, dispatch and Tool Host execution data can be explored
-in your own monitoring stack. Ready-to-run stacks:
-[Prometheus and Grafana](deploy/prometheus/README.md) and
-[New Relic](deploy/newrelic/README.md); see also [Insights](docs/control-plane/insights.md).
-
-<details>
-<summary><strong>📊 Grafana</strong>: ToolGate tool-call overview dashboard</summary>
-<br>
-
-<p align="center">
-  <img src="docs/media/screenshots/grafana-toolgate-full.jpg" width="100%" alt="Grafana ToolGate tool-call overview: call totals and rate, p95 duration, call rate by outcome, duration percentiles, busiest tools and policy denials">
-</p>
-
-The bundled **Tool-call overview** dashboard, filterable by tenant and tool: call
-volume and rate, call rate by outcome, p50/p95/p99 execution duration, busiest tools
-and admission rate by category (for example `POLICY_DENIED`).
-
-</details>
-
-<details>
-<summary><strong>🔥 Prometheus</strong>: ToolGate metrics</summary>
-<br>
-
-<p align="center">
-  <img src="docs/media/screenshots/prometheus-toolgate-full.jpg" width="100%" alt="Prometheus query summing toolgate_insights_calls by tool name and outcome">
-</p>
-
-The same metrics queried directly in PromQL: `toolgate_insights_calls` summed by
-tool name and outcome for one tenant.
-
-</details>
-
-<details>
-<summary><strong>🔭 New Relic</strong>: distributed traces of a governed tool call</summary>
-<br>
-
-<p align="center">
-  <img src="docs/media/newrelic-traces.gif" width="100%" alt="New Relic slideshow: trace overview, call waterfall and execution attributes for a governed tool call">
-</p>
-
-**What to look for in the slides:**
-
-- 🔭 **Trace overview:** traces from the `olo-toolgate-newrelic` service for a Hello World call.
-- 🪜 **Call waterfall:** gateway request, authorization, dispatch and Tool Host execution spans.
-- 🏷️ **Execution attributes:** correlation attributes linking the span to the ToolGate execution.
-
-Full-resolution frames: [overview](docs/media/screenshots/newrelic-traces-overview-full.jpg),
-[waterfall](docs/media/screenshots/newrelic-call-waterfall-full.jpg) and
-[attributes](docs/media/screenshots/newrelic-execution-attributes-full.jpg).
-More captures: [New Relic capture notes](docs/media/screenshots/newrelic-captures.md).
-
-</details>
+Read [CONTRIBUTING.md](CONTRIBUTING.md), find an
+[open contributor issue](https://github.com/olo-labs/olo-toolgate/issues), or
+discuss a larger design before implementation. Unfinished work belongs in
+[docs/plans](docs/plans/README.md); current behavior belongs in its owning guide.
 
 ## Production and security status
 
-ToolGate is in Beta Release. The authorization path described above is
-enforced today; the following are **not yet** in place:
+OLO is beta software. Use this branch's [version configuration](version.json)
+and matching [release artifacts](https://github.com/olo-labs/olo-toolgate/releases).
+Local examples, imported bundles and image builds do not certify production
+availability, containment or exactly-once effects.
 
-- **Tool Host isolation:** [qualified Python OCI pools](docs/operations/rootless-tool-host.md)
-  enforce rootless container and network isolation. Native pools remain uncontained;
-  other runtimes and broker process separation remain work in [#230](https://github.com/olo-labs/olo-toolgate/issues/230).
-- **Execution recovery:** Tool Hosts have renewable execution leases, an admission
-  spool and a durable result outbox ([operator guide](docs/operations/execution-leases.md)).
-  The OLO memory/RAG path has qualified request-bound write authorization and
-  target claim/outcome fencing. Generalized per-effect authorization, exact consent
-  and operation-wide recovery remain unfinished: [#230](https://github.com/olo-labs/olo-toolgate/issues/230)
-  ([claim inventory](docs/security/zero-trust-execution-status.md)).
-- **Offline protected effects:** unsupported; live Control authority remains
-  required. Design review: [#239](https://github.com/olo-labs/olo-toolgate/issues/239).
-- **Nested or dynamic groups:** unsupported. Enhancement: [#240](https://github.com/olo-labs/olo-toolgate/issues/240).
-- **Quickstart:** single-node evaluation software with no HA guarantee.
-  Production HA qualification: [#241](https://github.com/olo-labs/olo-toolgate/issues/241).
-- **Authoring:** Java and Python implementations are available; TypeScript and .NET
-  authoring APIs remain specifications. Implementations: TypeScript [#242](https://github.com/olo-labs/olo-toolgate/issues/242)
-  and .NET [#243](https://github.com/olo-labs/olo-toolgate/issues/243).
+Authorization requires current Control authority. Uncertain effects must not be
+automatically replayed. Native execution and qualified OCI execution have
+different trust boundaries. Consult [security limits](docs/security/zero-trust-boundaries.md),
+[containment scope](docs/security/qualified-containment-matrix.md) and the
+[production checklist](docs/deployment/production.md) for your deployment.
 
-The [adopted attacker matrix and trust limits](docs/security/zero-trust-boundaries.md)
-distinguish healthy enforcement from compromised hosts and trusted roots.
-
-Recorded acceptance and performance results apply to the tested revision and
-environment; they do not establish your deployment's readiness, capacity or
-compliance. [Standards alignment](docs/enterprise-access-control/standards-alignment.md)
-describes design relationships, not a certification.
-
-Before production, read the [enterprise evaluation guide](docs/enterprise-access-control/README.md),
-[threat model](docs/security/threat-model.md) and
-[production deployment](docs/deployment/production.md). For multiple tenants, see
-[multitenant deployment](docs/deployment/multitenant.md).
-
-The OLO Marketplace is developed in a separate private repository and hosted at
-[olo-labs.org](https://olo-labs.org). Control can import from it through the
-[Marketplace integration](docs/control-plane/marketplace-integration.md).
-
-## Developers and contributors
-
-| You want to | Start here |
-|---|---|
-| Build and package a tool | [Tool SDK guide](TOOL-SDK-GUIDE.md) · [Java SDK](tool-sdk/java-sdk/README.md) · [examples](examples/README.md) |
-| Govern an existing MCP server | [MCP proxy guide](docs/gateway/mcp-proxy.md) · [example](examples/mcp-proxy/README.md) |
-| Run server-side tools | [Tool Host](apps/tool-host/README.md) |
-| Build from source | [Development guide](docs/development/README.md) |
-| Contribute | [CONTRIBUTING.md](CONTRIBUTING.md) · [architecture map](docs/architecture/component-map.md) |
-
-Small fixes, tests, documentation and examples are welcome. Discuss larger work in
-GitHub issues.
-
-## Project resources
+## Community and license
 
 [Support](SUPPORT.md) · [Report a vulnerability](SECURITY.md) ·
-[Governance](GOVERNANCE.md) · [Code of conduct](CODE_OF_CONDUCT.md) ·
-[Changelog](CHANGELOG.md) · [Apache-2.0 license](LICENSE)
+[Code of conduct](CODE_OF_CONDUCT.md) · [Governance](GOVERNANCE.md)
+
+OLO is licensed under [Apache-2.0](LICENSE). See [notices](NOTICE.md) for third-party licensing.

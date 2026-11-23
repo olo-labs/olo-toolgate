@@ -9,7 +9,7 @@ suppresses repeated alerts. This demo has **no remediation effects**.
 
 ## Install and start
 
-Place reviewed `log-watch-0.1.0.tgpkg` in this configuration's `packages/`
+Place reviewed `log-watch-0.1.0.olotool` in this configuration's `packages/`
 subfolder. Build it using the [package instructions](../../../../../examples/java-tools/log-watch/README.md).
 The profile pins package digest
 `sha256:1a924aebfc10080d0a970233ec0eeb401c2c6e509119add9a40a3f0f9210dca9`;
@@ -72,5 +72,6 @@ file move: the source log is read-only and Control owns the workflow result.
 Missing/oversized files report degraded source health without advancing state.
 This is POLL observation, not native PUSH or a complete log history.
 
-`stop.bat --configuration log-triage` removes this configuration's owned stack
-and generated state/storage. Preserve any results needed before stopping it.
+`stop.bat --configuration log-triage` stops this configuration and preserves storage.
+`destroy.bat --configuration log-triage` removes its owned stack and generated
+state/storage. Preserve any results needed before destroying it.

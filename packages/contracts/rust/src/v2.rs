@@ -57,6 +57,147 @@ pub enum ApiChange {
     #[serde(rename = "MAJOR")]
     Major,
 }
+/// Short-lived signed user/tenant access token. Obtain a new token through password login after expiry.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApplicationAccessToken {
+    pub access_token: String,
+    pub token_type: String,
+    pub expires_in: u64,
+}
+/// Durable structural notification. RESULT announces an available result; read the separately authorized result endpoint for private output.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApplicationEvent {
+    pub event_id: String,
+    pub tenant_id: String,
+    pub source_type: ApplicationEventSource,
+    pub source_id: String,
+    pub sequence: u64,
+    pub kind: ApplicationEventKind,
+    pub created_at_unix_ms: u64,
+    pub data: std::collections::BTreeMap<String, serde_json::Value>,
+}
+/// Canonical ApplicationEventKind wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ApplicationEventKind {
+    #[serde(rename = "PROGRESS")]
+    Progress,
+    #[serde(rename = "RESULT")]
+    Result,
+    #[serde(rename = "TRIGGER_STATUS")]
+    TriggerStatus,
+}
+/// Bounded durable source events in sequence order. Cursors are scoped to one authorized source.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApplicationEventPage {
+    pub items: Vec<ApplicationEvent>,
+    pub next_cursor: u64,
+}
+/// Canonical ApplicationEventSource wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ApplicationEventSource {
+    #[serde(rename = "WORKFLOW")]
+    Workflow,
+    #[serde(rename = "TRIGGER")]
+    Trigger,
+}
+/// V1 existing-user password login. Tenant is required in Toolgate-Tenant-ID; OAuth is not required.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApplicationPasswordLoginRequest {
+    pub username: String,
+    pub password: String,
+}
+/// Structural status for one readable trigger assignment, without configuration or source event payloads.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApplicationTriggerStatus {
+    pub assignment_id: String,
+    pub status: TriggerAssignmentStatus,
+}
+/// Caller-owned registration metadata; no signing key or user token is exposed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApplicationWebhook {
+    pub id: String,
+    pub source_type: ApplicationEventSource,
+    pub source_id: String,
+    pub event_kinds: Vec<ApplicationEventKind>,
+    pub callback_url: String,
+    pub expires_at_unix_ms: u64,
+    pub state: ApplicationWebhookState,
+    pub next_cursor: u64,
+    pub attempts: u64,
+}
+/// Signed destination-ownership challenge. Return HMAC-SHA256(secret, verify.subscriptionId.challenge) using the supplied subscription ID and challenge as proof.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApplicationWebhookChallenge {
+    pub r#type: String,
+    pub subscription_id: String,
+    pub challenge: String,
+}
+/// Caller-owned HTTPS notification subscription. Source ID is a run ID or trigger assignment name. Verification and current source permissions are required before delivery.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApplicationWebhookCreate {
+    pub source_type: ApplicationEventSource,
+    pub source_id: String,
+    pub event_kinds: Vec<ApplicationEventKind>,
+    pub callback_url: String,
+    pub expires_at_unix_ms: u64,
+    pub after: u64,
+}
+/// Signed webhook delivery envelope. Use subscriptionId to select the signing key, verify timestamp and raw-body signature, then deduplicate by event.eventId.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApplicationWebhookDelivery {
+    pub subscription_id: String,
+    pub event: ApplicationEvent,
+}
+/// V1 external application ApplicationWebhookPage contract; current tenant and user authorization remain required.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApplicationWebhookPage {
+    pub items: Vec<ApplicationWebhook>,
+}
+/// Registration response, including a private per-subscription signing secret. Exact authenticated retries may recover the same secret; it is encrypted at rest and absent from list/read responses.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApplicationWebhookRegistration {
+    pub id: String,
+    pub source_type: ApplicationEventSource,
+    pub source_id: String,
+    pub event_kinds: Vec<ApplicationEventKind>,
+    pub callback_url: String,
+    pub expires_at_unix_ms: u64,
+    pub state: ApplicationWebhookState,
+    pub next_cursor: u64,
+    pub attempts: u64,
+    pub signing_secret: String,
+}
+/// Canonical ApplicationWebhookState wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ApplicationWebhookState {
+    #[serde(rename = "PENDING")]
+    Pending,
+    #[serde(rename = "ACTIVE")]
+    Active,
+    #[serde(rename = "REVOKED")]
+    Revoked,
+    #[serde(rename = "FAILED")]
+    Failed,
+    #[serde(rename = "EXPIRED")]
+    Expired,
+}
+/// V1 external application ApplicationWebhookVerificationProof contract; current tenant and user authorization remain required.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApplicationWebhookVerificationProof {
+    pub proof: String,
+}
 /// Canonical AuthType wire values.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AuthType {
@@ -2201,6 +2342,96 @@ pub enum MissingKeyPolicy {
     #[serde(rename = "ALLOW_WITH_DEDUPE")]
     AllowWithDedupe,
 }
+/// ADR 075 NativeFileAck; only protected qualified filesystem broker evidence.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct NativeFileAck {
+    #[serde(deserialize_with = "const_native_file_ack_accepted")]
+    pub accepted: bool,
+}
+/// Current installed file-only candidate; metadata is not execution authority.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct NativeFileCandidate {
+    pub device_id: String,
+    pub tool_id: String,
+    pub managed_digest: String,
+    pub image_digest: String,
+    pub write_access: bool,
+}
+/// Bounded metadata for explicit operator qualification.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct NativeFileCandidatePage {
+    pub items: Vec<NativeFileCandidate>,
+}
+/// ADR 075 NativeFileEffectBegin; only protected qualified filesystem broker evidence.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct NativeFileEffectBegin {
+    pub request_id: String,
+    pub lease_id: String,
+    pub fencing_token: String,
+    pub ordinal: u64,
+    pub intent: NativeFileIntent,
+}
+/// ADR 075 NativeFileEffectGrant; only protected qualified filesystem broker evidence.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct NativeFileEffectGrant {
+    pub effect_id: String,
+    pub intent_digest: String,
+}
+/// ADR 075 NativeFileEffectReceipt; only protected qualified filesystem broker evidence.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct NativeFileEffectReceipt {
+    pub request_id: String,
+    pub lease_id: String,
+    pub fencing_token: String,
+    pub effect_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub before_sha256: Option<String>,
+    pub after_sha256: String,
+}
+/// ADR 075 NativeFileIntent; only protected qualified filesystem broker evidence.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct NativeFileIntent {
+    pub operation: NativeFileOperation,
+    pub path: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub destination: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content_sha256: Option<String>,
+}
+/// Canonical NativeFileOperation wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum NativeFileOperation {
+    #[serde(rename = "WRITE")]
+    Write,
+    #[serde(rename = "RENAME")]
+    Rename,
+}
+/// ADR 075 NativeFileQualification; only protected qualified filesystem broker evidence.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct NativeFileQualification {
+    pub device_id: String,
+    pub device_group_id: String,
+    pub image_digest: String,
+    pub expires_at_unix_ms: u64,
+    #[serde(deserialize_with = "const_native_file_qualification_acknowledged_risk")]
+    pub acknowledged_risk: String,
+}
+/// ADR 075 NativeFileScopeClosed; only protected qualified filesystem broker evidence.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct NativeFileScopeClosed {
+    pub request_id: String,
+    pub lease_id: String,
+    pub fencing_token: String,
+}
 /// Control-created stamp for an immutable generated MCP tool policy; not accepted from approval or package authors.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -2527,7 +2758,7 @@ pub enum ProfileChangeKind {
     #[serde(rename = "REMOVED")]
     Removed,
 }
-/// One package the profile requires, pinned to an exact version. A MARKETPLACE entry must also pin its package digest; a PREBUILT_CORE entry resolves its digest from the sealed image lock, and a declared digest must equal it. hostIds names the Tool Hosts that receive its eligible ServerTool exports; ClientTool exports never deploy to a Tool Host. deviceGroupIds names the device groups whose active, approved devices receive its device-runnable exports as a signed client release (ADR 026), including devices that join later. An entry that activates exports needs hostIds or deviceGroupIds. bindingIds have their allowed package digests set to exactly the profile packages that name them. triggers declares client trigger assignments of its exports for those device groups.
+/// One package the profile requires, pinned to an exact version. A MARKETPLACE entry must also pin its package digest; a PREBUILT_CORE entry resolves its digest from the sealed image lock, and a declared digest must equal it. hostIds names the Tool Hosts that receive its eligible ServerTool exports; ClientTool exports never deploy to a Tool Host. deviceGroupIds names eligible groups for one durably selected profile device receiving its device-runnable exports as a signed client release (ADR 026). One selected device must belong to at least one enabled group in each package group list, with no automatic failover. An entry that activates exports needs hostIds or deviceGroupIds. bindingIds have their allowed package digests set to exactly the profile packages that name them. triggers declares client trigger assignments of its exports for those device groups.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProfilePackage {
@@ -2557,6 +2788,8 @@ pub enum ProfilePackageSource {
     PrebuiltCore,
     #[serde(rename = "MARKETPLACE")]
     Marketplace,
+    #[serde(rename = "BUNDLE")]
+    Bundle,
 }
 /// A call the deployment makes through the Gateway, as the named agent, to declare the profile ready. Arguments are explicit; expected names fields the structured result must contain with these exact values.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -2575,7 +2808,7 @@ pub struct ProfileToolActivation {
     pub tool_id: String,
     pub tool_group_id: String,
 }
-/// A client trigger assignment the profile declares for one of its package's trigger exports (ADR 058). It targets the entry's deviceGroupIds; a profile that declares any trigger enables triggers for the deployment.
+/// A client trigger assignment colocated with the profile device packages on one persistently selected eligible device. Independently managed group membership remains a live constraint.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProfileTrigger {
@@ -4862,6 +5095,8 @@ pub struct TriggerTarget {
     pub device_groups: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub exclude_devices: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub required_device_group_sets: Option<Vec<Vec<String>>>,
 }
 /// Canonical TriggerTerminalRejectionPolicy wire values.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -4963,6 +5198,51 @@ pub struct WorkflowAgentStage {
     pub agent_id: String,
     pub result_mode: WorkflowAgentResultMode,
 }
+/// WorkflowBundleBuild portable metadata.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowBundleBuild {
+    pub version: String,
+    pub source_commit: String,
+    pub build: String,
+}
+/// Logical trigger mappings restored to destination identities.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowBundleConnection {
+    pub id: String,
+    pub assignment: String,
+    pub subscription: String,
+    pub assignment_spec: TriggerAssignmentSpec,
+    pub subscription_spec: TriggerSubscriptionSpec,
+}
+/// WorkflowBundleManifest portable metadata.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowBundleManifest {
+    #[serde(deserialize_with = "const_workflow_bundle_manifest_format")]
+    pub format: String,
+    #[serde(deserialize_with = "const_workflow_bundle_manifest_version")]
+    pub version: u64,
+    pub workflow_id: String,
+    pub sha256: String,
+    pub references_sha256: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub build: Option<WorkflowBundleBuild>,
+    pub connections: Vec<WorkflowBundleConnection>,
+    pub packages: Vec<WorkflowBundlePackage>,
+}
+/// WorkflowBundlePackage portable metadata.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowBundlePackage {
+    pub package_id: String,
+    pub version: String,
+    pub package_digest: String,
+    pub sha256: String,
+    pub bytes: u64,
+    pub path: String,
+}
 /// Profile declaration for WorkflowConfiguration; eligibility and configuration confer no runtime authority.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -5017,6 +5297,7 @@ pub struct WorkflowDefinition {
     pub agent_stages: Option<Vec<WorkflowAgentStage>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deployment: Option<WorkflowStackDeployment>,
+    pub graph: WorkflowGraphSelection,
 }
 /// Bounded delegate model proposal; never execution authority.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -5087,12 +5368,124 @@ pub struct WorkflowFinishDecision {
     pub kind: String,
     pub result: serde_json::Value,
 }
+/// Control-authorized immutable candidate reference. Contains no arbitrary Python, paths, secrets or live clients.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowGraphBuildRequest {
+    pub tenant_id: String,
+    pub profile_id: String,
+    pub profile_digest: String,
+    pub workflow_id: String,
+    pub expected_generation: u64,
+}
+/// Compilation receipt; this neither publishes configuration nor grants runtime authority.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowGraphBuildResult {
+    pub tenant_id: String,
+    pub profile_id: String,
+    pub profile_digest: String,
+    pub workflow_id: String,
+    pub generation: u64,
+    pub specification_digest: String,
+    pub compiler_digest: String,
+    pub features: Vec<String>,
+    #[serde(deserialize_with = "const_workflow_graph_build_result_state")]
+    pub state: String,
+}
+/// Reviewed immutable graph candidate read by a verified tenant runtime service. Carries configuration only, never execution credentials.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowGraphCandidate {
+    pub tenant_id: String,
+    pub profile_id: String,
+    pub profile_digest: String,
+    pub workflow_id: String,
+    pub generation: u64,
+    pub graph: WorkflowGraphSelection,
+    pub agent_ids: Vec<String>,
+}
+/// Actual JSON compiler features and disposable cache statistics. This is not a readiness or execution grant.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowGraphCapabilities {
+    pub entries: u64,
+    #[serde(deserialize_with = "const_workflow_graph_capabilities_capacity")]
+    pub capacity: u64,
+    pub compiler_digest: String,
+    pub features: Vec<String>,
+}
+/// Pinned operator-installed native LangGraph factory. Configuration grants no runtime authority.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowGraphSelection {
+    pub package_id: String,
+    pub version: String,
+    pub digest: String,
+    pub entry_point: String,
+    pub config: std::collections::BTreeMap<String, serde_json::Value>,
+}
 /// Profile declaration for WorkflowGroupDefinition; eligibility and configuration confer no runtime authority.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct WorkflowGroupDefinition {
     pub id: String,
     pub display_name: String,
+}
+/// Boolean branch destinations in the configured graph.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowJsonBranchRoutes {
+    pub r#true: String,
+    pub r#false: String,
+}
+/// One edge or explicit all-predecessor join. START and END are reserved boundary names.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowJsonEdge {
+    pub from: Vec<String>,
+    pub to: String,
+}
+/// Versioned, bounded JSON topology for the installed generic LangGraph compiler. Structure alone establishes no execution authority.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowJsonGraph {
+    #[serde(deserialize_with = "const_workflow_json_graph_schema_version")]
+    pub schema_version: u64,
+    pub nodes: Vec<WorkflowJsonNode>,
+    pub edges: Vec<WorkflowJsonEdge>,
+    pub output: std::collections::BTreeMap<String, serde_json::Value>,
+    pub output_schema: std::collections::BTreeMap<String, serde_json::Value>,
+}
+/// Pure node declaration; per-run capabilities are injected by the runtime, never captured in topology.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowJsonNode {
+    pub id: String,
+    pub kind: WorkflowJsonNodeKind,
+    pub input: std::collections::BTreeMap<String, serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_mode: Option<WorkflowAgentResultMode>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub routes: Option<WorkflowJsonBranchRoutes>,
+}
+/// Canonical WorkflowJsonNodeKind wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum WorkflowJsonNodeKind {
+    #[serde(rename = "value")]
+    Value,
+    #[serde(rename = "agent")]
+    Agent,
+    #[serde(rename = "model")]
+    Model,
+    #[serde(rename = "tool")]
+    Tool,
+    #[serde(rename = "branch")]
+    Branch,
 }
 /// An explicitly assigned model deployment. Only server-owned TLS origin, model name and vault reference are configuration; no provider key reaches a runner.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -5110,15 +5503,48 @@ pub struct WorkflowModelDeployment {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct WorkflowModelGeneration {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_effort: Option<String>,
     pub max_output_tokens: u64,
     pub temperature: f64,
 }
-/// Profile declaration for WorkflowModelGroupDefinition; eligibility and configuration confer no runtime authority.
+/// Ordered model candidates; selection intersects this order with the pinned workflow ceiling. Only provider inference failures permit fallback; effects are never retried.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct WorkflowModelGroupDefinition {
     pub id: String,
     pub deployment_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub standby: Option<bool>,
+}
+/// Gateway-only resolution of one authorized inference candidate, with current authority checked on every attempt.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowModelResolveRequest {
+    pub run_id: String,
+    pub step_token: String,
+    pub candidate_index: u64,
+}
+/// Private Gateway response; credentials must never be forwarded to runtime workers or logged.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowModelResolveResponse {
+    pub origin: String,
+    pub model_id: String,
+    pub credential: String,
+    pub generation: WorkflowModelGeneration,
+    pub deployment_id: String,
+    pub candidate_index: u64,
+    pub candidate_count: u64,
+    pub result_schema: std::collections::BTreeMap<String, serde_json::Value>,
+}
+/// Current tenant-scoped publication blockers, without credentials or remote payloads. Observational only; publication rechecks readiness.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowProfileDiagnostics {
+    pub profile_id: String,
+    pub profile_digest: String,
+    pub blockers: Vec<String>,
 }
 /// Workflow profile lifecycle metadata; publication requires current authorization, reviewed content and dependency readiness.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -5155,6 +5581,34 @@ pub struct WorkflowProfileStatus {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reviewed_by: Option<String>,
 }
+/// Canonical WorkflowProgressKind wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum WorkflowProgressKind {
+    #[serde(rename = "NODE_COMPLETED")]
+    NodeCompleted,
+    #[serde(rename = "AGENT_STARTED")]
+    AgentStarted,
+    #[serde(rename = "AGENT_COMPLETED")]
+    AgentCompleted,
+    #[serde(rename = "MODEL_STARTED")]
+    ModelStarted,
+    #[serde(rename = "MODEL_COMPLETED")]
+    ModelCompleted,
+    #[serde(rename = "TOOL_STARTED")]
+    ToolStarted,
+    #[serde(rename = "TOOL_COMPLETED")]
+    ToolCompleted,
+    #[serde(rename = "TOOL_FAILED")]
+    ToolFailed,
+}
+/// Canonical WorkflowProgressSource wire values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum WorkflowProgressSource {
+    #[serde(rename = "CONTROL")]
+    Control,
+    #[serde(rename = "RUNTIME")]
+    Runtime,
+}
 /// Canonical WorkflowRemediationMode wire values.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WorkflowRemediationMode {
@@ -5162,6 +5616,65 @@ pub enum WorkflowRemediationMode {
     Prepare,
     #[serde(rename = "APPLY")]
     Apply,
+}
+/// Backend-recorded structural progress. Runtime reports do not attest tool effects or finality.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowRunProgressEvent {
+    pub sequence: u64,
+    pub occurred_at: String,
+    pub source: WorkflowProgressSource,
+    pub kind: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subject_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_ref: Option<String>,
+}
+/// Ordered durable progress for one tenant/run; cursor advances only through returned events.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowRunProgressPage {
+    pub items: Vec<WorkflowRunProgressEvent>,
+    pub next_cursor: u64,
+}
+/// Lease-authenticated structural runtime observation. No input, output, provider text or credential is retained in progress evidence.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowRunProgressRequest {
+    pub lease_id: String,
+    pub lease_token: String,
+    pub event_id: String,
+    pub kind: WorkflowProgressKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subject_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_ref: Option<String>,
+}
+/// Durable acceptance receipt; it is not evidence of execution success.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowRunStartReceipt {
+    pub run_id: String,
+    pub profile_id: String,
+    pub profile_digest: String,
+    pub workflow_id: String,
+    #[serde(deserialize_with = "const_workflow_run_start_receipt_state")]
+    pub state: String,
+}
+/// Explicit text input for one published bot. Backend derives service group and configured mode; current authority and idempotency remain required.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowRunStartRequest {
+    pub profile_digest: String,
+    pub expected_generation: u64,
+    pub entry_agent_id: String,
+    pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dispatch_binding_id: Option<String>,
 }
 /// Complete workflow-scoped local deployment declaration. Operator images and custody remain explicitly trusted; this grants no model or tool authority.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -5264,6 +5777,27 @@ pub struct WorkflowToolDecision {
     pub tool_id: String,
     pub arguments: std::collections::BTreeMap<String, serde_json::Value>,
 }
+/// Control-owned manual-run user and admitted resource ceiling, including a universal human/secret scope when admitted under live tenant Super Admin membership. Current grants or Super Admin membership and identity must still be checked. Never accepted from an external caller.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowUserAuthority {
+    pub user_id: String,
+    pub principal_id: String,
+    pub identity_digest: String,
+    pub human_scopes: Vec<crate::EnterpriseScope>,
+    pub secret_scopes: Vec<crate::EnterpriseScope>,
+    pub agent_scopes: Vec<crate::EnterpriseScope>,
+    pub agent_secret_scopes: Vec<crate::EnterpriseScope>,
+    pub required_scopes: Vec<crate::EnterpriseScope>,
+}
+/// Authenticated worker capabilities. Control only leases runs pinned to this compiler and an installed graph digest; this grants no model or tool authority.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowWorkerCapabilities {
+    pub compiler_digest: String,
+    pub graph_digests: Vec<String>,
+    pub instance_id: String,
+}
 const_field!(const_broker_request_frame_kind, String, "BROKER_REQUEST");
 const_field!(const_broker_response_frame_kind, String, "BROKER_RESPONSE");
 const_field!(
@@ -5288,6 +5822,12 @@ const_field!(const_kill_trust_key_e, String, "AQAB");
 const_field!(const_log_frame_kind, String, "LOG");
 const_field!(const_mcp_proxy_document_format_version, u64, 1);
 const_field!(const_mcp_scan_claims_iss, String, "control");
+const_field!(const_native_file_ack_accepted, bool, true);
+const_field!(
+    const_native_file_qualification_acknowledged_risk,
+    String,
+    "UNFENCED_FILESYSTEM"
+);
 const_field!(const_package_manifest_schema_version, u64, 2);
 const_field!(const_permit_header_alg, String, "RS256");
 const_field!(
@@ -5354,6 +5894,12 @@ const_field!(
 );
 const_field!(const_trigger_view_event_specversion, String, "1.0");
 const_field!(
+    const_workflow_bundle_manifest_format,
+    String,
+    "olo-workflow"
+);
+const_field!(const_workflow_bundle_manifest_version, u64, 2);
+const_field!(
     const_workflow_context_decision_kind,
     String,
     "finish_context"
@@ -5365,6 +5911,10 @@ const_field!(
 );
 const_field!(const_workflow_delegate_decision_kind, String, "delegate");
 const_field!(const_workflow_finish_decision_kind, String, "finish");
+const_field!(const_workflow_graph_build_result_state, String, "READY");
+const_field!(const_workflow_graph_capabilities_capacity, u64, 128);
+const_field!(const_workflow_json_graph_schema_version, u64, 1);
+const_field!(const_workflow_run_start_receipt_state, String, "QUEUED");
 const_field!(
     const_workflow_stack_model_engine_engine,
     String,
@@ -5419,6 +5969,10 @@ pub const CANONICAL_SCHEMAS: &[(&str, &str)] = &[
         include_str!("../schemas/v2/mcp-proxy.schema.json"),
     ),
     (
+        "https://schemas.ololabs.io/toolgate/v2/native-files.schema.json",
+        include_str!("../schemas/v2/native-files.schema.json"),
+    ),
+    (
         "https://schemas.ololabs.io/toolgate/v2/package.schema.json",
         include_str!("../schemas/v2/package.schema.json"),
     ),
@@ -5445,6 +5999,10 @@ pub const CANONICAL_SCHEMAS: &[(&str, &str)] = &[
     (
         "https://schemas.ololabs.io/toolgate/v2/trigger.schema.json",
         include_str!("../schemas/v2/trigger.schema.json"),
+    ),
+    (
+        "https://schemas.ololabs.io/toolgate/v2/workflow-bundle.schema.json",
+        include_str!("../schemas/v2/workflow-bundle.schema.json"),
     ),
     (
         "https://schemas.ololabs.io/toolgate/v2/workflow-decision.schema.json",

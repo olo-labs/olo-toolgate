@@ -71,6 +71,15 @@ class QuickstartBootstrapTests(unittest.TestCase):
         self.key.public_key().verify(base64.urlsafe_b64decode(signature + '='*(-len(signature) % 4)),
                                      b'OLO ToolGate recovery v1\n' + canonical, padding.PKCS1v15(), hashes.SHA256())
 
+    def test_admin_only_initialization_has_no_fixture_users_or_workflow_actors(self):
+        with patch.dict(os.environ,{'TOOLGATE_QUICKSTART_ADMIN_ONLY':'true'}):
+            packet,_=self.prepare()
+        snapshot=json.loads(packet.read_text())['authorization']['snapshot']
+        self.assertEqual(['admin'],[row['id'] for row in snapshot['users']])
+        for field in ('agents','agentGroups','bindings','tools','grants','policies','delegations','workloadBindings'):
+            self.assertEqual([],snapshot[field],field)
+        self.assertEqual(['admin'],[row['userId'] for row in snapshot['identityBindings']])
+
     def test_restart_preserves_original_review_after_database_creation(self):
         first = self.prepare()
         originals = [path.read_bytes() for path in first[1:]]
@@ -145,6 +154,19 @@ class QuickstartBootstrapTests(unittest.TestCase):
 
 
 class QuickstartRestartTests(unittest.TestCase):
+    def test_reviewers_lose_super_admin_before_the_first_runtime_catalog_check(self):
+        source=ast.parse((ROOT/'tools/quickstart/check.py').read_text(encoding='utf-8'))
+        smoke=next(node for node in source.body if isinstance(node,ast.FunctionDef) and node.name=='smoke')
+        calls=[node for node in ast.walk(smoke) if isinstance(node,ast.Call) and isinstance(node.func,ast.Name)]
+        first_catalog=min(node.lineno for node in calls if node.func.id=='catalog')
+        owner_update=next(node for node in calls if node.func.id=='api' and len(node.args)>=4
+            and isinstance(node.args[0],ast.Constant) and node.args[0].value=='/api/control/v1/teams/installation-administrators'
+            and isinstance(node.args[3],ast.Constant) and node.args[3].value=='PUT')
+        self.assertLess(owner_update.lineno,first_catalog)
+        members=next(value for key,value in zip(owner_update.args[2].keys,owner_update.args[2].values)
+                     if isinstance(key,ast.Constant) and key.value=='userIds')
+        self.assertEqual(['admin'],ast.literal_eval(members))
+
     def test_external_gateway_refreshes_its_allowed_authority_after_port_reassignment(self):
         with tempfile.TemporaryDirectory() as temporary:
             data=Path(temporary);(data/'run').mkdir()

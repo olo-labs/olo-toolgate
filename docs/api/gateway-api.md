@@ -56,11 +56,16 @@ group. A Tool Host runs it with a device-bound permit, either dispatched directl
 receives it through the Control relay on its next check-in. Package tools use their
 fixed CUSTOM `tool://<tool-id>` resource. ASK returns a result with `isError: true`
 and `structuredContent: {"invocationId", "state": "PENDING_APPROVAL"}`; nothing runs
-until it is approved. Ping is not part of 2026-07-28 and returns method not found.
+  until it is approved. Completed device execution failures also return a tool
+  result with `isError: true`, the fixed error code in `structuredContent.code`,
+  and authenticated Control operation metadata. An `OUTCOME_UNKNOWN` result
+  remains non-retryable even when the device reports `FORBIDDEN`. If the current
+  authorized outcome cannot be read, the Gateway fails closed without returning
+  the device result. Ping is not part of 2026-07-28 and returns method not found.
 Unknown methods, notifications and streaming subscriptions reject; GET/DELETE
 return 405.
 
-Only 2026-07-28 is served ([ADR 018 amendment](../adr/018-mcp-versions-legacy-adapter.md#amendment-m1-legacy-adapter-withdrawn)).
+Only 2026-07-28 is served ([Gateway configuration](../gateway/configuration.md)).
 A request with no `_meta` protocol version that calls `initialize` or names another
 version in `MCP-Protocol-Version` gets -32022 listing `2026-07-28`; a request with a
 `_meta` version is always judged by the 2026-07-28 rules.

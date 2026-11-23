@@ -12,6 +12,7 @@ RUNTIME = ROOT / "apps/langgraph-runtime"
 
 
 def main():
+    subprocess.run([sys.executable, "tools/workflows/bot_permissions.py", "--check"], cwd=ROOT, check=True)
     environment = ROOT / ".dev/langgraph-runtime" / sys.implementation.cache_tag
     python = environment / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
     if not python.is_file():
@@ -19,6 +20,9 @@ def main():
     subprocess.run([str(python), "-m", "pip", "install", "--disable-pip-version-check",
                     "-r", str(RUNTIME / "requirements.lock")], cwd=ROOT, check=True)
     subprocess.run([str(python), "-m", "pip", "check"], cwd=ROOT, check=True)
+    subprocess.run([sys.executable, "tools/workflows/graph_package.py", "apps/langgraph-runtime/graphs-src/supervisor",
+                    "apps/langgraph-runtime/src/toolgate_runtime/graphs", "--check"], cwd=ROOT, check=True)
+    subprocess.run([sys.executable, "tools/workflows/json_graph_package.py", "--check"], cwd=ROOT, check=True)
     env = dict(os.environ, PYTHONPATH=str(RUNTIME / "src"))
     subprocess.run([str(python), "-m", "unittest", "discover", "-s", str(RUNTIME / "tests"), "-v"],
                    cwd=ROOT, env=env, check=True)

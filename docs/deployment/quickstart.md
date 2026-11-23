@@ -15,10 +15,18 @@ the existing readiness budget; enrollment/profile readiness alone is insufficien
 Breaking builds require a fresh empty data directory or PostgreSQL database.
 Older stores and formats are rejected; there is no migration or conversion path.
 Current-format restart and recovery remain supported.
+The restart gate checks that an ordinary user's revoked HUMAN grant still
+denies discovery, invocation and saved-result retrieval after a fresh login.
+It separately checks the live Super Admin's tenant-wide human entitlement;
+the installation owner is not the revoked-user test identity.
+The gate removes reviewer accounts from the Super Admin team before its first
+runtime catalog assertion, preserving the owner's membership. Both SQLite and
+PostgreSQL therefore exercise an ordinary user's missing-grant denial without
+depending on when newly deployed tools become visible.
 
 Build and verify with `python tools/quickstart/check.py --build`. Use `--image IMAGE`, `--postgresql`, `--no-browser` or `--client-assets VERIFIED_DIRECTORY` as needed. The isolated gate records installation, real native CSR/mTLS, verified disabled-user intake, independently reviewed grants, HUMAN/SERVICE/ASK effects, exact retry, revocation, reviewed import/shadow, restart and browser accessibility. Small-fixture latency is measured in `build/quickstart/smoke.json`; it is not an enterprise throughput promise.
 
-Run the image with a persistent `/data` volume, read-only root, dropped capabilities, no-new-privileges, a restricted `/tmp` and loopback ports 8080/8443. The verified gate uses 2 CPUs and 1536 MiB. [Compose helpers](../../deploy/compose/QuickStart/README.md) retain the volume through update/undeploy. For this repository's persistent debug environment, run `debug/standard/start.bat`; it validates the candidate before replacing the debug container.
+Run the image with a persistent `/data` volume, read-only root, dropped capabilities, no-new-privileges, a restricted `/tmp` and loopback ports 8080/8443. The verified gate uses 2 CPUs and 1536 MiB. [Compose helpers](../../deploy/compose/QuickStart/README.md) retain the volume through update/undeploy. For this repository's persistent debug environment, run `debug/profiled/start.bat`; it validates the candidate before replacing the debug container.
 
 First boot installs protected default groups, separate local admin/reviewer-1/reviewer-2 identities and zero runtime rights. Tools and the local Agent begin disabled. Retrieve each bootstrap password privately from `/data/credentials.json` or its `/data/bootstrap-password*` file. No account must change its password at first login; any account may change it later at login, except accounts shown on the login page. Password-free local mode changes login only. The new native Device appears pending: review its code/key, approve its connection, then independently review group grants and definitions. Device approval creates no Agent credential. Keep Agent configuration outside the diagnostic mimic script, which only calls and logs bounded output.
 

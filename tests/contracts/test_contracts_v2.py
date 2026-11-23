@@ -1,10 +1,9 @@
 # Copyright 2026 OLO Labs
 # SPDX-License-Identifier: Apache-2.0
-"""Design gate D1: frozen v2 schemas, fixtures and proposed OpenAPI documents.
+"""Validate canonical v2 schemas, fixture coverage and OpenAPI references.
 
-Nothing consumes v2 yet. These checks keep the frozen artifacts valid, inside the
-structural subset the v2 generator design (docs/contracts/v2-generation.md) accepts,
-and separate from the served v1 contract until milestone M1 implements them.
+Both contract namespaces participate in the current generated bindings. These
+checks enforce the generator subset and explicit schema/fixture boundaries.
 """
 import json
 import unittest
@@ -40,7 +39,9 @@ class ContractsV2Tests(unittest.TestCase):
         return Draft202012Validator({'$ref': self.owner[name]+'#/$defs/'+name}, registry=self.registry)
 
     def test_schema_files_are_valid_versioned_and_licensed(self):
-        self.assertEqual(20, len(self.schemas))
+        self.assertEqual(22, len(self.schemas))
+        self.assertIn('native-files.schema.json', self.schemas)
+        self.assertIn('workflow-bundle.schema.json', self.schemas)
         self.assertIn('workflow-decision.schema.json', self.schemas)
         names = []
         for filename, schema in self.schemas.items():

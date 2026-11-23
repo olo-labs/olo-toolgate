@@ -98,13 +98,17 @@
           },
           "minItems": 1,
           "maxItems": 16
+        },
+        "standby": {
+          "type": "boolean",
+          "description": "Retain an unattached provider group in portable bot bundles. A standby group cannot be bound to a workflow or agent until explicitly activated."
         }
       },
       "required": [
         "id",
         "deploymentIds"
       ],
-      "description": "Profile declaration for WorkflowModelGroupDefinition; eligibility and configuration confer no runtime authority."
+      "description": "Ordered model candidates; selection intersects this order with the pinned workflow ceiling. Only provider inference failures permit fallback; effects are never retried."
     },
     "WorkflowAgentDefinition": {
       "type": "object",
@@ -227,6 +231,9 @@
         },
         "deployment": {
           "$ref": "#/$defs/WorkflowStackDeployment"
+        },
+        "graph": {
+          "$ref": "#/$defs/WorkflowGraphSelection"
         }
       },
       "required": [
@@ -239,7 +246,8 @@
         "parameterSchema",
         "resultSchema",
         "limits",
-        "agents"
+        "agents",
+        "graph"
       ],
       "description": "Profile declaration for WorkflowDefinition; eligibility and configuration confer no runtime authority."
     },
@@ -571,6 +579,11 @@
       "additionalProperties": false,
       "description": "Explicit bounded inference parameters selected from the pinned model deployment, never from a runner request.",
       "properties": {
+        "reasoningEffort": {
+          "type": "string",
+          "pattern": "^(none|low|medium|high)$",
+          "description": "Optional provider-supported reasoning control; none disables reasoning for the local structured-output demo."
+        },
         "maxOutputTokens": {
           "type": "integer",
           "minimum": 1,
@@ -938,6 +951,1185 @@
         "grafana",
         "tempo"
       ]
+    },
+    "WorkflowGraphSelection": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Pinned operator-installed native LangGraph factory. Configuration grants no runtime authority.",
+      "properties": {
+        "packageId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9.-]{0,127}$",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+[.][0-9]+[.][0-9]+$",
+          "minLength": 5,
+          "maxLength": 64
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "entryPoint": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,47}$",
+          "minLength": 1,
+          "maxLength": 48
+        },
+        "config": {
+          "type": "object",
+          "maxProperties": 64
+        }
+      },
+      "required": [
+        "packageId",
+        "version",
+        "digest",
+        "entryPoint",
+        "config"
+      ]
+    },
+    "WorkflowJsonNodeKind": {
+      "type": "string",
+      "enum": [
+        "value",
+        "agent",
+        "model",
+        "tool",
+        "branch"
+      ],
+      "description": "Installed JSON node operations. Unsupported executable extensions are refused, never evaluated from profile text."
+    },
+    "WorkflowJsonBranchRoutes": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Boolean branch destinations in the configured graph.",
+      "properties": {
+        "true": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 48,
+          "pattern": "^(?:[a-z][a-z0-9_-]{0,47}|END)$"
+        },
+        "false": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 48,
+          "pattern": "^(?:[a-z][a-z0-9_-]{0,47}|END)$"
+        }
+      },
+      "required": [
+        "true",
+        "false"
+      ]
+    },
+    "WorkflowJsonNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Pure node declaration; per-run capabilities are injected by the runtime, never captured in topology.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 48,
+          "pattern": "^[a-z][a-z0-9_-]{0,47}$"
+        },
+        "kind": {
+          "$ref": "#/$defs/WorkflowJsonNodeKind"
+        },
+        "input": {
+          "type": "object",
+          "maxProperties": 64
+        },
+        "agentId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "toolRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,127}/[a-z0-9][a-z0-9._-]{0,127}$"
+        },
+        "resultMode": {
+          "$ref": "#/$defs/WorkflowAgentResultMode"
+        },
+        "routes": {
+          "$ref": "#/$defs/WorkflowJsonBranchRoutes"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "input"
+      ]
+    },
+    "WorkflowJsonEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One edge or explicit all-predecessor join. START and END are reserved boundary names.",
+      "properties": {
+        "from": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 48,
+            "pattern": "^(?:[a-z][a-z0-9_-]{0,47}|START)$"
+          },
+          "maxItems": 64,
+          "minItems": 1
+        },
+        "to": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 48,
+          "pattern": "^(?:[a-z][a-z0-9_-]{0,47}|END)$"
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ]
+    },
+    "WorkflowJsonGraph": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Versioned, bounded JSON topology for the installed generic LangGraph compiler. Structure alone establishes no execution authority.",
+      "properties": {
+        "schemaVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorkflowJsonNode"
+          },
+          "maxItems": 64,
+          "minItems": 1
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorkflowJsonEdge"
+          },
+          "maxItems": 128,
+          "minItems": 1
+        },
+        "output": {
+          "type": "object",
+          "maxProperties": 64
+        },
+        "outputSchema": {
+          "type": "object",
+          "maxProperties": 64
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "nodes",
+        "edges",
+        "output",
+        "outputSchema"
+      ]
+    },
+    "WorkflowGraphBuildRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Control-authorized immutable candidate reference. Contains no arbitrary Python, paths, secrets or live clients.",
+      "properties": {
+        "tenantId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "profileId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "profileDigest": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 71,
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "workflowId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "expectedGeneration": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "tenantId",
+        "profileId",
+        "profileDigest",
+        "workflowId",
+        "expectedGeneration"
+      ]
+    },
+    "WorkflowGraphBuildResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Compilation receipt; this neither publishes configuration nor grants runtime authority.",
+      "properties": {
+        "tenantId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "profileId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "profileDigest": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 71,
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "workflowId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "specificationDigest": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 71,
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "compilerDigest": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 71,
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 48
+          },
+          "maxItems": 32,
+          "minItems": 0
+        },
+        "state": {
+          "type": "string",
+          "const": "READY"
+        }
+      },
+      "required": [
+        "tenantId",
+        "profileId",
+        "profileDigest",
+        "workflowId",
+        "generation",
+        "specificationDigest",
+        "compilerDigest",
+        "features",
+        "state"
+      ]
+    },
+    "WorkflowGraphCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reviewed immutable graph candidate read by a verified tenant runtime service. Carries configuration only, never execution credentials.",
+      "properties": {
+        "tenantId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "profileId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "profileDigest": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 71,
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "workflowId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "graph": {
+          "$ref": "#/$defs/WorkflowGraphSelection"
+        },
+        "agentIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+          },
+          "maxItems": 32,
+          "minItems": 0
+        }
+      },
+      "required": [
+        "tenantId",
+        "profileId",
+        "profileDigest",
+        "workflowId",
+        "generation",
+        "graph",
+        "agentIds"
+      ]
+    },
+    "WorkflowGraphCapabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Actual JSON compiler features and disposable cache statistics. This is not a readiness or execution grant.",
+      "properties": {
+        "entries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "capacity": {
+          "type": "integer",
+          "const": 128
+        },
+        "compilerDigest": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 71,
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 48
+          },
+          "maxItems": 32,
+          "minItems": 0
+        }
+      },
+      "required": [
+        "entries",
+        "capacity",
+        "compilerDigest",
+        "features"
+      ]
+    },
+    "WorkflowWorkerCapabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Authenticated worker capabilities. Control only leases runs pinned to this compiler and an installed graph digest; this grants no model or tool authority.",
+      "properties": {
+        "compilerDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Digest"
+        },
+        "graphDigests": {
+          "type": "array",
+          "items": {
+            "$ref": "identifiers.schema.json#/$defs/Digest"
+          },
+          "minItems": 0,
+          "maxItems": 128,
+          "uniqueItems": true
+        },
+        "instanceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier",
+          "description": "Unique worker process instance, stable across polling and credential refresh; not an authorization token."
+        }
+      },
+      "required": [
+        "compilerDigest",
+        "graphDigests",
+        "instanceId"
+      ]
+    },
+    "WorkflowRunStartRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profileDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Digest"
+        },
+        "expectedGeneration": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740990
+        },
+        "entryAgentId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32768
+        },
+        "dispatchBindingId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "profileDigest",
+        "expectedGeneration",
+        "entryAgentId",
+        "message"
+      ],
+      "description": "Explicit text input for one published bot. Backend derives service group and configured mode; current authority and idempotency remain required."
+    },
+    "WorkflowRunStartReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "runId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "profileId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "profileDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Digest"
+        },
+        "workflowId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "state": {
+          "type": "string",
+          "const": "QUEUED"
+        }
+      },
+      "required": [
+        "runId",
+        "profileId",
+        "profileDigest",
+        "workflowId",
+        "state"
+      ],
+      "description": "Durable acceptance receipt; it is not evidence of execution success."
+    },
+    "WorkflowProgressKind": {
+      "type": "string",
+      "enum": [
+        "NODE_COMPLETED",
+        "AGENT_STARTED",
+        "AGENT_COMPLETED",
+        "MODEL_STARTED",
+        "MODEL_COMPLETED",
+        "TOOL_STARTED",
+        "TOOL_COMPLETED",
+        "TOOL_FAILED"
+      ]
+    },
+    "WorkflowRunProgressRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "leaseId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "leaseToken": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{43}$",
+          "minLength": 43,
+          "maxLength": 43
+        },
+        "eventId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "kind": {
+          "$ref": "#/$defs/WorkflowProgressKind"
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_][a-zA-Z0-9_.:/-]{0,127}$"
+        },
+        "subjectId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "toolRef": {
+          "$ref": "identifiers.schema.json#/$defs/ToolId"
+        }
+      },
+      "required": [
+        "leaseId",
+        "leaseToken",
+        "eventId",
+        "kind"
+      ],
+      "description": "Lease-authenticated structural runtime observation. No input, output, provider text or credential is retained in progress evidence."
+    },
+    "WorkflowProgressSource": {
+      "type": "string",
+      "enum": [
+        "CONTROL",
+        "RUNTIME"
+      ]
+    },
+    "WorkflowRunProgressEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "source": {
+          "$ref": "#/$defs/WorkflowProgressSource"
+        },
+        "kind": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z_]{0,63}$",
+          "maxLength": 64
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_][a-zA-Z0-9_.:/-]{0,127}$"
+        },
+        "subjectId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "toolRef": {
+          "$ref": "identifiers.schema.json#/$defs/ToolId"
+        }
+      },
+      "required": [
+        "sequence",
+        "occurredAt",
+        "source",
+        "kind"
+      ],
+      "description": "Backend-recorded structural progress. Runtime reports do not attest tool effects or finality."
+    },
+    "WorkflowRunProgressPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/$defs/WorkflowRunProgressEvent"
+          }
+        },
+        "nextCursor": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "items",
+        "nextCursor"
+      ],
+      "description": "Ordered durable progress for one tenant/run; cursor advances only through returned events."
+    },
+    "WorkflowProfileDiagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profileId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "profileDigest": {
+          "$ref": "identifiers.schema.json#/$defs/Digest"
+        },
+        "blockers": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        }
+      },
+      "required": [
+        "profileId",
+        "profileDigest",
+        "blockers"
+      ],
+      "description": "Current tenant-scoped publication blockers, without credentials or remote payloads. Observational only; publication rechecks readiness."
+    },
+    "WorkflowModelResolveRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "runId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "stepToken": {
+          "type": "string",
+          "minLength": 43,
+          "maxLength": 43,
+          "pattern": "^[A-Za-z0-9_-]{43}$"
+        },
+        "candidateIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        }
+      },
+      "required": [
+        "runId",
+        "stepToken",
+        "candidateIndex"
+      ],
+      "description": "Gateway-only resolution of one authorized inference candidate, with current authority checked on every attempt."
+    },
+    "WorkflowModelResolveResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "origin": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 2048
+        },
+        "modelId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "credential": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192
+        },
+        "generation": {
+          "$ref": "#/$defs/WorkflowModelGeneration"
+        },
+        "deploymentId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "candidateIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        },
+        "candidateCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        },
+        "resultSchema": {
+          "type": "object",
+          "maxProperties": 64,
+          "description": "Pinned agent or workflow finish-result schema; local references only, never authority."
+        }
+      },
+      "required": [
+        "origin",
+        "modelId",
+        "credential",
+        "generation",
+        "deploymentId",
+        "candidateIndex",
+        "candidateCount",
+        "resultSchema"
+      ],
+      "description": "Private Gateway response; credentials must never be forwarded to runtime workers or logged."
+    },
+    "ApplicationPasswordLoginRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "username": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "password": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "username",
+        "password"
+      ],
+      "description": "V1 existing-user password login. Tenant is required in Toolgate-Tenant-ID; OAuth is not required."
+    },
+    "ApplicationAccessToken": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "accessToken": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "tokenType": {
+          "type": "string",
+          "pattern": "^Bearer$"
+        },
+        "expiresIn": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 900
+        }
+      },
+      "required": [
+        "accessToken",
+        "tokenType",
+        "expiresIn"
+      ],
+      "description": "Short-lived signed user/tenant access token. Obtain a new token through password login after expiry."
+    },
+    "WorkflowUserAuthority": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "userId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "principalId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "identityDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "humanScopes": {
+          "type": "array",
+          "items": {
+            "$ref": "../v1/enterprise.schema.json#/$defs/EnterpriseScope"
+          },
+          "maxItems": 512
+        },
+        "secretScopes": {
+          "type": "array",
+          "items": {
+            "$ref": "../v1/enterprise.schema.json#/$defs/EnterpriseScope"
+          },
+          "maxItems": 512
+        },
+        "agentScopes": {
+          "type": "array",
+          "items": {
+            "$ref": "../v1/enterprise.schema.json#/$defs/EnterpriseScope"
+          },
+          "maxItems": 512
+        },
+        "agentSecretScopes": {
+          "type": "array",
+          "items": {
+            "$ref": "../v1/enterprise.schema.json#/$defs/EnterpriseScope"
+          },
+          "maxItems": 512
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "$ref": "../v1/enterprise.schema.json#/$defs/EnterpriseScope"
+          },
+          "maxItems": 512
+        }
+      },
+      "required": [
+        "userId",
+        "principalId",
+        "identityDigest",
+        "humanScopes",
+        "secretScopes",
+        "agentScopes",
+        "agentSecretScopes",
+        "requiredScopes"
+      ],
+      "description": "Control-owned manual-run user and admitted resource ceiling, including a universal human/secret scope when admitted under live tenant Super Admin membership. Current grants or Super Admin membership and identity must still be checked. Never accepted from an external caller."
+    },
+    "ApplicationEventSource": {
+      "type": "string",
+      "enum": [
+        "WORKFLOW",
+        "TRIGGER"
+      ],
+      "description": "V1 external application ApplicationEventSource contract; current tenant and user authorization remain required."
+    },
+    "ApplicationEventKind": {
+      "type": "string",
+      "enum": [
+        "PROGRESS",
+        "RESULT",
+        "TRIGGER_STATUS"
+      ],
+      "description": "V1 external application ApplicationEventKind contract; current tenant and user authorization remain required."
+    },
+    "ApplicationEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "eventId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "tenantId": {
+          "$ref": "discovery.schema.json#/$defs/TenantUuid"
+        },
+        "sourceType": {
+          "$ref": "#/$defs/ApplicationEventSource"
+        },
+        "sourceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "kind": {
+          "$ref": "#/$defs/ApplicationEventKind"
+        },
+        "createdAtUnixMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "eventId",
+        "tenantId",
+        "sourceType",
+        "sourceId",
+        "sequence",
+        "kind",
+        "createdAtUnixMs",
+        "data"
+      ],
+      "description": "Durable structural notification. RESULT announces an available result; read the separately authorized result endpoint for private output."
+    },
+    "ApplicationEventPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApplicationEvent"
+          },
+          "maxItems": 200
+        },
+        "nextCursor": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "items",
+        "nextCursor"
+      ],
+      "description": "Bounded durable source events in sequence order. Cursors are scoped to one authorized source."
+    },
+    "ApplicationWebhookCreate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sourceType": {
+          "$ref": "#/$defs/ApplicationEventSource"
+        },
+        "sourceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "eventKinds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApplicationEventKind"
+          },
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "callbackUrl": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "after": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "sourceType",
+        "sourceId",
+        "eventKinds",
+        "callbackUrl",
+        "expiresAtUnixMs",
+        "after"
+      ],
+      "description": "Caller-owned HTTPS notification subscription. Source ID is a run ID or trigger assignment name. Verification and current source permissions are required before delivery."
+    },
+    "ApplicationWebhookDelivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "subscriptionId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "event": {
+          "$ref": "#/$defs/ApplicationEvent"
+        }
+      },
+      "required": [
+        "subscriptionId",
+        "event"
+      ],
+      "description": "Signed webhook delivery envelope. Use subscriptionId to select the signing key, verify timestamp and raw-body signature, then deduplicate by event.eventId."
+    },
+    "ApplicationWebhookState": {
+      "type": "string",
+      "enum": [
+        "PENDING",
+        "ACTIVE",
+        "REVOKED",
+        "FAILED",
+        "EXPIRED"
+      ],
+      "description": "V1 external application ApplicationWebhookState contract; current tenant and user authorization remain required."
+    },
+    "ApplicationWebhook": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "sourceType": {
+          "$ref": "#/$defs/ApplicationEventSource"
+        },
+        "sourceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "eventKinds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApplicationEventKind"
+          },
+          "minItems": 1,
+          "maxItems": 3
+        },
+        "callbackUrl": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "state": {
+          "$ref": "#/$defs/ApplicationWebhookState"
+        },
+        "nextCursor": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        }
+      },
+      "required": [
+        "id",
+        "sourceType",
+        "sourceId",
+        "eventKinds",
+        "callbackUrl",
+        "expiresAtUnixMs",
+        "state",
+        "nextCursor",
+        "attempts"
+      ],
+      "description": "Caller-owned registration metadata; no signing key or user token is exposed."
+    },
+    "ApplicationWebhookRegistration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "sourceType": {
+          "$ref": "#/$defs/ApplicationEventSource"
+        },
+        "sourceId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "eventKinds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApplicationEventKind"
+          },
+          "minItems": 1,
+          "maxItems": 3
+        },
+        "callbackUrl": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "expiresAtUnixMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "state": {
+          "$ref": "#/$defs/ApplicationWebhookState"
+        },
+        "nextCursor": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        },
+        "signingSecret": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{43}$"
+        }
+      },
+      "required": [
+        "id",
+        "sourceType",
+        "sourceId",
+        "eventKinds",
+        "callbackUrl",
+        "expiresAtUnixMs",
+        "state",
+        "nextCursor",
+        "attempts",
+        "signingSecret"
+      ],
+      "description": "Registration response, including a private per-subscription signing secret. Exact authenticated retries may recover the same secret; it is encrypted at rest and absent from list/read responses."
+    },
+    "ApplicationWebhookPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/$defs/ApplicationWebhook"
+          }
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "description": "V1 external application ApplicationWebhookPage contract; current tenant and user authorization remain required."
+    },
+    "ApplicationWebhookChallenge": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "pattern": "^VERIFY$"
+        },
+        "subscriptionId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "challenge": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "type",
+        "subscriptionId",
+        "challenge"
+      ],
+      "description": "Signed destination-ownership challenge. Return HMAC-SHA256(secret, verify.subscriptionId.challenge) using the supplied subscription ID and challenge as proof."
+    },
+    "ApplicationWebhookVerificationProof": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "proof": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "proof"
+      ],
+      "description": "V1 external application ApplicationWebhookVerificationProof contract; current tenant and user authorization remain required."
+    },
+    "ApplicationTriggerStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "assignmentId": {
+          "$ref": "identifiers.schema.json#/$defs/Identifier"
+        },
+        "status": {
+          "$ref": "trigger.schema.json#/$defs/TriggerAssignmentStatus"
+        }
+      },
+      "required": [
+        "assignmentId",
+        "status"
+      ],
+      "description": "Structural status for one readable trigger assignment, without configuration or source event payloads."
     }
   }
 }

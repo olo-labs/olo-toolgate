@@ -12,10 +12,16 @@ from urllib.request import Request
 from .runner import Agent, AgentStage, Candidate, CompletionAck, ContextSource, Denied, ID, Limits, OwnershipLost, RunLease, StepGrant, Tool, ToolOutcome
 from .trigger_bridge import _constant, _object
 from .trigger_transport import ControlTriggers
+from .graph_packages import GraphPackages, validate_selection
+from .compiler_identity import COMPILER_DIGEST
 
 
 class RunTransportError(Exception):
     """A bounded error that carries no response body or credential."""
+    def __init__(self,message,stage=None,*,auth_required=False):
+        super().__init__(message)
+        self.auth_required=auth_required
+        self.stage=stage if stage in ('transport','headers','json','identity','result') else None
 
 
 def _record(value, fields):
@@ -44,7 +50,8 @@ def _agent(value):
 
 def _lease(value):
     data = _record(value, "runId leaseId workflowId workflowVersionId profileDigest leaseToken message supervisorPrompt "
-                         "supervisorModelGroupId limits agents contextSources remediationMode expiresAtUnixMs agentStages")
+                         "supervisorModelGroupId limits agents contextSources remediationMode expiresAtUnixMs agentStages graph compilerDigest")
+    validate_selection(data["graph"])
     if (not isinstance(data["leaseToken"], str) or not re.fullmatch(r"[A-Za-z0-9_-]{43}", data["leaseToken"])
             or type(data["expiresAtUnixMs"]) is not int or data["expiresAtUnixMs"] <= 0
             or not isinstance(data["agents"], list) or not 1 <= len(data["agents"]) <= 32):
@@ -57,11 +64,16 @@ def _lease(value):
     return RunLease(data["runId"], data["leaseId"], data["workflowId"], data["workflowVersionId"], data["profileDigest"],
                     data["leaseToken"], data["message"], data["supervisorPrompt"], data["supervisorModelGroupId"],
                     Limits(limits["maxSteps"], limits["maxHandoffs"], limits["maxDurationSeconds"]),
-                    tuple(map(_agent, data["agents"])), _contexts(data["contextSources"]), data["remediationMode"], stages)
+                    tuple(map(_agent, data["agents"])), data["graph"], data["compilerDigest"], _contexts(data["contextSources"]), data["remediationMode"], stages)
 
 
 class ControlRuns(ControlTriggers):
     """Reuse the Control TLS policy with a separate workload credential."""
+
+    def __init__(self,*args,graph_directory=None,**kwargs):
+        super().__init__(*args,**kwargs)
+        self.graph_packages=GraphPackages(graph_directory)
+        self.instance_id='worker-'+uuid.uuid4().hex
 
     def _runtime_request(self, path, payload, *, timeout_seconds, allow_empty=False):
         try:
@@ -83,9 +95,13 @@ class ControlRuns(ControlTriggers):
                 raw = response.read(262145)
                 if len(raw) > 262144:
                     raise ValueError("Runtime response exceeds limit")
-                return json.loads(raw, object_pairs_hook=_object, parse_constant=_constant)
+                value=json.loads(raw, object_pairs_hook=_object, parse_constant=_constant)
+                if not isinstance(value,dict):raise ValueError('Runtime response must be an object')
+                return value
         except HTTPError as failure:
             with failure:
+                if failure.code in (401,403) and path in ('claim','workers:heartbeat'):
+                    raise RunTransportError('Runtime service authentication required',auth_required=True) from None
                 if failure.code in (401, 403, 409) and not allow_empty:
                     if path.endswith("/finish"):
                         raise OwnershipLost("Run lease is unavailable") from None
@@ -95,13 +111,23 @@ class ControlRuns(ControlTriggers):
             raise RunTransportError("Control runtime request failed") from None
 
     def claim(self):
-        value = self._runtime_request("claim", {}, timeout_seconds=self.timeout, allow_empty=True)
+        graphs=self.graph_packages.installed_digests()
+        value = self._runtime_request("claim", {'instanceId':self.instance_id,'compilerDigest':COMPILER_DIGEST,'graphDigests':list(graphs)}, timeout_seconds=self.timeout, allow_empty=True)
         if value is None:
             return None
         try:
-            return _lease(value)
+            lease=_lease(value)
+            if lease.compiler_digest!=COMPILER_DIGEST or lease.graph['digest'] not in graphs:
+                raise ValueError('Unmatched run capabilities')
+            return lease
         except (ValueError, TypeError):
             raise RunTransportError("Invalid Control run snapshot") from None
+
+    def heartbeat(self):
+        value=self._runtime_request('workers:heartbeat', {'instanceId':self.instance_id,'compilerDigest':COMPILER_DIGEST,
+            'graphDigests':list(self.graph_packages.installed_digests())},timeout_seconds=min(self.timeout,10),allow_empty=True)
+        if value is not None:
+            raise RunTransportError('Invalid worker heartbeat acknowledgement')
 
     @staticmethod
     def _run_path(lease, operation):
@@ -122,6 +148,11 @@ class ControlRuns(ControlTriggers):
         except ValueError:
             raise RunTransportError("Invalid Control step grant") from None
 
+    def progress(self,lease,kind,**details):
+        self._runtime_request(self._run_path(lease,"progress"),
+            {"leaseId":lease.lease_id,"leaseToken":lease.lease_token,"eventId":"progress-"+uuid.uuid4().hex,"kind":kind,**details},
+            timeout_seconds=5,allow_empty=True)
+
     def finish(self, lease, outcome, *, timeout_seconds):
         value = self._runtime_request(self._run_path(lease, "finish"),
                                       {"leaseId": lease.lease_id, "leaseToken": lease.lease_token, "state": outcome.state,
@@ -139,6 +170,15 @@ class GatewayRuntime(ControlTriggers):
 
     def __init__(self, origin, *, ca_file=None, timeout_seconds=30):
         super().__init__(origin, lambda: "", ca_file=ca_file, timeout_seconds=timeout_seconds)
+
+    def probe(self):
+        """Read-only readiness; never inference, discovery, authorization or an effect."""
+        try:
+            request=Request(self.origin+'/v1/health/ready',headers={'Accept':'application/json'})
+            with self._opener.open(request,timeout=min(5,self.timeout)) as response:
+                if response.status!=200:raise ValueError('Gateway not ready')
+        except Exception:
+            raise RunTransportError('Gateway is unavailable') from None
 
     def infer(self, lease, grant, *, system_prompt, messages, tools, candidates, timeout_seconds):
         decisions = ['{"kind":"finish","result":{...}}']
@@ -200,6 +240,7 @@ class GatewayRuntime(ControlTriggers):
             params.update(name=tool_id, arguments=arguments)
             headers["MCP-Name"] = tool_id
         body = json.dumps({"jsonrpc": "2.0", "id": rpc_id, "method": method, "params": params}, allow_nan=False).encode()
+        stage='transport'
         try:
             timeout = min(self.timeout, timeout_seconds)
             if len(body) > 98304 or timeout <= 0:
@@ -207,14 +248,18 @@ class GatewayRuntime(ControlTriggers):
             request = Request(self.origin + "/mcp", body, headers, method="POST")
             with self._opener.open(request, timeout=timeout) as response:
                 raw = response.read(98305)
+                stage='headers'
                 if response.status != 200 or len(raw) > 98304 or response.headers.get_content_type() != "application/json":
                     raise ValueError("Invalid MCP response")
+                stage='json'
                 value = json.loads(raw, object_pairs_hook=_object, parse_constant=_constant)
+                stage='identity'
                 if value.get("jsonrpc") != "2.0" or value.get("id") != rpc_id:
                     raise ValueError("Invalid MCP reply identity")
                 if isinstance(value.get("error"), dict) and value["error"].get("data", {}).get("state") == "OUTCOME_UNKNOWN":
                     return {"_meta": {"io.ololabs.toolgate/operationOutcome": {"state": "OUTCOME_UNKNOWN"}}}
                 if not isinstance(value.get("result"), dict) or "error" in value:
+                    stage='result'
                     raise ValueError("Invalid MCP result")
                 return value["result"]
         except HTTPError as failure:
@@ -225,9 +270,9 @@ class GatewayRuntime(ControlTriggers):
                     return {"tools": []}
                 if failure.code in (401, 403):
                     raise Denied("Gateway refused the tool request") from None
-            raise RunTransportError("Gateway tool request failed") from None
+            raise RunTransportError("Gateway tool request failed",stage) from None
         except Exception:
-            raise RunTransportError("Gateway tool request failed") from None
+            raise RunTransportError("Gateway tool request failed",stage) from None
 
     def discover_tools(self, lease, grant, *, timeout_seconds):
         result = self._mcp(lease, grant, "tools/list", timeout_seconds)

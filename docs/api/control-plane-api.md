@@ -1,5 +1,8 @@
 # Control Plane API
 
+Use [external workflow applications](workflow-applications.md) for tenant-bound
+password login, ordinary-user bot execution, live events and HTTPS callbacks.
+
 The console consumes this canonical API on the same origin. Generated operation
 metadata imports the shared TypeScript contracts. Device-management operations
 are defined in the canonical OpenAPI and schemas, with no browser-owned security
@@ -61,4 +64,4 @@ require their actual certificate-bound identity. See [approvals](../control-plan
 
 Mutations use the operation's canonical revision and idempotency contract. Stale
 revisions require reloading; replay cannot broaden scope or duplicate effects.
-See [errors and idempotency](errors-and-idempotency.md).
+See [errors and idempotency](api-reference.md).

@@ -1,5 +1,8 @@
 # Architecture
 
+OLO Orchestration authors and executes bots. OLO ToolGate governs device, tool
+and access boundaries. Technical component/package identifiers remain unchanged.
+
 ToolGate separates current authorization, administration and execution. Control
 owns tenant state and policy decisions; Gateway authenticates and routes requests;
 registered executors perform protected effects under Control-issued permits.
@@ -25,5 +28,5 @@ participate in current runtime authorization.
 Read the [architecture overview](docs/architecture/overview.md),
 [component map](docs/architecture/component-map.md),
 [trust boundaries](docs/architecture/trust-boundaries.md),
-[shared contracts](docs/architecture/shared-contracts.md) and
-[architecture decisions](docs/adr/README.md). Discuss proposed capabilities in GitHub issues.
+[shared contracts](docs/development/schema-workflow.md) and
+[architecture decisions](docs/architecture/README.md). Discuss proposed capabilities in GitHub issues.

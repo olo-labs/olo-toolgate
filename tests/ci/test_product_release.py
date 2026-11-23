@@ -315,10 +315,19 @@ class PackageVersionTests(unittest.TestCase):
             tar(f'olo-toolgate-admin-ui-{version}.tar',{'release.json':json.dumps(dict(version=version,contracts=version))})
             with zipfile.ZipFile(assets/f'olo-toolgate-contracts-php-{version}.zip','w') as archive:
                 archive.writestr('src/ContractSet.php',f"public const VERSION = '{version}';")
-            pipeline.verify_packages(release(), assets)
-            jar(f'toolgate-sdk-api-{version}.jar','0.10.0-dev')
-            with self.assertRaisesRegex(ValueError,'JAR embedded version'):
-                pipeline.verify_packages(release(), assets)
+            from bot.bundle import pack,digest
+            config=copy.deepcopy(json.loads((ROOT/'tests/fixtures/contracts/v2/valid.json').read_text(encoding='utf-8'))['WorkflowConfiguration'])
+            config['dispatchBindings']=[]
+            for agent in config['agentDefinitions']:agent['contextSources']=[]
+            data,manifest=pack(dict(profileVersion=2,profileId='test',packages=[],workflows=config),{},[],[],dict(version=version,sourceCommit=PREPARED,build='42'))
+            (assets/'test-profile.olo').write_bytes(data)
+            identity=('test',config['workflows'][0]['id'])
+            prepare.write_json(assets/f'olo-profiles-{version}.json',dict(format='olo-profiles',version=version,sourceCommit=PREPARED,profiles=[dict(configuration=identity[0],workflowId=identity[1],filename='test-profile.olo',sha256=digest(data),bytes=len(data),packages=manifest['packages'])]))
+            with patch('tools.release.profiles.expected_profiles',return_value={identity}), patch('tools.release.tool_packages.validate'):
+                pipeline.verify_packages(dict(release(),commit=PREPARED), assets)
+                jar(f'toolgate-sdk-api-{version}.jar','0.10.0-dev')
+                with self.assertRaisesRegex(ValueError,'JAR embedded version'):
+                    pipeline.verify_packages(dict(release(),commit=PREPARED), assets)
 
 
 class OriginalBuildGateTests(unittest.TestCase):

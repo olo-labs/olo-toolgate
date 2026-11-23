@@ -7,13 +7,36 @@ from pathlib import Path
 import tempfile
 from types import SimpleNamespace
 import unittest
+import threading
 from unittest.mock import Mock
 
 from toolgate_runtime.runner import Denied, RunOutcome, StepGrant, ToolOutcome
-from toolgate_runtime.worker import ExecutionEvidence, log_result
+from toolgate_runtime.worker import ExecutionEvidence, WorkerPresence, log_result
+from toolgate_runtime.run_transport import RunTransportError
 
 
 class ExecutionEvidenceTests(unittest.TestCase):
+    def test_presence_renews_while_execution_is_busy_without_claiming_another_run(self):
+        control=Mock();renewed=threading.Event()
+        control.heartbeat.side_effect=lambda:renewed.set() if control.heartbeat.call_count>1 else None
+        presence=WorkerPresence(control,interval=.01)
+        try:
+            presence.start()
+            self.assertTrue(renewed.wait(1),'busy execution must not stop capability renewal')
+            presence.require_current()
+            control.claim.assert_not_called()
+        finally:presence.close()
+        self.assertFalse(presence.thread.is_alive())
+
+    def test_presence_failure_stops_new_claims_without_exposing_the_error(self):
+        control=Mock();control.heartbeat.side_effect=[None,RunTransportError('private credential details')]
+        presence=WorkerPresence(control,interval=.01)
+        try:
+            presence.start();self.assertTrue(presence.failed.wait(1))
+            with self.assertRaisesRegex(RunTransportError,'^Worker presence is unavailable$'):presence.require_current()
+            control.claim.assert_not_called()
+        finally:presence.close()
+
     def setUp(self):
         self.adapter = Mock()
         self.evidence = ExecutionEvidence(self.adapter)
@@ -48,6 +71,15 @@ class ExecutionEvidenceTests(unittest.TestCase):
                 self.adapter.call_tool.assert_called_once()
                 self.assertNotIn('private', json.dumps(self.evidence.summary()))
 
+    def test_diagnostic_stages_are_bounded_and_never_log_error_content(self):
+        for stage,expected in [('json','json'),('private-response-body',None)]:
+            self.adapter.call_tool.side_effect=RunTransportError('private-token-body',stage)
+            with self.assertRaises(RunTransportError):self.evidence.call_tool(None,self.grant,'files/list',{})
+            observation=self.evidence.summary()['tools'][-1]
+            self.assertEqual(expected,observation.get('failureStage'))
+            self.assertEqual('OUTCOME_UNKNOWN',observation['state'])
+            self.assertNotIn('private',json.dumps(observation))
+
     def test_evidence_is_scoped_to_each_run(self):
         self.adapter.infer.return_value = {'kind': 'finish', 'result': {}}
         self.evidence.infer(None, self.grant)
@@ -56,7 +88,7 @@ class ExecutionEvidenceTests(unittest.TestCase):
     def test_explicit_result_logging_is_private_and_never_overwrites_a_run(self):
         with tempfile.TemporaryDirectory() as folder:
             directory = Path(folder) / 'results'
-            lease = SimpleNamespace(run_id='run-1', workflow_id='triage')
+            lease = SimpleNamespace(run_id='run-1', workflow_id='triage', graph={'packageId':'example.graph','version':'1.0.0','digest':'sha256:'+'a'*64,'entryPoint':'run'})
             log_result(directory, lease, RunOutcome('SUCCEEDED', {'issueId': 'issue-123'}))
             path = directory / 'run-1.json'
             self.assertEqual({'issueId': 'issue-123'}, json.loads(path.read_text())['result'])

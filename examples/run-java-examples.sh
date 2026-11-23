@@ -10,7 +10,7 @@ here="$(cd "$(dirname "$0")" && pwd)"
 root="$(cd "$here/.." && pwd)"
 out="$root/build/java-tool-examples"
 
-(cd "$root" && ./gradlew -q --configure-on-demand publishJavaSdkLocally && cargo build -q -p toolgate-cli)
+(cd "$root" && ./gradlew -q --configure-on-demand -I tools/ci/sdk-isolation.init.gradle :publishJavaSdkLocally && cargo build -q -p toolgate-cli)
 export TOOLGATE_CLI="${CARGO_TARGET_DIR:-$root/target}/debug/toolgate"
 builds=(java-tools mocked-tools)
 expected=0
@@ -24,8 +24,8 @@ mkdir -p "$out"
 java="$(command -v java)"
 request='{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}'
 count=0
-for package in "$here"/java-tools/*/build/toolgate/*.tgpkg "$here"/mocked-tools/*/build/toolgate/*.tgpkg; do
-  name="$(basename "$package" .tgpkg)"
+for package in "$here"/java-tools/*/build/toolgate/*.olotool "$here"/mocked-tools/*/build/toolgate/*.olotool; do
+  name="$(basename "$package" .olotool)"
   "$TOOLGATE_CLI" verify "$package" >/dev/null
   mkdir -p "$out/$name"
   (cd "$out/$name" && jar xf "$package" artifacts/tool.jar)

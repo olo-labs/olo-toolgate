@@ -400,7 +400,7 @@
       "value": {
         "packageId": "examples.notify",
         "version": "0.1.0",
-        "url": "https://elsewhere.example.com/x.tgpkg"
+        "url": "https://elsewhere.example.com/x.olotool"
       }
     }
   ],
@@ -3964,6 +3964,43 @@
         "disposition": "ADMITTED",
         "runId": "run-1",
         "workflowId": "foreign"
+      }
+    }
+  ],
+  "TriggerTarget": [
+    {
+      "case": "empty required device group set",
+      "value": {
+        "executor": "CLIENT",
+        "requiredDeviceGroupSets": [
+          []
+        ]
+      }
+    },
+    {
+      "case": "duplicate groups in required set",
+      "value": {
+        "executor": "CLIENT",
+        "requiredDeviceGroupSets": [
+          [
+            "finance",
+            "finance"
+          ]
+        ]
+      }
+    },
+    {
+      "case": "duplicate required group sets",
+      "value": {
+        "executor": "CLIENT",
+        "requiredDeviceGroupSets": [
+          [
+            "finance"
+          ],
+          [
+            "finance"
+          ]
+        ]
       }
     }
   ]

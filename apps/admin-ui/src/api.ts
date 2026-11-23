@@ -91,11 +91,20 @@ export class ControlClient {
     return this.send(operations.getPublishedWorkflow,{params:{profileId,digest},signal});
   }
   async workflowProfiles(after?:Pick<import('@olo-labs/toolgate-contracts/v2').WorkflowProfileStatus,'profileId'|'profileDigest'>,signal?:AbortSignal):Promise<readonly import('@olo-labs/toolgate-contracts/v2').WorkflowProfileStatus[]>{const query=new URLSearchParams({limit:'50'});if(after){query.set('afterProfileId',after.profileId);query.set('afterDigest',after.profileDigest);}const page=await this.send<readonly import('@olo-labs/toolgate-contracts/v2').WorkflowProfileStatus[]>(operations.listWorkflowProfiles,{query,signal});if(!Array.isArray(page))throw new ApiError(502,'INVALID_RESPONSE');return page;}
+  startWorkflowRun(profileId:string,workflowId:string,body:import('@olo-labs/toolgate-contracts/v2').WorkflowRunStartRequest,key:string):Promise<import('@olo-labs/toolgate-contracts/v2').WorkflowRunStartReceipt>{return this.send(operations.startWorkflowRun,{params:{profileId,workflowId},body,key});}
+  workflowRun(runId:string,signal?:AbortSignal):Promise<{runId:string;workflowId:string;workflowVersionId:string;profileDigest:string;state:string;message:string;outcome:{result:unknown;code?:string|null}|null}>{return this.send(operations.getWorkflowRunResult,{params:{runId},signal});}
+  workflowRunProgress(runId:string,after:number,signal?:AbortSignal):Promise<import('@olo-labs/toolgate-contracts/v2').WorkflowRunProgressPage>{return this.send(operations.getWorkflowRunProgress,{params:{runId},query:new URLSearchParams({after:String(after)}),signal});}
   stageWorkflowProfile(body:import('@olo-labs/toolgate-contracts/v2').DeploymentProfile):Promise<import('@olo-labs/toolgate-contracts/v2').WorkflowProfileStatus>{return this.send(operations.stageWorkflowProfile,{body});}
   workflowProfileDocument(profileId:string,digest:string):Promise<import('@olo-labs/toolgate-contracts/v2').DeploymentProfile>{return this.send(operations.getWorkflowProfileDocument,{params:{profileId,digest}});}
-  workflowProfileStatus(profileId:string,digest:string):Promise<import('@olo-labs/toolgate-contracts/v2').WorkflowProfileStatus>{return this.send(operations.getWorkflowProfileRevision,{params:{profileId,digest}});}
+  workflowProfileStatus(profileId:string,digest:string,signal?:AbortSignal):Promise<import('@olo-labs/toolgate-contracts/v2').WorkflowProfileStatus>{return this.send(operations.getWorkflowProfileRevision,{params:{profileId,digest},signal});}
+  async workflowProfileDiagnostics(profileId:string,digest:string,signal?:AbortSignal):Promise<import('@olo-labs/toolgate-contracts/v2').WorkflowProfileDiagnostics>{
+    const result=await this.send<import('@olo-labs/toolgate-contracts/v2').WorkflowProfileDiagnostics>(operations.getWorkflowProfileDiagnostics,{params:{profileId,digest},signal});
+    if(!result||!Array.isArray(result.blockers)||result.blockers.length>128||result.blockers.some(item=>typeof item!=='string'||!item.length||item.length>512))throw new ApiError(502,'INVALID_RESPONSE');
+    return result;
+  }
   reviewWorkflowProfile(profileId:string,profileDigest:string):Promise<import('@olo-labs/toolgate-contracts/v2').WorkflowProfileStatus>{return this.send(operations.reviewWorkflowProfile,{params:{profileId},body:{profileDigest}});}
   provisionWorkflowProfile(profileId:string,profileDigest:string):Promise<import('@olo-labs/toolgate-contracts/v2').ProvisioningStatus>{return this.send(operations.provisionWorkflowProfile,{params:{profileId},body:{profileDigest}});}
+  prepareWorkflowGraphs(profileId:string,profileDigest:string,expectedGeneration:number):Promise<readonly import('@olo-labs/toolgate-contracts/v2').WorkflowGraphBuildResult[]>{return this.send(operations.prepareWorkflowGraphs,{params:{profileId},body:{profileDigest,expectedGeneration}});}
   publishWorkflowProfile(profileId:string,profileDigest:string,expectedGeneration:number):Promise<import('@olo-labs/toolgate-contracts/v2').WorkflowProfileStatus>{return this.send(operations.publishWorkflowProfile,{params:{profileId},body:{profileDigest,expectedGeneration}});}
   killOverview(signal?:AbortSignal):Promise<import('@olo-labs/toolgate-contracts/v2').KillOverview>{return this.send(operations.killDeliveryOverview,{signal});}
   killProposals(after?:string,signal?:AbortSignal):Promise<readonly import('@olo-labs/toolgate-contracts/v2').KillProposal[]>{const query=new URLSearchParams({limit:'50'});if(after)query.set('after',after);return this.send(operations.listKillProposals,{query,signal});}
@@ -178,10 +187,22 @@ export class ControlClient {
     return this.send(operations.createTriggerStreamTicket,{signal});
   }
   triggerSubscriptions(signal?:AbortSignal):Promise<import('@olo-labs/toolgate-contracts/v2').TriggerSubscriptionPage>{return this.send(operations.listTriggerSubscriptions,{signal});}
+  createTriggerSubscription(body:import('@olo-labs/toolgate-contracts/v2').TriggerSubscriptionCreate,key:string):Promise<import('@olo-labs/toolgate-contracts/v2').TriggerSubscription>{return this.send(operations.createTriggerSubscription,{body,key});}
   serverPackages(signal?:AbortSignal):Promise<PackageVersionPage>{return this.send(operations.listServerPackageVersions,{signal});}
   serverDeployments(signal?:AbortSignal):Promise<PackageDeploymentPage>{return this.send(operations.listServerPackageDeployments,{signal});}
-  /** The exact .tgpkg bytes; Control verifies them before storing anything. */
-  uploadServerPackage(file:Blob):Promise<PackageVersion>{return this.send(operations.uploadServerPackage,{raw:file,contentType:'application/vnd.ololabs.toolgate.package+zip',timeoutMs:120000});}
+  /** The exact .olotool bytes; Control verifies them before storing anything. */
+  uploadServerPackage(file:Blob):Promise<PackageVersion>{if(file instanceof File&&!file.name.endsWith('.olotool'))throw new ApiError(400,'PACKAGE_EXTENSION');return this.send(operations.uploadServerPackage,{raw:file,contentType:'application/vnd.ololabs.toolgate.package+zip',timeoutMs:120000});}
+  async exportServerPackage(digest:string):Promise<Uint8Array>{
+    if(!/^sha256:[a-f0-9]{64}$/.test(digest))throw new ApiError(400,'PACKAGE_DIGEST');
+    const signal=AbortSignal.any([this.lifetime.signal,AbortSignal.timeout(120000)]);
+    const response=await this.transport(operations.exportServerPackage.path.replace('{digest}',encodeURIComponent(digest)),{headers:{Authorization:`Bearer ${this.token}`,Accept:'application/vnd.ololabs.toolgate.package+zip'},signal,credentials:'omit',cache:'no-store',redirect:'error'});
+    if(response.status===401){this.dispose();this.onUnauthorized();}
+    if(!response.ok)throw new ApiError(response.status,'PACKAGE_EXPORT');
+    const reader=response.body?.getReader();if(!reader||!response.headers.get('content-type')?.startsWith('application/vnd.ololabs.toolgate.package+zip')){await reader?.cancel();throw new ApiError(502,'PACKAGE_RESPONSE');}
+    const chunks:Uint8Array[]=[];let length=0;
+    try{while(true){const chunk=await reader.read();if(chunk.done)break;length+=chunk.value.length;if(length>64*1024*1024)throw new ApiError(413,'PACKAGE_LIMIT');chunks.push(chunk.value);}}finally{await reader.cancel();}
+    const result=new Uint8Array(length);let offset=0;for(const chunk of chunks){result.set(chunk,offset);offset+=chunk.length;}return result;
+  }
   deployServerPackage(body:PackageDeploymentRequest):Promise<PackageDeployment>{return this.send(operations.deployServerPackage,{body});}
   mcpServers(signal?:AbortSignal):Promise<McpServerRegistrationPage>{return this.send(operations.listMcpServers,{signal});}
   mcpServer(slug:string,signal?:AbortSignal):Promise<McpServerRegistration>{return this.send(operations.getMcpServer,{params:{slug},signal});}

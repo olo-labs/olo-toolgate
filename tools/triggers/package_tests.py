@@ -11,9 +11,13 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
+import time
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(ROOT))
+from tools.ci import gradle_build
 FIELDS = {'schemaVersion', 'providerMode', 'packageId', 'buildRoot', 'project', 'startConfig'}
 NAME = re.compile(r'[a-z][a-z0-9._-]{0,95}')
 
@@ -77,16 +81,22 @@ def discover(root=ROOT):
     return entries
 
 
-def run(entry, sdk_repo, cli, sdk_version):
+def gradle(command, env, output, *, sleep=time.sleep):
+    """Use the shared bounded dependency recovery for SDK and package builds."""
+    gradle_build.build(command,output,cwd=ROOT,env=env,sleep=sleep)
+
+
+def run(entry, sdk_repo, cli, sdk_version, *, offline=False):
     package = ROOT/entry['directory']
     prefix = ':'+entry['project']+':' if entry['project'] else ''
     env = dict(os.environ, TOOLGATE_CLI=str(cli), TOOLGATE_TEST_PROVIDER_MODE='mock')
     wrapper = ROOT/('gradlew.bat' if os.name == 'nt' else 'gradlew')
-    command = [str(wrapper), '--no-daemon', '-p', str(ROOT/entry['buildRoot']),
-               '-PtoolgateSdkRepo='+str(sdk_repo), '-PtoolgateSdkVersion='+sdk_version,
+    command = [str(wrapper), '--no-daemon', '--console=plain', '-p', str(ROOT/entry['buildRoot']),
+               '-PtoolgateSdkRepo='+str(sdk_repo), '-Dmaven.repo.local='+str(sdk_repo), '-PtoolgateSdkVersion='+sdk_version,
                prefix+'check', prefix+'toolgatePackage']
-    subprocess.run(command, cwd=ROOT, env=env, check=True)
-    artifacts = list((package/'build/toolgate').glob('*.tgpkg'))
+    if offline:command.append('--offline')
+    gradle(command,env,ROOT/'build/trigger-package-tests'/entry['packageId'])
+    artifacts = list((package/'build/toolgate').glob('*.olotool'))
     if len(artifacts) != 1:
         raise ValueError('Expected one current package artifact')
     artifact = artifacts[0]
@@ -120,6 +130,9 @@ def run(entry, sdk_repo, cli, sdk_version):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--prepare-sdk', action='store_true', help='Publish the shared SDK with bounded dependency-throttling retries')
+    parser.add_argument('--prepare-dependencies', action='store_true', help='Resolve every package classpath once for the offline matrix')
+    parser.add_argument('--offline', action='store_true', help='Require prepared dependency caches; never fetch from Maven')
     parser.add_argument('--matrix', action='store_true')
     parser.add_argument('--github-output', action='store_true')
     parser.add_argument('--package', default=os.environ.get('TOOLGATE_TEST_PACKAGE'))
@@ -127,6 +140,27 @@ def main():
     parser.add_argument('--cli', type=Path, default=os.environ.get('TOOLGATE_CLI'))
     parser.add_argument('--sdk-version-file', type=Path, default=ROOT/'VERSION')
     args = parser.parse_args()
+    if args.prepare_dependencies:
+        if args.prepare_sdk or args.matrix or args.package or args.offline or args.sdk_repo is None:
+            parser.error('Dependency preparation requires --sdk-repo and no execution/discovery mode')
+        wrapper=ROOT/('gradlew.bat' if os.name=='nt' else 'gradlew')
+        for entry in discover():
+            prefix=':'+entry['project']+':' if entry['project'] else ':'
+            command=[str(wrapper),'--no-daemon','--no-configuration-cache','--console=plain',
+                '-p',str(ROOT/entry['buildRoot']),'-I',str(ROOT/'tools/ci/resolve-package-dependencies.init.gradle'),
+                '-PtoolgateSdkRepo='+str(args.sdk_repo.resolve()),'-Dmaven.repo.local='+str(args.sdk_repo.resolve()),
+                '-PtoolgateSdkVersion='+args.sdk_version_file.read_text().strip(),prefix+'toolgateResolveDependencies']
+            gradle(command,dict(os.environ,TOOLGATE_TEST_PROVIDER_MODE='mock'),
+                   ROOT/'build/trigger-package-sdk/dependency-logs'/entry['packageId'])
+        return
+    if args.prepare_sdk:
+        if args.matrix or args.package:
+            parser.error('SDK preparation cannot be combined with package discovery or execution')
+        wrapper=ROOT/('gradlew.bat' if os.name=='nt' else 'gradlew')
+        gradle([str(wrapper),'--no-daemon','--console=plain','--configure-on-demand',
+            '-I','tools/ci/sdk-isolation.init.gradle','-PprebuiltAdminUi=true',':publishJavaGradleSdkLocally'],
+            dict(os.environ),ROOT/'build/trigger-package-sdk/logs')
+        return
     if args.matrix:
         entries = discover()
         matrix = json.dumps({'include': [dict(package=entry['directory'], key=entry['packageId']) for entry in entries]}, separators=(',', ':'))
@@ -138,7 +172,7 @@ def main():
     if not args.package or args.sdk_repo is None or args.cli is None:
         parser.error('Select a registered package and supply the local SDK repository and CLI')
     entry = load(ROOT, ROOT/args.package/'trigger-tests.json')
-    run(entry, args.sdk_repo.resolve(), args.cli.resolve(), args.sdk_version_file.read_text().strip())
+    run(entry, args.sdk_repo.resolve(), args.cli.resolve(), args.sdk_version_file.read_text().strip(),offline=args.offline)
 
 
 if __name__ == '__main__':

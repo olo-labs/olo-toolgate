@@ -54,6 +54,16 @@ Install Java 21, Python 3.12+, Node 22, PHP 8.2+, Rust (the repository pins a st
 toolchain with fmt/clippy), Helm 3.17.3 and GNU Make. Gradle bootstraps its pinned,
 SHA-256-verified distribution; a global Gradle installation is unnecessary.
 
+Hosted Java jobs select the Ubuntu runner's installed JDK 21 using
+`python3 tools/ci/select_java.py`. The selector verifies both Java and javac
+before exporting `JAVA_HOME` and adding its `bin` directory to `GITHUB_PATH`.
+It uses `JAVA_HOME_21_X64`, or `JAVA_HOME` in local replay images, and fails
+if the installation is missing, unusable or reports a different major version.
+The JDK patch version follows the runner image. No setup action or JDK is
+downloaded for this selection, avoiding `actions/setup-java` archive timeouts
+during job preparation. Other action downloads still depend on GitHub availability;
+timeouts there happen before repository steps and require rerunning the job.
+
 ```sh
 python3 -m venv .venv
 . .venv/bin/activate
@@ -86,7 +96,32 @@ the inventory retains the declared expression. Unknown expressions still fail.
 BSD-only Python classifiers remain explicitly labeled as family evidence, not
 an inferred SPDX revision. Generated Javadoc contains JDK assets under the
 GPL classpath exception; it is a separate classifier artifact, not runtime code.
-Source scans exclude ignored build/dependency caches. No advisory is suppressed.
+Source scans exclude ignored build/dependency caches. The npm high/critical gate
+uses `tools/security/npm_audit.py` and the reviewed, expiring exceptions in
+`tools/security/npm-audit-exceptions.json`. The temporary Picomatch 4.0.7
+exception for `GHSA-fc5q-39xc-vjpf` expires on 2026-12-17. It accepts unresolved
+risk until an upstream fix is available; it does not fix the dependency.
+Dependent findings are accepted only when every reachable advisory is covered.
+Other advisories, changed versions or scope, an advertised Picomatch fix,
+expired exceptions and unverifiable reports still block the gate. Dependency,
+license and secret scans continue to run.
+
+Run `python tools/security/npm_audit.py` to reproduce the npm decision. Raw
+findings and the decision are saved under `build/source-scan/` and uploaded by
+CI as `source-scan-findings`, including when the gate fails. Remove the exception
+and update the lockfile when the upstream fix becomes available; review any
+remaining exception before expiry. Policy regression tests run with
+`python -m unittest discover -s tests/ci -p test_npm_audit.py -v`.
+
+The source Trivy gate uses the same reviewed policy for its CVE alias
+`CVE-2026-112366`: only npm `picomatch` 4.0.7 in the root `package-lock.json`,
+with HIGH severity, affected status, no published fixed version and an unexpired
+review can be accepted. Other versions, targets, advisories, severity changes,
+available fixes and all license findings remain blocking. `full.json` retains
+the original scanner report; `temporarily-accepted.json` lists the accepted
+findings separately. This does not waive runtime image findings. Reproduce with
+`python tools/source_scan.py`; classification tests use
+`python -m unittest discover -s tests/ci -p test_source_scan.py -v`.
 
 The full gate validates versions, generated drift, headers and npm licenses,
 offline schemas/compatibility/security fixtures, Java tests and publication,
@@ -146,7 +181,7 @@ permissions on that environment; no reviewers are currently configured.
 packages Java/raw contracts/Helm and source SBOM/checksums in foundation, then
 publishes the exact verified artifacts after all six native and image gates pass.
 Tag publication includes Maven, Helm OCI, GHCR and GitHub provenance; main retains
-its development channel. See [release process](release-process.md).
+its development channel. See [release process](how-to-release.md).
 Manual publication requires the matching tag already to exist. Configure the
 protected environment before using publication. Rust/npm/Composer package
 publication remains registry opt-in; their identities and source packages exist.
@@ -162,7 +197,7 @@ than falling back to the project. If Helm reports an unsupported value, the
 opt-in service values and external secret/DB references must satisfy its schema. If a scan database cannot
 be reached, repair network access and rerun; do not suppress the gate.
 
-See [ADR 001](../adr/001-foundation-contract-generation.md),
+See [Schema and Shared Contract Workflow](schema-workflow.md),
 [upgrade policy](../architecture/compatibility.md) and
 [testing and evidence guide](../testing/README.md).
 

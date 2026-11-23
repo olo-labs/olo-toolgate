@@ -73,7 +73,7 @@ management actions. Super Admin directory changes apply immediately and are
 audited; they may also manage and approve any existing configuration request,
 including their own, without a second reviewer. Other Management Roles retain
 scoped ceilings and independent review. Runtime authorization still requires
-all current grants, policies and device checks. See [ADR 022](../../docs/adr/022-super-administrator-review-exception.md).
+all current grants, policies and device checks. See [Users, Teams and roles](../../docs/security/user-roles.md).
 
 Deletion removes an active entity completely. Required default groups, internal
 Quickstart executors, valid references and the last active Super Admin remain
@@ -137,8 +137,8 @@ runtime notices. `python tools/ui/package.py` produces a reproducible asset tar
 and checksums in `build/ui/`. `make check` includes unit, drift and browser gates.
 
 See [authentication and operations](../../docs/control-plane/admin-ui.md),
-[ADR 004](../../docs/adr/004-embedded-admin-console.md) and
-[approval architecture](../../docs/adr/006-ask-approvals.md).
+[Admin UI](../../docs/control-plane/admin-ui.md) and
+[approval architecture](../../docs/control-plane/approvals.md).
 ## Workflow profile management
 
 Current Super Admin users open **Workflows > Workflows** or **Workflows > Workflow
@@ -201,3 +201,26 @@ unfinished workflow execution path.
 The **Tool builder** route authors bounded code/schema/AI metadata, displays
 designated-client results and prepares immutable packages for signed deployment.
 See [production/debug instructions](../../docs/client/tool-builder.md).
+
+## Workflow bundles
+
+The Workflows page imports and exports one compressed .olo workflow bundle,
+including its local definitions, named trigger connections and referenced directory
+configuration. Replacement refreshes the editor; review and publish activate it.
+Imports never restart containers or alter login credentials. Multiple workflows
+can share definitions; removal prunes only unshared profile definitions.
+
+Bundles include exact required tool and trigger `.olotool` archives. Console export
+requires current package.read authority and available verified package content;
+missing or ambiguous packages fail the export. Import embedded packages through
+the displayed action before their normal deployment/activation. Current bundle
+format 2 refuses the prior configuration-only format. No old tool extension is
+accepted. The compressed bundle limit is 128 MiB; an individual tool archive is
+bounded by Control's existing 64 MiB ceiling.
+
+Referenced directory additions use the existing reviewed MERGE flow. Map owners
+to existing users, import the embedded packages, provision provider secrets and
+approved devices, and install trusted graph factories separately. Model weights
+and Docker images are not embedded. No README is added to the bundle. See the
+[WorkflowStack operator guide](../../deploy/compose/WorkflowStack/README.md) for
+local startup, credentials and factory reset.

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Real local identity primitives and offline custody/integrity tests; run in Linux image."""
 import importlib.util
+import base64
 import http.cookiejar
 import io
 import json
@@ -34,6 +35,42 @@ class SecurityTests(unittest.TestCase):
             binding={'id':'installed-admin','name':'Reviewed test identity','enabled':True,'revision':1,'userId':'admin','issuer':quickstart.ISSUER,'subject':'admin','sessionEpoch':1,'firstSeenUnixMs':1,'lastAttemptUnixMs':1,'attemptCount':1,'registrationReason':'REVIEWED_INSTALLATION','sessionsValidAfterUnixMs':0}
             db.execute('INSERT INTO control_records VALUES(?,?,?,?,?)',(quickstart.TENANT,'IDENTITY_BINDING','installed-admin',1,json.dumps(binding)))
     def tearDown(self):self.temp.cleanup()
+    def test_runtime_credential_api_requires_live_super_admin_and_never_changes_password(self):
+        password='runtime-Provisioning-Password-2026'
+        record=quickstart.password_record(password,True)
+        quickstart.atomic(quickstart.DATA/'identity.json',json.dumps(record))
+        token=self.identity.authenticate(password)
+        before=(quickstart.DATA/'identity.json').read_bytes()
+        ready=threading.Event();ready.set()
+        server=quickstart.BoundedServer(('127.0.0.1',0),quickstart.Handler,ready)
+        thread=threading.Thread(target=server.serve_forever);thread.start()
+        endpoint='http://127.0.0.1:'+str(server.server_port)+'/api/quickstart/v1/runtime-credential'
+        def issue():
+            request=urllib.request.Request(endpoint,b'{}',{'Content-Type':'application/json','Authorization':'Bearer '+token})
+            with urllib.request.urlopen(request) as response:return json.load(response)
+        try:
+            with patch.dict(os.environ,{'TOOLGATE_QUICKSTART_WORKFLOW_STACK':'true'},clear=True):
+                with patch.object(quickstart,'control',return_value={'role':'BASIC'}):
+                    with self.assertRaises(urllib.error.HTTPError) as denied:issue()
+                    self.assertIn(denied.exception.code,(401,403))
+                with patch.object(quickstart,'control',return_value={'role':'SUPER_ADMIN'}):
+                    for lifetime in (604800,3600):
+                        with self.subTest(lifetime=lifetime):
+                            settings={} if lifetime==604800 else {'TOOLGATE_RUNTIME_CREDENTIAL_TTL_SECONDS':str(lifetime)}
+                            with patch.dict(os.environ,settings):value=issue()
+                            self.assertEqual(quickstart.TENANT,value['tenantId'])
+                            body=value['accessToken'].split('.')[1]
+                            claims=json.loads(base64.urlsafe_b64decode(body+'='*(-len(body)%4)))
+                            self.assertEqual(['toolgate-workflow-runtime'],claims['groups'])
+                            self.assertNotIn('user_id',claims);self.assertEqual('langgraph-service',claims['sub'])
+                            self.assertEqual(lifetime,claims['exp']-claims['iat'])
+                            self.assertEqual(claims['exp']*1000,value['expiresAtUnixMs'])
+                            with self.assertRaises(PermissionError):quickstart.session('Bearer '+value['accessToken'])
+                    admin=quickstart.session('Bearer '+token)
+                    self.assertEqual(900,admin['exp']-admin['iat'])
+            self.assertEqual(before,(quickstart.DATA/'identity.json').read_bytes())
+        finally:server.shutdown();thread.join();server.server_close()
+
     def test_tenant_uuid_persists_and_unsupported_state_is_rejected(self):
         import uuid
         current=quickstart.tenant_identity()
@@ -130,7 +167,7 @@ class SecurityTests(unittest.TestCase):
             with self.assertRaises(ValueError):quickstart.tenant_certificates('10000000-0000-4000-8000-000000000001')
 
     def test_password_policy_rotation_signature_and_stale_generation(self):
-        for password in ('','short','a'*32,'abc def ghi jkl mno','é'*32,123):
+        for password in ('','short','a'*32,'abc def ghi jkl mno','Ã©'*32,123):
             self.assertFalse(quickstart.password_valid(password))
         bootstrap='initial-Strong-Password-2026'
         quickstart.atomic(quickstart.DATA/'identity.json',json.dumps(quickstart.password_record(bootstrap)))

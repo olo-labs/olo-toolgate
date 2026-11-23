@@ -22,13 +22,13 @@ def validate(root):
         raise ValueError('Unsupported packaged workflow asset manifest')
     for package in manifest['packages']:
         name=package['artifact']
-        if not isinstance(name,str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\.tgpkg',name):
+        if not isinstance(name,str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\.olotool',name):
             raise ValueError('Unsupported packaged artifact path')
         path=root/'packages'/name
         if path.is_symlink() or hashlib.sha256(path.read_bytes()).hexdigest()!=package['artifactSha256']:
             raise ValueError('Packaged workflow artifact digest mismatch')
-    for relative in ('examples/langchain/manage.py','examples/langchain/packages.py','debug/standard/configure-debug-agent.py',
-                     'debug/standard/agent-mimic.py','tools/access/presets.py','packages/contracts/management-permissions.json','VERSION'):
+    for relative in ('examples/langchain/manage.py','examples/langchain/packages.py','debug/profiled/configure-debug-agent.py',
+                     'debug/profiled/agent-mimic.py','tools/access/presets.py','packages/contracts/management-permissions.json','VERSION'):
         if not (root/'operator'/relative).is_file():raise ValueError('Incomplete image-provided workflow operator')
 
 
