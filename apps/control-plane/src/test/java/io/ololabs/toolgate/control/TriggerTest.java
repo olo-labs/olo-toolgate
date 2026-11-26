@@ -148,11 +148,15 @@ final class TriggerTest {
     @Test
     void packageAcceptanceDefinitionsAndSecurityDelta() throws Exception {
         for (var entry : stores()) {
-            var w = world(entry.getValue(), "tenant-a");
+            var clock = new TriggerIngestTest.MutableClock();
+            clock.millis = CLOCK.millis();
+            var w = world(entry.getValue(), "tenant-a", clock);
             byte[] first = TriggerPackages.build(PACKAGE, "1.0.0", System.getProperty("toolgate.productVersion"), ContractSet.VERSION, List.of(descriptor("new-file")));
             var refusing = new ServerPackages(w.store(), codec, null, CLOCK);
             assertEquals(400, status(() -> refusing.upload(w.admin(), first, "request")), "the module flag gates trigger exports");
             assertEquals(201, w.packages().upload(w.admin(), first, "request").status());
+            // Equal upload times are ordered by digest, which changes with SDK/build metadata.
+            clock.millis++;
             String wider = descriptor("new-file").replace("\"maxEventsPerHour\":600", "\"maxEventsPerHour\":1200");
             assertEquals(201, w.packages().upload(w.admin(), TriggerPackages.build(PACKAGE, "1.1.0", System.getProperty("toolgate.productVersion"), ContractSet.VERSION, List.of(wider)), "request").status());
             var page = json(w.triggers().definitions(w.admin(), null, null).body());
