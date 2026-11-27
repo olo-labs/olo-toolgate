@@ -7,5 +7,14 @@ plugins {
 
 subprojects {
     group = "io.ololabs.examples.mocked"
-    version = "0.1.0"
+    val isolatedImage = providers.gradleProperty("toolgateJvmImageDigest")
+    version = if (isolatedImage.isPresent) {
+        providers.gradleProperty("toolgatePackageVersion").orNull
+            ?: error("Isolated packages require -PtoolgatePackageVersion=<new release version>")
+    } else "0.1.0"
+    plugins.withId("io.ololabs.toolgate.sdk") {
+        extensions.configure<io.ololabs.toolgate.gradle.ToolGateExtension> {
+            baseImageDigest.set(isolatedImage)
+        }
+    }
 }

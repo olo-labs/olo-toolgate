@@ -14,6 +14,7 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.OutputFile;
+import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.process.CommandLineArgumentProvider;
@@ -25,14 +26,19 @@ final class PackageArguments implements CommandLineArgumentProvider {
     private final Property<String> version;
     private final DirectoryProperty staging;
     private final RegularFileProperty output;
+    private final Property<String> baseImageDigest;
 
-    PackageArguments(RegularFileProperty jar, FileCollection libraries, Property<String> version, DirectoryProperty staging, RegularFileProperty output) {
+    PackageArguments(RegularFileProperty jar, FileCollection libraries, Property<String> version, DirectoryProperty staging, RegularFileProperty output, Property<String> baseImageDigest) {
         this.jar = jar;
         this.libraries = libraries;
         this.version = version;
         this.staging = staging;
         this.output = output;
+        this.baseImageDigest = baseImageDigest;
     }
+
+    @Input @Optional
+    public Property<String> getBaseImageDigest() { return baseImageDigest; }
 
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
@@ -64,6 +70,10 @@ final class PackageArguments implements CommandLineArgumentProvider {
     public Iterable<String> asArguments() {
         List<String> args = new ArrayList<>(List.of("stage", "--jar", jar.get().getAsFile().getPath(), "--version", version.get(),
                 "--out", staging.get().getAsFile().getPath()));
+        if (baseImageDigest.isPresent()) {
+            args.add("--base-image-digest");
+            args.add(baseImageDigest.get());
+        }
         for (File lib : libraries) {
             args.add("--lib");
             args.add(lib.getPath());

@@ -1,0 +1,14 @@
+# Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0
+# Build from the repository-root context. Both bases are immutable Java 21 images.
+ARG JDK_IMAGE=eclipse-temurin@sha256:b2711c65970c1227197c29c46e669bfdbb137524e9da0e664703a140ec25a040
+ARG JRE_IMAGE=eclipse-temurin@sha256:a8bff88f760e87e0c8844f8461f807c203fd5e8f78c951c843024647e965eaf5
+FROM ${JDK_IMAGE} AS qualification
+WORKDIR /src
+COPY apps/tool-host/packaging/jvm/ToolGateJvmProbe.java .
+RUN javac --release 21 ToolGateJvmProbe.java && jar --create --file qualification.jar ToolGateJvmProbe.class
+FROM ${JRE_IMAGE}
+COPY --from=qualification /src/qualification.jar /opt/toolgate/qualification.jar
+COPY LICENSE NOTICE.md /usr/share/doc/toolgate-jvm-worker/
+USER 100:100
+WORKDIR /work
+ENTRYPOINT ["/opt/java/openjdk/bin/java"]

@@ -31,6 +31,7 @@ fn config() -> Config {
         podman_path: "/usr/bin/podman".into(),
         broker_image: std::env::var("TOOLGATE_SANDBOX_BROKER_IMAGE")
             .expect("pinned broker image required"),
+        jvm_image: None,
         python_image: std::env::var("TOOLGATE_SANDBOX_IMAGE")
             .expect("pinned sandbox image required"),
         cgroup_parent: std::env::var("TOOLGATE_SANDBOX_CGROUP_PARENT")
@@ -114,6 +115,7 @@ async fn execute(pool: Arc<Sandbox>, id: &str, artifact: &Path, args: Value) -> 
     match pool
         .run(
             id,
+            "python",
             artifact,
             &input,
             128 * 1024 * 1024,
@@ -284,6 +286,7 @@ async fn frame_and_diagnostic_flooding_end_the_worker_before_the_deadline() {
         let result = pool
             .run(
                 "flood",
+                "python",
                 &app,
                 &input,
                 128 * 1024 * 1024,
@@ -429,6 +432,7 @@ time.sleep(60)
             worker
                 .run(
                     "stop",
+                    "python",
                     &artifact,
                     &input,
                     128 * 1024 * 1024,
@@ -500,6 +504,7 @@ async fn broker_crash_cancels_worker_and_reclaims_both_owned_containers() {
         tokio::spawn(async move {
             pool.run(
                 "broker-crash",
+                "python",
                 &app,
                 &input,
                 128 * 1024 * 1024,
@@ -632,6 +637,7 @@ time.sleep(60)
         Duration::from_secs(10),
         pool.run(
             "broker-forgery",
+            "python",
             &app,
             &input,
             128 * 1024 * 1024,
@@ -683,7 +689,7 @@ print(json.dumps(dict(kind="RESULT",resultType="complete",isError=False,content=
         let app = artifact(&dir,&script);
         let input = input(name,json!({}));
         let (sink,_source) = tool_host::events::channel();
-        let ran = pool.run(name,&app,&input,128*1024*1024,4*1024*1024,Arc::new(sink),broker(name,input.deadline_unix_ms)).await;
+        let ran = pool.run(name, "python",&app,&input,128*1024*1024,4*1024*1024,Arc::new(sink),broker(name,input.deadline_unix_ms)).await;
         assert!(matches!(&ran, Ran::Crashed(message) if message.starts_with("worker ") || message == "invalid worker JSON frame" || message == "unknown worker frame kind"), "{name}: {ran:?}");
         assert!(pool.available(),"{name}");
         assert_eq!(std::fs::read_dir(dir.join("sandbox-spool")).unwrap().count(),1,"{name}");
@@ -816,6 +822,7 @@ os.execv(command[0],command)
     let result = pool
         .run(
             "uncertain-engine",
+            "python",
             &app,
             &input,
             128 * 1024 * 1024,

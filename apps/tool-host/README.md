@@ -3,7 +3,9 @@
 The Tool Host verifies signed package content, admits governed invocations and
 runs server tools outside Control. It participates in enrollment, dispatch,
 leases and durable evidence delivery. Use the declared runtime profile: native
-execution and qualified rootless Python OCI have different isolation guarantees.
+execution and qualified rootless OCI have different isolation guarantees.
+Java 21 workers require their own immutable image and live qualification;
+Python qualification does not establish Java or Marketplace Demo 3 readiness.
 See [execution scope](../../docs/security/zero-trust-boundaries.md) and
 [rootless deployment](../../docs/operations/rootless-tool-host.md).
 
@@ -50,7 +52,7 @@ One JSON file, refused at startup if anything is wrong.
 | `enrollment` | `{identityDir, poolId?}`: enroll with Control as a device and fetch assignments (below). `identityDir` holds the device key, its certificate and the check-in sequence. |
 | `runtimes.javaPath` | The `java` the JVM launcher runs (default `java`, Java 17 or later). A bare name is looked up on the host's `PATH` at startup, because tool processes start with an empty environment. |
 | `runtimes.pythonPath` | Python 3.10+ for SDK `tool.pyz` artifacts (default `python3`, or `python` on Windows). Resolved at startup and launched with `-I` in the same clean environment and v2 broker protocol as Java. |
-| `sandbox` | Optional Linux rootless OCI tier; requires immutable pythonImage and brokerImage pins and delegated cgroups. See the [operator guide](../../docs/operations/rootless-tool-host.md). No in-process broker fallback. |
+| `sandbox` | Optional Linux rootless OCI tier; requires immutable pythonImage and brokerImage pins and delegated cgroups. Optional jvmImage enables Java 21 after its own live probe. See the [operator guide](../../docs/operations/rootless-tool-host.md). No in-process broker fallback. |
 | `limits` | `maxConcurrent`, `maxInputBytes`, `maxOutputBytes`, `syncDeadlineMs`, `memoryBytes`, `maxPermitWindowMs`. Each may only be lowered below the platform ceiling (platform-requirements.md §13.5). |
 | `developmentLoopbackHttp` | Lets the broker send plain http to loopback destinations. For development and tests only. |
 

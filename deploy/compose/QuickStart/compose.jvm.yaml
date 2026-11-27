@@ -1,0 +1,40 @@
+# Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0
+# Qualification candidate. Use with compose.yaml and exact reviewed release pins.
+services:
+  quickstart:
+    image: ${QUICKSTART_IMAGE:?released JVM-capable Quickstart image required}
+    environment:
+      TOOLGATE_QUICKSTART_EXTERNAL_TOOL_HOST: "true"
+      TOOLGATE_TOOL_HOST_PYTHON_IMAGE: ${TOOLGATE_TOOL_HOST_PYTHON_IMAGE:?immutable Python reference required}
+      TOOLGATE_TOOL_HOST_JVM_IMAGE: ${TOOLGATE_TOOL_HOST_JVM_IMAGE:?immutable JVM reference required}
+      TOOLGATE_TOOL_HOST_BROKER_IMAGE: ${TOOLGATE_TOOL_HOST_BROKER_IMAGE:?immutable broker reference required}
+      TOOLGATE_TOOL_HOST_POOL_ID: ${TOOLGATE_TOOL_HOST_POOL_ID:-default-devices}
+      TOOLGATE_TOOL_HOST_IO_DEVICE: ${TOOLGATE_TOOL_HOST_IO_DEVICE:-}
+      TOOLGATE_CONTROL_RECOVERY_QUALIFIED_EXECUTORS: ${TOOLGATE_CONTROL_RECOVERY_QUALIFIED_EXECUTORS:?independent qualified executor pins required}
+  tool-host:
+    image: ${TOOLGATE_TOOL_HOST_RUNTIME_IMAGE:?released immutable runtime image required}
+    platform: linux/amd64
+    restart: unless-stopped
+    privileged: true
+    cgroup: private
+    # Retain the exact published localhost TLS origin through Quickstart's bridge.
+    network_mode: service:quickstart
+    depends_on:
+      quickstart:
+        condition: service_healthy
+    mem_limit: 2g
+    cpus: 2
+    stop_grace_period: 35s
+    tmpfs:
+      - /run:rw,nosuid,nodev,size=64m
+      - /tmp:rw,noexec,nosuid,nodev,size=128m
+    volumes:
+      - type: volume
+        source: data
+        target: /etc/toolgate
+        read_only: true
+        volume:
+          subpath: tool-host-bootstrap
+      - tool-host-state:/var/lib/toolgate-tool-host
+volumes:
+  tool-host-state:

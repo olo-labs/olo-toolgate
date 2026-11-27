@@ -73,7 +73,10 @@ public final class Staging {
      * @param version the package version, SemVer 2.0.0
      * @param out the staging directory; replaced
      */
-    public static Path stage(Path appJar, List<Path> libraries, String version, Path out) throws IOException {
+    public static Path stage(Path appJar, List<Path> libraries, String version, Path out, String baseImageDigest) throws IOException {
+        if (baseImageDigest != null && !baseImageDigest.matches("sha256:[a-f0-9]{64}")) {
+            throw new IllegalArgumentException("base image must be an immutable sha256 digest");
+        }
         if (version == null || !SEMVER.matcher(version).matches()) {
             throw new IllegalArgumentException("the package version must be SemVer 2.0.0, not " + version);
         }
@@ -120,7 +123,9 @@ public final class Staging {
         sdkInfo.putObject("protocol").put("min", 2).put("max", 2);
         sdkInfo.put("descriptorGeneration", index.path("descriptorGeneration").asInt(1));
         m.putObject("compatibility").put("contractsVersion", sdk.getProperty("contractsVersion"));
-        m.putArray("runtimes").addObject().put("runtimeId", RUNTIME_ID).put("language", "java").put("version", JAVA_RELEASE);
+        var runtime = m.putArray("runtimes").addObject().put("runtimeId", RUNTIME_ID).put("language", "java")
+                .put("version", baseImageDigest == null ? JAVA_RELEASE : "21");
+        if (baseImageDigest != null) runtime.put("baseImageDigest", baseImageDigest);
         ArrayNode tools = m.putArray("tools");
         for (JsonNode d : descriptors) {
             ObjectNode t = tools.addObject();

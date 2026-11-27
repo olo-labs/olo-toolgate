@@ -15,6 +15,7 @@ import org.apache.maven.plugin.MojoFailureException;
  * and packs it with the {@code toolgate} CLI into {@code target/toolgate/<artifactId>-<version>.olotool}.
  */
 public class PackageMojo extends AbstractToolGateMojo {
+    String baseImageDigest;
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         requireGeneration();
@@ -25,6 +26,10 @@ public class PackageMojo extends AbstractToolGateMojo {
         File out = new File(project.getBuild().getDirectory(), "toolgate");
         List<String> args = new ArrayList<>(List.of("stage", "--jar", jar.getPath(), "--version", project.getVersion(),
                 "--out", new File(out, "staging").getPath()));
+        if (baseImageDigest != null) {
+            args.add("--base-image-digest");
+            args.add(baseImageDigest);
+        }
         for (Artifact a : project.getArtifacts()) {
             String scope = a.getScope();
             if (a.getFile() != null && (Artifact.SCOPE_COMPILE.equals(scope) || Artifact.SCOPE_RUNTIME.equals(scope))) {

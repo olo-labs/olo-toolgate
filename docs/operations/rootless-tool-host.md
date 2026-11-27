@@ -76,6 +76,75 @@ run against the actual configured backend.
 
 ## Bind packages and hosts
 
+Java 21 execution uses the paired worker/broker lifecycle, resource controls,
+strict v2 stdio protocol, cancellation and confirmed teardown. Configure
+`sandbox.jvmImage` with a separately reviewed `name@sha256:digest`. Absence disables
+JVM admission. Its runtime declaration requires `runtimeId=jvm`, `language=java`,
+`version=21` and exactly that image's `baseImageDigest`; the tool is one fat JAR.
+The image provides `/opt/java/openjdk/bin/java` and the trusted
+`/opt/toolgate/qualification.jar` from the
+[JVM image recipe](../../apps/tool-host/packaging/jvm/Containerfile).
+
+Before readiness or registration, every configured worker image executes its own
+probe with the actual policy. The JVM probe runs Java, tests socket denial and
+reports its live namespace, identity and cgroup limits. The broker remains a
+different image, identity and namespace. Failure in either runtime refuses the
+pool. Java uses serial GC, one active processor, half the memory cap for its heap,
+bounded metadata/code caches and disabled attach and perf-data facilities. The
+cgroup limits total memory, including native VM use. Host Java cannot replace
+this qualification.
+
+The [image preparation helper](../../apps/tool-host/packaging/prepare-images.py)
+runs before startup under the dedicated unprivileged account, with
+`TOOLGATE_TOOL_HOST_CONFIG` naming the private config. It pulls only missing
+immutable Python, broker and configured JVM images and verifies their digests.
+Repeated preparation preserves the store and does not pull present images.
+It prepares dependencies; it does not qualify execution or configure Control's
+independent recovery pins. Finish preparation before starting the host.
+
+Control scope capture additionally requires the operator's exact
+`TOOLGATE_CONTROL_RECOVERY_QUALIFIED_EXECUTORS` device/pool/image entry and the
+existing broker-only permission/profile checks. Configure this after actual
+deployment qualification. Native success, an empty effect manifest and container
+health do not establish complete mediation. Use
+[Control outcome and history](../control-plane/operation-finalization.md) to verify
+`state=SUCCEEDED` and `finalized=true` through Gateway/MCP.
+
+The implementation and image recipe alone do not establish published-artifact
+Demo 3 acceptance. Container deployment, all seven packages and release acceptance
+remain subject to the [remaining delivery criteria](../plans/marketplace-demo3-java.md).
+
+The [managed container recipe](../../apps/tool-host/packaging/runtime-container/Containerfile)
+packages a checksum-verified prebuilt Tool Host, systemd and rootless Podman.
+It is a qualification candidate, not a published Marketplace startup profile.
+Its dedicated named volume at `/var/lib/toolgate-tool-host` must be private and
+owned by UID/GID 1000 after first initialization. Root-owned nonempty volumes,
+foreign ownership and changed storage backends are refused without rewriting
+their contents. The image provisions 65,536 subordinate IDs; its default four
+paired slots and 256 MiB invocation memory cap can be lowered, and at most 32
+slots fit those IDs. A supplied limits object is preserved and still passes
+the host's platform-ceiling checks.
+
+For container qualification, the outer container needs its own writable cgroup-v2
+namespace with delegated CPU, memory, I/O and PID controllers, `/dev/fuse`, and
+permission for nested user namespaces and rootless UID/GID helpers. The Docker
+test deployment uses `privileged: true`, `cgroup: private`, tmpfs at `/run` and
+`/tmp`, and a dedicated state volume. No host runtime socket or host cgroup bind
+is needed. The privileged container init/runtime and host kernel belong to the
+trusted computing base; worker containment is separately enforced and probed.
+This does not provide compromised-root or compromised-kernel containment.
+
+Supply the private bootstrap config at `/etc/toolgate/tool-host.json`. Initialization
+resolves the backing whole I/O device from the actual state volume, refusing
+unresolved virtual storage unless `sandbox.ioDevice` supplies an independently
+verified override. It fixes the local Podman and service cgroup paths, store/work
+directories and enrolled identity directory inside that volume, and writes the
+effective config under `/run` before systemd starts the unprivileged service.
+The service prepares exact image pins and then runs normal qualification and
+enrollment. It does not add Control recovery pins or approve devices or calls.
+Production Control discovery must remain reachable at its exact canonical HTTPS
+origin, with its reviewed public CA roots available to the service account.
+
 Add this to a Python project's existing `[tool.toolgate]` table:
 
 ```toml
@@ -167,6 +236,23 @@ report are under `build/security/sandbox/`, with the image pin, source digest,
 revision and executed test names. Standard Rust tests list the privileged-host
 cases as explicitly ignored; their passing status comes only from this separate
 mandatory gate.
+
+For the Java component vectors, add `--jvm-image <prepared-jvm@sha256:digest>`.
+This also executes a real Java worker through success, denied socket/broker
+access, worker failure, deadline, cancellation and paired cleanup. The optional
+`--jvm-samples /absolute/path/samples.json` supplies an array of producing-gate
+records with `artifact` (an absolute fat-JAR path), `artifactDigest` (tagged
+SHA-256), `toolId` and `arguments`. The gate verifies each JAR digest and runs it;
+it never substitutes expected fixture output. Artifacts are staged under the
+service account, matching the real content store's ownership rather than a
+foreign mount's UID/GID. The sample inventory digest is retained in the report.
+These component calls do not establish Gateway authorization or finalized Control
+outcomes, and cannot complete Marketplace published-artifact acceptance.
+
+For a separate build-cache location, `broker_image.py --target-dir /absolute/path`
+selects the owned static build directory, and `sandbox.py --broker-binary
+/absolute/path/to/olo-toolgate-tool-host` binds the resulting binary to its
+current-source image evidence. Missing or stale evidence remains a refusal.
 
 This tier shares the host kernel and trusts the supervisor/broker and container
 runtime. The broker's existing destination checks remain the egress boundary;

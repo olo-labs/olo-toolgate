@@ -18,6 +18,14 @@ retry does not create a recovery record.
 
 ## Qualified broker-only recovery
 
+Java 21 OCI declarations (`runtimeId=jvm`, `language=java`, `version=21`) can
+capture the same broker-only admission scope as Python when their exact
+device/pool/image is independently qualified and configured. Java on the host,
+native registration and a runtime declaration without an immutable image pin
+cannot supply this evidence. The existing permission, route and effect checks
+apply unchanged. See [rootless deployment](../operations/rootless-tool-host.md)
+for the separate JVM qualification and outstanding deployment acceptance.
+
 Consumed work stays fenced by default. The optional
 TOOLGATE_CONTROL_RECOVERY_QUALIFIED_EXECUTORS setting is a comma-separated list
 of authenticated-device@administered-pool@sha256:image-digest pins (64 lowercase

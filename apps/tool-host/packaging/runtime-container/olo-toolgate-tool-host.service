@@ -1,0 +1,29 @@
+# Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0
+[Unit]
+Description=ToolGate container rootless OCI Tool Host
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=toolgate
+Group=toolgate
+RuntimeDirectory=toolgate-tool-host
+RuntimeDirectoryMode=0700
+Environment=HOME=/var/lib/toolgate-tool-host
+Environment=XDG_RUNTIME_DIR=/run/toolgate-tool-host
+Environment=TOOLGATE_TOOL_HOST_CONFIG=/run/toolgate-config/tool-host.json
+ExecStartPre=/usr/bin/python3 /usr/local/lib/toolgate/prepare-images.py
+ExecStart=/usr/local/bin/olo-toolgate-tool-host
+Delegate=yes
+DelegateSubgroup=supervisor
+KillMode=control-group
+KillSignal=SIGKILL
+SendSIGKILL=yes
+TimeoutStartSec=600
+TimeoutStopSec=15
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
