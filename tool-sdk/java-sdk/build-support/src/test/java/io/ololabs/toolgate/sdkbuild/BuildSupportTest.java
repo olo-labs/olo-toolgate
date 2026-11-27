@@ -81,9 +81,25 @@ class BuildSupportTest {
     }
 
     @Test
+    void isolatedJavaManifestPinsTheWorkerAndRefusesMutableImages() throws Exception {
+        String image = "sha256:" + "a".repeat(64);
+        Path out = Staging.stage(appJar(), List.of(library("a.jar")), "1.0.0",
+                Files.createTempDirectory("toolgate-jvm"), image);
+        var runtime = Staging.JSON.readTree(out.resolve("toolgate-package.json").toFile()).path("runtimes").get(0);
+        assertEquals("jvm", runtime.path("runtimeId").asText());
+        assertEquals("java", runtime.path("language").asText());
+        assertEquals("21", runtime.path("version").asText());
+        assertEquals(image, runtime.path("baseImageDigest").asText());
+        for (String invalid : List.of("latest", "temurin:21", "sha256:" + "A".repeat(64), "sha256:abc")) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> Staging.stage(appJar(), List.of(), "1.0.0", out, invalid));
+        }
+    }
+
+    @Test
     void stagingWritesTheSourceManifestAndOneSelfContainedJar() throws Exception {
         Path out = Files.createTempDirectory("toolgate-staging");
-        Staging.stage(appJar(), List.of(library("b.jar"), library("a.jar")), "1.2.0", out);
+        Staging.stage(appJar(), List.of(library("b.jar"), library("a.jar")), "1.2.0", out, null);
         JsonNode m = Staging.JSON.readTree(out.resolve("toolgate-package.json").toFile());
         assertEquals(2, m.path("schemaVersion").asInt());
         assertEquals("acme.stock", m.path("id").asText());
@@ -124,34 +140,34 @@ class BuildSupportTest {
     void theFatJarMergesServicesAndRefusesTwoVersionsOfAClass() throws Exception {
         Path a = library("a.jar", Map.of("META-INF/services/x.Spi", "a.Impl\n# comment\n", "shared.txt", "from a", "p/Same.class", "same"));
         Path b = library("b.jar", Map.of("META-INF/services/x.Spi", "b.Impl\na.Impl\n", "shared.txt", "from b", "p/Same.class", "same"));
-        Path out = Staging.stage(appJar(), List.of(a, b), "1.0.0", Files.createTempDirectory("toolgate-fat"));
+        Path out = Staging.stage(appJar(), List.of(a, b), "1.0.0", Files.createTempDirectory("toolgate-fat"), null);
         Path fat = out.resolve(Staging.TOOL_JAR);
         assertEquals("a.Impl\nb.Impl\n", text(fat, "META-INF/services/x.Spi"));
         assertEquals("from a", text(fat, "shared.txt"), "the first jar on the class path wins a resource");
         Path c = library("c.jar", Map.of("p/Same.class", "different"));
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
-                () -> Staging.stage(appJar(), List.of(a, c), "1.0.0", Files.createTempDirectory("toolgate-clash")));
+                () -> Staging.stage(appJar(), List.of(a, c), "1.0.0", Files.createTempDirectory("toolgate-clash"), null));
         assertTrue(e.getMessage().contains("p/Same.class"), e.getMessage());
         Path notAJar = Files.createTempDirectory("toolgate-bad").resolve("bad.jar");
         Files.writeString(notAJar, "not a jar");
-        assertThrows(IllegalArgumentException.class, () -> Staging.stage(appJar(), List.of(notAJar), "1.0.0", Files.createTempDirectory("x")));
+        assertThrows(IllegalArgumentException.class, () -> Staging.stage(appJar(), List.of(notAJar), "1.0.0", Files.createTempDirectory("x"), null));
     }
 
     @Test
     void stagingIsDeterministicAndRefusesBadInput() throws Exception {
         Path jar = appJar();
         List<Path> libs = List.of(library("a.jar"));
-        Path one = Staging.stage(jar, libs, "1.0.0", Files.createTempDirectory("toolgate-one"));
-        Path two = Staging.stage(jar, libs, "1.0.0", Files.createTempDirectory("toolgate-two"));
+        Path one = Staging.stage(jar, libs, "1.0.0", Files.createTempDirectory("toolgate-one"), null);
+        Path two = Staging.stage(jar, libs, "1.0.0", Files.createTempDirectory("toolgate-two"), null);
         for (String f : List.of("toolgate-package.json", Staging.TOOL_JAR)) {
             assertArrayEquals(Files.readAllBytes(one.resolve(f)), Files.readAllBytes(two.resolve(f)), f);
         }
-        assertThrows(IllegalArgumentException.class, () -> Staging.stage(jar, libs, "1.0", Files.createTempDirectory("x")));
+        assertThrows(IllegalArgumentException.class, () -> Staging.stage(jar, libs, "1.0", Files.createTempDirectory("x"), null));
         Path empty = Files.createTempDirectory("toolgate-empty").resolve("empty.jar");
         try (JarOutputStream out = new JarOutputStream(Files.newOutputStream(empty))) {
             out.putNextEntry(new JarEntry("x.txt"));
         }
-        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> Staging.stage(empty, libs, "1.0.0", Files.createTempDirectory("x")));
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> Staging.stage(empty, libs, "1.0.0", Files.createTempDirectory("x"), null));
         assertTrue(e.getMessage().contains("descriptorGeneration"), e.getMessage());
     }
 
@@ -199,7 +215,7 @@ class BuildSupportTest {
         assertTrue(absent.getMessage().contains("cannot run the toolgate CLI"), absent.getMessage());
         String cli = System.getProperty("toolgate.cli", "");
         assumeTrue(!cli.isEmpty() && Files.isExecutable(Path.of(cli)), "the toolgate CLI is built (set TOOLGATE_CLI)");
-        Path staging = Staging.stage(appJar(), List.of(library("a.jar")), "1.0.0", Files.createTempDirectory("toolgate-pack"));
+        Path staging = Staging.stage(appJar(), List.of(library("a.jar")), "1.0.0", Files.createTempDirectory("toolgate-pack"), null);
         Path file = staging.resolveSibling("acme.stock-1.0.0.olotool");
         String digests = Packer.pack(staging, file, Map.of("TOOLGATE_CLI", cli));
         assertTrue(Files.size(file) > 0);

@@ -405,13 +405,17 @@ pub async fn admit(host: &Arc<Host>, dispatch: Dispatch) -> Result<Admitted, Adm
     };
     let supported = match &host.sandbox {
         Some(pool) => {
-            pool.accepts(
-                &prepared.runtime.runtime_id,
-                prepared.runtime.base_image_digest.as_deref(),
-            ) && crate::broker_process::supports_routes(
-                &prepared.routes,
-                &prepared.profile.destinations,
-            ) && prepared.profile.private_ranges.len() <= 64
+            (prepared.runtime.runtime_id != "jvm"
+                || (prepared.runtime.language == "java" && prepared.runtime.version == "21"))
+                && pool.accepts(
+                    &prepared.runtime.runtime_id,
+                    prepared.runtime.base_image_digest.as_deref(),
+                )
+                && crate::broker_process::supports_routes(
+                    &prepared.routes,
+                    &prepared.profile.destinations,
+                )
+                && prepared.profile.private_ranges.len() <= 64
                 && prepared.tool.descriptor.http_auth.len() <= 128
                 && prepared.tool.descriptor.variables.secrets.len() <= 128
         }
@@ -794,6 +798,7 @@ async fn run_authorized(host: Arc<Host>, admitted: Admitted) -> ResultMessage {
             let ran = if let Some(pool) = &host.sandbox {
                 pool.run(
                     &id,
+                    &prepared.runtime.runtime_id,
                     &prepared.executable,
                     &input,
                     memory,

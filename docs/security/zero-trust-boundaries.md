@@ -23,6 +23,11 @@ and executor validity remain independent of that human entitlement.
 - Qualified Python OCI profiles use the documented [rootless isolation and broker
   boundary](../operations/rootless-tool-host.md). Use the exact declared image,
   host configuration and [interface matrix](qualified-containment-matrix.md).
+- Java 21 OCI has an opt-in launcher and image-specific live probe. Its runtime
+  admission and Control recovery scope require exact matching image pins. This
+  implementation does not qualify a published JVM image or Compose deployment;
+  [Marketplace Demo 3 delivery](../plans/marketplace-demo3-java.md) still requires
+  actual deployment and published-artifact acceptance.
 - Native packages are trusted native code, not contained or attested workers.
   Bounded [device file access](../client/hotfolder.md) does not establish universal
   native containment, physical fencing or exactly-once mutation.

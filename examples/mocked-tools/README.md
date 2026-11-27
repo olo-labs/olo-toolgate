@@ -19,6 +19,13 @@ The database example, which queries a real (embedded) database rather than retur
 
 ## Build and try
 
+An isolated Java 21 build supplies `-PtoolgateJvmImageDigest=sha256:<digest>` and
+`-PtoolgatePackageVersion=<new version>` to the same commands below. All seven
+packages then declare the same immutable worker pin and the new version. Publish
+these as new archives; existing package versions and unknown operations must not
+be rewritten. Image availability alone does not qualify Marketplace startup;
+see the [remaining Demo 3 acceptance](../../docs/plans/marketplace-demo3-java.md).
+
 As for the [Java example tools](../java-tools/README.md#build-and-test): publish the SDK and build the `toolgate` CLI once, then here:
 
 ```sh

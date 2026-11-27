@@ -726,11 +726,18 @@ def configure():
               'toolHosts':[{'hostId':TOOL_HOST,'url':'http://127.0.0.1:8095','developmentLoopbackHttp':True}]}
     atomic(DATA/'run/gateway.json',json.dumps(config))
     # The Tool Host enrolls as a device like any client; an administrator approves it before it runs packages.
-    atomic(DATA/'run/tool-host.json',json.dumps(dict(hostId=TOOL_HOST,listen='127.0.0.1:8095',developmentDispatchHttp=True,
+    sandbox = external_tool_host_sandbox()
+    host_config = dict(hostId=TOOL_HOST,listen='127.0.0.1:8095',developmentDispatchHttp=True,
            permitKeys=[dict(kid='effect-local',publicKeyPath=str(DATA/'keys/permit-public.pem'))],permitIssuer='control',
            storeDir=str(DATA/'tool-host/store'),workDir=str(DATA/'tool-host/work'),
-           control=dict(tenantId=TENANT,url=tool_host_control_url(DATA/'state/tool-host'),caCertificatePath=str(DATA/'keys/device-ca.crt')),
-           enrollment=dict(identityDir=str(DATA/'state/tool-host')),runtimes=dict(javaPath='java'))))
+           control=dict(tenantId=TENANT,url=(os.environ.get('TOOLGATE_CONTROL_ENDPOINT_CONTROL_URL','https://localhost:8443').rstrip('/')
+                       if sandbox else tool_host_control_url(DATA/'state/tool-host')),caCertificatePath=str(DATA/'keys/device-ca.crt')),
+           enrollment=dict(identityDir=str(DATA/'state/tool-host')),runtimes=dict(javaPath='java'))
+    if sandbox:
+        host_config['sandbox'] = sandbox
+        host_config['enrollment']['poolId'] = os.environ.get('TOOLGATE_TOOL_HOST_POOL_ID','default-devices')
+        export_tool_host_bootstrap(host_config)
+    atomic(DATA/'run/tool-host.json',json.dumps(host_config))
     atomic(DATA/'run/tool-host-remote.json',json.dumps(dict(hostId=REMOTE_TOOL_HOST,listen='127.0.0.1:8096',
            permitKeys=[dict(kid='effect-local',publicKeyPath=str(DATA/'keys/permit-public.pem'))],permitIssuer='control',
            storeDir=str(DATA/'tool-host-remote/store'),workDir=str(DATA/'tool-host-remote/work'),
@@ -803,6 +810,52 @@ def tool_host_control_url(identity_dir):
             state['serverUrl'] = url
             private(path, state)
     return url
+
+
+def external_tool_host_sandbox():
+    enabled = os.environ.get('TOOLGATE_QUICKSTART_EXTERNAL_TOOL_HOST', 'false')
+    if enabled not in ('true', 'false'):
+        raise ValueError('TOOLGATE_QUICKSTART_EXTERNAL_TOOL_HOST must be true or false')
+    if enabled == 'false': return None
+    values = {}
+    for field, name in (('pythonImage','TOOLGATE_TOOL_HOST_PYTHON_IMAGE'),
+                        ('jvmImage','TOOLGATE_TOOL_HOST_JVM_IMAGE'),
+                        ('brokerImage','TOOLGATE_TOOL_HOST_BROKER_IMAGE')):
+        value = os.environ.get(name, '')
+        if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9./_:-]*@sha256:[a-f0-9]{64}', value) or '/' not in value.split('@')[0]:
+            raise ValueError(name+' requires a fully qualified immutable image reference')
+        values[field] = value
+    return dict(podmanPath='/usr/bin/podman', cgroupParent='/system.slice/olo-toolgate-tool-host.service',
+                ioDevice=os.environ.get('TOOLGATE_TOOL_HOST_IO_DEVICE', ''), ioBytesPerSecond=67108864,
+                scratchBytes=8388608, **values)
+
+
+def export_tool_host_bootstrap(config):
+    """A public-only subpath mount; never export device, CA or signing private keys."""
+    folder = DATA/'tool-host-bootstrap'
+    if folder.is_symlink(): raise ValueError('Unsafe Tool Host bootstrap directory')
+    expected = {'tool-host.json','device-ca.crt'} | {f'permit-key-{index}.pem' for index in range(len(config['permitKeys']))}
+    if folder.exists() and any(path.name not in expected or path.is_symlink() or not path.is_file() for path in folder.iterdir()):
+        raise ValueError('Foreign Tool Host bootstrap content; preserved unchanged')
+    folder.mkdir(mode=0o755, exist_ok=True)
+    exported = json.loads(json.dumps(config))
+    for index, key in enumerate(exported['permitKeys']):
+        name = f'permit-key-{index}.pem'
+        public = serialization.load_pem_public_key(Path(key['publicKeyPath']).read_bytes())
+        atomic(folder/name, public.public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo))
+        (folder/name).chmod(0o644)
+        key['publicKeyPath'] = '/etc/toolgate/'+name
+    certificates = x509.load_pem_x509_certificates(Path(exported['control']['caCertificatePath']).read_bytes())
+    if not certificates: raise ValueError('Tool Host bootstrap requires public CA certificates')
+    atomic(folder/'device-ca.crt', b''.join(cert.public_bytes(serialization.Encoding.PEM) for cert in certificates))
+    (folder/'device-ca.crt').chmod(0o644)
+    exported['control']['caCertificatePath'] = '/etc/toolgate/device-ca.crt'
+    exported['storeDir'] = '/var/lib/toolgate-tool-host/store'
+    exported['workDir'] = '/var/lib/toolgate-tool-host/work'
+    exported['enrollment']['identityDir'] = '/var/lib/toolgate-tool-host/identity'
+    atomic(folder/'tool-host.json', json.dumps(exported))
+    (folder/'tool-host.json').chmod(0o644)
+    folder.chmod(0o755)
 
 def fleet_keys():
     """Persistent disjoint package release and desired-state trust domains."""
@@ -1152,8 +1205,9 @@ def main():
             child_env = {name:value for name,value in os.environ.items() if not name.startswith(('QUARKUS_DATASOURCE_', 'QUARKUS_FLYWAY_', 'TOOLGATE_REDIS_', 'TOOLGATE_CONTROL_PLATFORM_', 'TOOLGATE_CONTROL_VAULT_', 'TOOLGATE_CONTROL_IDENTITY_'))}
             gateway_env = dict(child_env, TOOLGATE_GATEWAY_CONFIG='/data/run/gateway.json',TOOLGATE_GATEWAY_CREDENTIALS='/data/run/credentials.json')
             children.append(subprocess.Popen(['/usr/local/bin/olo-toolgate-gateway'],env=gateway_env))
-            host_env = dict(child_env, TOOLGATE_TOOL_HOST_CONFIG='/data/run/tool-host.json')
-            children.append(subprocess.Popen(['/usr/local/bin/olo-toolgate-tool-host'],env=host_env))
+            if external_tool_host_sandbox() is None:
+                host_env = dict(child_env, TOOLGATE_TOOL_HOST_CONFIG='/data/run/tool-host.json')
+                children.append(subprocess.Popen(['/usr/local/bin/olo-toolgate-tool-host'],env=host_env))
             remote_env = dict(child_env, TOOLGATE_TOOL_HOST_CONFIG='/data/run/tool-host-remote.json')
             children.append(subprocess.Popen(['/usr/local/bin/olo-toolgate-tool-host'],env=remote_env))
             server = BoundedServer(('0.0.0.0',8080),Handler,ready_state)

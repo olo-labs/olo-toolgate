@@ -1,0 +1,22 @@
+# Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0
+# Context contains the verified release binary and the accompanying packaging files.
+FROM debian:trixie-slim@sha256:8aa5a7bf5a1955bddbe7d74fcdd0b91ab30e74362a8b73af672b0481b35b44a0
+ARG TOOL_HOST_SHA256
+ENV container=docker DEBIAN_FRONTEND=noninteractive
+RUN apt-get update -o APT::Update::Error-Mode=any && apt-get install -y --no-install-recommends \
+    systemd systemd-sysv podman crun uidmap fuse-overlayfs python3 ca-certificates openssl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --uid 1000 --home-dir /var/lib/toolgate-tool-host --no-create-home toolgate
+COPY olo-toolgate-tool-host /usr/local/bin/olo-toolgate-tool-host
+RUN printf '%s  /usr/local/bin/olo-toolgate-tool-host\n' "$TOOL_HOST_SHA256" | sha256sum --check --strict \
+    && chmod 0755 /usr/local/bin/olo-toolgate-tool-host
+COPY prepare-images.py runtime-init.py enrollment-status.py block_device.py /usr/local/lib/toolgate/
+COPY LICENSE NOTICE.md /usr/share/doc/toolgate-tool-host/
+COPY olo-toolgate-tool-host.service /etc/systemd/system/olo-toolgate-tool-host.service
+RUN mkdir -p /etc/systemd/system/multi-user.target.wants /etc/containers/containers.conf.d \
+    && ln -s /etc/systemd/system/olo-toolgate-tool-host.service /etc/systemd/system/multi-user.target.wants/olo-toolgate-tool-host.service \
+    && ln -s /dev/null /etc/systemd/system/systemd-modules-load.service \
+    && ln -s /dev/null /etc/systemd/system/systemd-sysctl.service \
+    && printf '[engine]\ncgroup_manager="cgroupfs"\nevents_logger="file"\nruntime="crun"\n' > /etc/containers/containers.conf.d/toolgate.conf
+STOPSIGNAL SIGRTMIN+3
+ENTRYPOINT ["/usr/bin/python3", "/usr/local/lib/toolgate/runtime-init.py"]

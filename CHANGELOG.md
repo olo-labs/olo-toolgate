@@ -2,6 +2,15 @@
 
 ## 1.0.0-dev.1
 
+- Add opt-in Java 21 OCI workers with independent immutable image pins, a live
+  JVM isolation probe and the existing separated broker/cleanup boundary. Allow
+  Java package builders to bind the worker image before signing, and permit
+  Control scope capture only for matching independently qualified Java declarations.
+  Marketplace Demo 3 publication and end-to-end acceptance remain outstanding.
+- Add a candidate managed Tool Host container and an opt-in Quickstart public
+  bootstrap export for Compose, keeping local native execution disabled in that
+  mode and preserving independent enrollment approval and runtime qualification.
+
 - Stage main-line contributor credits in `.changes/main`, move them into new
   major release branches, and carry parent credits into minor child branches.
   Preserve main and historical records, and seed 2.0 with all unreleased 1.0 credits.

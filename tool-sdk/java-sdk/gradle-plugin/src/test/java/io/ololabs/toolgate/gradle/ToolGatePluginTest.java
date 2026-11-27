@@ -50,6 +50,21 @@ class ToolGatePluginTest {
     }
 
     @Test
+    void packageArgumentsTrackTheConfiguredWorkerImage() {
+        Project project = project();
+        project.getConfigurations().getByName("implementation").getDependencies().clear();
+        project.getConfigurations().getByName("runtimeOnly").getDependencies().clear();
+        var extension = project.getExtensions().getByType(ToolGateExtension.class);
+        extension.getBaseImageDigest().set("sha256:" + "a".repeat(64));
+        var task = (JavaExec) project.getTasks().getByName("toolgatePackage");
+        var args = task.getArgumentProviders().stream()
+                .flatMap(p -> StreamSupport.stream(p.asArguments().spliterator(), false)).collect(Collectors.toList());
+        int index = args.indexOf("--base-image-digest");
+        assertTrue(index >= 0);
+        assertEquals(extension.getBaseImageDigest().get(), args.get(index + 1));
+    }
+
+    @Test
     void theSdkLibrariesAreAddedAtTheSdkVersion() {
         Project project = project();
         project.getExtensions().getByType(ToolGateExtension.class).getSdkVersion().set("1.2.3");

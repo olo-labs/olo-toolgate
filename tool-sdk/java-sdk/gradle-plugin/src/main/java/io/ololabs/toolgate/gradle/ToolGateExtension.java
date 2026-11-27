@@ -14,4 +14,7 @@ public abstract class ToolGateExtension {
 
     /** The version of the SDK libraries the plugin adds; the plugin's own version by default. */
     public abstract Property<String> getSdkVersion();
+
+    /** Exact qualified Java 21 OCI worker digest; absent for explicitly native packages. */
+    public abstract Property<String> getBaseImageDigest();
 }

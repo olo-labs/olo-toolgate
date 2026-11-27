@@ -12,7 +12,7 @@ import java.util.List;
  *
  * <pre>
  * check &lt;project dir&gt;
- * stage --jar &lt;app.jar&gt; --version &lt;semver&gt; --out &lt;dir&gt; [--lib &lt;jar&gt;]... [--pack &lt;file.olotool&gt;]
+ * stage --jar &lt;app.jar&gt; --version &lt;semver&gt; --out &lt;dir&gt; [--lib &lt;jar&gt;]... [--base-image-digest &lt;sha256:digest&gt;] [--pack &lt;file.olotool&gt;]
  * </pre>
  *
  * Exit codes: 0 success, 1 a check or the packer failed, 2 usage.
@@ -43,6 +43,7 @@ public final class Main {
                 Path out = null;
                 Path pack = null;
                 String version = null;
+                String baseImageDigest = null;
                 List<Path> libs = new ArrayList<>();
                 for (int i = 1; i < args.length; i += 2) {
                     if (i + 1 >= args.length) return usage();
@@ -50,6 +51,7 @@ public final class Main {
                     switch (args[i]) {
                         case "--jar" -> jar = Path.of(v);
                         case "--version" -> version = v;
+                        case "--base-image-digest" -> baseImageDigest = v;
                         case "--out" -> out = Path.of(v);
                         case "--lib" -> libs.add(Path.of(v));
                         case "--pack" -> pack = Path.of(v);
@@ -60,7 +62,7 @@ public final class Main {
                 }
                 if (jar == null || out == null || version == null) return usage();
                 try {
-                    Staging.stage(jar, libs, version, out);
+                    Staging.stage(jar, libs, version, out, baseImageDigest);
                     System.out.println("toolgate: staged " + out);
                     if (pack != null) System.out.print(Packer.pack(out, pack, System.getenv()));
                 } catch (IllegalArgumentException | IllegalStateException e) {
@@ -76,7 +78,7 @@ public final class Main {
     }
 
     private static int usage() {
-        System.err.println("usage: check <project dir> | stage --jar <app.jar> --version <semver> --out <dir> [--lib <jar>]... [--pack <file.olotool>]");
+        System.err.println("usage: check <project dir> | stage --jar <app.jar> --version <semver> --out <dir> [--lib <jar>]... [--base-image-digest <sha256:digest>] [--pack <file.olotool>]");
         return 2;
     }
 }
