@@ -39,6 +39,9 @@ final class ApplicationIntegrationTest {
                        DirectoryService.Actor bob,WorkflowProfiles profiles,WorkflowManualRuns manual,WorkflowConfiguration config,
                        String digest,Time time,ApplicationEvents events,ApplicationWebhooks webhooks,Transport transport){}
     private Rig rig(boolean postgres)throws Exception {
+        return rig(postgres,null);
+    }
+    private Rig rig(boolean postgres,String manualMode)throws Exception {
         javax.sql.DataSource data;
         if(postgres) {
             Assumptions.assumeTrue(System.getenv("CONTROL_TEST_URL")!=null,"Run through the PostgreSQL gate");
@@ -69,7 +72,9 @@ final class ApplicationIntegrationTest {
         var alice=new DirectoryService(store,codec,512,1048576).portalActor(tenant,DirectoryService.digest("alice"),"alice").consoleSession("test-session",time.now+900000,null);
         var bob=new DirectoryService(store,codec,512,1048576).portalActor(tenant,DirectoryService.digest("bob"),"bob").consoleSession("other-session",time.now+900000,null);
         var path=Path.of(System.getProperty("toolgate.fixtures")).getParent().resolve("../v2/valid.json");
-        var config=codec.model(json.readTree(Files.readString(path)).path("WorkflowConfiguration").toString(),WorkflowConfiguration.class);
+        var configured=json.readTree(Files.readString(path)).path("WorkflowConfiguration").deepCopy();
+        if(manualMode!=null)((com.fasterxml.jackson.databind.node.ObjectNode)configured.path("workflows").get(0)).put("manualRunMode",manualMode);
+        var config=codec.model(configured.toString(),WorkflowConfiguration.class);
         var profile=json.createObjectNode().put("profileVersion",2).put("profileId","support");profile.putArray("packages");profile.set("workflows",json.valueToTree(config));
         var profiles=new WorkflowProfiles(store,codec,(tx,p,d)->true,keys);
         String digest=json.readTree(profiles.upload(admin,profile.toString(),"stage").body()).path("profileDigest").asText();
@@ -85,6 +90,23 @@ final class ApplicationIntegrationTest {
         var body=codec.json(Map.of("profileDigest",rig.digest(),"expectedGeneration",1,"entryAgentId","investigator","message","Private caller input"));
         var response=rig.manual().start(rig.alice(),"support","investigate",body,"submission","request");
         assertEquals(201,response.status());return json.readTree(response.body()).path("runId").asText();
+    }
+    @Test void sqliteManualRunModeIsPublishedConfigurationAndCannotBypassCurrentAuthority()throws Exception {manualModes(false);}
+    @Test void postgresManualRunModeIsPublishedConfigurationAndCannotBypassCurrentAuthority()throws Exception {manualModes(true);}
+    private void manualModes(boolean postgres)throws Exception {
+        for(String mode:new String[]{null,"PREPARE","APPLY"}) {
+            var rig=rig(postgres,mode);String id=start(rig);
+            assertEquals(mode==null?"PREPARE":mode,rig.store().transaction(rig.tenant(),false,tx->tx.workflowRuns().queued(id).remediationMode()));
+            var forged=json.createObjectNode().put("profileDigest",rig.digest()).put("expectedGeneration",1)
+                .put("entryAgentId","investigator").put("message","caller input").put("manualRunMode","APPLY");
+            assertEquals(400,assertThrows(Failure.class,()->rig.manual().start(rig.alice(),"support","investigate",forged.toString(),"forged-mode","request-mode")).status());
+            rig.store().transaction(rig.tenant(),true,tx->{
+                var before=tx.load();var entries=new HashMap<>(before.entries());entries.remove(Ids.Kind.GRANT.id("human"));
+                tx.save(before,new Directory(before.revision()+1,entries));return null;
+            });
+            var body=codec.json(Map.of("profileDigest",rig.digest(),"expectedGeneration",1,"entryAgentId","investigator","message","after revocation"));
+            assertEquals(403,assertThrows(Failure.class,()->rig.manual().start(rig.alice(),"support","investigate",body,"revoked-mode","request-revoked")).status());
+        }
     }
     private String subscribe(Rig rig,String run)throws Exception {
         String body=codec.json(new ApplicationWebhookCreate(ApplicationEventSource.WORKFLOW,run,List.of(ApplicationEventKind.PROGRESS,ApplicationEventKind.RESULT),"https://hooks.example.com/events",rig.time().now+600000,0L));

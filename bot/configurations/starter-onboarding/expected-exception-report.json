@@ -1,0 +1,48 @@
+{
+  "summary": "Joining document inventory",
+  "findings": [
+    {
+      "checkId": "requestId",
+      "status": "needs review",
+      "detail": "Required field missing or unreadable",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "accessStatus",
+      "status": "needs review",
+      "detail": "Required field missing or unreadable",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "document:signed-offer",
+      "status": "needs review",
+      "detail": "Required document absent",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "document:identity-evidence",
+      "status": "needs review",
+      "detail": "Required document absent",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "knowledgeProvenance",
+      "status": "needs review",
+      "detail": "Verify governed retrieval receipts and published source versions before relying on policy interpretation",
+      "values": [],
+      "evidence": []
+    }
+  ],
+  "draft": "",
+  "nextActions": [
+    "requestId: Required field missing or unreadable",
+    "accessStatus: Required field missing or unreadable",
+    "document:signed-offer: Required document absent",
+    "document:identity-evidence: Required document absent",
+    "knowledgeProvenance: Verify governed retrieval receipts and published source versions before relying on policy interpretation"
+  ]
+}

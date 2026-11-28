@@ -3,7 +3,7 @@
 // GENERATED FILE — DO NOT EDIT DIRECTLY; tools/contracts/generate.py
 package io.ololabs.toolgate.contracts.v2;
 
-/** Explicit text input for one published bot. Backend derives service group and configured mode; current authority and idempotency remain required.
+/** Explicit text input for one published bot. Backend derives service group and mode from a matching published dispatch route, otherwise manualRunMode or PREPARE. Caller-selected modes are refused; current authority and idempotency remain required.
  *
  * @param profileDigest canonical profileDigest value
  * @param expectedGeneration canonical expectedGeneration value

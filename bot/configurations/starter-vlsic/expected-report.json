@@ -1,0 +1,93 @@
+{
+  "summary": "Structural design checklist",
+  "findings": [
+    {
+      "checkId": "clockPort",
+      "status": "pass",
+      "detail": "Structural requirement present",
+      "values": [
+        "clk"
+      ],
+      "evidence": [
+        {
+          "sourceId": "netlist-l1-l5:p1",
+          "documentId": "netlist-l1-l5",
+          "page": 1,
+          "line": 1,
+          "quote": "module sample_chip(input clk, input rst_n, output done);\nwire active;\nassign done = active;\nendmodule",
+          "sha256": "sha256:5e8b99c4a9544232fe7ec36a2634f072bd0773c8153ed0b27c202684fe2bf19c",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        }
+      ]
+    },
+    {
+      "checkId": "readySignal",
+      "status": "fail",
+      "detail": "Required structure absent or different",
+      "values": [],
+      "evidence": [
+        {
+          "sourceId": "netlist-l1-l5:p1",
+          "documentId": "netlist-l1-l5",
+          "page": 1,
+          "line": 1,
+          "quote": "module sample_chip(input clk, input rst_n, output done);\nwire active;\nassign done = active;\nendmodule",
+          "sha256": "sha256:5e8b99c4a9544232fe7ec36a2634f072bd0773c8153ed0b27c202684fe2bf19c",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        }
+      ]
+    },
+    {
+      "checkId": "resetNaming",
+      "status": "fail",
+      "detail": "[structural-verilog-1] Document/netlist naming conflict",
+      "values": [
+        "reset_n",
+        "clk",
+        "done",
+        "rst_n"
+      ],
+      "evidence": [
+        {
+          "sourceId": "design-s1:p1",
+          "documentId": "design-s1",
+          "page": 1,
+          "line": 5,
+          "quote": "Reset name in document: reset_n",
+          "sha256": "sha256:cdea630c562e47fbc0a48ef200846015d13819b09e9105404fb02e1d75f98efe",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "netlist-l1-l5:p1",
+          "documentId": "netlist-l1-l5",
+          "page": 1,
+          "line": 1,
+          "quote": "module sample_chip(input clk, input rst_n, output done);",
+          "sha256": "sha256:5e8b99c4a9544232fe7ec36a2634f072bd0773c8153ed0b27c202684fe2bf19c",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        }
+      ]
+    },
+    {
+      "checkId": "timingClosure",
+      "status": "unsupported",
+      "detail": "Rule is outside structural-verilog-1",
+      "values": [],
+      "evidence": []
+    }
+  ],
+  "draft": "",
+  "nextActions": [
+    "readySignal: Required structure absent or different",
+    "resetNaming: [structural-verilog-1] Document/netlist naming conflict",
+    "timingClosure: Rule is outside structural-verilog-1"
+  ]
+}

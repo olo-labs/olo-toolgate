@@ -37,7 +37,7 @@ public final class WorkflowManualRuns {
             if(request.dispatchBindingId()!=null&&routes.isEmpty())throw ManagementAccess.denied();
             var modes=routes.stream().map(WorkflowDispatchBinding::remediationMode).distinct().toList();
             if(modes.size()>1)throw Failure.conflict();
-            var mode=modes.isEmpty()?WorkflowRemediationMode.PREPARE:modes.getFirst();
+            var mode=modes.isEmpty()?(workflow.manualRunMode()==null?WorkflowRemediationMode.PREPARE:workflow.manualRunMode()):modes.getFirst();
             String build=tx.workflowProfiles().graphBuild(profileId,head.digest(),workflowId);
             if(build==null)throw ManagementAccess.denied();
             String compiler=codec.model(build,WorkflowGraphBuildResult.class).compilerDigest();

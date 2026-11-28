@@ -150,6 +150,7 @@ class ReadinessTests(unittest.TestCase):
             configure.assert_not_called(); stack.operator_client.assert_not_called()
         with patch.object(setup, 'load_bundle', side_effect=[b'one', b'two']),\
                 patch.object(setup, 'setup_authority'),\
+                patch.object(setup, 'prepare_local_models'),\
                 patch.object(setup, 'configure_bot', side_effect=[Refused('unknown outcome')]) as configure:
             with self.assertRaises(Refused): setup.configure_selected(stack, rows, bundles_dir=Path('bundles'))
             self.assertEqual(1, configure.call_count)
@@ -295,6 +296,65 @@ class ReadinessTests(unittest.TestCase):
                   for purpose in ('HUMAN', 'SECRET')]
         with patch.object(setup, 'call', side_effect=[session, {'memberships': [dict(enabled=True, grants=grants)]}]):
             setup.setup_authority(object())
+
+
+class ReviewedToolHostIdentityTests(unittest.TestCase):
+    """The reviewed public Tool Host identity must match Control before allocation."""
+    fingerprint='c'*64
+
+    def observed(self,challenge=True):
+        return dict(hostId='business-tool-host',tenantId='tenant',userCode='HOST123' if challenge else None,keyFingerprint=self.fingerprint)
+
+    def test_pending_embedded_host_approval_and_allocation_use_the_locally_observed_hex_key(self):
+        review=dict(deviceId='business-tool-host',keyFingerprint=self.fingerprint,state='PENDING')
+        endpoint=dict(deviceId='business-tool-host',keyFingerprint=self.fingerprint,state='ACTIVE')
+        client=object();stack=Mock()
+        with patch.object(setup,'command') as command, \
+                patch.object(setup,'call',side_effect=[review,{}]) as call, \
+                patch.object(setup,'wait_active',return_value=endpoint) as active, \
+                patch.object(setup,'allocate') as allocate,patch.object(setup.time,'time',return_value=100):
+            setup.reviewed_tool_host(client,self.observed(),['business-processor-hosts'])
+        command.assert_not_called()
+        self.assertEqual('/api/control/v1/endpoint/enrollments/review?code=HOST123',call.call_args_list[0].args[1])
+        self.assertEqual(dict(userCode='HOST123',keyFingerprint='c'*64,choice='APPROVE',connectionExpiresAtUnixMs=86500000),
+                         call.call_args_list[1].args[2])
+        active.assert_called_once_with(client,'business-tool-host',180)
+        allocate.assert_called_once_with(client,'business-tool-host',['business-processor-hosts'])
+
+    def test_other_host_or_pending_key_mismatch_sends_no_approval_or_allocation(self):
+        for review in [dict(deviceId='tool-host-remote',keyFingerprint=self.fingerprint,state='PENDING'),
+                       dict(deviceId='business-tool-host',keyFingerprint='d'*64,state='PENDING'),
+                       dict(deviceId='business-tool-host',keyFingerprint='sha256:'+self.fingerprint,state='PENDING')]:
+            with self.subTest(review=review),patch.object(setup,'command'), \
+                    patch.object(setup,'call',return_value=review) as call, \
+                    patch.object(setup,'wait_active') as active,patch.object(setup,'allocate') as allocate,self.assertRaises(Refused):
+                setup.reviewed_tool_host(object(),self.observed(),['business-processor-hosts'])
+            self.assertEqual(1,call.call_count);active.assert_not_called();allocate.assert_not_called()
+
+    def test_active_host_without_challenge_must_match_before_allocation_and_never_gets_approved_again(self):
+        for matching in (True,False):
+            endpoint=dict(deviceId='business-tool-host',keyFingerprint=self.fingerprint if matching else 'd'*64,state='ACTIVE')
+            with self.subTest(matching=matching),patch.object(setup,'command'), \
+                    patch.object(setup,'call') as call,patch.object(setup,'wait_active',return_value=endpoint), \
+                    patch.object(setup,'allocate') as allocate:
+                if matching:setup.reviewed_tool_host(object(),self.observed(False),['business-processor-hosts']);allocate.assert_called_once()
+                else:
+                    with self.assertRaises(Refused):setup.reviewed_tool_host(object(),self.observed(False),['business-processor-hosts'])
+                    allocate.assert_not_called()
+                call.assert_not_called()
+
+    def test_approved_review_is_not_replayed_and_uncertain_approval_is_not_retried(self):
+        review=dict(deviceId='business-tool-host',keyFingerprint=self.fingerprint,state='APPROVED')
+        endpoint=dict(deviceId='business-tool-host',keyFingerprint=self.fingerprint,state='ACTIVE')
+        with patch.object(setup,'command'),patch.object(setup,'call',return_value=review) as call, \
+                patch.object(setup,'wait_active',return_value=endpoint),patch.object(setup,'allocate'):
+            setup.reviewed_tool_host(object(),self.observed(),['business-processor-hosts'])
+        self.assertEqual(1,call.call_count)
+        with patch.object(setup,'command'), \
+                patch.object(setup,'call',side_effect=[{**review,'state':'PENDING'},Refused('unknown approval outcome')]) as call, \
+                patch.object(setup,'wait_active') as active,patch.object(setup,'allocate') as allocate,self.assertRaises(Refused):
+            setup.reviewed_tool_host(object(),self.observed(),['business-processor-hosts'])
+        self.assertEqual(2,call.call_count);active.assert_not_called();allocate.assert_not_called()
 
 
 class LauncherTests(unittest.TestCase):

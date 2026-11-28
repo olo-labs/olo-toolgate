@@ -1,0 +1,21 @@
+{
+  "useCase": "invoice",
+  "title": "Invoice reconciliation",
+  "fixtureVersion": "synthetic-2",
+  "inputMode": "authorized-intake",
+  "modelAssisted": true,
+  "effectAdapter": false,
+  "qualification": "not-qualified",
+  "integrationGaps": "Full-stack knowledge, governed actions and trace qualification remain required",
+  "files": [
+    "README.md",
+    "exception-input.txt",
+    "exception-intake.json",
+    "expected-exception-report.json",
+    "expected-report.json",
+    "sample-input.txt",
+    "sample-intake.json",
+    "sample-invoice.pdf",
+    "starter.json"
+  ]
+}

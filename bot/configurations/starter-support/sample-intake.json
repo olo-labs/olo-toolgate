@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "useCase": "support",
+  "documents": [
+    {
+      "id": "kb-reset-v1",
+      "mediaType": "text/plain",
+      "file": "sample-kb-reset-v1.txt",
+      "bytes": 139,
+      "sha256": "sha256:97cd33f5f162ce5a7399b2f00214adc2ddfd78b26c35be815291df9a1213bb14"
+    },
+    {
+      "id": "policy-v1",
+      "mediaType": "text/plain",
+      "file": "sample-policy-v1.txt",
+      "bytes": 111,
+      "sha256": "sha256:eec621987a973ba37b362f09dfc409d133f03383c98c9ad7c222447dd6300e31"
+    },
+    {
+      "id": "ticket-1",
+      "mediaType": "text/plain",
+      "file": "sample-ticket-1.txt",
+      "bytes": 27,
+      "sha256": "sha256:b5e96206461a8212ec54effac3efc5f23e038f38b8c9f30042ca28d8b905bcd8"
+    }
+  ],
+  "request": {
+    "fieldSchema": [],
+    "requiredDocuments": []
+  }
+}

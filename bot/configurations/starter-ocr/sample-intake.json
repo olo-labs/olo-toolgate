@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "useCase": "ocr",
+  "documents": [
+    {
+      "id": "supplier",
+      "mediaType": "application/pdf",
+      "file": "sample-supplier.pdf",
+      "bytes": 7550,
+      "sha256": "sha256:03552089920bd4f8ed96c9893f8228016bb07a4fc423f36a9e205654e62dbacf"
+    }
+  ],
+  "request": {
+    "fieldSchema": [
+      {
+        "id": "organizationName",
+        "labels": [
+          "Organization"
+        ]
+      },
+      {
+        "id": "registrationNumber",
+        "labels": [
+          "Registration number"
+        ]
+      },
+      {
+        "id": "address",
+        "labels": [
+          "Address"
+        ]
+      },
+      {
+        "id": "contactEmail",
+        "labels": [
+          "Contact email"
+        ],
+        "format": "email"
+      }
+    ],
+    "requiredDocuments": []
+  }
+}

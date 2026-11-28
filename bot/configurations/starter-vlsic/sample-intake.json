@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "useCase": "vlsic",
+  "documents": [
+    {
+      "id": "design-s1",
+      "mediaType": "text/plain",
+      "file": "sample-design-s1.txt",
+      "bytes": 131,
+      "sha256": "sha256:cdea630c562e47fbc0a48ef200846015d13819b09e9105404fb02e1d75f98efe"
+    },
+    {
+      "id": "netlist-l1-l5",
+      "mediaType": "text/plain",
+      "file": "sample-netlist-l1-l5.txt",
+      "bytes": 101,
+      "sha256": "sha256:5e8b99c4a9544232fe7ec36a2634f072bd0773c8153ed0b27c202684fe2bf19c"
+    }
+  ],
+  "request": {
+    "fieldSchema": [],
+    "requiredDocuments": [],
+    "netlistDocumentId": "netlist-l1-l5",
+    "checklist": {
+      "version": "structural-verilog-1",
+      "rules": [
+        {
+          "id": "clockPort",
+          "kind": "port",
+          "name": "clk",
+          "direction": "input"
+        },
+        {
+          "id": "readySignal",
+          "kind": "signal",
+          "name": "ready"
+        },
+        {
+          "id": "resetNaming",
+          "kind": "document-port",
+          "referenceDocumentId": "design-s1",
+          "label": "Reset name in document"
+        },
+        {
+          "id": "timingClosure",
+          "kind": "timing"
+        }
+      ]
+    }
+  }
+}

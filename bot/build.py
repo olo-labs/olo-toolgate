@@ -15,6 +15,7 @@ HERE=Path(__file__).resolve().parent
 ROOT=HERE.parent
 sys.path.insert(0,str(ROOT))
 from bot.bundle import digest,package,pack,verify
+from bot.starters import build_kit
 
 
 def read(path):return json.loads(path.read_text(encoding='utf-8-sig'))
@@ -185,8 +186,14 @@ def main():
     args.output.mkdir(parents=True,exist_ok=True);rows=[];cache={}
     for folder in folders:rows+=build(folder,args.output,args.version,commit,os.environ.get('TOOLGATE_BUILD','local'),cache,args.packages_dir)
     inventory=dict(format='olo-profiles',version=args.version,sourceCommit=commit,profiles=rows)
+    kit=build_kit(rows,args.version,commit)
+    if kit is not None:
+        kit_name='olo-starters-'+filename(args.version)+'.zip'
+        (args.output/kit_name).write_bytes(kit)
+        inventory['starterKit']=dict(filename=kit_name,sha256=digest(kit),bytes=len(kit))
     name='olo-profiles-'+filename(args.version)+'.json';(args.output/name).write_text(json.dumps(inventory,indent=2)+'\n',encoding='utf-8',newline='\n')
     files=[name]+[row['filename'] for row in rows]
+    if kit is not None:files.append(kit_name)
     (args.output/'SHA256SUMS').write_text(''.join(digest((args.output/file).read_bytes())[7:]+'  '+file+'\n' for file in sorted(files)),encoding='utf-8',newline='\n')
     print('Built '+str(len(rows))+' profiles in '+str(args.output))
 

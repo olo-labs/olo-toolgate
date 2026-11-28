@@ -87,10 +87,15 @@ public final class PackageCompatibility {
         for(var tool:manifest.path("tools"))if(tool.path("descriptor").path("kind").asText().equals("SERVER"))serverRuntimes.add(tool.path("runtimeId").asText());
         for(var runtime:manifest.path("runtimes"))if(serverRuntimes.contains(runtime.path("runtimeId").asText())){
             boolean pinned=runtime.hasNonNull("baseImageDigest");
-            if(pinned&&(!ociTier||!runtime.path("runtimeId").asText().equals("python")))
-                problems.add("Tool Host "+hostId+" cannot provide the image-bound Python OCI tier");
+            boolean supportedOci=runtime.path("runtimeId").asText().equals("python")
+                    &&runtime.path("language").asText().equals("python")
+                    ||runtime.path("runtimeId").asText().equals("jvm")
+                    &&runtime.path("language").asText().equals("java")
+                    &&runtime.path("version").asText().equals("21");
+            if(pinned&&(!ociTier||!supportedOci))
+                problems.add("Tool Host "+hostId+" cannot provide this image-bound OCI runtime");
             else if(!pinned&&ociTier&&!nativeTier)
-                problems.add("Tool Host "+hostId+" requires a pinned Python runtime image");
+                problems.add("Tool Host "+hostId+" requires a pinned runtime image");
         }
         return problems;
     }

@@ -10,6 +10,8 @@ import sys
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
 from bot.bundle import digest,verify
+from bot.build import filename
+from bot.starters import configurations as starter_configurations, verify_kit
 
 
 def expected_profiles():
@@ -38,6 +40,19 @@ def collect(source,output,version=None,commit=None):
         if (manifest['workflowId']!=item['workflowId'] or digest(data)!=item['sha256'] or len(data)!=item['bytes'] or manifest['packages']!=item['packages']
                 or manifest['build']['version']!=inventory['version'] or manifest['build']['sourceCommit']!=inventory['sourceCommit']):raise ValueError('Profile evidence mismatch')
         seen.add(name);files.append(path)
+    if any(row['configuration'] in starter_configurations() for row in inventory['profiles']):
+        kit=inventory.get('starterKit',{})
+        if kit.get('filename')!='olo-starters-'+filename(inventory['version'])+'.zip':
+            raise ValueError('Release needs its versioned starter source kit')
+        path=source/kit['filename']
+        if path.is_symlink():raise ValueError('Linked starter source kit')
+        data=path.read_bytes()
+        if digest(data)!=kit.get('sha256') or len(data)!=kit.get('bytes'):
+            raise ValueError('Starter source kit checksum mismatch')
+        verify_kit(data,inventory['profiles'],inventory['version'],inventory['sourceCommit'])
+        files.append(path)
+    elif 'starterKit' in inventory:
+        raise ValueError('Unexpected starter source kit')
     output.mkdir(parents=True,exist_ok=True)
     for path in files:
         target=output/path.name

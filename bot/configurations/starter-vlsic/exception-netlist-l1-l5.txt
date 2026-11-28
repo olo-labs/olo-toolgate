@@ -1,0 +1,4 @@
+module sample_chip(input clk, input rst_n, output done);
+wire active;
+assign done = active;
+endmodule

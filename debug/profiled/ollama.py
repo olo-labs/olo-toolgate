@@ -48,12 +48,12 @@ def prepare_qlora(run, root, storage, compose):
     run(compose+['exec','-T','ollama','ollama','create',QLORA_MODEL,'-f','/root/.ollama/olo-import/Modelfile'])
 
 
-def warm_models(run,compose,source,image,timeout=180):
+def warm_models(run,compose,source,image,timeout=180,models=None):
     """Use the installed Python image in Ollama's network namespace, with stdin closed."""
     import re
     container=run(compose+['ps','-q','ollama'],capture_output=True,text=True).stdout.strip()
     if not re.fullmatch('[a-f0-9]{64}',container):raise ValueError('One running Ollama container is required')
-    for model in (QLORA_MODEL,MODEL):
+    for model in models if models is not None else (QLORA_MODEL,MODEL):
         print(f'Preloading local model {model} (timeout {timeout}s)...',flush=True)
         run(['docker','run','--rm','--network','container:'+container,'--read-only',
             '--cap-drop','ALL','--security-opt','no-new-privileges:true','--user','65532:65532',
@@ -98,8 +98,11 @@ def initialize():
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation',choices=['start','stop','activate','vault','initialize','configure'])
+    parser.add_argument('operation',choices=['start','stop','activate','vault','initialize','configure','prepare-model'])
+    parser.add_argument('--model',choices=['qwen3:4b'])
     args=parser.parse_args()
+    if (args.operation=='prepare-model') != (args.model is not None):
+        parser.error('prepare-model requires its allowlisted --model; other operations do not accept it')
     if args.operation=='initialize':initialize();return
     source=Path(__file__).resolve().parent;here=Path(os.environ.get('OLO_STACK_HOME',str(source))).resolve();root=source.parents[1];sys.path.insert(0,str(root))
     if args.operation=='configure':
@@ -129,6 +132,12 @@ def main():
         kwargs.setdefault('check',True)
         return subprocess.run(command,cwd=root,env=env,**kwargs)
     if args.operation=='stop':run(compose+['stop']);return
+    if args.operation=='prepare-model':
+        if args.model not in installed_models(run,compose):
+            run(compose+['exec','-T','ollama','ollama','pull',args.model])
+        warm_models(run,compose,source,document['services']['quickstart']['image'],models=(args.model,))
+        print('Prepared local starter model: '+args.model,flush=True)
+        return
     if args.operation=='start':
         compose=select_acceleration(run,compose,source)
         run(['docker','run','--rm','--network','none','--user','0:0','--mount',

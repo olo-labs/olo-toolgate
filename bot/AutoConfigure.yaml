@@ -175,6 +175,70 @@
       "requiresOllama": true,
       "directories": [],
       "logFiles": []
+    },
+    {
+      "id": "starter-ocr",
+      "name": "OCR and document extraction starter",
+      "workflowId": "starter-ocr",
+      "requiresOllama": true,
+      "directories": [],
+      "logFiles": []
+    },
+    {
+      "id": "starter-medical",
+      "name": "Medical document processing starter",
+      "workflowId": "starter-medical",
+      "requiresOllama": true,
+      "directories": [],
+      "logFiles": []
+    },
+    {
+      "id": "starter-vlsic",
+      "name": "VLSIC checklist review starter",
+      "workflowId": "starter-vlsic",
+      "requiresOllama": true,
+      "directories": [],
+      "logFiles": []
+    },
+    {
+      "id": "starter-loan",
+      "name": "Loan document verification starter",
+      "workflowId": "starter-loan",
+      "requiresOllama": true,
+      "directories": [],
+      "logFiles": []
+    },
+    {
+      "id": "starter-invoice",
+      "name": "Invoice reconciliation starter",
+      "workflowId": "starter-invoice",
+      "requiresOllama": true,
+      "directories": [],
+      "logFiles": []
+    },
+    {
+      "id": "starter-support",
+      "name": "Customer support starter",
+      "workflowId": "starter-support",
+      "requiresOllama": true,
+      "directories": [],
+      "logFiles": []
+    },
+    {
+      "id": "starter-itsm",
+      "name": "IT service desk starter",
+      "workflowId": "starter-itsm",
+      "requiresOllama": true,
+      "directories": [],
+      "logFiles": []
+    },
+    {
+      "id": "starter-onboarding",
+      "name": "Employee onboarding starter",
+      "workflowId": "starter-onboarding",
+      "requiresOllama": true,
+      "directories": [],
+      "logFiles": []
     }
   ]
 }

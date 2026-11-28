@@ -1,0 +1,4 @@
+Request ID: SYN-JOIN-ACCESS-01
+Workspace: sandbox-alpha
+Status: awaiting approval
+No account has been created.

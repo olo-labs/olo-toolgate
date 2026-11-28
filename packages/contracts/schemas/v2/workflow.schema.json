@@ -232,6 +232,10 @@
         "deployment": {
           "$ref": "#/$defs/WorkflowStackDeployment"
         },
+        "manualRunMode": {
+          "$ref": "#/$defs/WorkflowRemediationMode",
+          "description": "Published mode for manual runs when no matching dispatch route supplies one. Defaults to PREPARE. Configuration never replaces current tool or effect authority."
+        },
         "graph": {
           "$ref": "#/$defs/WorkflowGraphSelection"
         }
@@ -1410,7 +1414,7 @@
         "entryAgentId",
         "message"
       ],
-      "description": "Explicit text input for one published bot. Backend derives service group and configured mode; current authority and idempotency remain required."
+      "description": "Explicit text input for one published bot. Backend derives service group and mode from a matching published dispatch route, otherwise manualRunMode or PREPARE. Caller-selected modes are refused; current authority and idempotency remain required."
     },
     "WorkflowRunStartReceipt": {
       "type": "object",

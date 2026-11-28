@@ -1,0 +1,23 @@
+{
+  "useCase": "itsm",
+  "title": "IT service desk",
+  "fixtureVersion": "synthetic-2",
+  "inputMode": "authorized-intake",
+  "modelAssisted": true,
+  "effectAdapter": false,
+  "qualification": "not-qualified",
+  "integrationGaps": "Full-stack knowledge, governed actions and trace qualification remain required",
+  "files": [
+    "README.md",
+    "exception-input.txt",
+    "exception-intake.json",
+    "expected-exception-report.json",
+    "expected-report.json",
+    "sample-approval-1.txt",
+    "sample-input.txt",
+    "sample-intake.json",
+    "sample-runbook-v1.txt",
+    "sample-ticket-1.txt",
+    "starter.json"
+  ]
+}

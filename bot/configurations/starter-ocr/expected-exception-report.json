@@ -1,0 +1,40 @@
+{
+  "summary": "Document extraction",
+  "findings": [
+    {
+      "checkId": "organizationName",
+      "status": "needs review",
+      "detail": "Required field missing or unreadable",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "registrationNumber",
+      "status": "needs review",
+      "detail": "Required field missing or unreadable",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "address",
+      "status": "needs review",
+      "detail": "Required field missing or unreadable",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "contactEmail",
+      "status": "needs review",
+      "detail": "Required field missing or unreadable",
+      "values": [],
+      "evidence": []
+    }
+  ],
+  "draft": "",
+  "nextActions": [
+    "organizationName: Required field missing or unreadable",
+    "registrationNumber: Required field missing or unreadable",
+    "address: Required field missing or unreadable",
+    "contactEmail: Required field missing or unreadable"
+  ]
+}

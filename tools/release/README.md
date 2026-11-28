@@ -1,5 +1,12 @@
 # Release
 
+Business starters are mandatory `.olo` profiles. The builder also emits
+`olo-starters-<version>.zip`, pinned by `starterKit` in the profile inventory,
+with editable sources, guides, samples and authored expected reports. The
+collector checks hashes, version, commit and exact profile rows and promotes
+those bytes unchanged. The kit is not a bot upload or qualification attestation.
+See [starter scope and evaluation](../../bot/starters/README.md).
+
 Workflow profiles are built from `bot/configurations/` by the foundation
 profile gate. Versioned `.olo` files and `olo-profiles-<version>.json` are retained
 as `foundation-stage-profiles`, revalidated into foundation release assets, and
@@ -14,6 +21,16 @@ GitHub Release Assets and explore with the published containers launched from
 `deploy/docker/quickstart/dev`; local bot/tool builds are an authoring option.
 
 ## Standalone tool and trigger release assets
+
+The current `bot/tools/` modules also produce mandatory standalone `.olotool`
+assets, including `olo.rag`, `olo.memory` and the business document adapter.
+They build with the SDK/package gate and enter the same digest-checked tool
+inventory. Distinct suffixes such as `.olorag` do not add runtime support.
+Set `TOOLGATE_JVM_IMAGE_DIGEST` to the exact qualified Java worker image digest
+before compiling these modules, or supply Gradle's `toolgateJvmImageDigest`
+property explicitly. Packaging refuses an absent pin. Deliver the matching
+managed runtime and worker/broker images and execute their deployment acceptance
+before publishing runnable starters; a locally built archive is insufficient.
 
 Development and production releases also publish `.olotool` archives separately:
 all Java tool/mock example projects, all configured `core-mcp` packages, and

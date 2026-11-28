@@ -23,6 +23,23 @@ directory definitions and exact `.olotool` packages. It excludes human
 credentials, private keys, model weights and installation state. See
 [bot authoring](../help/author-bots.md) and [profile configuration](../deployment/profiles.md).
 
+The [business starters](../../bot/starters/README.md) use a governed document
+intake tool followed by analysis and review agents in the existing JSON graph.
+Processor reports and source locations remain unchanged in the graph output;
+model commentary is separate. One reviewed broker request names the authorized
+intake; the confined processor checks its manifest and SHA-256 pinned files,
+extracts documents and performs
+deterministic checks without model calls or business effects. Destination-local
+CA trust, custody and exact intake grants stay outside `.olo` sources. Input
+approval records grant no authority. A separate source ZIP pins editable sources
+and synthetic evaluation material to the profile inventory.
+
+Explicit starter selection prepares the allowlisted `qwen3:4b` model in the
+operator-owned Ollama companion once per setup batch, before bot publication.
+This does not install arbitrary model references from imported text, change
+provider origins, grant access or include weights in bundles. Preparation
+failure stops setup; ordinary `.olo` import does not download model weights.
+
 The operator owns images, ports, mounts, device permissions, model endpoints and
 collector settings. Importing a workflow does not deploy infrastructure, grant
 device access, clean folders or rotate credentials. First startup of the
@@ -92,6 +109,13 @@ to repeat an uncertain effect. Keep source execution observations separate from
 Control-derived business finality and target-fencing evidence.
 
 ## Boundaries and limits
+
+Manual runs derive execution mode from a matching published dispatch route. When
+none matches the selected entry agent, the published workflow's optional
+`manualRunMode` applies, defaulting to PREPARE. Run requests cannot choose or
+override the mode. APPLY permits only separately authorized declared tool calls;
+current user/service grants, tool policy, effect consent and target fencing still
+apply. Document starters use it to record fenced job and result-access receipts.
 
 Native graphs are operator-installed trusted code. Current execution does not
 establish universal untrusted-code isolation, exactly-once effects, durable native

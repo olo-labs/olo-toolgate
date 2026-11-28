@@ -1,0 +1,514 @@
+{
+  "formatVersion": 2,
+  "tenantId": "destination",
+  "revision": 0,
+  "agents": [
+    {
+      "id": "starter-invoice-analyst",
+      "name": "Invoice reconciliation analyst",
+      "enabled": true,
+      "revision": 1,
+      "ownerUserId": "admin"
+    },
+    {
+      "id": "starter-invoice-reviewer",
+      "name": "Invoice reconciliation evidence reviewer",
+      "enabled": true,
+      "revision": 1,
+      "ownerUserId": "admin"
+    }
+  ],
+  "agentGroups": [
+    {
+      "id": "starter-invoice-agents",
+      "name": "Invoice reconciliation agents",
+      "enabled": true,
+      "revision": 1,
+      "agentIds": [
+        "starter-invoice-analyst",
+        "starter-invoice-reviewer"
+      ],
+      "roleIds": [
+        "starter-invoice-service"
+      ]
+    }
+  ],
+  "roles": [
+    {
+      "enabled": true,
+      "id": "starter-invoice-service",
+      "managementRules": [],
+      "name": "Invoice reconciliation service",
+      "portalRole": "BASIC",
+      "revision": 1,
+      "roleType": "ACTOR_SERVICE"
+    }
+  ],
+  "grants": [
+    {
+      "enabled": true,
+      "id": "starter-invoice-service",
+      "name": "Invoice reconciliation model authority",
+      "purpose": "SERVICE",
+      "revision": 1,
+      "scope": {
+        "actions": [
+          "workflow.execute",
+          "model.infer"
+        ],
+        "allActions": false,
+        "conditions": {
+          "devicePosture": [],
+          "expiresAtUnixMs": 0,
+          "highRisk": false,
+          "hoursUtc": [],
+          "networkCidrs": [],
+          "notBeforeUnixMs": 0,
+          "regions": [],
+          "requireOnline": false
+        },
+        "deviceGroups": {
+          "all": true,
+          "ids": []
+        },
+        "resources": [
+          {
+            "kind": "CUSTOM",
+            "match": "EXACT",
+            "locator": "workflow-group:starter-invoice"
+          },
+          {
+            "kind": "CUSTOM",
+            "match": "EXACT",
+            "locator": "model-group:starter-invoice-local-ceiling"
+          },
+          {
+            "kind": "CUSTOM",
+            "match": "EXACT",
+            "locator": "model-group:starter-invoice-general-models"
+          }
+        ],
+        "toolGroups": {
+          "all": true,
+          "ids": []
+        }
+      },
+      "sourceId": "starter-invoice-service",
+      "sourceType": "ROLE"
+    },
+    {
+      "id": "starter-invoice-processor-capability",
+      "name": "Invoice reconciliation processor capability",
+      "enabled": true,
+      "revision": 1,
+      "sourceType": "AGENT_GROUP",
+      "sourceId": "starter-invoice-agents",
+      "purpose": "CAPABILITY",
+      "scope": {
+        "actions": [
+          "document.process"
+        ],
+        "allActions": false,
+        "resources": [
+          {
+            "kind": "CUSTOM",
+            "locator": "tool://olo.business/process-intake",
+            "match": "EXACT"
+          }
+        ],
+        "toolGroups": {
+          "all": false,
+          "ids": [
+            "business-processor-tools"
+          ]
+        },
+        "deviceGroups": {
+          "all": false,
+          "ids": [
+            "business-processor-hosts"
+          ]
+        },
+        "conditions": {
+          "devicePosture": [],
+          "expiresAtUnixMs": 0,
+          "highRisk": false,
+          "hoursUtc": [],
+          "networkCidrs": [],
+          "notBeforeUnixMs": 0,
+          "regions": [],
+          "requireOnline": true
+        }
+      }
+    },
+    {
+      "id": "starter-invoice-processor-service",
+      "name": "Invoice reconciliation processor service",
+      "enabled": true,
+      "revision": 1,
+      "sourceType": "AGENT_GROUP",
+      "sourceId": "starter-invoice-agents",
+      "purpose": "SERVICE",
+      "scope": {
+        "actions": [
+          "document.process"
+        ],
+        "allActions": false,
+        "resources": [
+          {
+            "kind": "CUSTOM",
+            "locator": "tool://olo.business/process-intake",
+            "match": "EXACT"
+          }
+        ],
+        "toolGroups": {
+          "all": false,
+          "ids": [
+            "business-processor-tools"
+          ]
+        },
+        "deviceGroups": {
+          "all": false,
+          "ids": [
+            "business-processor-hosts"
+          ]
+        },
+        "conditions": {
+          "devicePosture": [],
+          "expiresAtUnixMs": 0,
+          "highRisk": false,
+          "hoursUtc": [],
+          "networkCidrs": [],
+          "notBeforeUnixMs": 0,
+          "regions": [],
+          "requireOnline": true
+        }
+      }
+    }
+  ],
+  "tools": [
+    {
+      "id": "olo.business/process-intake",
+      "name": "olo.business/process-intake",
+      "enabled": true,
+      "revision": 1,
+      "version": "0.1.0",
+      "packageDigest": "bf20ef728e02fe7bff7abc91431664f944d9dd7f121e3007454e2496ca60756f",
+      "definition": {
+        "id": "olo.business/process-intake",
+        "name": "olo.business/process-intake",
+        "description": "Submit a bounded source-pinned document job and collect its confirmed result. Submission and each result access record a fenced target receipt. No payment, account, model or approval action occurs.",
+        "actions": [
+          {
+            "name": "document.process",
+            "resourceKinds": [
+              "CUSTOM"
+            ]
+          }
+        ],
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "intakeId": {
+              "description": "Opaque intake identifier from the approved repository",
+              "maxLength": 96,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            "useCase": {
+              "description": "ocr, medical, vlsic, loan, invoice, support, itsm or onboarding",
+              "maxLength": 32,
+              "type": "string"
+            }
+          },
+          "required": [
+            "intakeId",
+            "useCase"
+          ],
+          "type": "object"
+        },
+        "outputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "intakeId": {
+              "description": "Authorized intake identifier",
+              "type": "string"
+            },
+            "manifestSha256": {
+              "description": "Exact observed intake manifest SHA-256",
+              "type": "string"
+            },
+            "processing": {
+              "additionalProperties": false,
+              "description": "Processed document evidence and deterministic report",
+              "properties": {
+                "report": {
+                  "additionalProperties": false,
+                  "description": "Deterministic business report",
+                  "properties": {
+                    "draft": {
+                      "description": "Reviewable draft; never sent by processing",
+                      "type": "string"
+                    },
+                    "findings": {
+                      "description": "Findings; independent from execution state",
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "checkId": {
+                            "description": "Stable rule/check identifier",
+                            "type": "string"
+                          },
+                          "detail": {
+                            "description": "Deterministic reason",
+                            "type": "string"
+                          },
+                          "evidence": {
+                            "description": "Supporting source locations",
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "documentId": {
+                                  "description": "Document identifier; empty for a structured pointer",
+                                  "type": "string"
+                                },
+                                "engine": {
+                                  "description": "Extraction or deterministic-rule engine",
+                                  "type": "string"
+                                },
+                                "line": {
+                                  "description": "One-based line; zero for a structured pointer",
+                                  "maximum": 2147483647,
+                                  "minimum": -2147483648,
+                                  "type": "integer"
+                                },
+                                "page": {
+                                  "description": "One-based page; zero for a structured pointer",
+                                  "maximum": 2147483647,
+                                  "minimum": -2147483648,
+                                  "type": "integer"
+                                },
+                                "pointer": {
+                                  "description": "JSON pointer for structured evidence; empty for source text",
+                                  "type": "string"
+                                },
+                                "quote": {
+                                  "description": "Exact source quote; empty for a structured pointer",
+                                  "type": "string"
+                                },
+                                "rotation": {
+                                  "description": "Applied right-angle orientation correction",
+                                  "maximum": 2147483647,
+                                  "minimum": -2147483648,
+                                  "type": "integer"
+                                },
+                                "sha256": {
+                                  "description": "Original document SHA-256; empty for a structured pointer",
+                                  "type": "string"
+                                },
+                                "sourceId": {
+                                  "description": "Source identifier",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "documentId",
+                                "engine",
+                                "line",
+                                "page",
+                                "pointer",
+                                "quote",
+                                "rotation",
+                                "sha256",
+                                "sourceId"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "status": {
+                            "description": "pass, fail, needs review or unsupported",
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "Observed source values, preserving conflicts",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "checkId",
+                          "detail",
+                          "evidence",
+                          "status",
+                          "values"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "nextActions": {
+                      "description": "Outstanding reviewer work",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "summary": {
+                      "description": "Deterministic report description",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "draft",
+                    "findings",
+                    "nextActions",
+                    "summary"
+                  ],
+                  "type": "object"
+                },
+                "sources": {
+                  "description": "Bounded extracted source pages",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "documentId": {
+                        "description": "Document identifier",
+                        "type": "string"
+                      },
+                      "engine": {
+                        "description": "Extraction engine",
+                        "type": "string"
+                      },
+                      "page": {
+                        "description": "One-based page",
+                        "maximum": 2147483647,
+                        "minimum": -2147483648,
+                        "type": "integer"
+                      },
+                      "rotation": {
+                        "description": "Applied orientation correction",
+                        "maximum": 2147483647,
+                        "minimum": -2147483648,
+                        "type": "integer"
+                      },
+                      "sha256": {
+                        "description": "Original document SHA-256",
+                        "type": "string"
+                      },
+                      "sourceId": {
+                        "description": "Source page identifier",
+                        "type": "string"
+                      },
+                      "text": {
+                        "description": "Extracted source text",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "documentId",
+                      "engine",
+                      "page",
+                      "rotation",
+                      "sha256",
+                      "sourceId",
+                      "text"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "report",
+                "sources"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "intakeId",
+            "manifestSha256",
+            "processing"
+          ],
+          "type": "object"
+        },
+        "reconciliation": "MANUAL"
+      },
+      "extractorId": "extract-32afed52b93e417e38aa1c24d29ef6a5"
+    }
+  ],
+  "toolGroups": [
+    {
+      "id": "business-processor-tools",
+      "name": "Business processor tools",
+      "enabled": true,
+      "revision": 1,
+      "toolIds": [
+        "olo.business/process-intake"
+      ]
+    }
+  ],
+  "deviceGroups": [
+    {
+      "id": "business-processor-hosts",
+      "name": "Business processor hosts",
+      "enabled": true,
+      "revision": 1,
+      "deviceIds": []
+    }
+  ],
+  "bindings": [
+    {
+      "id": "business-processor-binding",
+      "name": "Business processor execution",
+      "enabled": true,
+      "revision": 1,
+      "toolGroupId": "business-processor-tools",
+      "deviceGroupId": "business-processor-hosts",
+      "actions": [
+        "document.process"
+      ],
+      "allowedPackageDigests": [
+        "bf20ef728e02fe7bff7abc91431664f944d9dd7f121e3007454e2496ca60756f"
+      ],
+      "ownerDependency": false,
+      "requireOnline": true
+    }
+  ],
+  "policies": [],
+  "extractors": [
+    {
+      "id": "extract-32afed52b93e417e38aa1c24d29ef6a5",
+      "name": "Resources for olo.business/process-intake",
+      "enabled": true,
+      "revision": 1,
+      "version": "0.1.0",
+      "extractorKind": "FIELDS",
+      "fields": [],
+      "fixedResources": [
+        {
+          "kind": "CUSTOM",
+          "locator": "secret://businessprocessorapikey"
+        }
+      ],
+      "locatorTemplates": [
+        "documents://{tenant}/intake/{intakeId}"
+      ],
+      "maxResources": 32
+    }
+  ],
+  "teams": [],
+  "devices": [],
+  "delegations": [],
+  "agentDelegations": [],
+  "workloadBindings": [],
+  "requiredIdentities": [
+    {
+      "id": "admin",
+      "teamIds": []
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "useCase": "onboarding",
+  "documents": [
+    {
+      "id": "joiner-1",
+      "mediaType": "text/plain",
+      "file": "sample-joiner-1.txt",
+      "bytes": 104,
+      "sha256": "sha256:505be734eb0708973749f2b0e1c37b0f05ce8bf060b6b7889e42d9d9b99ac190"
+    },
+    {
+      "id": "checklist-v1",
+      "mediaType": "text/plain",
+      "file": "sample-checklist-v1.txt",
+      "bytes": 138,
+      "sha256": "sha256:2a5a3a203059ac8ce8e0b267a47f664cd20348934ecda6a984bc89a52d265bb1"
+    },
+    {
+      "id": "policy-v1",
+      "mediaType": "text/plain",
+      "file": "sample-policy-v1.txt",
+      "bytes": 88,
+      "sha256": "sha256:0c009e19d0b6e25b7f3322792c96a1751caed02aeb3a88f708436cd1de3dd657"
+    },
+    {
+      "id": "access-req-1",
+      "mediaType": "text/plain",
+      "file": "sample-access-req-1.txt",
+      "bytes": 110,
+      "sha256": "sha256:aaeecc0c367477ee834ec2919777baf59541f7a86e6aba58281607b8c0a74c9d"
+    }
+  ],
+  "request": {
+    "fieldSchema": [
+      {
+        "id": "requestId",
+        "labels": [
+          "Request ID"
+        ]
+      },
+      {
+        "id": "accessStatus",
+        "labels": [
+          "Status"
+        ]
+      }
+    ],
+    "requiredDocuments": [
+      "signed-offer",
+      "identity-evidence"
+    ]
+  }
+}

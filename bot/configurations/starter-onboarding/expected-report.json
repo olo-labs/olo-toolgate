@@ -1,0 +1,74 @@
+{
+  "summary": "Joining document inventory",
+  "findings": [
+    {
+      "checkId": "requestId",
+      "status": "pass",
+      "detail": "Value extracted from the supplied source",
+      "values": [
+        "SYN-JOIN-ACCESS-01"
+      ],
+      "evidence": [
+        {
+          "sourceId": "access-req-1:p1",
+          "documentId": "access-req-1",
+          "page": 1,
+          "line": 1,
+          "quote": "Request ID: SYN-JOIN-ACCESS-01",
+          "sha256": "sha256:aaeecc0c367477ee834ec2919777baf59541f7a86e6aba58281607b8c0a74c9d",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        }
+      ]
+    },
+    {
+      "checkId": "accessStatus",
+      "status": "pass",
+      "detail": "Value extracted from the supplied source",
+      "values": [
+        "awaiting approval"
+      ],
+      "evidence": [
+        {
+          "sourceId": "access-req-1:p1",
+          "documentId": "access-req-1",
+          "page": 1,
+          "line": 3,
+          "quote": "Status: awaiting approval",
+          "sha256": "sha256:aaeecc0c367477ee834ec2919777baf59541f7a86e6aba58281607b8c0a74c9d",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        }
+      ]
+    },
+    {
+      "checkId": "document:signed-offer",
+      "status": "needs review",
+      "detail": "Required document absent",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "document:identity-evidence",
+      "status": "needs review",
+      "detail": "Required document absent",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "knowledgeProvenance",
+      "status": "needs review",
+      "detail": "Verify governed retrieval receipts and published source versions before relying on policy interpretation",
+      "values": [],
+      "evidence": []
+    }
+  ],
+  "draft": "",
+  "nextActions": [
+    "document:signed-offer: Required document absent",
+    "document:identity-evidence: Required document absent",
+    "knowledgeProvenance: Verify governed retrieval receipts and published source versions before relying on policy interpretation"
+  ]
+}

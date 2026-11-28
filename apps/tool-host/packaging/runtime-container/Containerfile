@@ -4,7 +4,7 @@ FROM debian:trixie-slim@sha256:8aa5a7bf5a1955bddbe7d74fcdd0b91ab30e74362a8b73af6
 ARG TOOL_HOST_SHA256
 ENV container=docker DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -o APT::Update::Error-Mode=any && apt-get install -y --no-install-recommends \
-    systemd systemd-sysv podman crun uidmap fuse-overlayfs python3 ca-certificates openssl \
+    systemd systemd-sysv dbus podman crun uidmap fuse-overlayfs python3 ca-certificates openssl \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --uid 1000 --home-dir /var/lib/toolgate-tool-host --no-create-home toolgate
 COPY olo-toolgate-tool-host /usr/local/bin/olo-toolgate-tool-host

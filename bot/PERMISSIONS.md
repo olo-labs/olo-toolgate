@@ -73,6 +73,14 @@ partial grants are automatically combined into a larger cross-product permission
 | [portable-summary](configurations/portable-summary/README.md) | `portable-summary` / `portable-summary` | `portable-summary-agent` | Text/models only |
 | [publication-switch-a](configurations/publication-switch-a/README.md) | `publication-switch` / `publication-switch` | `publication-switch-langchain-linux-agent` | File tools and watcher |
 | [publication-switch-b](configurations/publication-switch-b/README.md) | `publication-switch` / `publication-switch` | `publication-switch-langchain-linux-agent` | File tools and watcher |
+| [starter-invoice](configurations/starter-invoice/README.md) | `starter-invoice` / `starter-invoice` | `starter-invoice-analyst` | File tools and watcher |
+| [starter-itsm](configurations/starter-itsm/README.md) | `starter-itsm` / `starter-itsm` | `starter-itsm-analyst` | File tools and watcher |
+| [starter-loan](configurations/starter-loan/README.md) | `starter-loan` / `starter-loan` | `starter-loan-analyst` | File tools and watcher |
+| [starter-medical](configurations/starter-medical/README.md) | `starter-medical` / `starter-medical` | `starter-medical-analyst` | File tools and watcher |
+| [starter-ocr](configurations/starter-ocr/README.md) | `starter-ocr` / `starter-ocr` | `starter-ocr-analyst` | File tools and watcher |
+| [starter-onboarding](configurations/starter-onboarding/README.md) | `starter-onboarding` / `starter-onboarding` | `starter-onboarding-analyst` | File tools and watcher |
+| [starter-support](configurations/starter-support/README.md) | `starter-support` / `starter-support` | `starter-support-analyst` | File tools and watcher |
+| [starter-vlsic](configurations/starter-vlsic/README.md) | `starter-vlsic` / `starter-vlsic` | `starter-vlsic-analyst` | File tools and watcher |
 | [tenant-incident-triage](configurations/tenant-incident-triage/README.md) | `tenant-incident-triage` / `tenant-incident-triage` | `tenant-incident-triage-analyzer` | Text/models only |
 | [text-summary](configurations/text-summary/README.md) | `text-summary` / `text-summary` | `text-summary-langchain-linux-agent` | File tools and watcher |
 
@@ -338,6 +346,142 @@ permissions. Existing runs retain their pinned graph and admitted ceiling.
 - Execution binding `publication-switch-langchain-linux-binding`: Tool Group `langchain-package-tools`, Device Group `publication-switch-langchain-linux-devices`, action(s) `invoke`.
 - Watcher `publication-switch-b-watch`: Device Group(s) `publication-switch-ReadAndWriteDeviceGroup`; configuration `{"folder":"publication-switch/inbox-b","extension":".txt"}`.
 - Graph file paths: `input path resolved from {"$path":"/message"}`, `publication-switch/processed/source-b.txt`, `publication-switch/summaries/summary-b.txt`.
+
+## starter-invoice
+
+[Bot instructions](configurations/starter-invoice/README.md) · [Bot definition](configurations/starter-invoice/bot.json) · [Directory grants/resources](configurations/starter-invoice/referenced-config.json)
+
+- Workflow execution/observation resource: `workflow:starter-invoice`.
+- Workflow service resources: `workflow-group:starter-invoice`.
+- Human agent execution resources: `agent:starter-invoice-analyst`, `agent:starter-invoice-reviewer`.
+- Bound Agent Groups: `starter-invoice-agents`.
+- Model inference resources: `model-group:starter-invoice-general-models`, `model-group:starter-invoice-local-ceiling`.
+- Service/capability source grants to cover: `starter-invoice-processor-capability`, `starter-invoice-processor-service`, `starter-invoice-service`.
+- Declared reachable model deployments: `starter-invoice-local-lightweight → qwen3:4b`.
+- Installation model secret references: `ollama-local-key`.
+- Packages: `olo.business@0.1.0`.
+- Tool IDs: `olo.business/process-intake`.
+- Execution binding `business-processor-binding`: Tool Group `business-processor-tools`, Device Group `business-processor-hosts`, action(s) `document.process`.
+- Graph file paths: None.
+
+## starter-itsm
+
+[Bot instructions](configurations/starter-itsm/README.md) · [Bot definition](configurations/starter-itsm/bot.json) · [Directory grants/resources](configurations/starter-itsm/referenced-config.json)
+
+- Workflow execution/observation resource: `workflow:starter-itsm`.
+- Workflow service resources: `workflow-group:starter-itsm`.
+- Human agent execution resources: `agent:starter-itsm-analyst`, `agent:starter-itsm-reviewer`.
+- Bound Agent Groups: `starter-itsm-agents`.
+- Model inference resources: `model-group:starter-itsm-general-models`, `model-group:starter-itsm-local-ceiling`.
+- Service/capability source grants to cover: `starter-itsm-processor-capability`, `starter-itsm-processor-service`, `starter-itsm-service`.
+- Declared reachable model deployments: `starter-itsm-local-lightweight → qwen3:4b`.
+- Installation model secret references: `ollama-local-key`.
+- Packages: `olo.business@0.1.0`.
+- Tool IDs: `olo.business/process-intake`.
+- Execution binding `business-processor-binding`: Tool Group `business-processor-tools`, Device Group `business-processor-hosts`, action(s) `document.process`.
+- Graph file paths: None.
+
+## starter-loan
+
+[Bot instructions](configurations/starter-loan/README.md) · [Bot definition](configurations/starter-loan/bot.json) · [Directory grants/resources](configurations/starter-loan/referenced-config.json)
+
+- Workflow execution/observation resource: `workflow:starter-loan`.
+- Workflow service resources: `workflow-group:starter-loan`.
+- Human agent execution resources: `agent:starter-loan-analyst`, `agent:starter-loan-reviewer`.
+- Bound Agent Groups: `starter-loan-agents`.
+- Model inference resources: `model-group:starter-loan-general-models`, `model-group:starter-loan-local-ceiling`.
+- Service/capability source grants to cover: `starter-loan-processor-capability`, `starter-loan-processor-service`, `starter-loan-service`.
+- Declared reachable model deployments: `starter-loan-local-lightweight → qwen3:4b`.
+- Installation model secret references: `ollama-local-key`.
+- Packages: `olo.business@0.1.0`.
+- Tool IDs: `olo.business/process-intake`.
+- Execution binding `business-processor-binding`: Tool Group `business-processor-tools`, Device Group `business-processor-hosts`, action(s) `document.process`.
+- Graph file paths: None.
+
+## starter-medical
+
+[Bot instructions](configurations/starter-medical/README.md) · [Bot definition](configurations/starter-medical/bot.json) · [Directory grants/resources](configurations/starter-medical/referenced-config.json)
+
+- Workflow execution/observation resource: `workflow:starter-medical`.
+- Workflow service resources: `workflow-group:starter-medical`.
+- Human agent execution resources: `agent:starter-medical-analyst`, `agent:starter-medical-reviewer`.
+- Bound Agent Groups: `starter-medical-agents`.
+- Model inference resources: `model-group:starter-medical-general-models`, `model-group:starter-medical-local-ceiling`.
+- Service/capability source grants to cover: `starter-medical-processor-capability`, `starter-medical-processor-service`, `starter-medical-service`.
+- Declared reachable model deployments: `starter-medical-local-lightweight → qwen3:4b`.
+- Installation model secret references: `ollama-local-key`.
+- Packages: `olo.business@0.1.0`.
+- Tool IDs: `olo.business/process-intake`.
+- Execution binding `business-processor-binding`: Tool Group `business-processor-tools`, Device Group `business-processor-hosts`, action(s) `document.process`.
+- Graph file paths: None.
+
+## starter-ocr
+
+[Bot instructions](configurations/starter-ocr/README.md) · [Bot definition](configurations/starter-ocr/bot.json) · [Directory grants/resources](configurations/starter-ocr/referenced-config.json)
+
+- Workflow execution/observation resource: `workflow:starter-ocr`.
+- Workflow service resources: `workflow-group:starter-ocr`.
+- Human agent execution resources: `agent:starter-ocr-analyst`, `agent:starter-ocr-reviewer`.
+- Bound Agent Groups: `starter-ocr-agents`.
+- Model inference resources: `model-group:starter-ocr-general-models`, `model-group:starter-ocr-local-ceiling`.
+- Service/capability source grants to cover: `starter-ocr-processor-capability`, `starter-ocr-processor-service`, `starter-ocr-service`.
+- Declared reachable model deployments: `starter-ocr-local-lightweight → qwen3:4b`.
+- Installation model secret references: `ollama-local-key`.
+- Packages: `olo.business@0.1.0`.
+- Tool IDs: `olo.business/process-intake`.
+- Execution binding `business-processor-binding`: Tool Group `business-processor-tools`, Device Group `business-processor-hosts`, action(s) `document.process`.
+- Graph file paths: None.
+
+## starter-onboarding
+
+[Bot instructions](configurations/starter-onboarding/README.md) · [Bot definition](configurations/starter-onboarding/bot.json) · [Directory grants/resources](configurations/starter-onboarding/referenced-config.json)
+
+- Workflow execution/observation resource: `workflow:starter-onboarding`.
+- Workflow service resources: `workflow-group:starter-onboarding`.
+- Human agent execution resources: `agent:starter-onboarding-analyst`, `agent:starter-onboarding-reviewer`.
+- Bound Agent Groups: `starter-onboarding-agents`.
+- Model inference resources: `model-group:starter-onboarding-general-models`, `model-group:starter-onboarding-local-ceiling`.
+- Service/capability source grants to cover: `starter-onboarding-processor-capability`, `starter-onboarding-processor-service`, `starter-onboarding-service`.
+- Declared reachable model deployments: `starter-onboarding-local-lightweight → qwen3:4b`.
+- Installation model secret references: `ollama-local-key`.
+- Packages: `olo.business@0.1.0`.
+- Tool IDs: `olo.business/process-intake`.
+- Execution binding `business-processor-binding`: Tool Group `business-processor-tools`, Device Group `business-processor-hosts`, action(s) `document.process`.
+- Graph file paths: None.
+
+## starter-support
+
+[Bot instructions](configurations/starter-support/README.md) · [Bot definition](configurations/starter-support/bot.json) · [Directory grants/resources](configurations/starter-support/referenced-config.json)
+
+- Workflow execution/observation resource: `workflow:starter-support`.
+- Workflow service resources: `workflow-group:starter-support`.
+- Human agent execution resources: `agent:starter-support-analyst`, `agent:starter-support-reviewer`.
+- Bound Agent Groups: `starter-support-agents`.
+- Model inference resources: `model-group:starter-support-general-models`, `model-group:starter-support-local-ceiling`.
+- Service/capability source grants to cover: `starter-support-processor-capability`, `starter-support-processor-service`, `starter-support-service`.
+- Declared reachable model deployments: `starter-support-local-lightweight → qwen3:4b`.
+- Installation model secret references: `ollama-local-key`.
+- Packages: `olo.business@0.1.0`.
+- Tool IDs: `olo.business/process-intake`.
+- Execution binding `business-processor-binding`: Tool Group `business-processor-tools`, Device Group `business-processor-hosts`, action(s) `document.process`.
+- Graph file paths: None.
+
+## starter-vlsic
+
+[Bot instructions](configurations/starter-vlsic/README.md) · [Bot definition](configurations/starter-vlsic/bot.json) · [Directory grants/resources](configurations/starter-vlsic/referenced-config.json)
+
+- Workflow execution/observation resource: `workflow:starter-vlsic`.
+- Workflow service resources: `workflow-group:starter-vlsic`.
+- Human agent execution resources: `agent:starter-vlsic-analyst`, `agent:starter-vlsic-reviewer`.
+- Bound Agent Groups: `starter-vlsic-agents`.
+- Model inference resources: `model-group:starter-vlsic-general-models`, `model-group:starter-vlsic-local-ceiling`.
+- Service/capability source grants to cover: `starter-vlsic-processor-capability`, `starter-vlsic-processor-service`, `starter-vlsic-service`.
+- Declared reachable model deployments: `starter-vlsic-local-lightweight → qwen3:4b`.
+- Installation model secret references: `ollama-local-key`.
+- Packages: `olo.business@0.1.0`.
+- Tool IDs: `olo.business/process-intake`.
+- Execution binding `business-processor-binding`: Tool Group `business-processor-tools`, Device Group `business-processor-hosts`, action(s) `document.process`.
+- Graph file paths: None.
 
 ## tenant-incident-triage
 

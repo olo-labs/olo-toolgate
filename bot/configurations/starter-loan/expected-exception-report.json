@@ -1,0 +1,56 @@
+{
+  "summary": "Loan document completeness and consistency",
+  "findings": [
+    {
+      "checkId": "identity",
+      "status": "needs review",
+      "detail": "Required field missing or unreadable",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "monthlyIncome",
+      "status": "needs review",
+      "detail": "Required field missing or unreadable",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "document:application-p1",
+      "status": "needs review",
+      "detail": "Required document absent",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "document:income-p1",
+      "status": "needs review",
+      "detail": "Required document absent",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "document:identity-p1",
+      "status": "needs review",
+      "detail": "Required document absent",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "document:address-proof",
+      "status": "needs review",
+      "detail": "Required document absent",
+      "values": [],
+      "evidence": []
+    }
+  ],
+  "draft": "",
+  "nextActions": [
+    "identity: Required field missing or unreadable",
+    "monthlyIncome: Required field missing or unreadable",
+    "document:application-p1: Required document absent",
+    "document:income-p1: Required document absent",
+    "document:identity-p1: Required document absent",
+    "document:address-proof: Required document absent"
+  ]
+}

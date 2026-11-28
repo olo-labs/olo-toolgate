@@ -41,7 +41,7 @@
     "packages/contracts/schemas/v2/trigger.schema.json": "88202cc401b7544781501c360c12e5bf27192784fb27a556bebe89325e935226",
     "packages/contracts/schemas/v2/workflow-bundle.schema.json": "3fcaa2254b3284c64269e5fef362dd8b7d4e8dbd9d547ea44b3c89d0613cf391",
     "packages/contracts/schemas/v2/workflow-decision.schema.json": "f89d999aa3958a2b325fca073550fe77da3897d3e34d82f601c1f3689d9cf753",
-    "packages/contracts/schemas/v2/workflow.schema.json": "831371183cccc7d69d54ef959dbedde8ac17960a24c5e58df62bef57c4814dbe"
+    "packages/contracts/schemas/v2/workflow.schema.json": "f0d404c6cc728392075d3a3eb3157d43a3bd11fe58ac427e61cbd4846537f57e"
   },
   "generatorSha256": "8b3bd483eb054fd38ad14efeae95a0d6d61f787a47004b9a8290164cb20deaff",
   "outputs": [

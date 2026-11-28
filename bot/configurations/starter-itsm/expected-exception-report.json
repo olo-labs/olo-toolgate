@@ -1,0 +1,48 @@
+{
+  "summary": "Service desk source inventory",
+  "findings": [
+    {
+      "checkId": "category",
+      "status": "needs review",
+      "detail": "Required field missing or unreadable",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "workspace",
+      "status": "needs review",
+      "detail": "Required field missing or unreadable",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "requester",
+      "status": "needs review",
+      "detail": "Required field missing or unreadable",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "duration",
+      "status": "needs review",
+      "detail": "Required field missing or unreadable",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "knowledgeProvenance",
+      "status": "needs review",
+      "detail": "Verify governed retrieval receipts and published source versions before relying on policy interpretation",
+      "values": [],
+      "evidence": []
+    }
+  ],
+  "draft": "",
+  "nextActions": [
+    "category: Required field missing or unreadable",
+    "workspace: Required field missing or unreadable",
+    "requester: Required field missing or unreadable",
+    "duration: Required field missing or unreadable",
+    "knowledgeProvenance: Verify governed retrieval receipts and published source versions before relying on policy interpretation"
+  ]
+}

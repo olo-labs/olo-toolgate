@@ -234,6 +234,7 @@ jobs:
         path: |
           examples/java-tools/*/build/toolgate/*.olotool
           examples/mocked-tools/*/build/toolgate/*.olotool
+          bot/tools/*/build/toolgate/*.olotool
         retention-days: 1
         if-no-files-found: error
   trigger-package-sdk:

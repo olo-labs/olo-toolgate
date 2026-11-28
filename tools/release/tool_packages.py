@@ -15,6 +15,8 @@ from bot.build import filename
 def projects(root):
     examples={path.parent.relative_to(root).as_posix() for group in ('java-tools','mocked-tools')
               for path in (root/'examples'/group).glob('*/build.gradle.kts')}
+    examples.update(path.parent.relative_to(root).as_posix()
+                    for path in (root/'bot/tools').glob('*/build.gradle.kts'))
     core=json.loads((root/'core-mcp/core-packages.build.json').read_text(encoding='utf-8'))['packages']
     return examples,core
 

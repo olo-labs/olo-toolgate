@@ -1,0 +1,23 @@
+{
+  "useCase": "medical",
+  "title": "Medical document processing",
+  "fixtureVersion": "synthetic-2",
+  "inputMode": "authorized-intake",
+  "modelAssisted": true,
+  "effectAdapter": false,
+  "qualification": "not-qualified",
+  "integrationGaps": "Full-stack knowledge, governed actions and trace qualification remain required",
+  "files": [
+    "README.md",
+    "exception-input.txt",
+    "exception-intake.json",
+    "expected-exception-report.json",
+    "expected-report.json",
+    "sample-discharge-p1.txt",
+    "sample-input.txt",
+    "sample-intake.json",
+    "sample-laboratory-p1.txt",
+    "sample-referral-p1.txt",
+    "starter.json"
+  ]
+}
