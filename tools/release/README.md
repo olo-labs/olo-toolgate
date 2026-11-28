@@ -32,6 +32,16 @@ property explicitly. Packaging refuses an absent pin. Deliver the matching
 managed runtime and worker/broker images and execute their deployment acceptance
 before publishing runnable starters; a locally built archive is insufficient.
 
+Foundation CI prepares one Linux AMD64 JVM OCI archive from the pinned worker
+recipe before either the Java example/package job or the profile build runs.
+Both jobs verify its source revision, recipe/file hashes, archive checksum and
+OCI platform manifest before using that same digest. The aggregate foundation
+artifact retains the worker archive and metadata alongside the packages. These
+are candidate build inputs marked `not-qualified`, not published runtime images
+or containment evidence. Issue #339's Linux rootless, runtime and publication
+acceptance remains required before promoting runnable starters. Promote the
+matching tested worker bytes; do not rebuild or substitute a different image.
+
 Development and production releases also publish `.olotool` archives separately:
 all Java tool/mock example projects, all configured `core-mcp` packages, and
 every exact archive embedded in a released bot. Immutable test/conformance

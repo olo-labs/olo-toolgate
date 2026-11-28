@@ -87,12 +87,12 @@ class LocalCiTests(unittest.TestCase):
 
     def test_jobs_consuming_same_run_artifacts_are_staged_not_replayed(self):
         rows = {row['id']: row for row in local.inventory(self.workflows)}
-        for key in ('foundation.browser', 'foundation.java', 'foundation.core-mcp', 'foundation.check'):
+        for key in ('foundation.examples', 'foundation.browser', 'foundation.java', 'foundation.core-mcp', 'foundation.check'):
             with self.subTest(job=key):
                 self.assertEqual(rows[key]['kind'], 'staged')
                 self.assertIn('same run', rows[key]['reason'])
                 self.assertNotIn(key, local.replayable_jobs(list(rows.values())))
-        for key in ('foundation.python', 'foundation.ui', 'foundation.rust', 'foundation.examples', 'foundation.scans'):
+        for key in ('foundation.python', 'foundation.ui', 'foundation.rust', 'foundation.scans'):
             with self.subTest(job=key):
                 self.assertEqual(rows[key]['kind'], 'replay')
 
