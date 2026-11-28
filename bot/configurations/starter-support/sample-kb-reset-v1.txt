@@ -1,0 +1,1 @@
+Approved knowledge synthetic-1: To reset a password, select Forgot password on the sign-in screen. The reset link expires after 15 minutes.

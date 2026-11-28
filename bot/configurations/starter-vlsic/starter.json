@@ -1,0 +1,23 @@
+{
+  "useCase": "vlsic",
+  "title": "VLSIC checklist review",
+  "fixtureVersion": "synthetic-2",
+  "inputMode": "authorized-intake",
+  "modelAssisted": true,
+  "effectAdapter": false,
+  "qualification": "not-qualified",
+  "integrationGaps": "Full-stack knowledge, governed actions and trace qualification remain required",
+  "files": [
+    "README.md",
+    "exception-input.txt",
+    "exception-intake.json",
+    "exception-netlist-l1-l5.txt",
+    "expected-exception-report.json",
+    "expected-report.json",
+    "sample-design-s1.txt",
+    "sample-input.txt",
+    "sample-intake.json",
+    "sample-netlist-l1-l5.txt",
+    "starter.json"
+  ]
+}

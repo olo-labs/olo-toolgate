@@ -62,7 +62,7 @@ public final class JsonSdk {
             }
         }
         var libraries = runtimeLibraries();
-        return new Build(jar, Staging.stage(jar, libraries, project.version(), work.resolve("staging")), project);
+        return new Build(jar, Staging.stage(jar, libraries, project.version(), work.resolve("staging"), null), project);
     }
 
     /** SDK tests use the generated package's descriptors and handler, never an alternative JSON interpreter. */

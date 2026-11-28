@@ -73,8 +73,10 @@ class ProfileTests(unittest.TestCase):
             self.assertLessEqual(len(a),128)
             self.assertEqual(a,builder.workflow_version_id(identity,'hotswap-demo-a','1.0.0-demo.local'))
 
-    def test_all_public_bots_route_local_agents_and_keep_premium_unattached(self):
+    def test_public_bots_keep_their_declared_local_or_three_tier_model_order(self):
         memberships={}
+        three_tier={'tenant-incident-triage','device-file-processing','governed-file-processing',
+                    'publication-switch-a','publication-switch-b','portable-summary'}
         for folder in (ROOT/'bot/configurations').iterdir():
             if not folder.is_dir():continue
             profile=json.loads((folder/'bot.json').read_text(encoding='utf-8'))
@@ -85,19 +87,28 @@ class ProfileTests(unittest.TestCase):
             def logical(value):return value if folder.name.startswith('hotswap-demo-') else value.removeprefix(folder.name+'-')
             groups={logical(g['id']):[logical(x) for x in g['deploymentIds']] for g in config['modelGroups']}
             deployments={logical(m['id']):m for m in config['modelDeployments']}
-            self.assertEqual(['local-qlora','local-lightweight'],groups['hotfolder-models'])
-            self.assertEqual(['local-lightweight'],groups['general-models'])
+            if folder.name.startswith('starter-'):
+                self.assertEqual({'local-ceiling':['local-lightweight'],'general-models':['local-lightweight']},groups)
+                self.assertEqual('qwen3:4b',deployments['local-lightweight']['modelId'])
+                self.assertEqual({'local-lightweight'},set(deployments))
+                continue
+            tiered=folder.name in three_tier
+            expected=['local-qlora','local-lightweight','premium-openrouter']
+            self.assertEqual(expected if tiered else ['local-qlora','local-lightweight'],groups['hotfolder-models'])
+            self.assertEqual(expected if tiered else ['local-lightweight'],groups['general-models'])
             for workflow in config['workflows']:
                 self.assertNotIn('deployment',workflow)
-                self.assertNotIn('premium-openrouter',groups[logical(workflow['modelGroupId'])])
+                if tiered:self.assertEqual(expected,groups[logical(workflow['modelGroupId'])])
+                else:self.assertNotIn('premium-openrouter',groups[logical(workflow['modelGroupId'])])
                 tools={node['agentId'] for node in workflow['graph']['config']['nodes'] if node['kind']=='tool'}
                 for agent in config['agentDefinitions']:
                     self.assertEqual('hotfolder-models' if agent['agentId'] in tools else 'general-models',logical(agent['modelGroupId']))
-                    self.assertNotIn('premium-openrouter',groups[logical(agent['modelGroupId'])])
+                    if tiered:self.assertEqual(expected,groups[logical(agent['modelGroupId'])])
+                    else:self.assertNotIn('premium-openrouter',groups[logical(agent['modelGroupId'])])
                 scoped=builder.scope(profile,workflow,json.loads((folder/'trigger-connections.json').read_text(encoding='utf-8')))
                 self.assertIn('premium-openrouter',{logical(m['id']) for m in scoped['workflows']['modelDeployments']})
             self.assertEqual('olo-qlora-hotfolder:e376fb40',deployments['local-qlora']['modelId'])
-            self.assertEqual('qwen3:0.6b',deployments['local-lightweight']['modelId'])
+            self.assertEqual('qwen3:4b' if folder.name.startswith('starter-') else 'qwen3:0.6b',deployments['local-lightweight']['modelId'])
         self.assertTrue(all(len(groups)==1 for groups in memberships.values()),memberships)
 
     def test_trigger_connections_keep_their_packages_without_deployment_fields(self):
@@ -181,12 +192,13 @@ class ProfileTests(unittest.TestCase):
             for name,value in entries.items():archive.writestr(name,value)
         with self.assertRaises((ValueError,zipfile.BadZipFile)):bundle.verify(output.getvalue())
 
-    def test_release_collection_checks_version_source_hashes_and_embedded_inventory(self):
+    @patch('tools.release.profiles.expected_profiles',return_value={('release','one')})
+    def test_release_collection_checks_version_source_hashes_and_embedded_inventory(self,_expected):
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary);source=root/'bin';source.mkdir();output=root/'assets'
             data,manifest=bundle.pack(dict(profileVersion=2,profileId='release',packages=[],workflows={'workflows':[{'id':'one'}]}),{},[],[],dict(version='1.2.3',sourceCommit='a'*40,build='1'))
             (source/'one-1.2.3.olo').write_bytes(data)
-            inventory=dict(format='olo-profiles',version='1.2.3',sourceCommit='a'*40,profiles=[dict(filename='one-1.2.3.olo',sha256=bundle.digest(data),bytes=len(data),packages=[])])
+            inventory=dict(format='olo-profiles',version='1.2.3',sourceCommit='a'*40,profiles=[dict(configuration='release',workflowId='one',filename='one-1.2.3.olo',sha256=bundle.digest(data),bytes=len(data),packages=[])])
             (source/'olo-profiles-1.2.3.json').write_text(json.dumps(inventory))
             self.assertEqual(2,len(collect(source,output,'1.2.3','a'*40)))
             self.assertEqual(data,(output/'one-1.2.3.olo').read_bytes())
@@ -194,6 +206,45 @@ class ProfileTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'source/version'):collect(source,output,commit='b'*40)
             (source/'one-1.2.3.olo').write_bytes(data+b'changed')
             with self.assertRaises(ValueError):collect(source,output)
+
+    def test_release_requires_all_configurations_even_when_workflow_ids_are_shared(self):
+        from tools.release.profiles import expected_profiles
+        expected=expected_profiles()
+        self.assertIn(('hotswap-demo-a','hotswap-demo'),expected)
+        self.assertIn(('hotswap-demo-b','hotswap-demo'),expected)
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);source=root/'bin';source.mkdir();output=root/'assets'
+            rows=[]
+            for configuration,workflow in sorted(expected):
+                data,_=bundle.pack(dict(profileVersion=2,profileId=configuration,packages=[],workflows={'workflows':[{'id':workflow}]}),{},[],[],dict(version='1.2.3',sourceCommit='a'*40,build='test'))
+                name=configuration+'-1.2.3.olo';(source/name).write_bytes(data)
+                rows.append(dict(configuration=configuration,workflowId=workflow,filename=name,sha256=bundle.digest(data),bytes=len(data),packages=[]))
+            index=source/'olo-profiles-1.2.3.json'
+            def write(items):
+                from bot.starters import build_kit
+                kit=build_kit(items,'1.2.3','a'*40)
+                (source/'olo-starters-1.2.3.zip').write_bytes(kit)
+                index.write_text(json.dumps(dict(format='olo-profiles',version='1.2.3',sourceCommit='a'*40,profiles=items,
+                    starterKit=dict(filename='olo-starters-1.2.3.zip',sha256=bundle.digest(kit),bytes=len(kit)))),encoding='utf-8')
+            write(rows)
+            self.assertEqual(len(expected)+2,len(collect(source,output)))
+            for incomplete in (rows[:-1],rows+[rows[0]],rows[:-1]+[dict(rows[-1],configuration='unknown')]):
+                write(incomplete)
+                with self.assertRaisesRegex(ValueError,'every bot'):collect(source,root/'refused')
+                self.assertFalse((root/'refused').exists())
+            write(rows)
+            (source/rows[0]['filename']).unlink()
+            with self.assertRaises(FileNotFoundError):collect(source,root/'missing')
+            self.assertFalse((root/'missing').exists())
+
+    @patch('tools.release.profiles.expected_profiles',return_value={('release','expected')})
+    def test_release_inventory_cannot_relabel_another_workflow(self,_expected):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary)
+            data,_=bundle.pack(dict(profileVersion=2,profileId='release',packages=[],workflows={'workflows':[{'id':'other'}]}),{},[],[],dict(version='1.2.3',sourceCommit='a'*40,build='test'))
+            (root/'bot.olo').write_bytes(data)
+            (root/'olo-profiles-1.2.3.json').write_text(json.dumps(dict(format='olo-profiles',version='1.2.3',sourceCommit='a'*40,profiles=[dict(configuration='release',workflowId='expected',filename='bot.olo',sha256=bundle.digest(data),bytes=len(data),packages=[])])),encoding='utf-8')
+            with self.assertRaisesRegex(ValueError,'evidence mismatch'):collect(root,root/'refused')
 
     def test_source_configurations_are_complete_and_only_new_archive_extension_is_used(self):
         for folder in (ROOT/'bot/configurations').iterdir():

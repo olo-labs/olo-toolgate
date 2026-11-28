@@ -43,6 +43,22 @@ final class WorkflowProfilesTest {
         var store = new PostgresStore(data, codec); var tenant = Tenants.id("tenant");
         return new Rig(store, data, tenant, TestSupport.seed(store, codec, tenant, "root"));
     }
+    @Test void superuserEntitlementDoesNotLeakForTheSameUserIdAcrossTenantsOnBothStores() throws Exception {
+        for (boolean postgres : List.of(false, true)) {
+            var rig = rig(postgres); var other = Tenants.id("other");
+            rig.store.transaction(other, true, tx -> {
+                var before = tx.load(); var entries = new HashMap<>(before.entries());
+                GroupGraph.defaults(entries, codec);
+                TestSupport.put(entries, codec, Ids.Kind.USER, new io.ololabs.toolgate.contracts.ControlUser(
+                    "root", "Different tenant user", true, 1L, null, null, null));
+                GroupGraph.addDefault(entries, codec, Ids.Kind.USER, "root");
+                tx.save(before, new io.ololabs.toolgate.control.domain.Directory(before.revision()+1, entries));
+                return null;
+            });
+            assertFalse(rig.store.transaction(rig.tenant, false, tx -> TenantSuperuser.grants(tx.load(), codec, "root")).isEmpty());
+            assertTrue(rig.store.transaction(other, false, tx -> TenantSuperuser.grants(tx.load(), codec, "root")).isEmpty());
+        }
+    }
     private ObjectNode profile() throws Exception {
         var path = Path.of(System.getProperty("toolgate.fixtures")).getParent().resolve("../v2/valid.json");
         var profile = JSON.createObjectNode().put("profileVersion", 2).put("profileId", "support");
@@ -166,7 +182,7 @@ final class WorkflowProfilesTest {
         java.util.function.Function<Store.Session, WorkflowRunStore.QueuedRun> queue = tx -> {
             var sealed = inputs.seal(tx, rig.tenant, "run-1", digest, "Private event message");
             var run = new WorkflowRunStore.QueuedRun("run-1", "support", digest, "investigate", "revision-1",
-                "automation", "automation-group", "PREPARE", 1234, sealed.keyVersion(), sealed.ciphertext(), "sha256:" + "b".repeat(64), "sha256:" + "c".repeat(64));
+                "automation", "automation-group", "PREPARE", 1234, sealed.keyVersion(), sealed.ciphertext(), "sha256:" + "b".repeat(64), "sha256:" + "c".repeat(64), null);
             tx.workflowRuns().enqueue(run);
             tx.workflowRuns().insertAdmission(admission);
             return run;
@@ -365,7 +381,7 @@ final class WorkflowProfilesTest {
             assertTrue(access.canReadPublishedWorkflows(directory, reader.userId(), now));
             return null;
         });
-        assertEquals(403, assertThrows(Failure.class, () -> service.listPublished(scopedReader, null, 50)).status());
+        assertEquals(0, node(service.listPublished(scopedReader, null, 50)).size());
         assertEquals(403, assertThrows(Failure.class, () -> service.publishedConfiguration(scopedReader, "support", digest)).status());
         var outsider = new DirectoryService.Actor(rig.tenant, DirectoryService.digest("forged"), true, true, "intruder");
         assertEquals(403, assertThrows(Failure.class, () -> service.listPublished(outsider, null, 50)).status());

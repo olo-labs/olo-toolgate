@@ -21,6 +21,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cargo", default=shutil.which("cargo"))
     parser.add_argument("--podman", default="/usr/bin/podman")
+    parser.add_argument("--target-dir", type=Path, default=ROOT / "target")
     parser.add_argument("--output", type=Path, default=ROOT / "build/security/broker-image")
     args = parser.parse_args()
     if os.getuid() == 0:
@@ -36,10 +37,12 @@ def main():
     before = source_digest()
     target = "x86_64-unknown-linux-musl"
     env = os.environ.copy()
-    env.update(CARGO_BUILD_JOBS="2", CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER="musl-gcc", CC_x86_64_unknown_linux_musl="musl-gcc")
+    if not args.target_dir.is_absolute():
+        parser.error("absolute Cargo target directory required")
+    env.update(CARGO_BUILD_JOBS="2", CARGO_TARGET_DIR=str(args.target_dir), CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER="musl-gcc", CC_x86_64_unknown_linux_musl="musl-gcc")
     subprocess.run([args.cargo, "build", "-p", "olo-toolgate-tool-host", "--bin", "olo-toolgate-tool-host",
                     "--release", "--locked", "--target", target], cwd=ROOT, env=env, check=True)
-    binary = ROOT / "target" / target / "release/olo-toolgate-tool-host"
+    binary = args.target_dir / target / "release/olo-toolgate-tool-host"
     headers = subprocess.check_output(["readelf", "--program-headers", str(binary)], text=True)
     if "INTERP" in headers:
         raise RuntimeError("a static broker binary is required")

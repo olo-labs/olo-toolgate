@@ -31,8 +31,12 @@ public final class RecoveryAdmissionPolicy {
         String device=registration.path("hostId").asText("");
         String pool=registration.path("poolId").asText("");
         String image=runtime.path("baseImageDigest").asText("");
-        if(!runtime.path("runtimeId").asText().equals("python")
-                ||!runtime.path("language").asText().equals("python")
+        boolean supportedRuntime=runtime.path("runtimeId").asText().equals("python")
+                &&runtime.path("language").asText().equals("python")
+                ||runtime.path("runtimeId").asText().equals("jvm")
+                &&runtime.path("language").asText().equals("java")
+                &&runtime.path("version").asText().equals("21");
+        if(!supportedRuntime
                 ||!image.matches("sha256:[a-f0-9]{64}")
                 ||device.isEmpty()||pool.isEmpty()||!qualifiedPoolImages.contains(device+"@"+pool+"@"+image)
                 ||!descriptor.path("kind").asText().equals("SERVER")

@@ -6,6 +6,10 @@ This page lists every HTTP route served by the **Gateway** container and the
 the MCP methods exposed on the Gateway's `/mcp` endpoint. Each entry gives the
 caller, the purpose and an example request and response.
 
+The [external workflow application guide](workflow-applications.md) owns the
+password-login, workflow admission, event-stream and signed-callback examples;
+the canonical Control OpenAPI contains their full request/response contracts.
+
 The canonical field definitions are the checked-in contracts:
 
 - [gateway-v1.yaml](../../packages/contracts/openapi/gateway-v1.yaml)
@@ -129,7 +133,7 @@ Some Control refusals name the records you must fix, using `ControlErrorDetail`:
 
 The `error` value is one of `UNRESOLVED_IDENTITIES`, `REPLACE_CONFLICTS`,
 `ONE_DEVICE_PER_ACCOUNT`, `REQUIRED_REVIEWS_CHANGE` or `RATE_LIMITED`. See
-[errors and idempotency](errors-and-idempotency.md).
+[errors and idempotency](api-reference.md).
 
 ---
 

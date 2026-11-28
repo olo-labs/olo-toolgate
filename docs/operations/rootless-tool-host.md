@@ -18,6 +18,13 @@ clients through removal of both containers, then reaps the clients. An engine
 timeout still fences the pool and retains its owned journal until managed
 restart; diagnostics preserve the attempted engine operation.
 
+The supervisor enforces the invocation deadline independently of worker output
+and broker liveness. Once that deadline expires, a simultaneous broker-channel
+closure or broker exit is reported as a timeout; broker failures observed before
+expiry remain crashes. Both containers must still be removed before the slot
+is released. Unconfirmed teardown fences the pool and retains its journal,
+including after a timeout; no uncertain effect is replayed automatically.
+
 ## Prepare the service
 
 Provision a dedicated unprivileged `toolgate` account with at least 65,536
@@ -68,6 +75,81 @@ on an engine operation exceeding its five-second deadline. Qualification must
 run against the actual configured backend.
 
 ## Bind packages and hosts
+
+Java 21 execution uses the paired worker/broker lifecycle, resource controls,
+strict v2 stdio protocol, cancellation and confirmed teardown. Configure
+`sandbox.jvmImage` with a separately reviewed `name@sha256:digest`. Absence disables
+JVM admission. Its runtime declaration requires `runtimeId=jvm`, `language=java`,
+`version=21` and exactly that image's `baseImageDigest`; the tool is one fat JAR.
+The image provides `/opt/java/openjdk/bin/java` and the trusted
+`/opt/toolgate/qualification.jar` from the
+[JVM image recipe](../../apps/tool-host/packaging/jvm/Containerfile).
+Control package deployment accepts this Java 21 declaration only on a registered
+OCI host. A native-only host, another Java version or a runtime/language mismatch
+is rejected. Deployment compatibility does not establish qualified execution;
+the independent executor pin and admission-time route restrictions still apply.
+
+Before readiness or registration, every configured worker image executes its own
+probe with the actual policy. The JVM probe runs Java, tests socket denial and
+reports its live namespace, identity and cgroup limits. The broker remains a
+different image, identity and namespace. Failure in either runtime refuses the
+pool. Java uses serial GC, one active processor, half the memory cap for its heap,
+bounded metadata/code caches and disabled attach and perf-data facilities. The
+cgroup limits total memory, including native VM use. Host Java cannot replace
+this qualification.
+
+The [image preparation helper](../../apps/tool-host/packaging/prepare-images.py)
+runs before startup under the dedicated unprivileged account, with
+`TOOLGATE_TOOL_HOST_CONFIG` naming the private config. It pulls only missing
+immutable Python, broker and configured JVM images and verifies their digests.
+Repeated preparation preserves the store and does not pull present images.
+It prepares dependencies; it does not qualify execution or configure Control's
+independent recovery pins. Finish preparation before starting the host.
+
+Control scope capture additionally requires the operator's exact
+`TOOLGATE_CONTROL_RECOVERY_QUALIFIED_EXECUTORS` device/pool/image entry and the
+existing broker-only permission/profile checks. Configure this after actual
+deployment qualification. Native success, an empty effect manifest and container
+health do not establish complete mediation. Use
+[Control outcome and history](../control-plane/operation-finalization.md) to verify
+`state=SUCCEEDED` and `finalized=true` through Gateway/MCP.
+
+The implementation and image recipe alone do not establish published-artifact
+Demo 3 acceptance. Container deployment, all seven packages and release acceptance
+remain subject to the [remaining delivery criteria](../plans/marketplace-demo3-java.md).
+
+The [managed container recipe](../../apps/tool-host/packaging/runtime-container/Containerfile)
+packages a checksum-verified prebuilt Tool Host, systemd, the system D-Bus and
+rootless Podman. The unprivileged supervisor uses the system bus to verify its
+managed unit properties; a root-only systemd private socket is insufficient.
+It is a qualification candidate, not a published Marketplace startup profile.
+Its dedicated named volume at `/var/lib/toolgate-tool-host` must be private and
+owned by UID/GID 1000 after first initialization. Root-owned nonempty volumes,
+foreign ownership and changed storage backends are refused without rewriting
+their contents. The image provisions 65,536 subordinate IDs; its default four
+paired slots and 256 MiB invocation memory cap can be lowered, and at most 32
+slots fit those IDs. A supplied limits object is preserved and still passes
+the host's platform-ceiling checks.
+
+For container qualification, the outer container needs its own writable cgroup-v2
+namespace with delegated CPU, memory, I/O and PID controllers, `/dev/fuse`, and
+permission for nested user namespaces and rootless UID/GID helpers. The Docker
+test deployment uses `privileged: true`, `cgroup: private`, tmpfs at `/run` and
+`/tmp`, and a dedicated state volume. No host runtime socket or host cgroup bind
+is needed. The privileged container init/runtime and host kernel belong to the
+trusted computing base; worker containment is separately enforced and probed.
+This does not provide compromised-root or compromised-kernel containment.
+
+Supply the private bootstrap config at `/etc/toolgate/tool-host.json`. Initialization
+resolves the backing whole I/O device from the actual state volume, refusing
+unresolved virtual storage unless `sandbox.ioDevice` supplies an independently
+verified override. It fixes the local Podman and service cgroup paths, store/work
+directories and enrolled identity directory inside that volume, and writes the
+effective config under `/run` before systemd starts the unprivileged service.
+The service prepares exact image pins and then runs normal qualification and
+enrollment. It does not add Control recovery pins or approve devices or calls.
+Production Control discovery must remain reachable at its exact canonical HTTPS
+origin, with its reviewed public CA roots available to the service account.
 
 Add this to a Python project's existing `[tool.toolgate]` table:
 
@@ -161,6 +243,23 @@ revision and executed test names. Standard Rust tests list the privileged-host
 cases as explicitly ignored; their passing status comes only from this separate
 mandatory gate.
 
+For the Java component vectors, add `--jvm-image <prepared-jvm@sha256:digest>`.
+This also executes a real Java worker through success, denied socket/broker
+access, worker failure, deadline, cancellation and paired cleanup. The optional
+`--jvm-samples /absolute/path/samples.json` supplies an array of producing-gate
+records with `artifact` (an absolute fat-JAR path), `artifactDigest` (tagged
+SHA-256), `toolId` and `arguments`. The gate verifies each JAR digest and runs it;
+it never substitutes expected fixture output. Artifacts are staged under the
+service account, matching the real content store's ownership rather than a
+foreign mount's UID/GID. The sample inventory digest is retained in the report.
+These component calls do not establish Gateway authorization or finalized Control
+outcomes, and cannot complete Marketplace published-artifact acceptance.
+
+For a separate build-cache location, `broker_image.py --target-dir /absolute/path`
+selects the owned static build directory, and `sandbox.py --broker-binary
+/absolute/path/to/olo-toolgate-tool-host` binds the resulting binary to its
+current-source image evidence. Missing or stale evidence remains a refusal.
+
 This tier shares the host kernel and trusts the supervisor/broker and container
 runtime. The broker's existing destination checks remain the egress boundary;
 a dedicated per-invocation broker runs in a disjoint subordinate identity and
@@ -168,8 +267,8 @@ private network namespace. Its only egress is the private supervisor transport
 proxy, which retains the workload TLS identity and enforces the approved target.
 The broker cannot select a general Control URL or export that identity. Other languages, VM-backed isolation, per-effect authorization,
 exact effect consent and target fencing are separate roadmap work. See
-[ADR 033](../adr/033-rootless-tool-host-containment.md) and the
-[claim inventory](../security/zero-trust-execution-status.md).
+[Rootless OCI Tool Host pools](rootless-tool-host.md) and the
+[claim inventory](../security/zero-trust-boundaries.md).
 
 
 ## Prepare the trusted broker image
@@ -212,8 +311,8 @@ It covers approved target contact, denied worker authority, broker crash,
 cancellation, lease revocation, deadline, flooding, private identities and paired
 restart cleanup. These are component containment checks, not a production
 connectivity SLO, a generalized effect grant or a compromised-kernel guarantee.
-See [ADR 049](../adr/049-isolated-invocation-brokers.md) and the
-[live status](../security/zero-trust-execution-status.md) for stage acceptance.
+See [Rootless OCI Tool Host pools](rootless-tool-host.md) and the
+[current scope](../security/zero-trust-boundaries.md) for declared security scope.
 
 
 ## Qualified worker frames and TLS pin upgrades
@@ -223,8 +322,8 @@ stdout frames must match the canonical schemas, have unique object keys, valid
 UTF-8 and at most 64 levels of nesting. The invocation accepts at most 1,000
 nonblank frames, one terminal result, no later frames and no reused broker request
 IDs. A malformed frame cannot be repaired by printing a later successful result.
-Aggregate stdout/stderr and deadline limits still apply. S13 passes the declared-tier matrix; consult the live progress document for
-executed evidence and the remaining deployment/full-catalog limitations.
+Aggregate stdout/stderr and deadline limits still apply. Run the declared-tier matrix for the exact source/image and host configuration.
+Its deployment/full-catalog limits remain explicit in the security guide.
 
 The SPKI verifier now requires ordinary certificate validation and an allowed
 verified-leaf key pin together. A private/self-signed service must supply its
@@ -232,7 +331,7 @@ public trust anchor in caBundle. Replace intermediate-only spkiPins with leaf
 pins before upgrading; the old pin-only trust path is removed. Hostname,
 validity, chain and TLS handshake signatures are checked before HTTP delivery.
 This shared TLS security correction applies to native broker clients too; it
-does not qualify native worker containment. See [ADR 051](../adr/051-verified-leaf-spki-pins.md).
+does not qualify native worker containment. See [Rootless OCI Tool Host pools](rootless-tool-host.md).
 
 
 After the current-source actual OCI gate, run python tools/security/containment.py
@@ -268,7 +367,7 @@ and namespace membership, kills the supervisor while the worker ignores TERM,
 and observes automatic restart plus journal reconciliation without a new worker.
 It requires current-source broker image evidence and at least three cycles.
 Local monotonic timing observations are not production connectivity-class SLOs.
-See ADR 052 and the authoritative status for executed evidence.
+See [Rootless OCI Tool Host pools](rootless-tool-host.md) and run its source/image-bound qualification checks.
 
 
 After freezing source and preparing the current broker image, an administrator

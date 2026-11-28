@@ -252,13 +252,13 @@ def smoke(image, browser, database_options=None, gateway_image=None, hello_world
             delegated_digest=hashlib.sha256(delegated_token.encode()).hexdigest()
             # Exact production Gateway, online authority on an explicit fixture-only loopback hop.
             configure_external_gateway(exec_text,info['NetworkSettings']['Ports']['8084/tcp'][0]['HostPort'])
-            exec_text('/opt/quickstart-python/bin/python','-c',
+            delegated_session_epoch=int(exec_text('/opt/quickstart-python/bin/python','-c',
                 "import sys;sys.path.insert(0,'/opt/quickstart');import supervisor as s;import json,time;"
                 "db=s.Database();identities=[json.loads(r[0]) if isinstance(r[0],str) else r[0] for r in db.execute(\"SELECT document FROM control_records WHERE kind='IDENTITY_BINDING'\").fetchall()];db.connection.close();"
                 "i=next(i for i in identities if i['subject']=='reviewer-1');values=json.loads((s.DATA/'run/credentials.json').read_text());"
                 "c={**values[0]['context'],'mode':'DELEGATED','workloadBindingId':'workload-delegated','userId':i['userId'],'sessionEpoch':i['sessionEpoch'],'credentialSha256':"+repr(delegated_digest)+"};"
                 "values.append(dict(tokenSha256="+repr(delegated_digest)+",context=c,expiresAtUnixMs=int(time.time()*1000)+3600000));"
-                "s.atomic(s.DATA/'run/external-credentials.json',json.dumps(values))")
+                "s.atomic(s.DATA/'run/external-credentials.json',json.dumps(values));print(i['sessionEpoch'])"))
             external=run(['docker','run','-d','--read-only','--cap-drop=ALL','--security-opt=no-new-privileges',
                 '--memory=256m','--cpus=1','--network','container:'+container,'-v',volume+':/data:ro',
                 '-e','TOOLGATE_GATEWAY_CONFIG=/data/run/external-gateway.json',
@@ -307,7 +307,7 @@ def smoke(image, browser, database_options=None, gateway_image=None, hello_world
             assert {x['id'] for x in snapshot[key]}=={default,*[tier+suffix for tier in ('ReadOnly','ReadAndWrite','Admin')]}
             member={'agentGroups':'agentIds','toolGroups':'toolIds','deviceGroups':'deviceIds'}[key]
             assert all(not row[member] for row in snapshot[key] if row['id']!=default)
-        mark('fresh reviewed installation/independent identities/default groups/zero runtime rights')
+        mark('fresh reviewed installation/independent identities/default groups/zero explicit runtime grants')
         # Hit the Gateway listener directly: no supervisor forwarding or runtime bearer token.
         public=json.loads(exec_text('/opt/quickstart-python/bin/python','-c',
             "import json,urllib.request;print(urllib.request.urlopen('http://127.0.0.1:8081/.well-known/olo-toolgate-client',timeout=10).read().decode())"))
@@ -320,8 +320,22 @@ def smoke(image, browser, database_options=None, gateway_image=None, hello_world
         assert configuration=={'serverUrl':manifest['controlUrl']}
         mark('anonymous Gateway tenant v2 discovery/fixed verified Control configuration')
         # Quickstart has no native client: its execution identities are its two Tool Hosts, approved like any device.
-        # The fresh profile then deploys Hello World to tool-host-local and enables server_greet; nobody may run it yet.
+        # The fresh profile then deploys Hello World to tool-host-local and enables server_greet; ordinary reviewers still need runtime grants.
         owner=admin
+        # The bootstrap account must retain Super Admin authority. Keep it as the installation owner;
+        # the two other local accounts become ordinary administrators for maker/checker and HUMAN tests.
+        management=ok(api('/api/control/v1/roles/installation-management',admin))
+        refused=api('/api/control/v1/roles/'+management['id'],admin,{**management,'portalRole':'ADMINISTRATOR'},
+            'PUT',revision=management['revision'])
+        assert refused[0]==409,refused
+        restricted={**management,'id':'smoke-restricted-management','name':'Smoke restricted administrator',
+                    'revision':1,'portalRole':'ADMINISTRATOR'}
+        ok(api('/api/control/v1/roles',admin,restricted,'POST'),201)
+        ok(api('/api/control/v1/teams',admin,dict(id='smoke-makers',name='Smoke makers',
+            enabled=True,revision=1,userIds=['reviewer-1','reviewer-2'],roleIds=[restricted['id']]),'POST'),201)
+        owners=ok(api('/api/control/v1/teams/installation-administrators',admin))
+        ok(api('/api/control/v1/teams/installation-administrators',owner,
+            {**owners,'userIds':['admin']},'PUT',revision=owners['revision']))
         def approve(device_id):
             deadline=time.monotonic()+45
             while True:
@@ -356,20 +370,6 @@ def smoke(image, browser, database_options=None, gateway_image=None, hello_world
             assert journal['discoveryTrust']['tenantId']==snapshot['tenantId']
             assert journal['identity']['issuerCertificatePem'].strip()!=exec_text('cat','/data/keys/device-ca.crt')
         mark('Tool Host enrollment/fresh profile installs and activates Hello World/no implicit discovery')
-        # The bootstrap account must retain Super Admin authority. Keep it as the installation owner;
-        # the two other local accounts become ordinary administrators for maker/checker and HUMAN tests.
-        management=ok(api('/api/control/v1/roles/installation-management',admin))
-        refused=api('/api/control/v1/roles/'+management['id'],admin,{**management,'portalRole':'ADMINISTRATOR'},
-            'PUT',revision=management['revision'])
-        assert refused[0]==409,refused
-        restricted={**management,'id':'smoke-restricted-management','name':'Smoke restricted administrator',
-                    'revision':1,'portalRole':'ADMINISTRATOR'}
-        ok(api('/api/control/v1/roles',admin,restricted,'POST'),201)
-        ok(api('/api/control/v1/teams',admin,dict(id='smoke-makers',name='Smoke makers',
-            enabled=True,revision=1,userIds=['reviewer-1','reviewer-2'],roleIds=[restricted['id']]),'POST'),201)
-        owners=ok(api('/api/control/v1/teams/installation-administrators',admin))
-        ok(api('/api/control/v1/teams/installation-administrators',owner,
-            {**owners,'userIds':['admin']},'PUT',revision=owners['revision']))
         def transition(change,action,user):
             return ok(api('/api/control/v1/configuration-changes/'+change['id']+'/transition',tokens[user],
                 {'action':action,'expectedRevision':change['revision']},'POST'))
@@ -613,6 +613,7 @@ for p in Path('/proc').glob('[0-9]*/cmdline'):
         mark('verified package upload/deployment/Gateway permit/Java tool run from the exact package/switch to a pull-mode host/live revocation')
         if gateway_image:
             identity=next(i for i in ok(api('/api/control/v1/identity-bindings',admin))['items'] if i['subject']=='reviewer-1')
+            assert identity['sessionEpoch']>delegated_session_epoch, 'Password replacement must revoke the bootstrap session'
             reviewed('/api/control/v1/workload-bindings',dict(id='workload-delegated',name='Verified human delegation',
                 enabled=True,revision=1,agentId='agent-local',mode='DELEGATED',issuer='gateway',subject='local-workload',
                 audience='gateway',credentialSha256=delegated_digest,credentialEpoch=1,
@@ -620,14 +621,30 @@ for p in Path('/proc').glob('[0-9]*/cmdline'):
             assert ok(mcp('tools/list',token=delegated_token))['result']['tools']==[]
             reviewed('/api/control/v1/delegations',dict(id='human-delegation',name='Same Team and Agent Group',
                 enabled=True,revision=1,teamId='smoke-makers',agentGroupId='default-agents',scope=scope))
-            assert {t['name'] for t in ok(mcp('tools/list',token=delegated_token))['result']['tools']}==hello_tools
+            # The fixture captured this credential before password replacement. Current grants
+            # and delegation cannot restore that revoked human session; install its current epoch.
+            assert ok(mcp('tools/list',token=delegated_token))['result']['tools']==[]
+            assert mcp('tools/call',{'name':hello,'arguments':{'text':'Grace'}},token=delegated_token)[0]==403
+            exec_text('/opt/quickstart-python/bin/python','-c',
+                "import sys,json;sys.path.insert(0,'/opt/quickstart');import supervisor as s;"
+                "p=s.DATA/'run/external-credentials.json';values=json.loads(p.read_text());"
+                "c=next(v['context'] for v in values if v['tokenSha256']==sys.argv[1]);"
+                "c['sessionEpoch']=int(sys.argv[2]);s.atomic(p,json.dumps(values))",
+                delegated_digest,str(identity['sessionEpoch']))
+            run(['docker','kill','--signal','HUP',external],capture_output=True)
+            deadline=time.monotonic()+10
+            while True:  # SIGHUP credential reload is asynchronous; poll discovery only.
+                listed={t['name'] for t in ok(mcp('tools/list',token=delegated_token))['result']['tools']}
+                if listed==hello_tools:break
+                assert not listed and time.monotonic()<deadline, ('Current delegated session discovery',listed,hello_tools)
+                time.sleep(.1)
             result=ok(mcp('tools/call',{'name':hello,'arguments':{'text':'Grace'}},token=delegated_token))
             assert result['result']['structuredContent']=={'message':'Hello Grace'},result
             delegation=ok(api('/api/control/v1/delegations/human-delegation',admin))
             reviewed('/api/control/v1/delegations/human-delegation',{**delegation,'enabled':False},'PUT',delegation['revision'])
             assert ok(mcp('tools/list',token=delegated_token))['result']['tools']==[]
             assert mcp('tools/call',{'name':hello,'arguments':{'text':'Grace'}},token=delegated_token)[0]==403
-            mark('real DELEGATED identity/same Team and Agent Group/Tool Host effect/current delegation revocation')
+            mark('real DELEGATED identity/revoked bootstrap session/current session reload/Tool Host effect/current delegation revocation')
         def invoke(arguments,key=None,tool_name=hello):
             return api('/api/control/v1/access/human/invocations',human,
                        dict(target,request=dict(toolId=tool_name,action='invoke',arguments=arguments)),'POST',key)
@@ -725,8 +742,14 @@ for p in Path('/proc').glob('[0-9]*/cmdline'):
                 assert time.monotonic()<deadline,'Gateway did not rejoin the restarted fixture'
                 time.sleep(.25)
         admin=ok(api('/api/quickstart/v1/login',body={'username':'admin','password':passwords['admin']},method='POST'))['accessToken']
+        human=ok(api('/api/quickstart/v1/login',body={'username':'reviewer-1','password':passwords['reviewer-1']},method='POST'))['accessToken']
         assert ok(api('/api/control/v1/access/status',admin))['authorizationEpoch']>=authority['authorizationEpoch']
-        assert catalog(admin)==set()
+        # The revoked ordinary user stays denied; the live Super Admin retains
+        # its separate tenant-wide HUMAN entitlement across restart.
+        assert catalog(human)==set()
+        assert hello_tools<=catalog(admin)
+        assert invoke(args,key)[0]==403
+        assert api('/api/control/v1/access/human/invocations/'+invocation['id']+'/result',human)[0]==403
         assert ok(api('/api/control/v1/grants/'+grant['id'],admin))['enabled'] is False
         mark('restart preserves identity/key/revocation/monotonic epoch/no installation reseeding')
         if gateway_image and not browser:

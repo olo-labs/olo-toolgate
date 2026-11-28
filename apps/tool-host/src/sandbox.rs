@@ -19,6 +19,24 @@ use tokio::sync::{oneshot, watch};
 const IDS_PER_WORKER: usize = 1024;
 const SECCOMP: &str = include_str!("../packaging/worker-seccomp.json");
 
+// Leave half the cgroup budget for VM metadata, code, stacks and native buffers.
+// The cgroup, rather than this heap setting, bounds total process memory.
+fn jvm_options(memory: u64) -> Vec<String> {
+    let mut args = strings(&[
+        "-XX:+UseSerialGC",
+        "-XX:ActiveProcessorCount=1",
+        "-XX:+ExitOnOutOfMemoryError",
+        "-XX:-UsePerfData",
+        "-XX:+DisableAttachMechanism",
+        "-XX:ReservedCodeCacheSize=16m",
+        "-XX:MaxMetaspaceSize=32m",
+        "-Xss256k",
+        "-Djava.io.tmpdir=/tmp",
+    ]);
+    args.push(format!("-Xmx{}m", (memory / (2 * 1024 * 1024)).max(1)));
+    args
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Config {
@@ -27,6 +45,8 @@ pub struct Config {
     pub cgroup_parent: String,
     /// Already prepared, fully qualified name@sha256:digest, never a tag.
     pub python_image: String,
+    /// Optional independently pinned Java 21 worker. Absence disables JVM admission.
+    pub jvm_image: Option<String>,
     /// Trusted broker image, independently pinned and prepared locally.
     pub broker_image: String,
     pub io_device: String,
@@ -51,7 +71,10 @@ impl Config {
         for (field, image) in [
             ("pythonImage", &self.python_image),
             ("brokerImage", &self.broker_image),
-        ] {
+        ]
+        .into_iter()
+        .chain(self.jvm_image.as_ref().map(|image| ("jvmImage", image)))
+        {
             let (name, digest) = image
                 .split_once('@')
                 .ok_or_else(|| format!("immutable {field} required"))?;
@@ -82,6 +105,13 @@ impl Config {
     }
     pub fn digest(&self) -> &str {
         self.python_image.split_once('@').expect("validated").1
+    }
+    fn image(&self, runtime: &str) -> Option<&str> {
+        match runtime {
+            "python" => Some(&self.python_image),
+            "jvm" => self.jvm_image.as_deref(),
+            _ => None,
+        }
     }
 }
 fn sha256(s: &str) -> bool {
@@ -166,7 +196,11 @@ impl Sandbox {
         self.ready.load(Ordering::SeqCst) && !self.poisoned.load(Ordering::SeqCst)
     }
     pub fn accepts(&self, runtime: &str, digest: Option<&str>) -> bool {
-        self.available() && runtime == "python" && digest == Some(self.config.digest())
+        self.available()
+            && self
+                .config
+                .image(runtime)
+                .is_some_and(|image| digest == image.split_once('@').map(|(_, digest)| digest))
     }
     fn command(&self) -> tokio::process::Command {
         let mut c = tokio::process::Command::new(&self.config.podman_path);
@@ -404,83 +438,98 @@ impl Sandbox {
             }
             self.cleanup(&record).await?;
         }
-        let image: Value = serde_json::from_slice(
-            &self
-                .cli(&strings(&["image", "inspect", &self.config.python_image]))
-                .await?,
-        )
-        .map_err(|e| e.to_string())?;
-        if !image[0]["RepoDigests"].as_array().is_some_and(|ds| {
-            ds.iter()
-                .any(|d| d.as_str() == Some(&self.config.python_image))
-        }) {
-            return Err("prepared image digest missing".into());
+        for runtime in ["python", "jvm"] {
+            let Some(worker_image) = self.config.image(runtime) else {
+                continue;
+            };
+            let image: Value = serde_json::from_slice(
+                &self
+                    .cli(&strings(&["image", "inspect", worker_image]))
+                    .await?,
+            )
+            .map_err(|e| e.to_string())?;
+            if image[0]["Digest"].as_str() != worker_image.split_once('@').map(|(_, digest)| digest)
+                && !image[0]["RepoDigests"]
+                    .as_array()
+                    .is_some_and(|ds| ds.iter().any(|d| d.as_str() == Some(worker_image)))
+            {
+                return Err("prepared image digest missing".into());
+            }
+            let broker_image: Value = serde_json::from_slice(
+                &self
+                    .cli(&strings(&["image", "inspect", &self.config.broker_image]))
+                    .await?,
+            )
+            .map_err(|_| "broker image metadata invalid")?;
+            let expected = self
+                .config
+                .broker_image
+                .split_once('@')
+                .expect("validated")
+                .1;
+            if broker_image[0]["Digest"].as_str() != Some(expected)
+                && !broker_image[0]["RepoDigests"].as_array().is_some_and(|ds| {
+                    ds.iter()
+                        .any(|d| d.as_str() == Some(&self.config.broker_image))
+                })
+            {
+                return Err("prepared broker image digest missing".into());
+            }
+            let name = format!("{}{}", self.prefix, crate::random_hex(16));
+            let broker_name = format!("{name}-broker");
+            let record = Record {
+                name: name.clone(),
+                slot: 0,
+                invocation_id: None,
+                broker_name: Some(broker_name.clone()),
+            };
+            self.journal(&record)?;
+            let mut probes = Vec::new();
+            let result = async {
+                let mut args = self.worker_args(runtime, &name, 0, 128 * 1024 * 1024, 30_000)?;
+                if runtime == "jvm" {
+                    args.extend(jvm_options(128 * 1024 * 1024));
+                    args.extend(strings(&[
+                        "-cp",
+                        "/opt/toolgate/qualification.jar",
+                        "ToolGateJvmProbe",
+                    ]));
+                } else {
+                    args.extend(strings(&["-I", "-c", PROBE]));
+                }
+                self.cli(&args).await?;
+                let (worker_process, worker) = self
+                    .live_probe(&name)
+                    .await
+                    .map_err(|error| format!("worker isolation {error}"))?;
+                probes.push(worker_process);
+                validate_probe(&worker, &self.config)?;
+                let mut args = self.broker_args(&broker_name, 0, 30_000);
+                *args.last_mut().expect("broker mode") = "--isolation-probe".into();
+                self.cli(&args).await?;
+                let (broker_process, broker) = self
+                    .live_probe(&broker_name)
+                    .await
+                    .map_err(|error| format!("broker isolation {error}"))?;
+                probes.push(broker_process);
+                validate_probe(&broker, &self.config)?;
+                validate_pair(
+                    &worker,
+                    &broker,
+                    &isolation_identity(Path::new("/proc/self"))?,
+                )?;
+                Ok::<(), String>(())
+            }
+            .await;
+            let cleanup = self.cleanup_probes(&record, probes).await;
+            if let Err(error) = result {
+                return Err(match cleanup {
+                    Ok(()) => error,
+                    Err(cleanup) => format!("{error}; probe cleanup failed: {cleanup}"),
+                });
+            }
+            cleanup?;
         }
-        let broker_image: Value = serde_json::from_slice(
-            &self
-                .cli(&strings(&["image", "inspect", &self.config.broker_image]))
-                .await?,
-        )
-        .map_err(|_| "broker image metadata invalid")?;
-        let expected = self
-            .config
-            .broker_image
-            .split_once('@')
-            .expect("validated")
-            .1;
-        if broker_image[0]["Digest"].as_str() != Some(expected)
-            && !broker_image[0]["RepoDigests"].as_array().is_some_and(|ds| {
-                ds.iter()
-                    .any(|d| d.as_str() == Some(&self.config.broker_image))
-            })
-        {
-            return Err("prepared broker image digest missing".into());
-        }
-        let name = format!("{}{}", self.prefix, crate::random_hex(16));
-        let broker_name = format!("{name}-broker");
-        let record = Record {
-            name: name.clone(),
-            slot: 0,
-            invocation_id: None,
-            broker_name: Some(broker_name.clone()),
-        };
-        self.journal(&record)?;
-        let mut probes = Vec::new();
-        let result = async {
-            let mut args = self.create_args(&name, 0, 128 * 1024 * 1024, 30_000);
-            args.extend(strings(&["-I", "-c", PROBE]));
-            self.cli(&args).await?;
-            let (worker_process, worker) = self
-                .live_probe(&name)
-                .await
-                .map_err(|error| format!("worker isolation {error}"))?;
-            probes.push(worker_process);
-            validate_probe(&worker, &self.config)?;
-            let mut args = self.broker_args(&broker_name, 0, 30_000);
-            *args.last_mut().expect("broker mode") = "--isolation-probe".into();
-            self.cli(&args).await?;
-            let (broker_process, broker) = self
-                .live_probe(&broker_name)
-                .await
-                .map_err(|error| format!("broker isolation {error}"))?;
-            probes.push(broker_process);
-            validate_probe(&broker, &self.config)?;
-            validate_pair(
-                &worker,
-                &broker,
-                &isolation_identity(Path::new("/proc/self"))?,
-            )?;
-            Ok::<(), String>(())
-        }
-        .await;
-        let cleanup = self.cleanup_probes(&record, probes).await;
-        if let Err(error) = result {
-            return Err(match cleanup {
-                Ok(()) => error,
-                Err(cleanup) => format!("{error}; probe cleanup failed: {cleanup}"),
-            });
-        }
-        cleanup?;
         self.ready.store(true, Ordering::SeqCst);
         Ok(())
     }
@@ -598,10 +647,34 @@ impl Sandbox {
         args.push("--invocation-broker".into());
         args
     }
+    fn worker_args(
+        &self,
+        runtime: &str,
+        name: &str,
+        slot: usize,
+        memory: u64,
+        remaining_ms: u64,
+    ) -> Result<Vec<String>, String> {
+        let image = self
+            .config
+            .image(runtime)
+            .ok_or("sandbox runtime unavailable")?;
+        let mut args = self.create_args(name, slot, memory, remaining_ms);
+        if runtime == "jvm" {
+            for arg in &mut args {
+                if arg == "--entrypoint=/usr/local/bin/python3" {
+                    *arg = "--entrypoint=/opt/java/openjdk/bin/java".into();
+                }
+            }
+        }
+        *args.last_mut().expect("worker image") = image.into();
+        Ok(args)
+    }
     #[allow(clippy::too_many_arguments)]
     pub async fn run(
         self: &Arc<Self>,
         id: &str,
+        runtime: &str,
         artifact: &Path,
         input: &ToolInput,
         memory: u64,
@@ -614,6 +687,9 @@ impl Sandbox {
         }
         if !self.available() {
             return Ran::Crashed("sandbox pool unavailable".into());
+        }
+        if self.config.image(runtime).is_none() {
+            return Ran::Crashed("sandbox runtime unavailable".into());
         }
         if broker.require_isolated_broker().is_err() || broker.broker_policy().is_err() {
             return Ran::Crashed("isolated broker admission refused".into());
@@ -647,6 +723,7 @@ impl Sandbox {
         let pool = self.clone();
         let id = id.to_string();
         let artifact = artifact.to_path_buf();
+        let runtime = runtime.to_string();
         let input = input.clone();
         tokio::spawn(async move {
             let name = format!("{}{}", pool.prefix, crate::random_hex(16));
@@ -712,33 +789,47 @@ impl Sandbox {
                     if *cancelled.borrow() {
                         return Err("invocation cancelled".into());
                     }
-                    let mut args = pool.create_args(&name, slot, memory, remaining);
-                    args.extend(strings(&["-I", "/opt/toolgate.pyz"]));
+                    let mut args = pool.worker_args(&runtime, &name, slot, memory, remaining)?;
+                    let target = if runtime == "jvm" {
+                        args.extend(jvm_options(memory));
+                        args.extend(strings(&["-cp", "/opt/toolgate.jar", &input.entry_point]));
+                        "/opt/toolgate.jar"
+                    } else {
+                        args.extend(strings(&["-I", "/opt/toolgate.pyz"]));
+                        "/opt/toolgate.pyz"
+                    };
                     pool.cli(&args).await?;
                     pool.cli(&strings(&[
                         "cp",
                         &artifact.to_string_lossy(),
-                        &format!("{name}:/opt/toolgate.pyz"),
+                        &format!("{name}:{target}"),
                     ]))
                     .await?;
                     Ok::<(), String>(())
                 }
                 .await;
+                if let Err(error) = &setup {
+                    ran = Ran::Crashed(format!("sandbox setup refused: {error}"));
+                }
                 if setup.is_ok() && !*cancelled.borrow() {
                     let connection = connection.as_ref().expect("broker readiness");
                     let mut failed = connection.failed();
                     let mut command = pool.command();
                     command.args(["start", "--attach", "--interactive", &name]);
-                    if !*failed.borrow() && !broker.closed.load(Ordering::SeqCst) {
-                        ran = tokio::select! {
+                    ran = supervise_until_deadline(input.deadline_unix_ms, async {
+                        if *failed.borrow() || broker.closed.load(Ordering::SeqCst) {
+                            return Ran::Crashed("isolated broker channel failed".into());
+                        }
+                        tokio::select! {
                             biased;
                             _ = cancelled.changed() => Ran::TimedOut,
                             _ = failed.changed() => Ran::Crashed("isolated broker channel failed".into()),
                             _ = child.as_mut().expect("broker process").wait() => Ran::Crashed("isolated broker exited".into()),
                             _ = diagnostic.as_mut().expect("broker diagnostic drain") => Ran::Crashed("isolated broker diagnostics ended".into()),
                             result = crate::runner::exchange(command, &input, input.deadline_unix_ms, output, Some(&frames), &broker) => result,
-                        };
-                    }
+                        }
+                    })
+                    .await;
                 }
                 broker.closed.store(true, Ordering::SeqCst);
                 if let Some(connection) = connection {
@@ -850,6 +941,31 @@ fn sync(path: &Path) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     let _ = path;
     Ok(())
+}
+
+// Broker IPC and the supervisor enforce the same absolute deadline. The broker
+// may close its channel before Tokio polls the supervisor's timer. Expiry wins
+// that race, while faults observed before expiry remain crashes. Pair cleanup
+// still runs afterwards and can override this outcome if removal is uncertain.
+async fn supervise_until_deadline(
+    deadline_unix_ms: u64,
+    execution: impl std::future::Future<Output = Ran>,
+) -> Ran {
+    let remaining = deadline_unix_ms.saturating_sub(crate::now_ms());
+    if remaining == 0 {
+        return Ran::TimedOut;
+    }
+    tokio::select! {
+        biased;
+        _ = tokio::time::sleep(Duration::from_millis(remaining)) => Ran::TimedOut,
+        result = execution => {
+            if crate::now_ms() >= deadline_unix_ms {
+                Ran::TimedOut
+            } else {
+                result
+            }
+        },
+    }
 }
 // Probes carry no workload arguments, credentials or permits. Bound startup
 // diagnostics without changing the frame deadline or accepting a failed probe.
@@ -993,10 +1109,70 @@ fn validate_probe(v: &Value, c: &Config) -> Result<(), String> {
 #[cfg(all(test, target_os = "linux"))]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn deadline_expiry_does_not_poll_the_worker() {
+        let result = supervise_until_deadline(crate::now_ms(), async {
+            panic!("expired invocation must not poll the worker")
+        })
+        .await;
+        assert!(matches!(result, Ran::TimedOut), "{result:?}");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn deadline_stops_a_worker_without_any_broker_notification() {
+        let result =
+            supervise_until_deadline(crate::now_ms() + 60_000, std::future::pending()).await;
+        assert!(matches!(result, Ran::TimedOut), "{result:?}");
+    }
+
+    #[tokio::test]
+    async fn deadline_preserves_broker_failures_observed_before_expiry() {
+        for reason in [
+            "isolated broker channel failed",
+            "isolated broker exited",
+            "isolated broker diagnostics ended",
+        ] {
+            let result = supervise_until_deadline(crate::now_ms() + 60_000, async {
+                Ran::Crashed(reason.into())
+            })
+            .await;
+            assert!(
+                matches!(result, Ran::Crashed(ref actual) if actual == reason),
+                "{result:?}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn deadline_preserves_a_result_completed_before_expiry() {
+        let frame = serde_json::from_value(json!({
+            "kind":"RESULT", "resultType":"complete", "isError":false,
+            "content":[], "structuredContent":{"ok":true}
+        }))
+        .unwrap();
+        let result =
+            supervise_until_deadline(crate::now_ms() + 60_000, async { Ran::Frame(frame) }).await;
+        assert!(matches!(result, Ran::Frame(_)), "{result:?}");
+    }
+
+    #[tokio::test]
+    async fn deadline_wins_when_broker_exit_is_ready_before_the_timer_is_polled() {
+        let deadline = crate::now_ms() + 10;
+        let result = supervise_until_deadline(deadline, async {
+            // Hold this poll across wall-clock expiry: the broker notification
+            // is ready before the timer driver can run on this test runtime.
+            std::thread::sleep(Duration::from_millis(20));
+            Ran::Crashed("isolated broker exited".into())
+        })
+        .await;
+        assert!(matches!(result, Ran::TimedOut), "{result:?}");
+    }
+
     fn config() -> Config {
         Config {
             podman_path: "/usr/bin/podman".into(),
             cgroup_parent: "/system.slice/toolgate.service".into(),
+            jvm_image: None,
             python_image: format!("docker.io/library/python@sha256:{}", "a".repeat(64)),
             broker_image: format!("localhost/toolgate-broker@sha256:{}", "b".repeat(64)),
             io_device: "8:0".into(),
@@ -1033,6 +1209,13 @@ mod tests {
     fn mutable_images_and_invalid_control_paths_are_refused() {
         let mut c = config();
         assert!(c.validate().is_ok());
+        c.jvm_image = Some("eclipse-temurin:21".into());
+        assert!(c.validate().is_err());
+        c.jvm_image = Some(format!(
+            "docker.io/library/eclipse-temurin@sha256:{}",
+            "c".repeat(64)
+        ));
+        assert!(c.validate().is_ok());
         c.python_image = "python:latest".into();
         assert!(c.validate().is_err());
         c = config();
@@ -1047,6 +1230,37 @@ mod tests {
         c = config();
         c.scratch_bytes = 0;
         assert!(c.validate().is_err());
+    }
+    #[test]
+    fn java_admission_requires_qualification_and_its_own_exact_image_pin() {
+        let root = std::env::temp_dir().join(format!("tg-jvm-{}", crate::random_hex(16)));
+        let mut config = config();
+        let digest = format!("sha256:{}", "c".repeat(64));
+        config.jvm_image = Some(format!("docker.io/olo-labs/jvm@{digest}"));
+        let pool = Sandbox::open(config, &root, "jvm-host", 1).unwrap();
+        assert!(!pool.accepts("jvm", Some(&digest)));
+        pool.ready.store(true, Ordering::SeqCst);
+        assert!(pool.accepts("jvm", Some(&digest)));
+        assert!(!pool.accepts("jvm", Some(pool.config.digest())));
+        assert!(!pool.accepts("jvm", None));
+        assert!(!pool.accepts("java", Some(&digest)));
+        let args = pool
+            .worker_args("jvm", "owned", 0, 128 * 1024 * 1024, 1500)
+            .unwrap();
+        for flag in [
+            "--entrypoint=/opt/java/openjdk/bin/java",
+            "--network=none",
+            "--pull=never",
+            "--read-only",
+            "--pids-limit=32",
+            "--memory=134217728",
+        ] {
+            assert!(args.iter().any(|arg| arg == flag), "missing {flag}");
+        }
+        assert_eq!(args.last(), pool.config.jvm_image.as_ref());
+        pool.poisoned.store(true, Ordering::SeqCst);
+        assert!(!pool.accepts("jvm", Some(&digest)));
+        std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn creation_has_no_mounts_or_network_and_each_slot_uses_another_uid_range() {
@@ -1229,6 +1443,7 @@ mod tests {
     #[ignore = "requires the delegated OCI conformance service"]
     async fn restart_reconciles_an_owned_running_container_before_reopening_the_pool() {
         let config = Config {
+            jvm_image: None,
             python_image: std::env::var("TOOLGATE_SANDBOX_IMAGE").expect("pinned image required"),
             broker_image: std::env::var("TOOLGATE_SANDBOX_BROKER_IMAGE")
                 .expect("pinned broker image required"),

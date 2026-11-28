@@ -24,6 +24,7 @@ async fn managed_deployment_fixture() {
     let config = Config {
         podman_path: "/usr/bin/podman".into(),
         cgroup_parent: std::env::var("TOOLGATE_SANDBOX_CGROUP_PARENT").unwrap(),
+        jvm_image: None,
         python_image: std::env::var("TOOLGATE_SANDBOX_IMAGE").unwrap(),
         broker_image: std::env::var("TOOLGATE_SANDBOX_BROKER_IMAGE").unwrap(),
         io_device: std::env::var("TOOLGATE_SANDBOX_IO_DEVICE").unwrap(),
@@ -106,6 +107,7 @@ async fn managed_deployment_fixture() {
         running_pool
             .run(
                 "deployment-crash",
+                "python",
                 &artifact,
                 &input,
                 128 * 1024 * 1024,

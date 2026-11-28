@@ -4,12 +4,13 @@ ToolGate is in Beta Release. Review the [current security and production limits]
 
 ## Branch and version model
 
-Use a long-lived branch for each supported major version:
+Use major release lines and optional child lines for individual minor versions:
 
 | Branch | Version config | Purpose |
 |---|---|---|
 | `main` | `version: 1.0.0`, `tag: dev` | Compatible development builds such as `1.0.0-dev.1` |
 | `release/1.x` | `version: 1.0.0`, `tag: dev` | Qualified releases such as `1.0.0-beta.1` |
+| `release/1.1.x` | `version: 1.1.0`, `tag: dev` | Minor line; subsequent fixes increment only its patch |
 | `release/2.x` | `version: 2.0.0`, `tag: dev` | A future breaking major version |
 
 `version.json` is the only manually maintained version configuration. Its tag
@@ -20,10 +21,12 @@ The release channel is not stored in the file: each **Build and release binaries
 run selects `dev`, `alpha`, `beta`, `rc` or `release` (default `dev`). The
 `release` channel publishes the plain version, such as `1.0.0`, with no channel
 or build suffix; the other channels publish `<version>-<channel>.<build>`.
-Synchronized main and release branches share the same source tree. Package
-manifests, `VERSION`, SDK bindings, Helm metadata and platform versions are
+Release preparation adds a commit changing `version.json` and preparing the
+target contributor collection on the new branch. Package manifests, `VERSION`, SDK bindings, Helm metadata and platform versions are
 materialized in build checkouts; do not manually change individual versions.
-The shared checked-in generated baseline is the same on both branches.
+Every OpenAPI and AsyncAPI document's `info.version` is stamped with the selected
+product version, including the emergency operator API and trigger stream.
+Generated files retain their checked-in baseline until build preparation.
 
 The release branch moves as reviewed compatible changes arrive. Each release
 build selects an exact source commit and allocates an immutable identity.
@@ -37,21 +40,24 @@ Examples:
 
 - `1.0.0-alpha.1`, `1.0.0-beta.2`, `1.0.0-beta.3`, then `1.0.0-rc.4`, then
   `1.0.0` (channel `release`; build 5 is recorded but not part of the version).
-- A bug fix after stable: update the shared base version to `1.0.1`, retain the
-  release branch, qualify and publish `1.0.1`.
-- A compatible feature: update the base version to `1.1.0` and use the same
-  `release/1.x` branch, optionally going through beta and RC again.
-- A breaking change: advance main to major 2 and initialize `release/2.x`.
-  Never synchronize breaking version-2 changes into `release/1.x`.
+- A bug fix after stable: select `increment-patch` on the release branch to
+  prepare `1.0.1`, then qualify and publish it from that same branch.
+- A compatible feature: select `new-branch` from `release/1.x` to create
+  `release/1.1.x` at `1.1.0`, optionally going through beta and RC again.
+- A breaking change: select `new-branch` from main to create the next major
+  line, such as `release/2.x` at `2.0.0`. Never synchronize breaking version-2
+  changes into `release/1.x`.
 
-The workflow rejects a release branch whose major disagrees with its config.
+The workflow rejects a release branch whose major disagrees with its config,
+and a child line whose minor disagrees.
 Maintainers must still review API/behavior compatibility; a version number alone
 cannot prove that a source change is backward compatible.
 
 ## One-time repository setup
 
 
-- Enable Actions read/write permissions and allow the repository to publish GitHub Packages.
+- Enable Actions read/write permissions, allow GitHub Actions to create pull
+  requests, and allow the repository to publish GitHub Packages.
 - Create the **production-release** environment. Restrict it to workflow executions on
   `release/*` (including `release/1.x`); configure reviewers if your release policy requires them.
   Initialization runs on main; build and publication run on the release line.
@@ -65,7 +71,8 @@ cannot prove that a source change is backward compatible.
   plus `MAVEN_GPG_PRIVATE_KEY` and `MAVEN_GPG_PASSPHRASE`. See [signing setup](../../tools/release/README.md).
 - Protect `release/*` branches against force pushes/deletion and require reviewed PRs
   for updates. Protect the `prepared/*`, `release-builds/*`, `release-runs/*`,
-  `published/*`, `central-deployments/*`, and `v*` tags against updates/deletion.
+  `published/*`, `central-deployments/*`, `release-preparations/*`, and `v*` tags
+  against updates/deletion.
   Permit the release automation to create new refs. These refs store immutable preparation,
   counter, build-run and publication records; do not delete them to reset a counter or retry.
 - Allow 90-day Actions artifact retention, or adjust the two workflows to the repository's
@@ -77,33 +84,83 @@ The same tested image archives are published to GHCR and Docker Hub with immutab
 Retries verify existing image identity and reject conflicting versions; no images are rebuilt.
 Existing development workflows remain separate and retain their own credentials/behavior.
 
-## Initialize a release line once
+## Prepare a new branch or increment a patch
 
-Merge the release tooling into main first. Open **Actions → Prepare release branch**,
-run on **main**, and choose the source branch/commit. The base version
-comes from the selected source's `version.json`, whose tag must be `dev`.
+Merge the release tooling into main first. Before creating child lines from an
+existing release branch, synchronize these release tooling changes into that
+source line through a reviewed PR. Preparation retains the selected source code;
+it does not copy controller tooling into the source tree. Open **Actions → Prepare release branch**,
+run the controller on **main**, and choose `source_branch`, `source_commit`
+(`latest` or a full 40-character ancestor SHA), and `action`:
+
+| Action | Source | Result |
+|---|---|---|
+| `new-branch` | `main` | Next major line: `release/2.x`, version `2.0.0`, when major 1 exists |
+| `new-branch` | `release/1.x` | `release/1.1.x`, version `1.1.0`; if that child exists, `release/1.2.x`, version `1.2.0` |
+| `new-branch` | `release/1.1.x` | Next unused minor line within major 1 |
+| `increment-patch` | `release/1.x` at `1.0.0` | Same branch, version `1.0.1` |
+| `increment-patch` | `release/1.1.x` at `1.1.0` | Same child branch, version `1.1.1` |
+
+New major selection uses the higher of the source major and one greater than
+the highest major among existing canonical major/child lines. With no existing
+lines, the source major is used. New minor selection uses one greater than the
+higher of the source minor and the highest existing minor line within that major. Gaps are not filled. Only canonical major/child branch
+names count; historical build-numbered or date-named branches do not.
 
 ```sh
+# Create the next major line from main.
 gh workflow run create-release-branch.yml --ref main \
-  -f source_branch=main -f source_commit=latest
+  -f source_branch=main -f source_commit=latest -f action=new-branch
+
+# Create the next minor child from a release line.
+gh workflow run create-release-branch.yml --ref main \
+  -f source_branch=release/1.x -f source_commit=latest -f action=new-branch
+
+# Increment only the patch on the selected release branch.
+gh workflow run create-release-branch.yml --ref main \
+  -f source_branch=release/1.1.x -f source_commit=latest -f action=increment-patch
 ```
 
-A full 40-character ancestor commit SHA may replace `latest`. Initialization
-creates `release/<major>.x` at the selected source commit without changing
-`version.json`. It does not allocate a release build number. If the line already
-exists, initialization refuses to overwrite it; use a synchronization PR.
+Preparation retains `tag: dev`. New branches reset lower version components to
+zero and prepare their contributor collection in the same commit. From main,
+move `.changes/main/` to the target major's series folder in the **new branch
+only**; main's source tree remains unchanged. From a release branch, copy the
+parent's series to the child's new series, retaining the parent records. Set
+`.changes/config.json` to the target series and omit main staging from new
+release branches. Fragment contents and modes are preserved; conflicting
+collections or invalid/missing source fragments are rejected before ref writes.
+Patch mode changes only `version.json` and retains the current collection.
+ Patch mode requires a
+canonical release branch and its current head; it rejects main and older commits.
+It never creates a child line or updates main, parent, or sibling release lines.
 
-Existing build-numbered branches and their immutable preparation tags remain
-historical records. Do not move tags or reuse an old reserved version for new
-source bytes. The active version-1 line is `release/1.x`.
+Protected patch updates fall back to a PR with the exact prepared commit; merge
+that PR before building the new version. Other permission/network failures stop
+the run. Repository rules and Actions PR creation settings still apply; no
+protection bypass is requested. New branch creation remains subject to rules.
+
+Preparations are serialized and reserve their exact result in an annotated
+`release-preparations/<run-id>` tag before changing branch refs. A retry of the
+same run keeps its original version and commit. If a response is interrupted,
+the retry checks whether that exact commit was applied before doing anything.
+Source changes detected before ref updates and conflicting branch creation
+fail rather than forcing updates. New branches remain pinned to the selected
+commit even if the source moves after the final check. Patch updates require
+a non-force fast-forward. Start a fresh dispatch after reviewing changed source.
+Protect preparation tags against mutation/deletion; do not remove them to retry.
+
+The run summary records the source, target, version, prepared commit and any PR.
+Preparation does not reserve a build number, build binaries or publish packages.
+Build dispatches and retries do not change the patch; release channels and build
+counters remain separate. Existing immutable release records are preserved.
 
 ## Synchronize compatible changes from main
 
 1. Land reviewed fixes or compatible features on main.
-2. Set the shared base version for the intended patch or minor release in
-   `version.json`; every branch retains `tag: dev`.
-3. Open a synchronization PR into `release/1.x` with the intended compatible
-   base version and source changes from main.
+2. Choose the intended major or minor release line. Keep its own `version.json`
+   and `tag: dev` when synchronizing source changes.
+3. Open a synchronization PR into that release line with compatible source
+   changes from main. Use release preparation for a new minor line or patch.
 4. Run and pass the CI/security checks, review the source diff and merge.
 5. Dispatch the release workflow from the release branch itself.
 
@@ -113,7 +170,8 @@ merging the breaking changes. Bring applicable fixes into main as well.
 
 ## Build and optionally publish
 
-Open **Actions → Build and release binaries**, select **release/1.x**, choose
+Open **Actions → Build and release binaries**, select the target line (for
+example **release/1.x** or **release/1.1.x**), choose
 `build-only` or `build-and-publish`, choose the `channel` (`dev`, `alpha`, `beta`,
 `rc` or `release`; default `dev`), and leave `build_run_id` empty for a new build.
 
@@ -169,7 +227,7 @@ same build; dispatch a fresh run with no reuse ID for a new release number.
 | `@olo-labs/toolgate-contracts` | GitHub npm Packages |
 | Control, Gateway, Quickstart, device, secured device, LangGraph runtime (`olo-toolgate-langgraph-runtime`) | `ghcr.io/olo-labs/<image>:1.0.0-beta.42` and `docker.io/<namespace>/<image>:1.0.0-beta.42` |
 | Helm chart | `oci://ghcr.io/olo-labs/charts/olo-toolgate:1.0.0-beta.42` |
-| Installers, distributions, SDK JARs, SBOMs and manifests | GitHub Release `v1.0.0-beta.42` |
+| Installers, distributions, SDK JARs, all bot `.olo` bundles, standalone `.olotool` packages, bot/tool inventories, SBOMs and manifests | GitHub Release `v1.0.0-beta.42` |
 
 The owner follows the repository owner if this repository is forked. Public npm, crates.io,
 Packagist and Java SDK registry publication are not configured by this pipeline; their checked
@@ -203,8 +261,11 @@ pins and independently versioned example tools are separate from product version
 
 Shared contributor collections, such as `.changes/v1.0/`, are included in each
 corresponding 1.0 release. Exact-version collections add release-specific notes.
-Start a `.changes/v1.1/` collection for a new minor series; preserve the old
-records. See the [contribution guide](../../.changes/README.md) and
+The initial `.changes/v2.0/` collection carries all contributor fragments from
+the unreleased 1.0 series into 2.0. Keep those credits and the original 1.0
+records. Start a collection with valid fragments when preparing another new
+series through branch preparation; missing or empty selected collections fail
+before expensive builds. See the [contribution guide](../../.changes/README.md) and
 [annotated template](../../.changes/RELEASE-NOTE-SAMPLE.yaml). Contribution assets
 are generated during release; do not regenerate tracked release-note snapshots
 in ordinary PRs.

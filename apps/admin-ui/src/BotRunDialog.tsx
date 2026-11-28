@@ -15,6 +15,7 @@ export function BotRunDialog({client,profile,status,workflow,close,chooseWorkflo
   const [agent,setAgent]=useState(entries[0]?.agentId??''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[route,setRoute]=useState('');
   const routes=profile.workflows!.dispatchBindings.filter(item=>item.workflowId===workflow.id&&item.workflowVersionId===workflow.versionId&&item.serviceAgentId===agent);
   const chooseRoute=new Set(routes.map(item=>item.remediationMode)).size>1;
+  const executionMode=chooseRoute?routes.find(item=>item.id===route)?.remediationMode:routes[0]?.remediationMode??workflow.manualRunMode??'PREPARE';
   const [runId,setRunId]=useState<string>(),[run,setRun]=useState<Run>(),[events,setEvents]=useState<WorkflowRunProgressEvent[]>([]);
   const [error,setError]=useState<unknown>(),[pollAttempt,setPollAttempt]=useState(0),[uncertain,setUncertain]=useState(false);
   const submission=useRef<{key:string;body:WorkflowRunStartRequest}|undefined>(undefined),sending=useRef(false);
@@ -58,6 +59,7 @@ export function BotRunDialog({client,profile,status,workflow,close,chooseWorkflo
     <p>Run the published bot with the input it expects. Progress and the result appear here. Closing this panel leaves an accepted run running.</p>
     {!published&&<p role="status">Publish this bot revision before running it.</p>}
     {!entries.length&&<p role="status">Configure an entry-eligible agent before running this bot.</p>}
+    {executionMode&&<p>Execution mode: <strong>{executionMode==='APPLY'?'Apply':'Prepare'}</strong>. Current permissions and approvals still apply.</p>}
     {chooseWorkflow&&profile.workflows!.workflows.length>1&&<label>Bot<select value={workflow.id} disabled={busy||Boolean(runId)||uncertain} onChange={event=>chooseWorkflow(event.target.value)}>{profile.workflows!.workflows.map(item=><option key={item.id} value={item.id}>{item.id}</option>)}</select></label>}
     <form onSubmit={event=>{event.preventDefault();void start();}}><fieldset disabled={busy||Boolean(runId)||uncertain||!published}>
       {entries.length>1&&<label>Entry agent<select value={agent} onChange={event=>{setAgent(event.target.value);setRoute('');}}>{entries.map(item=><option key={item.agentId} value={item.agentId}>{item.agentId}</option>)}</select></label>}

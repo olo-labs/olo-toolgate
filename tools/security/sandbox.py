@@ -37,7 +37,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--image', required=True, help='already prepared name@sha256:digest')
     parser.add_argument('--broker-image', required=True, help='already prepared trusted broker name@sha256:digest')
+    parser.add_argument('--jvm-image', help='also qualify the prepared Java 21 name@sha256:digest')
+    parser.add_argument('--jvm-samples', type=Path, help='optional producing-gate SDK sample inventory with artifact digests')
     parser.add_argument('--broker-image-evidence', required=True, type=Path, help='owned current-source broker_image.py report')
+    parser.add_argument('--broker-binary', type=Path, default=ROOT / 'target/x86_64-unknown-linux-musl/release/olo-toolgate-tool-host')
     parser.add_argument('--service-user', help='root launches this unprivileged service user; otherwise use the user manager')
     parser.add_argument('--cargo', default=shutil.which('cargo'))
     parser.add_argument('--io-device', help='whole-block major:minor; defaults to the actual rootless container storage device')
@@ -52,6 +55,10 @@ def main():
         parser.error('a fully qualified immutable image reference is required')
     if not re.fullmatch(r'[A-Za-z0-9./_:-]+@sha256:[a-f0-9]{64}', args.broker_image):
         parser.error('a fully qualified immutable broker image reference is required')
+    if args.jvm_image and not re.fullmatch(r'[A-Za-z0-9./_:-]+@sha256:[a-f0-9]{64}', args.jvm_image):
+        parser.error('a fully qualified immutable JVM image reference is required')
+    if args.jvm_samples and not args.jvm_image:
+        parser.error('--jvm-samples requires --jvm-image')
     if not args.cargo or not Path(args.cargo).is_absolute():
         parser.error('an absolute cargo executable is required')
     try:
@@ -81,15 +88,20 @@ def main():
                  'CARGO_PROFILE_DEV_DEBUG', 'CARGO_PROFILE_TEST_DEBUG'):
         if name in os.environ:
             environment[name] = os.environ[name]
+    if args.jvm_image:
+        environment['TOOLGATE_SANDBOX_JVM_IMAGE'] = args.jvm_image
+    if args.jvm_samples:
+        environment['TOOLGATE_SANDBOX_JVM_SAMPLES'] = str(args.jvm_samples.resolve(strict=True))
     command += ['--setenv=' + name + '=' + value for name, value in environment.items()]
     command += [args.cargo, 'test', '-p', 'olo-toolgate-tool-host', '--lib', '--test', 'sandbox', '--test', 'dispatch',
+                *(['--test', 'jvm_sandbox'] if args.jvm_image else []),
                 '--locked', '--', '--ignored', '--test-threads=1']
     output = ROOT / 'build/security/sandbox'
     output.mkdir(parents=True, exist_ok=True)
     before = source_digest()
     revision = subprocess.check_output(GIT + ['rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     evidence = json.loads(args.broker_image_evidence.read_text(encoding='utf-8'))
-    binary = ROOT / 'target/x86_64-unknown-linux-musl/release/olo-toolgate-tool-host'
+    binary = args.broker_binary
     if (evidence.get('sourceSha256') != before or evidence.get('revision') != revision
             or evidence.get('image') != args.broker_image
             or not binary.is_file()
@@ -116,11 +128,17 @@ def main():
     }
     success = (result.returncode == 0 and required.issubset(passed)
                and len(passed) == len(set(passed)) and before == source_digest())
+    if args.jvm_image:
+        success = success and 'java_worker_preserves_protocol_denies_network_and_cleans_up_after_failure_timeout_and_cancel' in passed
     report = {'revision': subprocess.check_output(GIT + ['rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
               'sourceSha256': before, 'image': args.image, 'brokerImage': args.broker_image,
+              'jvmImage': args.jvm_image,
+              'jvmSamplesSha256': hashlib.sha256(args.jvm_samples.read_bytes()).hexdigest() if args.jvm_samples else None,
               'brokerBinarySha256': evidence['binarySha256'], 'ioDevice': io_device, 'containerStoragePath': str(storage),
               'tier': 'OCI_SANDBOX', 'architecture': platform.machine(), 'passed': success, 'executedTests': passed,
-              'scope': 'Python rootless worker and per-invocation broker identity/namespace separation with paired lifecycle; no generalized per-effect authorization or compromised-kernel guarantee'}
+              'scope': ('Python rootless worker and per-invocation broker identity/namespace separation with paired lifecycle'
+                        + ('; additional Java 21 protocol, network denial, failure, deadline and cancellation vectors' if args.jvm_image else '')
+                        + '; no Marketplace published-artifact acceptance, generalized per-effect authorization or compromised-kernel guarantee')}
     (output / 'conformance.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
     return 0 if success else 1
 

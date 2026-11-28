@@ -101,7 +101,7 @@ review, live device readiness and runtime capability checks.
 This generic client **does not yet orchestrate `.olo` import to activation** or
 automatically apply referenced configuration/restore connections. It does not
 accept `.olo` as an `.olotool` package. That durable orchestration remains open
-in the [hot-swap plan](../../docs/plans/workflow-profile-hot-swap.md). No script
+in the [hot-swap plan](../../docs/plans/workflows.md). No script
 success should be interpreted as a runnable workflow or end-to-end acceptance.
 
 ## Automated device policy and allocation
@@ -132,3 +132,12 @@ workload credentials and device allocations. Destination service bindings are
 created locally for referenced agents. It does not restart containers. This is
 not yet a durable server-owned deployment operation; see the workflow status for
 candidate-readiness isolation, cleanup and execution-finality limitations.
+
+The community [demo selector](../../deploy/docker/quickstart/dev/README.md#choose-demo-bots)
+uses `bot/quickstart.py` and this importer together. Its operator callback after
+reference import configures destination vault scopes, exact local device
+allocation and demo folders before package provisioning; its callback after
+provisioning qualifies installed native file tools before graph preparation.
+These callbacks are local operator code, never executable content from a bundle.
+Import alone continues to perform none of those installation actions. Both
+callbacks propagate denial or unknown outcomes without automatic replay.

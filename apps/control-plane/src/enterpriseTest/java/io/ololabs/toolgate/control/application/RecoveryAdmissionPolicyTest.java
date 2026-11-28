@@ -46,6 +46,19 @@ final class RecoveryAdmissionPolicyTest {
         assertEquals(Canonical.digest(profile),scope.profileDigest());
         assertEquals(IMAGE,scope.imageDigest());
     }
+    @Test void javaRequiresMatchingLanguageVersionAndIndependentImagePin(){
+        var runtime=runtime().put("runtimeId","jvm").put("language","java").put("version","21");
+        var scope=qualify(runtime,descriptor(),profile());assertNotNull(scope);
+        assertEquals(Canonical.digest(runtime),scope.runtimeDigest());
+        runtime.put("version","17");assertNull(qualify(runtime,descriptor(),profile()));
+        runtime.put("version","21").put("language","python");assertNull(qualify(runtime,descriptor(),profile()));
+        runtime.put("language","java").put("baseImageDigest","sha256:"+"b".repeat(64));
+        assertNull(qualify(runtime,descriptor(),profile()));
+        runtime.put("baseImageDigest",IMAGE);
+        var descriptor=descriptor();descriptor.withArray("permissions").add("CREDENTIALS_IN_SANDBOX");
+        assertNull(qualify(runtime,descriptor,profile()));
+        assertNull(RecoveryAdmissionPolicy.qualify(runtime,descriptor(),profile(),registration(),Set.of()));
+    }
     @Test void selfReportedTierOrQualificationCannotReplaceOperatorImagePoolPin(){
         var registration=registration();registration.put("qualified",true);
         assertNull(RecoveryAdmissionPolicy.qualify(runtime(),descriptor(),profile(),registration,Set.of()));

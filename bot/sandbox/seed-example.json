@@ -1,0 +1,8 @@
+{
+  "tenantId": "replace-with-verified-installation-tenant",
+  "subjects": [
+    {"kind": "service", "id": "demo-api", "allowedActor": "replace-with-verified-user-id", "prerequisitesComplete": true},
+    {"kind": "joiner", "id": "demo-ready", "allowedActor": "replace-with-verified-user-id", "prerequisitesComplete": true},
+    {"kind": "joiner", "id": "demo-pending", "allowedActor": "replace-with-verified-user-id", "prerequisitesComplete": false}
+  ]
+}

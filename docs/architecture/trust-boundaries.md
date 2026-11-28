@@ -32,8 +32,9 @@ See [Tool Host limitations](../../apps/tool-host/README.md#not-yet).
 ## Administrative authority
 
 Scoped management uses independent review. Super Admin has an audited
-[review exception](../adr/022-super-administrator-review-exception.md), but still
-needs runtime grants and cannot override effect authorization or retired identity.
+[review exception and tenant-wide human entitlement](../security/user-roles.md)
+resolved by Control from live directory membership. It cannot override another
+tenant's boundary, independent service/effect authority or retired identity.
 
 ## Planned distribution boundary
 
@@ -45,7 +46,7 @@ authorization. See [Marketplace scope](../marketplace/README.md).
 ## Zero Trust Execution threat boundary
 
 Adopt the [A1–A9 matrix and C1–C8 requirements](../security/zero-trust-boundaries.md)
-with the [live qualification scope](../security/zero-trust-execution-status.md).
+with the [live qualification scope](../security/zero-trust-boundaries.md).
 Control/identity roots/kernel/runtime are trusted. Gateway is not an authority;
 its documented OLO identity-context residual still matters. A compromised
 supervisor can ignore leases and keep unfenced credentials. Qualified fenced OLO

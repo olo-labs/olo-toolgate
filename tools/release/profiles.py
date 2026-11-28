@@ -10,6 +10,14 @@ import sys
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
 from bot.bundle import digest,verify
+from bot.build import filename
+from bot.starters import configurations as starter_configurations, verify_kit
+
+
+def expected_profiles():
+    return {(folder.name,workflow['id'])
+            for folder in (ROOT/'bot/configurations').iterdir() if folder.is_dir()
+            for workflow in json.loads((folder/'bot.json').read_text(encoding='utf-8'))['workflows']['workflows']}
 
 
 def collect(source,output,version=None,commit=None):
@@ -19,6 +27,9 @@ def collect(source,output,version=None,commit=None):
     inventory=json.loads(indexes[0].read_text(encoding='utf-8'))
     if inventory['format']!='olo-profiles' or not inventory['profiles']:raise ValueError('Invalid profile inventory')
     if version and inventory['version']!=version or commit and inventory['sourceCommit']!=commit:raise ValueError('Profile source/version differs from publication')
+    identities=[(item.get('configuration'),item.get('workflowId')) for item in inventory['profiles']]
+    if len(set(identities))!=len(identities) or set(identities)!=expected_profiles():
+        raise ValueError('Release must include every bot configuration/workflow exactly once')
     files=[indexes[0]];seen=set()
     for item in inventory['profiles']:
         name=item['filename']
@@ -26,9 +37,22 @@ def collect(source,output,version=None,commit=None):
         path=source/name
         if path.is_symlink():raise ValueError('Linked profile artifact')
         data=path.read_bytes();manifest=verify(data)
-        if (digest(data)!=item['sha256'] or len(data)!=item['bytes'] or manifest['packages']!=item['packages']
+        if (manifest['workflowId']!=item['workflowId'] or digest(data)!=item['sha256'] or len(data)!=item['bytes'] or manifest['packages']!=item['packages']
                 or manifest['build']['version']!=inventory['version'] or manifest['build']['sourceCommit']!=inventory['sourceCommit']):raise ValueError('Profile evidence mismatch')
         seen.add(name);files.append(path)
+    if any(row['configuration'] in starter_configurations() for row in inventory['profiles']):
+        kit=inventory.get('starterKit',{})
+        if kit.get('filename')!='olo-starters-'+filename(inventory['version'])+'.zip':
+            raise ValueError('Release needs its versioned starter source kit')
+        path=source/kit['filename']
+        if path.is_symlink():raise ValueError('Linked starter source kit')
+        data=path.read_bytes()
+        if digest(data)!=kit.get('sha256') or len(data)!=kit.get('bytes'):
+            raise ValueError('Starter source kit checksum mismatch')
+        verify_kit(data,inventory['profiles'],inventory['version'],inventory['sourceCommit'])
+        files.append(path)
+    elif 'starterKit' in inventory:
+        raise ValueError('Unexpected starter source kit')
     output.mkdir(parents=True,exist_ok=True)
     for path in files:
         target=output/path.name

@@ -47,7 +47,7 @@ final class PackageCompatibilityTest {
 
     @Test void eachIncompatibilityIsReported() throws Exception {
         Map<String, Consumer<ObjectNode>> cases = new LinkedHashMap<>();
-        cases.put("contracts major", m -> ((ObjectNode) m.get("compatibility")).put("contractsVersion", "2.0.0"));
+        cases.put("contracts major", m -> ((ObjectNode) m.get("compatibility")).put("contractsVersion", TestSupport.unsupportedContractsVersion()));
         cases.put("contracts missing", m -> ((ObjectNode) m.get("compatibility")).remove("contractsVersion"));
         cases.put("minimum host not a version", m -> ((ObjectNode) m.get("compatibility")).put("minimumToolHostVersion", "latest"));
         cases.put("descriptor generation", m -> ((ObjectNode) m.get("sdk")).put("descriptorGeneration", 2));
@@ -90,13 +90,32 @@ final class PackageCompatibilityTest {
         assertTrue(PackageCompatibility.hostProblems(manifest,"host",ociHost).isEmpty(),"client-only runtimes do not force native server execution");
     }
 
+    @Test void javaOciRequiresVersion21AndCannotFallBackToNativeOrAnotherRuntime() throws Exception {
+        var manifest=manifest();var runtime=(ObjectNode)manifest.path("runtimes").get(0);
+        var nativeHost=(ObjectNode)host("1.0.0",2,2);nativeHost.putArray("tiers").add("HOST_NATIVE");
+        var ociHost=(ObjectNode)host("1.0.0",2,2);ociHost.putArray("tiers").add("OCI_SANDBOX");
+        runtime.put("runtimeId","jvm").put("language","java").put("version","21")
+            .put("baseImageDigest","sha256:"+"a".repeat(64));
+        ((ObjectNode)manifest.path("tools").get(0)).put("runtimeId","jvm");
+        assertTrue(PackageCompatibility.hostProblems(manifest,"host",ociHost).isEmpty());
+        assertEquals(1,PackageCompatibility.hostProblems(manifest,"host",nativeHost).size());
+        for(String version:List.of("17","22")){
+            runtime.put("version",version);
+            assertEquals(1,PackageCompatibility.hostProblems(manifest,"host",ociHost).size());
+        }
+        runtime.put("version","21").put("language","python");
+        assertEquals(1,PackageCompatibility.hostProblems(manifest,"host",ociHost).size());
+        runtime.put("language","java").remove("baseImageDigest");
+        assertEquals(1,PackageCompatibility.hostProblems(manifest,"host",ociHost).size());
+    }
+
     @Test void uploadRefusesWhatNoToolHostCanRunAndDeployRefusesATooOldHost() throws Exception {
         var codec = new ContractCodec(); var store = new PostgresStore(io.ololabs.toolgate.control.fixtures.Tenants.database(SqliteState.open(directory.resolve("compatibility.sqlite"))), codec);
         var tenant = io.ololabs.toolgate.control.fixtures.Tenants.id("tenant"); var actor = TestSupport.seed(store, codec, tenant, "root");
         var packages = new ServerPackages(store, codec, null, java.time.Clock.systemUTC());
 
         // A runtime or descriptor generation mismatch already fails the package rules (400); these pass them and fail here.
-        var contracts = ServerPackagesTest.zip(files(m -> ((ObjectNode) m.get("compatibility")).put("contractsVersion", "2.0.0")));
+        var contracts = ServerPackagesTest.zip(files(m -> ((ObjectNode) m.get("compatibility")).put("contractsVersion", TestSupport.unsupportedContractsVersion())));
         assertEquals(422, assertThrows(Failure.class, () -> packages.upload(actor, contracts, "request-1")).status());
         var protocol = ServerPackagesTest.zip(files(m -> ((ObjectNode) m.get("sdk")).putObject("protocol").put("min", 3).put("max", 4)));
         assertEquals(422, assertThrows(Failure.class, () -> packages.upload(actor, protocol, "request-2")).status());

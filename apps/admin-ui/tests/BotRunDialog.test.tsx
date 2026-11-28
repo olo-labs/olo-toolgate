@@ -51,3 +51,13 @@ it('keeps draft revisions non-runnable',async()=>{
  render(<BotRunDialog client={client} profile={profile} status={{...status,state:'DRAFT'}} workflow={workflow} close={vi.fn()}/>);
  expect(screen.getByText('Publish this bot revision before running it.')).toBeTruthy();expect(screen.getByRole('button',{name:'Run bot'}).matches(':disabled')).toBe(true);expect(start).not.toHaveBeenCalled();
 });
+
+it('shows the published manual mode without accepting a caller mode override',async()=>{
+ const client=new ControlClient('token',vi.fn());const start=vi.spyOn(client,'startWorkflowRun').mockResolvedValue(accepted);
+ vi.spyOn(client,'workflowRun').mockResolvedValue(view());vi.spyOn(client,'workflowRunProgress').mockResolvedValue({items:[],nextCursor:0});
+ const configured={...workflow,manualRunMode:'APPLY' as const};
+ render(<BotRunDialog client={client} profile={{...profile,workflows:{...profile.workflows!,dispatchBindings:[]}}} status={status} workflow={configured} close={vi.fn()}/>);
+ expect(screen.getByText('Apply')).toBeTruthy();choose();await screen.findByText('run-1');
+ expect(start.mock.calls[0][2]).not.toHaveProperty('manualRunMode');
+ expect(start.mock.calls[0][2]).not.toHaveProperty('remediationMode');
+});

@@ -5,7 +5,7 @@
 declare(strict_types=1);
 namespace OloLabs\ToolGate\Contracts\V2;
 
-/** Explicit text input for one published bot. Backend derives service group and configured mode; current authority and idempotency remain required. */
+/** Explicit text input for one published bot. Backend derives service group and mode from a matching published dispatch route, otherwise manualRunMode or PREPARE. Caller-selected modes are refused; current authority and idempotency remain required. */
 final readonly class WorkflowRunStartRequest implements \JsonSerializable {
     public function __construct(
         public string $profileDigest,

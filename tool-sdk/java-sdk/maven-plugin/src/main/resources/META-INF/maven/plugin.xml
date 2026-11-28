@@ -80,11 +80,13 @@
         <parameter><name>project</name><type>org.apache.maven.project.MavenProject</type><required>true</required><editable>false</editable><description>The project.</description></parameter>
         <parameter><name>pluginArtifacts</name><type>java.util.List</type><required>true</required><editable>false</editable><description>The plugin's class path.</description></parameter>
         <parameter><name>descriptorGeneration</name><type>java.lang.Integer</type><required>false</required><editable>true</editable><description>The descriptor generation; required, no default.</description></parameter>
+        <parameter><name>baseImageDigest</name><type>java.lang.String</type><required>false</required><editable>true</editable><description>Exact qualified Java 21 OCI worker sha256 digest.</description></parameter>
       </parameters>
       <configuration>
         <project implementation="org.apache.maven.project.MavenProject" default-value="${project}"/>
         <pluginArtifacts implementation="java.util.List" default-value="${plugin.artifacts}"/>
         <descriptorGeneration implementation="java.lang.Integer">${toolgate.descriptorGeneration}</descriptorGeneration>
+        <baseImageDigest implementation="java.lang.String">${toolgate.baseImageDigest}</baseImageDigest>
       </configuration>
     </mojo>
   </mojos>

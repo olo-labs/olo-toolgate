@@ -1,0 +1,56 @@
+{
+  "summary": "Medical document administration",
+  "findings": [
+    {
+      "checkId": "referralDepartment",
+      "status": "needs review",
+      "detail": "Required field missing or unreadable",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "dischargeDate",
+      "status": "needs review",
+      "detail": "Required field missing or unreadable",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "document:referral-p1",
+      "status": "needs review",
+      "detail": "Required document absent",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "document:discharge-p1",
+      "status": "needs review",
+      "detail": "Required document absent",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "document:laboratory-p1",
+      "status": "needs review",
+      "detail": "Required document absent",
+      "values": [],
+      "evidence": []
+    },
+    {
+      "checkId": "chronology",
+      "status": "needs review",
+      "detail": "No valid dated source events supplied",
+      "values": [],
+      "evidence": []
+    }
+  ],
+  "draft": "",
+  "nextActions": [
+    "referralDepartment: Required field missing or unreadable",
+    "dischargeDate: Required field missing or unreadable",
+    "document:referral-p1: Required document absent",
+    "document:discharge-p1: Required document absent",
+    "document:laboratory-p1: Required document absent",
+    "chronology: No valid dated source events supplied"
+  ]
+}

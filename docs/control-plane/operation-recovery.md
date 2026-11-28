@@ -18,6 +18,14 @@ retry does not create a recovery record.
 
 ## Qualified broker-only recovery
 
+Java 21 OCI declarations (`runtimeId=jvm`, `language=java`, `version=21`) can
+capture the same broker-only admission scope as Python when their exact
+device/pool/image is independently qualified and configured. Java on the host,
+native registration and a runtime declaration without an immutable image pin
+cannot supply this evidence. The existing permission, route and effect checks
+apply unchanged. See [rootless deployment](../operations/rootless-tool-host.md)
+for the separate JVM qualification and outstanding deployment acceptance.
+
 Consumed work stays fenced by default. The optional
 TOOLGATE_CONTROL_RECOVERY_QUALIFIED_EXECUTORS setting is a comma-separated list
 of authenticated-device@administered-pool@sha256:image-digest pins (64 lowercase
@@ -32,12 +40,15 @@ pin. Removing a pin prevents future qualified admissions; already admitted
 attempts retain their original immutable scope. Revoke device/operation authority
 when withdrawing an existing execution's authority.
 
-Control independently restricts qualification to pinned Python OCI server tools
-with no secret, HTTP credential, tunnel or unmediated permission declarations and
-only nonstreaming supported OLO memory/RAG routes. The current scope covers
+Control independently restricts qualification to pinned Python or Java 21 OCI
+server tools with HTTP_ROUTE permissions only, no worker secret declarations,
+no TCP tunnels and no streaming. Broker-owned API-key authentication is allowed;
+workers never receive its credential. The reserved OLO service scope covers
 memory.read/append/delete and rag.query/ingest/update/delete via their exact
-HTTPS brokered service-profile paths. It does not qualify general HTTP targets,
-native tools or other runtimes. Package/runtime/descriptor/profile digests and
+HTTPS brokered service-profile paths. Generic HTTPS routes require an explicit
+operator effect review for every declared route and an intent reconstructed from
+admitted arguments and reviewed constants. Native tools and unsupported runtimes
+remain unqualified. Package/runtime/descriptor/profile digests and
 profile revision are captured before permit consumption.
 
 Every authorization generation from every consumed predecessor must be RELEASED.
@@ -50,8 +61,8 @@ history blocks recovery, including when a later attempt looks harmless.
 
 ## Deployment and investigation
 
-Apply V6 migrations using the separate migrator before deploying Control. Update
-Tool Hosts together: pull-mode refusal receipts carry the claimed permit nonce
+Use the current fresh schema, a separate initialization role and matching
+Control/Tool Host artifacts: pull-mode refusal receipts carry the claimed permit nonce
 for correlation. That field is not proof of signature validation or consumption.
 After recovery Control rejects unbound/stale admission receipts. Authenticated
 late results for known consumed predecessor nonces are retained as evidence and
@@ -65,7 +76,6 @@ roles cannot update/delete either table; PostgreSQL enforces tenant RLS. A stora
 failure rolls the transaction back with no replacement authority. Preserve the
 records when investigating an ambiguous effect; do not edit them to force a retry.
 
-This scoped no-write proof is not effect-verified success. Complete aggregate
-operation finalization and caller history remain S10 work. General routes, broker
-credential separation, production qualification/SLOs and the full security
-acceptance matrix remain tracked in the [authoritative progress document](../security/zero-trust-execution-status.md).
+This scoped no-write proof is not effect-verified success. Use [aggregate operation outcomes](operation-finalization.md) for finality.
+Production/SLO and full security qualification remain in the
+[unfinished plan](../plans/zero-trust-tool-execution.md).

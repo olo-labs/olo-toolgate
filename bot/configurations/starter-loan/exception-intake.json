@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "useCase": "loan",
+  "documents": [],
+  "request": {
+    "fieldSchema": [
+      {
+        "id": "identity",
+        "labels": [
+          "Fictional identifier"
+        ]
+      },
+      {
+        "id": "monthlyIncome",
+        "labels": [
+          "Monthly income"
+        ]
+      }
+    ],
+    "requiredDocuments": [
+      "application-p1",
+      "income-p1",
+      "identity-p1",
+      "address-proof"
+    ]
+  }
+}

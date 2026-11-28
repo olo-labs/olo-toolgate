@@ -1,60 +1,42 @@
 <!-- Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0 -->
 # OLO community Quickstart — published development images
 
+For nontechnical exploration, use the [beginner release-download walkthrough](../../../../bot/README.md#beginner-setup-install-deploy-and-sign-in).
+It starts this folder's released development containers, selects matching image
+versions, locates login credentials and imports a downloaded `.olo` from GitHub
+Release Assets. Tools/bots do not need to be compiled. Standalone `.olotool`
+assets are listed in each release's tool inventory. After a successful run, use
+[configuration tuning with monitoring](../../../../docs/help/tune-bots.md)
+to adapt the bot to your domain and compare results.
+
 This is the Docker-image equivalent of [debug/profiled](../../../../debug/profiled/README.md).
 It pulls/reuses application images instead of compiling OLO. Both entry points
 share provisioning, Admin custody, device setup and optional model/collector logic;
 this installation has its own project, volumes, settings and credentials.
 
-**Publication:** the new matching development images are not published yet.
-This launcher is prepared for their publication; it does not substitute older
-images, build missing applications, or claim an unavailable image is runnable.
-Compatibility probes fail before starting the installation if required service
-entrypoints are absent. The root README screenshots come from the debug stack.
+`start.bat` prints the local start time after the final menu/credential input,
+then the end time and total elapsed seconds on completion or failure. Timing
+excludes prompt time and includes image validation, deployment, model/collector
+startup and selected-bot configuration. Elapsed time uses a monotonic clock.
 
-## Copied local debug settings
+Startup refreshes mutable development image tags and checks required
+Quickstart/device entrypoints and runtime modules before initializing the
+installation. A registry tag alone does not establish a working deployment.
+Select matching reviewed image versions/digests in `.env`; use the
+[source-built installation](../../../../debug/profiled/README.md) when developing
+the applications. This launcher does not silently build or substitute old images.
 
-The local deployment folder can use the same portable settings as
-`debug/profiled` with Docker Hub dev application images. Its ignored `.env`
-selects the three images listed below; no debug image tags are copied.
+Private configuration belongs to this installation. `.env` selects application
+images and ports; `installation.env` configures runtime/model settings, and
+`credentials/observability.json` holds optional monitoring destinations. Start
+from their checked-in examples and the shared
+[observability template](../../../../debug/profiled/observability/credentials.example.json).
+Do not copy Admin/device identity, generated tokens, ownership markers or another
+installation's database. Transfer bots with `.olo` and configure destination
+secrets, devices and providers independently.
 
-| Local deployment file | Configuration |
-|---|---|
-| `installation.env` | Copied model provider origins/trust settings; runtime credential lifetime defaults to seven days |
-| `credentials/observability.json` | Copied Langfuse, LangSmith and Phoenix endpoints/project settings and private keys |
-| `credentials/collector.json` | Copied collector configuration; regenerated when configuring monitoring |
-| `credentials/monitoring.env` | Copied private exporter authentication; regenerated from observability settings |
-| `credentials/runtime-observability.env` | Copied runtime collector endpoint and environment |
-
-These actual local settings/keys stay ignored by Git. The committed
-`installation.env.example` describes the matching local Ollama configuration;
-the shared [monitoring credential template](../../../../debug/profiled/observability/credentials.example.json)
-describes the provider fields without real keys. On another checkout, create the
-private files there before starting. Keep existing settings when adding the TTL
-line or changing providers.
-
-Admin credentials, gateway/device identity, ownership markers, database/volumes
-and model weights are installation-owned and are not filesystem configuration
-copies. This deployment creates its own Admin identity and private custody.
-Import exported `.olo` bundles to transfer bots and their referenced packages;
-configure its own devices and model vault secret. The Ollama model cache belongs
-to this deployment, so first-time setup may download/prepare the weights.
-
-Before deploying on the default ports, stop the debug stack from
-`D:\git\olo-toolgate\debug\profiled`:
-
-```bat
-stop.bat -WithOllama -WithMonitoring
-```
-
-Then from `D:\git\olo-toolgate\deploy\docker\quickstart\dev`:
-
-```bat
-start.bat -WithOllama -WithMonitoring
-```
-
-This selects the same optional model/collector services and uses the copied
-private cloud settings. Deployment/testing remains an explicit operator action.
+The debug and published-image installations have separate storage but share
+default ports. Stop the other installation or change ports before starting.
 
 ## Application images
 
@@ -89,7 +71,8 @@ reuses Python 3.11+ or installs a checksum-verified private Python runtime under
 .\start.bat
 ```
 
-Answer the two prompts: install/reuse Ollama, and create/reuse the collector.
+Choose bots from the default **0 None** menu, then answer the model/collector
+and optional credential prompts. Selected standard bots prepare Ollama automatically.
 Unattended start:
 
 ```powershell
@@ -110,13 +93,79 @@ Linux/macOS require Python 3.11+ and Docker/Compose. From this folder:
 sh start.sh --without-ollama --without-monitoring
 ```
 
+## Choose demo bots
+
+Both this folder's `start.bat` and the repository's `bot/start.bat` use
+[bot/AutoConfigure.yaml](../../../../bot/AutoConfigure.yaml). Press Enter for
+**0 None**, or enter comma-separated numbers such as **2,3**. Both selected bots
+are installed and configured before setup reports success. The two hotswap
+variants share one workflow ID and cannot be selected together. `0` does not
+remove bots from an existing installation.
+
+For a simple first look, choose `1` (interactive summary), `2` (local summary)
+or `3` (multi-agent incident). Wait for **All selected bots are ready to run**,
+sign in, open **Bots** and click **Run**. Each file/log demo's README describes
+the input that starts its watcher and where the result appears.
+
+The setup obtains bot bundles from the GitHub release whose inventory matches
+the version and source revision of all three running application images. It
+checks inventory hashes and bundle contents before importing any selected bot.
+Missing or inconsistent artifacts stop setup; a similarly named release is
+not substituted. Setup also requires current server-reported Super Admin runtime
+entitlements; older application images are rejected before bot configuration.
+All runtime operations still pass through Control's actual authorization and
+readiness checks. To use downloaded assets, provide one inventory and all selected
+bundles in `-BundlesDir` / `--bundles-dir`.
+
+```powershell
+# Install and configure both bots; skip optional cloud tracing.
+.\start.bat -Bots '2,3' -WithoutMonitoring
+# Start without importing any bot; do not prompt in an unattended invocation.
+.\start.bat -Bots '0' -WithoutOllama -WithoutMonitoring
+```
+
+```sh
+sh start.sh --bots 2,3 --without-monitoring
+sh start.sh --bots 0 --without-ollama --without-monitoring
+```
+
+Noninteractive input defaults to `0 None` unless `--bots` is supplied. No
+credential prompt is attempted without a terminal. Required credentials must
+already exist; an absent prerequisite fails readiness. Standard demos use
+local Ollama. The new three-tier use cases additionally require a scoped
+OpenRouter key and the approved provider origin; earlier unattached defaults
+remain local-only. Selecting a file bot explicitly
+sets up this managed local device, unions its declared groups with existing
+membership, creates only that bot's demo directories/empty log, and qualifies its
+installed native file tools for one day. Existing inputs and results are kept;
+setup does not inject sample events or replay an uncertain run.
+The existing `admin` runs the demos through its live tenant Super Admin role.
+Setup does not create human grants, copy an identity or change management roles.
+Other users continue to require explicit runtime grants.
+
+Secret prompts are hidden. Enter retains saved vault/collector values; a supplied
+new value replaces only that credential. For earlier unattached defaults, OpenRouter remains standby until its
+routing is explicitly attached. LangSmith, Langfuse and Phoenix credentials and
+project/endpoint fields configure the optional private collector. LangGraph's
+local service token is issued by the runtime-provisioning API, not requested
+as a cloud API key. `-WithoutMonitoring` leaves monitoring services untouched.
+
+Each bot's `quickstart/configure.bat` / `configure.sh` independently starts/reuses
+this stack and configures that bot. It accepts `--bundles-dir` and, for explicit
+administrator credentials, `--origin`, `--token-file` and `--ca-file`. Existing
+Admin credentials are reused when these are omitted. Control still checks current
+authorization, exact device enrollment, package installation and readiness.
+Denied/review-pending/unknown operations stop setup; inspect current Control
+state before explicitly rerunning. This client-side setup is not an atomic
+multi-bot deployment: previously completed selections remain installed if a
+later selection fails. Success means publication and observed readiness, not a
+completed model inference or production qualification.
+
 ## Ports, credentials and blank installation
 
 Local Ollama setup uses the shared non-interactive preload helper: each model
 reports loading/completion and has a bounded timeout. Existing imported weights
-are reused. If a prior script is waiting after Ollama's `success` line, cancel
-that invocation with Ctrl+C and rerun the updated launcher.
-
+are reused.
 First startup copies `.env.example` to ignored `.env`. Default ports bind only
 to loopback: Admin UI `http://127.0.0.1:18090/console/`, HTTPS API `18450`, package
 registry `18552`. Edit `HTTP_PORT`, `TLS_PORT`, `REGISTRY_PORT` **before first
@@ -124,8 +173,9 @@ startup** if another stack uses them. Stop the debug stack first when using the
 same defaults; this launcher never stops another project. Nothing requires
 opening an inbound firewall port for local hot-folder/log watchers.
 
-The initial workspace has only the Admin human login and installation defaults,
-with no bot imported and no implicit runtime access. A connected device may
+With `0 None`, the initial workspace has only the Admin human login and installation defaults,
+with no bot imported. The live tenant Super Admin has human runtime authority;
+startup creates no runtime grants for other users. A connected device may
 appear pending approval. Credentials are private and ignored:
 
 ```text
@@ -150,8 +200,10 @@ when a newly selected installation provides valid initial custody.
 1. Open the console, sign in as Admin and import a built/released `.olo` in **Bots**.
    The bundle carries referenced configuration and exact tool/trigger packages.
 2. Review the owned device enrollment fingerprint, approve/enable it, and assign
-   every device group declared by the bot. Configure the allowed file root and
-   extensions in **Administration > Device**. No device approval/group membership
+   every device group declared by the bot. The fresh device launcher configures
+   `/var/lib/olo-toolgate/files` with `txt`, `md`, `json`, `csv` and `log` extensions;
+   other installations need their operator's device file configuration.
+   **Administration > Device** manages approval/check-in. No device approval/group membership
    is imported implicitly. API scripts are in [tools/admin](../../../../tools/admin/README.md).
 3. Supply destination model credentials and approve its endpoint. Local Ollama
    users run `./manage.ps1 ollama-vault` after importing the referenced groups.
@@ -183,6 +235,37 @@ Windows/Linux host permission commands in the device guide when using bind
 mounts. Mounts, webhook ingress ports and firewall changes are never made by a
 bot import. The operator must provide the required access/network configuration.
 
+## Invoke a bot from another application
+
+Postman, Rust clients and trusted chat backends use the Control API. Gateway's
+`/v1/chat/completions` is model inference within an admitted run, not a bot entrypoint.
+Use the [external application API guide](../../../../docs/api/workflow-applications.md)
+and [sample Postman collection and webhook receiver](externa-workflow-integration/postman/README.md).
+These describe the current source implementation; previously published images
+may not yet contain it.
+
+First provision an enabled OLO user and the bot's required grants. Any authorized
+user can execute; administration does not bypass resource permission checks.
+The [all-bot permissions and resource matrix](../../../../bot/PERMISSIONS.md)
+lists every supplied bot's workflow, agents, models, tools, packages and devices.
+
+Send username/password to `POST /api/public/v1/auth/login`, supplying exactly one
+`Toolgate-Tenant-ID` header with the console's tenant UUID. For the example tenant
+this is `48558ebe-a9a8-4680-8da8-129deba2e65c`; use your installation's UUID.
+The signed token contains tenant scope. Subsequent calls use Bearer authorization;
+an optional tenant header must agree with the token. Use loopback origin
+`http://127.0.0.1:18090` for local evaluation and reviewed verified HTTPS ingress
+remotely. Login again after expiry; OAuth and refresh tokens are deferred.
+
+Discover an accessible publication, select its workflow/entry agent and submit
+with a stable idempotency key. Read the returned run's progress and private result,
+or subscribe to permitted live events and signed HTTPS callbacks. Callbacks need
+an operator-approved public HTTPS hostname configured through
+`TOOLGATE_APPLICATIONS_WEBHOOKS_ALLOWED_HOSTS` in installation configuration;
+the API guide explains ownership proof, expiry, retries and recovery.
+Chat adapters must verify their provider's hook and preserve event-to-run mappings.
+Never replay an uncertain effect merely because a notification was lost.
+
 ## Models
 
 Ollama opt-in exposes all NVIDIA GPUs, loads `olo-qlora-hotfolder:e376fb40` and
@@ -204,7 +287,9 @@ For another provider, configure its HTTPS origin/CA in local `installation.env`
 and its scoped secret in the Admin vault. Model IDs, ordered groups, agent
 selection, generation/reasoning settings and optional premium activation belong
 in bot JSON. See [model setup](../../../../docs/help/models.md). Premium OpenRouter
-is unattached standby and receives no automatic paid calls.
+is unattached in the earlier local-only defaults. The new three-tier bot groups
+actively include it after both local candidates and require its destination key
+and approved origin. Eligible provider failures can therefore cause paid calls.
 
 Installation environment changes require an explicit service reconfiguration;
 ordinary bot import does not. After editing `installation.env`, from this folder:
@@ -293,5 +378,5 @@ The launcher shares scripts under `debug/profiled` and `tools`; keep the reposit
 layout intact. It is not a separate single-folder download. No host build toolchain
 is required for published application startup. Maintainers can override image refs
 in ignored `.env` for local verification; such tests are not evidence that those
-images were published. See [live workflow status](../../../../docs/architecture/workflow-v1-status.md)
+images were published. See [workflow architecture](../../../../docs/architecture/workflows.md)
 for tested scope, actual checks and remaining qualification.

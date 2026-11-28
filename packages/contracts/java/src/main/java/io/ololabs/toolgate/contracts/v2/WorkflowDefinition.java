@@ -17,6 +17,7 @@ package io.ololabs.toolgate.contracts.v2;
  * @param agents canonical agents value
  * @param agentStages canonical agentStages value
  * @param deployment canonical deployment value
+ * @param manualRunMode canonical manualRunMode value
  * @param graph canonical graph value
  */
 @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
@@ -33,6 +34,7 @@ public record WorkflowDefinition(
     @com.fasterxml.jackson.annotation.JsonProperty(value = "agents", required = true) java.util.List<WorkflowAgentBinding> agents,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "agentStages", required = false) java.util.List<WorkflowAgentStage> agentStages,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "deployment", required = false) WorkflowStackDeployment deployment,
+    @com.fasterxml.jackson.annotation.JsonProperty(value = "manualRunMode", required = false) WorkflowRemediationMode manualRunMode,
     @com.fasterxml.jackson.annotation.JsonProperty(value = "graph", required = true) WorkflowGraphSelection graph
 ) {
     /** Reject absent required references and copy collections to retain value semantics.
@@ -49,6 +51,7 @@ public record WorkflowDefinition(
      * @param agents canonical agents value
      * @param agentStages canonical agentStages value
      * @param deployment canonical deployment value
+     * @param manualRunMode canonical manualRunMode value
      * @param graph canonical graph value
      */
     public WorkflowDefinition {

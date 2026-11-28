@@ -16,6 +16,49 @@ Breaking builds require a fresh empty data directory or PostgreSQL database.
 Older stores and formats are rejected; there is no migration or conversion path.
 Current-format restart and recovery remain supported.
 
+The opt-in `TOOLGATE_QUICKSTART_EXTERNAL_TOOL_HOST=true` mode exports a public-only
+`tool-host-bootstrap` subdirectory and stops launching the embedded local native
+Tool Host. It requires immutable `TOOLGATE_TOOL_HOST_PYTHON_IMAGE`,
+`TOOLGATE_TOOL_HOST_JVM_IMAGE` and `TOOLGATE_TOOL_HOST_BROKER_IMAGE` references;
+missing pins and malformed mode values refuse startup. The separate remote host
+and ordinary default composition remain unchanged. `TOOLGATE_TOOL_HOST_POOL_ID`
+defaults to `default-devices`; `TOOLGATE_TOOL_HOST_IO_DEVICE` optionally supplies a
+reviewed backing-device override. The public export contains only a runtime
+config, serialized permit public keys and CA certificates, with container-local
+paths. It does not export signing, device or CA private keys, credentials or
+current identity journals.
+
+The [JVM Compose overlay](../../deploy/compose/QuickStart/compose.jvm.yaml) is a
+qualification candidate requiring compatible released Quickstart/runtime images
+and explicit independent Control recovery pins. It mounts only that public
+subpath and a separate private Tool Host state volume. Sharing Quickstart's
+network namespace retains its exact published loopback TLS origin and existing
+bounded TLS bridge; isolated workers and brokers retain their separate private
+network namespaces. The outer runtime container requires elevated host access;
+see the [rootless runtime contract](../operations/rootless-tool-host.md) for
+controllers, namespace permissions and trust limits. Structural Compose validation
+does not qualify this deployment. Marketplace Demo 3 remains unavailable pending
+[release and end-to-end acceptance](../plans/marketplace-demo3-java.md).
+
+For Marketplace integration, approve the separate host using the user code and
+public key fingerprint from
+`docker compose exec --user 1000:1000 tool-host python3 /usr/local/lib/toolgate/enrollment-status.py`.
+Compare both with Control's current enrollment review before deciding approval;
+an active device record, deployment or administrator role does not prove runtime
+authority or qualification. Marketplace startup must read this host's evidence,
+instead of the former embedded host's private directory. It must import newly
+versioned, image-pinned packages from the release inventory and require Control
+`operationOutcome.state=SUCCEEDED` with `finalized=true` through Gateway/MCP.
+Unknown outcomes are retained and cannot trigger an automatic replay or data reset.
+The restart gate checks that an ordinary user's revoked HUMAN grant still
+denies discovery, invocation and saved-result retrieval after a fresh login.
+It separately checks the live Super Admin's tenant-wide human entitlement;
+the installation owner is not the revoked-user test identity.
+The gate removes reviewer accounts from the Super Admin team before its first
+runtime catalog assertion, preserving the owner's membership. Both SQLite and
+PostgreSQL therefore exercise an ordinary user's missing-grant denial without
+depending on when newly deployed tools become visible.
+
 Build and verify with `python tools/quickstart/check.py --build`. Use `--image IMAGE`, `--postgresql`, `--no-browser` or `--client-assets VERIFIED_DIRECTORY` as needed. The isolated gate records installation, real native CSR/mTLS, verified disabled-user intake, independently reviewed grants, HUMAN/SERVICE/ASK effects, exact retry, revocation, reviewed import/shadow, restart and browser accessibility. Small-fixture latency is measured in `build/quickstart/smoke.json`; it is not an enterprise throughput promise.
 
 Run the image with a persistent `/data` volume, read-only root, dropped capabilities, no-new-privileges, a restricted `/tmp` and loopback ports 8080/8443. The verified gate uses 2 CPUs and 1536 MiB. [Compose helpers](../../deploy/compose/QuickStart/README.md) retain the volume through update/undeploy. For this repository's persistent debug environment, run `debug/profiled/start.bat`; it validates the candidate before replacing the debug container.

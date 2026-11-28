@@ -5,6 +5,9 @@ OLO Orchestration runs bots/agents. OLO ToolGate governs tools, devices, trigger
 and access. Start with the real local-model path below; the separate mock
 reference later is for deterministic transport acceptance.
 
+The `agent-mcp-stdio.py` diagnostic bridge reports the checkout's `VERSION` in its
+MCP server information so clients can identify the materialized ToolGate build.
+
 ## Real local-model bots: start here
 
 Run in PowerShell from the repository root. Docker Desktop's Linux engine
@@ -27,6 +30,11 @@ are Quickstart, LangGraph and Device. Ollama/TLS and collector are optional
 companions. First start leaves a blank console with `admin`; it never seeds bot
 data or device files. Existing credentials/storage are reused. Read the password
 privately at `debug/profiled/credentials/admin/password.txt`; it is never exported.
+
+`start.bat` prints the local start time immediately after the last startup choice,
+then the end time and elapsed seconds when startup finishes or fails. The elapsed
+duration uses a monotonic stopwatch, excludes time spent answering prompts and
+includes model/collector setup. Failure reporting retains the original exit code.
 
 Ollama serves **both** `olo-qlora-hotfolder:e376fb40` and `qwen3:0.6b`, with all
 available NVIDIA GPUs exposed after a successful probe, and two models permitted
@@ -545,7 +553,7 @@ new enrollments reaching the installation; review/change it afterwards under
 **Configuration > Device**. Profile data cannot grant device authority.
 
 Live Super Admin qualification acknowledges an operator-vetted Linux filesystem
-owner and **unfenced** effects (ADR 075); it is not OS attestation or exactly-once
+owner and **unfenced** effects ([Device files area and the HotFolder package](../../docs/client/hotfolder.md)); it is not OS attestation or exactly-once
 execution. Native intent, durable content evidence and protected scope closure
 are required. Missing/conflicting evidence stays UNKNOWN or needs reconciliation;
 SDK success alone is insufficient. Uncertain effects are never automatically
@@ -685,6 +693,17 @@ Private state/credentials are ignored by Git. The separate fixture container
 `toolgate-profiled-demo-provider` remains available across normal stop/start.
 
 ## 6. Troubleshooting and limits
+
+- Runtime image build fails at `apk upgrade` with `TLS: unspecified error` or
+  stale/unavailable repositories: the builder could not fetch Alpine's HTTPS
+  package indexes. The upgrade tries at most three times, with a 20-second APK
+  network timeout and five seconds between attempts. If it still fails, check
+  Docker Desktop's network/proxy settings and the builder's CA trust (including
+  any organization-required HTTPS inspection CA), then rerun `start.bat`.
+  The registry pull succeeding does not prove package-repository connectivity
+  inside a build. Keep HTTPS verification and required package updates enabled;
+  do not force missing repositories. Existing storage is preserved on build
+  failure; no reset is needed.
 
 - No event: inspect **Triggers** assignment/instance health, enabled device/group,
   folder, `.txt` extension, permissions and polling interval. Path/size identity

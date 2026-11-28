@@ -18,7 +18,7 @@ import zipfile
 from unittest.mock import patch
 
 import yaml
-from tools.release import identity, prepare, pipeline, central
+from tools.release import identity, prepare, pipeline, central, config
 from tools.release.bundle import checksum_assets
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -140,6 +140,14 @@ class ReleaseAllocationTests(unittest.TestCase):
 
 
 class VersionPropagationTests(unittest.TestCase):
+    def assert_api_versions(self, root, expected):
+        for family in ('openapi', 'asyncapi'):
+            documents = list((root/'packages/contracts'/family).rglob('*.yaml'))
+            self.assertTrue(documents, family)
+            for path in documents:
+                with self.subTest(api=path.relative_to(root).as_posix(), version=expected):
+                    self.assertEqual(yaml.safe_load(path.read_text(encoding='utf-8'))['info']['version'], expected)
+
     def test_real_generators_stamp_all_release_components_without_changing_wire_schemas(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
@@ -151,12 +159,13 @@ class VersionPropagationTests(unittest.TestCase):
             names = subprocess.check_output(['git','ls-files','-z'], cwd=ROOT).decode().split('\0')
             names = set(names) | {'apps/langgraph-runtime/pyproject.toml'}
             for name in names:
-                if name and (name in exact or name.startswith(('packages/contracts/', 'config/initial/')) or name.endswith('/gradle-artifact.lockfile')):
+                if name and (name in exact or name.startswith(('packages/contracts/', 'config/initial/', '.changes/')) or name.endswith('/gradle-artifact.lockfile')):
                     path = target/name
                     path.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copyfile(ROOT/name, path)
             before = {p.relative_to(target).as_posix():p.read_bytes() for p in (target/'packages/contracts/schemas').rglob('*.json')}
             prepare.stamp(target, release())
+            self.assert_api_versions(target, '1.0.0-beta.42')
             rendered = (target/'RELEASE-NOTES.md').read_text(encoding='utf-8')
             self.assertIn('# OLO ToolGate 1.0.0-beta.42 release notes', rendered)
             for language in ('java', 'rust', 'typescript', 'php'):
@@ -180,6 +189,39 @@ class VersionPropagationTests(unittest.TestCase):
             extension = json.loads((target/'apps/browser-extension/manifest.json').read_text())
             self.assertEqual(extension['version'], '1.0.0.42')
             self.assertEqual(extension['version_name'], '1.0.0-beta.42')
+            self.assertEqual(before, {p.relative_to(target).as_posix():p.read_bytes() for p in (target/'packages/contracts/schemas').rglob('*.json')})
+
+            # Reproduce the release/2.x selection/materialization/verification boundary
+            # with the carried-forward v2.0 contributor series, using real Git and generators.
+            prepare.write_json(target/'version.json', dict(version='2.0.0', tag='dev'))
+            prepare.run('git', 'init', '-q', cwd=target)
+            prepare.run('git', 'add', '--all', cwd=target)
+            prepare.run('git', '-c', 'user.name=Release Test', '-c', 'user.email=release-test@example.invalid',
+                        'commit', '-qm', 'Release source', cwd=target)
+            sha = prepare.run('git', 'rev-parse', 'HEAD', cwd=target)
+            selected = dict(schemaVersion=1, **identity.versions('2.0.0', 1, 'Beta'),
+                            sourceBranch='release/2.x', sourceCommit=sha, commit=sha, buildRun='100')
+            selected['branch'] = 'release/2.x'
+            selection = target/'selection.json'
+            prepare.write_json(selection, selected)
+            with patch.dict(os.environ, GITHUB_REF_NAME='release/2.x'):
+                config.materialize(target, selection=selection)
+            pipeline.verify_source(target, selected)
+            self.assert_api_versions(target, '2.0.0-beta.1')
+            from tools.release import notes
+            assets = target/'assets'
+            notes.generate(target, assets)
+            contributors = json.loads((assets/'contributors.json').read_text())
+            self.assertEqual(contributors['version'], 'v2.0.0-beta.1')
+            original_people = {(yaml.safe_load(path.read_text(encoding='utf-8'))['contributor']['name'],
+                                yaml.safe_load(path.read_text(encoding='utf-8'))['contributor'].get('github'))
+                               for path in (ROOT/'.changes/v1.0').glob('*.yaml')}
+            release_people = {(fragment['contributor']['name'], fragment['contributor'].get('github'))
+                              for fragment in contributors['fragments']}
+            self.assertTrue(original_people <= release_people)
+            self.assertTrue(all(fragment['file'].startswith('.changes/v2.0/')
+                                for fragment in contributors['fragments']))
+            self.assertIn('2.0.0-beta.1', (assets/'RELEASE-NOTES.md').read_text(encoding='utf-8'))
             self.assertEqual(before, {p.relative_to(target).as_posix():p.read_bytes() for p in (target/'packages/contracts/schemas').rglob('*.json')})
 
 
@@ -321,11 +363,13 @@ class PackageVersionTests(unittest.TestCase):
             for agent in config['agentDefinitions']:agent['contextSources']=[]
             data,manifest=pack(dict(profileVersion=2,profileId='test',packages=[],workflows=config),{},[],[],dict(version=version,sourceCommit=PREPARED,build='42'))
             (assets/'test-profile.olo').write_bytes(data)
-            prepare.write_json(assets/f'olo-profiles-{version}.json',dict(format='olo-profiles',version=version,sourceCommit=PREPARED,profiles=[dict(filename='test-profile.olo',sha256=digest(data),bytes=len(data),packages=manifest['packages'])]))
-            pipeline.verify_packages(dict(release(),commit=PREPARED), assets)
-            jar(f'toolgate-sdk-api-{version}.jar','0.10.0-dev')
-            with self.assertRaisesRegex(ValueError,'JAR embedded version'):
+            identity=('test',config['workflows'][0]['id'])
+            prepare.write_json(assets/f'olo-profiles-{version}.json',dict(format='olo-profiles',version=version,sourceCommit=PREPARED,profiles=[dict(configuration=identity[0],workflowId=identity[1],filename='test-profile.olo',sha256=digest(data),bytes=len(data),packages=manifest['packages'])]))
+            with patch('tools.release.profiles.expected_profiles',return_value={identity}), patch('tools.release.tool_packages.validate'):
                 pipeline.verify_packages(dict(release(),commit=PREPARED), assets)
+                jar(f'toolgate-sdk-api-{version}.jar','0.10.0-dev')
+                with self.assertRaisesRegex(ValueError,'JAR embedded version'):
+                    pipeline.verify_packages(dict(release(),commit=PREPARED), assets)
 
 
 class OriginalBuildGateTests(unittest.TestCase):

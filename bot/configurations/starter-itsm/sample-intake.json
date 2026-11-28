@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "useCase": "itsm",
+  "documents": [
+    {
+      "id": "ticket-1",
+      "mediaType": "text/plain",
+      "file": "sample-ticket-1.txt",
+      "bytes": 97,
+      "sha256": "sha256:b41f8dde4a46718c83b34fb54a30900bf515ba1c97f300ddd4bbe7463225edcc"
+    },
+    {
+      "id": "runbook-v1",
+      "mediaType": "text/plain",
+      "file": "sample-runbook-v1.txt",
+      "bytes": 169,
+      "sha256": "sha256:ab648a0a5bda3637264daa9e351d39f12f59945dfe380adc2d0374f25c36f7d1"
+    },
+    {
+      "id": "approval-1",
+      "mediaType": "text/plain",
+      "file": "sample-approval-1.txt",
+      "bytes": 67,
+      "sha256": "sha256:480830078e914959b18eb7d1da9c2eebb275dcf8a291bf508f847348bb9674a3"
+    }
+  ],
+  "request": {
+    "fieldSchema": [
+      {
+        "id": "category",
+        "labels": [
+          "Category"
+        ]
+      },
+      {
+        "id": "workspace",
+        "labels": [
+          "Workspace"
+        ]
+      },
+      {
+        "id": "requester",
+        "labels": [
+          "Requester"
+        ]
+      },
+      {
+        "id": "duration",
+        "labels": [
+          "Duration"
+        ]
+      }
+    ],
+    "requiredDocuments": []
+  }
+}

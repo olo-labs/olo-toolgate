@@ -1,21 +1,73 @@
 # Release
 
+Business starters are mandatory `.olo` profiles. The builder also emits
+`olo-starters-<version>.zip`, pinned by `starterKit` in the profile inventory,
+with editable sources, guides, samples and authored expected reports. The
+collector checks hashes, version, commit and exact profile rows and promotes
+those bytes unchanged. The kit is not a bot upload or qualification attestation.
+See [starter scope and evaluation](../../bot/starters/README.md).
+
 Workflow profiles are built from `bot/configurations/` by the foundation
 profile gate. Versioned `.olo` files and `olo-profiles-<version>.json` are retained
 as `foundation-stage-profiles`, revalidated into foundation release assets, and
 collected unchanged by development/tagged/product publication. Manual development
 builds use the same builder and validator. `tools/release/profiles.py` refuses
-source/version/hash mismatches and checks every embedded tool archive. Release
+source/version/hash mismatches, incomplete or duplicate configuration/workflow
+inventories, and mismatched embedded workflow IDs, and checks every embedded tool archive. Release
 promotion does not rebuild profile packages. See [profiles](../../bot/README.md).
+All configurations are mandatory release assets, including both hotswap variants
+even though they share a workflow ID. Users download their selected `.olo` from
+GitHub Release Assets and explore with the published containers launched from
+`deploy/docker/quickstart/dev`; local bot/tool builds are an authoring option.
 
-Release branches are long-lived major lines such as `release/1.x`. Compatible
-patch and minor releases share the line; breaking changes start a new major
-line. Each new release build reserves an immutable version and source commit.
+## Standalone tool and trigger release assets
+
+The current `bot/tools/` modules also produce mandatory standalone `.olotool`
+assets, including `olo.rag`, `olo.memory` and the business document adapter.
+They build with the SDK/package gate and enter the same digest-checked tool
+inventory. Distinct suffixes such as `.olorag` do not add runtime support.
+Set `TOOLGATE_JVM_IMAGE_DIGEST` to the exact qualified Java worker image digest
+before compiling these modules, or supply Gradle's `toolgateJvmImageDigest`
+property explicitly. Packaging refuses an absent pin. Deliver the matching
+managed runtime and worker/broker images and execute their deployment acceptance
+before publishing runnable starters; a locally built archive is insufficient.
+
+Development and production releases also publish `.olotool` archives separately:
+all Java tool/mock example projects, all configured `core-mcp` packages, and
+every exact archive embedded in a released bot. Immutable test/conformance
+fixtures are not release packages. Foundation retains the example build outputs
+as `foundation-stage-tool-packages`; the collector uses those and the checked
+core lock without rebuilding them. Manual development builds compile the same
+projects with core Java tests explicitly disabled; packaging is not qualification.
+
+`tools/release/tool_packages.py` produces `olo-tools-<release-version>.json`.
+Its `format` is `olo-tools`; `version` and `sourceCommit` identify the product
+release. Each `packages` entry records the existing package metadata
+(`packageId`, package-owned `version`, `packageDigest`, archive `sha256`, `bytes`
+and embedded `path`), its standalone `filename`, and originating `projects`.
+The package-owned version can differ from the product release version.
+Filenames use safe package ID/version labels and the full archive SHA-256.
+Identical bytes shared by projects/bots are published once; different archive
+bytes retain separate assets even at the same package ID/version.
+
+The collector refuses missing/ambiguous project output, an incomplete core lock,
+tampered packages, missing embedded counterparts and unlisted standalone archives.
+Promotion checks the inventory and preserves bytes. The release `SHA256SUMS`
+covers the tool inventory and every `.olo`/`.olotool` alongside other assets.
+These checks establish packaging/integrity, not runtime support, safety or grants.
+
+Release branches include major lines such as `release/1.x` and minor child
+lines such as `release/1.1.x`. Preparation selects a new major from main, a new
+minor within the selected release major, or a patch increment on the same branch. Each new release build reserves an immutable version and source commit.
+New major lines move main staging into their versioned contributor collection
+in the new branch only; minor children inherit the parent collection. Patch
+increments retain it. Source YAML is validated before branch writes.
 See [How to release ToolGate](../../docs/development/how-to-release.md).
 
 For product releases, use the two manual jobs documented in
 [How to release ToolGate](../../docs/development/how-to-release.md):
-`create-release-branch.yml` initializes a major release line, and
+`create-release-branch.yml` prepares a new release line or increments a patch
+(with a PR fallback for protected updates), and
 `build-release.yml` allocates each immutable build, tests it and publishes or reuses its retained bundle. All first-party
 release artifacts share one SemVer such as `1.0.0-beta.42`. Product publication uses
 the `production-release` environment; development publication remains separate.

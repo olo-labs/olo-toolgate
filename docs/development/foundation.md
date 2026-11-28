@@ -54,6 +54,16 @@ Install Java 21, Python 3.12+, Node 22, PHP 8.2+, Rust (the repository pins a st
 toolchain with fmt/clippy), Helm 3.17.3 and GNU Make. Gradle bootstraps its pinned,
 SHA-256-verified distribution; a global Gradle installation is unnecessary.
 
+Hosted Java jobs select the Ubuntu runner's installed JDK 21 using
+`python3 tools/ci/select_java.py`. The selector verifies both Java and javac
+before exporting `JAVA_HOME` and adding its `bin` directory to `GITHUB_PATH`.
+It uses `JAVA_HOME_21_X64`, or `JAVA_HOME` in local replay images, and fails
+if the installation is missing, unusable or reports a different major version.
+The JDK patch version follows the runner image. No setup action or JDK is
+downloaded for this selection, avoiding `actions/setup-java` archive timeouts
+during job preparation. Other action downloads still depend on GitHub availability;
+timeouts there happen before repository steps and require rerunning the job.
+
 ```sh
 python3 -m venv .venv
 . .venv/bin/activate
@@ -171,7 +181,7 @@ permissions on that environment; no reviewers are currently configured.
 packages Java/raw contracts/Helm and source SBOM/checksums in foundation, then
 publishes the exact verified artifacts after all six native and image gates pass.
 Tag publication includes Maven, Helm OCI, GHCR and GitHub provenance; main retains
-its development channel. See [release process](release-process.md).
+its development channel. See [release process](how-to-release.md).
 Manual publication requires the matching tag already to exist. Configure the
 protected environment before using publication. Rust/npm/Composer package
 publication remains registry opt-in; their identities and source packages exist.
@@ -187,7 +197,7 @@ than falling back to the project. If Helm reports an unsupported value, the
 opt-in service values and external secret/DB references must satisfy its schema. If a scan database cannot
 be reached, repair network access and rerun; do not suppress the gate.
 
-See [ADR 001](../adr/001-foundation-contract-generation.md),
+See [Schema and Shared Contract Workflow](schema-workflow.md),
 [upgrade policy](../architecture/compatibility.md) and
 [testing and evidence guide](../testing/README.md).
 

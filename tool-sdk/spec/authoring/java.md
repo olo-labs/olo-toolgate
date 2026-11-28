@@ -2,6 +2,16 @@
 
 ## Purpose
 
+For an isolated Java 21 Tool Host package, set `toolgate.baseImageDigest` in the
+Gradle extension to the qualified worker's `sha256:<64 lowercase hex>` digest.
+Maven uses `-Dtoolgate.baseImageDigest=sha256:...`; the build-support `stage`
+command accepts `--base-image-digest`. These inputs set runtime version `21`
+and `RuntimeDeclaration.baseImageDigest` before packing and signing. Mutable
+tags and malformed digests are rejected. A changed pin requires a new package
+version and a new package digest; never rewrite an already published archive.
+Native packages omit this optional input. Runtime selection and qualification
+remain subject to the [Tool Host operator contract](../../../docs/operations/rootless-tool-host.md).
+
 Exact Java surface of the [authoring contract](README.md). Package `io.ololabs.toolgate.sdk` (annotations in `.annotations`, runtime types in `.context`, errors in `.errors`).
 
 ## Annotations
@@ -85,8 +95,8 @@ Generated, typed accessors (from the annotation processor) are added per tool: `
 
 ## Triggers (POLL)
 
-A trigger observes a source and reports events ([ADR 058](../../../docs/adr/058-triggers.md), plan
-[section 5](../../../docs/architecture/device-triggers-plan.md)). This SDK version builds POLL triggers; PUSH mode
+A trigger observes a source and reports events ([Trigger architecture](../../../docs/architecture/triggers.md), plan
+[section 5](../../../docs/plans/triggers.md)). This SDK version builds POLL triggers; PUSH mode
 (`PushTrigger`, the emitter and `SnapshotState`) is refused by the processor until it exists.
 
 ```java

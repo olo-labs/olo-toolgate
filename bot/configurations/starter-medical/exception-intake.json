@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "useCase": "medical",
+  "documents": [],
+  "request": {
+    "fieldSchema": [
+      {
+        "id": "referralDepartment",
+        "labels": [
+          "Referring department"
+        ]
+      },
+      {
+        "id": "dischargeDate",
+        "labels": [
+          "Discharge date",
+          "Recorded discharge date"
+        ],
+        "format": "date"
+      }
+    ],
+    "requiredDocuments": [
+      "referral-p1",
+      "discharge-p1",
+      "laboratory-p1"
+    ]
+  }
+}

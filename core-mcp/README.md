@@ -21,12 +21,36 @@ To build and verify every configured package:
 python core-mcp/build.py --cli /absolute/path/to/toolgate
 ```
 
+Manual development packaging may add `--without-tests` to omit Java `check`;
+this retains CLI/package integrity validation but is not test qualification.
+Development and production releases publish the exact configured archives as
+standalone `.olotool` assets with the [tool release inventory](../tools/release/README.md#standalone-tool-and-trigger-release-assets).
+
 The orchestrator publishes SDK dependencies to `build/sdk-repo`, builds and
 checks independent projects, invokes the SDK's package command, verifies the
 result with the canonical CLI, then writes packages and
 `core-packages.lock.json` under `build/core-mcp`. Lock entries include exact
 package/artifact digests. Build outputs never upload a package, create users,
 modify grants, install tools or activate a deployment profile.
+
+Java SDK preparation and Java package builds use the shared bounded
+[Maven Central resolution recovery](../docs/development/gradle.md#maven-central-resolution-recovery).
+Attempt logs live beside the output directory in `<output-name>-gradle-logs/`,
+separate from published archives and runtime-image package content.
+
+CI restores downloaded Gradle dependency files and resolution metadata into
+`.dev/core-mcp-gradle` before building. GitHub Actions retains this cache between
+otherwise fresh runners. Keys include OS, architecture, Java major, build scripts,
+dependency locks, version catalog and Gradle wrapper pins, rather than the release
+build number. A changed key can reuse existing downloads while Gradle resolves
+the current pinned dependencies. The cache is saved only after the package,
+SDK-worker and profile checks and artifact uploads succeed.
+
+The cache excludes build outputs, the locally published SDK, Gradle init scripts
+and credential configuration files such as `gradle.properties`. SDK publication
+and every build/test gate still execute. Cache
+misses, eviction and new dependencies still need network access; a warm cache
+reduces repository requests but does not guarantee an entirely offline build.
 
 Add a project directory and an inventory entry to include another package.
 The supported adapters are `java-gradle`, `json` and `python`. Additional SDK languages

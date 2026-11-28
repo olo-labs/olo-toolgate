@@ -33,6 +33,10 @@ security scans or installer signing. Compilation, package integrity checks and
 source/version checks still apply. Use it for development evaluation; product
 releases retain their full validation and provenance gates.
 
+The container/library build step compiles the ToolGate CLI and sets `TOOLGATE_CLI`
+to its absolute workspace path for that step. Bot and Java example packaging
+inherit this build-only setting; no repository variable or secret is required.
+
 ## One version and isolated aliases
 
 Every generated first-party binary/package uses one SemVer. Its base comes from the
@@ -69,12 +73,22 @@ aliases. Production `latest` is unchanged.
 
 ## Outputs and credentials
 
-- Docker Hub: Control, Gateway, Quickstart, Linux device and secured Linux device.
+- Docker Hub: Control, Gateway, Quickstart, Linux device, secured Linux device and LangGraph runtime.
 - GitHub npm Packages: `@olo-labs/toolgate-contracts`.
 - GitHub OCI: the Helm chart, pinned to this run's images.
 - GitHub prerelease: six native clients/installers (Windows, macOS and Linux, x64
   and ARM64), browser extension, contracts, Rust/PHP/TypeScript packages, Java
-  artifacts, release notes, licenses, checksums and development metadata.
+  artifacts, every bot configuration's `.olo` bundle, `olo-profiles-<version>.json`,
+  standalone core/Java example and embedded bot `.olotool` packages with
+  `olo-tools-<version>.json`,
+  release notes, licenses, checksums and development metadata. The bot inventory
+  must be complete, including both hotswap variants. Each bundle contains its
+  exact required tool/trigger packages; users do not compile them separately.
+
+For local exploration, use `deploy/docker/quickstart/dev` with the Quickstart,
+LangGraph and device image tags/digests from the same development release.
+Download the chosen `.olo` from that release's **Assets**, then follow the
+[beginner download/import walkthrough](../../bot/README.md#beginner-setup-install-deploy-and-sign-in).
 
 Maven registry publication remains disconnected for development runs. Java JARs
 and POM are included as release assets. Windows ZIPs remain internal installer
@@ -83,7 +97,7 @@ inputs. Development metadata explicitly records `verification: not-run` and
 
 Use the existing `development-release` environment with `DOCKERHUB_USERNAME` and
 `DOCKERHUB_TOKEN`. Optional repository variable `DOCKERHUB_NAMESPACE` overrides the
-username. The token needs push access to all five image repositories. GitHub
+username. The token needs push access to all six image repositories. GitHub
 Packages and OCI use the workflow token's Packages write permission; existing
 package access and environment protection rules apply.
 
