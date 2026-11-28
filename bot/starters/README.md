@@ -71,6 +71,25 @@ inference memory; CPU execution is slower than a supported GPU. This model is
 separate from the smaller general model used by the other examples. Manual
 imports require the operator to provision that exact model separately.
 
+## Website integration
+
+The website should consume the pinned ToolGate release's
+`olo-profiles-<version>.json` and `SHA256SUMS`, using the existing
+`starter-<key>` configuration IDs to match its use-case cards. Verify the
+inventory and every downloaded artifact against the selected release's hashes.
+Each profile row identifies the exact bot filename, digest, size and package
+dependencies; `starterKit` identifies the matching editable source ZIP.
+Preserve the release version and source commit together. Do not combine a bot
+from one release with the source kit or tool dependencies from another.
+
+Show separate downloads for the importable `.olo` and the editable source kit.
+Keep `.olotool` dependencies on the tool-package path. The website's current
+release pin predates these starters: leave starter downloads unavailable until
+the matching assets have actually been published and verified. A source kit's
+`qualification: not-qualified` marker must not become a working/qualified badge.
+Use actual accepted run captures and synthetic outputs for demonstrations;
+domain photographs and authored expected reports are not execution evidence.
+
 ## Evaluate and tune
 
 Run both the normal sample and missing-source exception through the published
