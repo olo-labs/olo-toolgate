@@ -12,7 +12,7 @@ subprojects {
         tasks.named("toolgatePackage") {
             doFirst {
                 require(isolatedImage.isPresent) {
-                    "Starter packages require -PtoolgateJvmImageDigest=<qualified OCI image digest>"
+                    "Starter packages require -PtoolgateJvmImageDigest=<explicit OCI image digest>"
                 }
             }
         }

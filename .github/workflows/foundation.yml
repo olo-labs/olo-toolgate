@@ -185,7 +185,27 @@ jobs:
           build/security/containment/
           build/security/deployment/
         if-no-files-found: error
+  starter-jvm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        ref: ${{ inputs.source_sha || github.sha }}
+        persist-credentials: false
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+      with:
+        python-version: '3.12'
+    - name: Prepare immutable JVM package input (not runtime qualification)
+      run: python tools/ci/starter_jvm_image.py build
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: foundation-stage-starter-jvm
+        path: build/ci/starter-jvm/
+        retention-days: 1
+        if-no-files-found: error
   examples:
+    needs: starter-jvm
     runs-on: ubuntu-24.04
     env:
       TOOLGATE_BUILD: ${{ inputs.build_number || 'local' }}
@@ -225,6 +245,12 @@ jobs:
         tar -xzf helm-v3.17.3-linux-amd64.tar.gz
         sudo install linux-amd64/helm /usr/local/bin/helm
         rm -rf linux-amd64 helm-v3.17.3-linux-amd64.tar.gz helm.sha256
+    - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      with:
+        name: foundation-stage-starter-jvm
+        path: build/ci/starter-jvm
+    - name: Verify JVM package input and export its actual manifest digest
+      run: python tools/ci/starter_jvm_image.py verify --github-env "$GITHUB_ENV"
     - name: Java SDK plugins and Java example tools end to end
       run: |
         python tools/check.py --ci-common --ci-part examples
@@ -551,7 +577,7 @@ jobs:
         retention-days: 1
         if-no-files-found: error
   core-mcp:
-    needs: ui
+    needs: [ui, starter-jvm]
     runs-on: ubuntu-24.04
     env:
       TOOLGATE_BUILD: ${{ inputs.build_number || 'local' }}
@@ -612,6 +638,12 @@ jobs:
         python core-mcp/test_build.py
         python core-mcp/build.py --cli target/debug/toolgate
         TOOLGATE_CLI="$PWD/target/debug/toolgate" ./gradlew --no-daemon :control-plane:sdkWorkerTest -PprebuiltAdminUi=true
+    - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      with:
+        name: foundation-stage-starter-jvm
+        path: build/ci/starter-jvm
+    - name: Verify JVM package input and export its actual manifest digest
+      run: python tools/ci/starter_jvm_image.py verify --github-env "$GITHUB_ENV"
     - name: Build versioned profiles including their tool and trigger archives
       run: |
         TOOLGATE_CLI="$PWD/target/debug/toolgate" python bot/build.py
@@ -702,7 +734,11 @@ jobs:
     - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
       with:
         name: foundation-stage-tool-packages
-        path: examples
+        path: .
+    - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      with:
+        name: foundation-stage-starter-jvm
+        path: build/ci/starter-jvm
     - name: Create raw contract release smoke assets
       run: |
         python tools/release/profiles.py --source bot/bin --output build/release --version "$(cat VERSION)" --commit "$(git rev-parse HEAD)"
@@ -732,6 +768,7 @@ jobs:
           packages/contracts/java/build/reports/tests/
           apps/*/build/reports/tests/
           build/enterprise/
+          build/ci/starter-jvm/
           apps/admin-ui/dist/
           packages/contracts/java/build/test-results/
           apps/control-plane/build/test-results/
