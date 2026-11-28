@@ -46,12 +46,8 @@ public final class TargetServer {
                 .with(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).readValue(body);
             var input=(Store.Request)request;
             boolean read=path.equals("/v1/inspect");input.validate(store.tenant,read);
-            if(read) {
-                try(var c=store.connection()){reply(exchange,200,store.inspect(c,input));}
-                return;
-            }
             String operation=path.substring("/v1/".length());
-            if(!operation.equals(input.operation()))throw new SecurityException();
+            if(!read&&!operation.equals(input.operation()))throw new SecurityException();
             var accepted=new HashMap<String,List<String>>();headers.forEach((name,values)->accepted.put(name,List.copyOf(values)));
             var transport=new ServicePermitVerifier.Transport(profiles.get(operation),origin.resolve(path),"POST",accepted);
             var grant=new SignedEffectGrant(one(headers,"Toolgate-Effect-Permit"));
@@ -70,7 +66,7 @@ public final class TargetServer {
             try(var c=store.connection()) {
                 try {
                     authority.checkCommitDeadline();
-                    result=store.act(c,input,digest(body));
+                    result=read?store.inspect(c,input):store.act(c,input,digest(body));
                     if(!CLAIMS.finish(c,owner,true,digest(Store.JSON.writeValueAsBytes(result))))throw new SecurityException();
                     authority.checkCommitDeadline();
                 } catch(Exception failure) {
@@ -127,9 +123,9 @@ public final class TargetServer {
     static Map<String,HttpRequestFingerprint.Profile> profiles(Path file)throws Exception {
         var root=Store.JSON.readTree(Files.readAllBytes(file));
         if(root.size()!=3||root.path("schemaVersion").asInt()!=1||!root.path("origin").isTextual()
-            ||!root.path("routes").isObject()||root.path("routes").size()!=2)throw new IllegalArgumentException("Invalid trusted target binding");
+            ||!root.path("routes").isObject()||root.path("routes").size()!=3)throw new IllegalArgumentException("Invalid trusted target binding");
         var result=new HashMap<String,HttpRequestFingerprint.Profile>();
-        for(String name:List.of("restart","provision")) {
+        for(String name:List.of("restart","provision","inspect")) {
             var entry=root.path("routes").path(name);
             if(!entry.isObject()||entry.size()!=3||!entry.path("profileId").asText().matches("[A-Za-z0-9][A-Za-z0-9._:-]{0,127}")
                 ||!entry.path("profileDigest").asText().matches("sha256:[a-f0-9]{64}")||!entry.path("routeId").asText().equals(name))

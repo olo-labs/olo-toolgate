@@ -58,4 +58,9 @@ class SandboxToolsTest {
             context("sandbox.restart","tenant-a","user-a",null,List.of(),true)));
         assertEquals(1,sends);
     }
+    @Test void uncertain_inspection_receipt_is_not_retried() {
+        assertThrows(IllegalStateException.class,()->new SandboxTools().inspect("service","service-a","incident-a",
+            context("sandbox.inspect","tenant-a","user-a",null,List.of(),true)));
+        assertEquals("inspect",key);assertEquals(1,sends);
+    }
 }

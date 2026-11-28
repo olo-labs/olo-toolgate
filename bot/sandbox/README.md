@@ -32,9 +32,10 @@ Grant only selected human users the current actions and exact resources:
 
 Bindings, grants, tool placement and any approval policy still apply. Current
 `package.deploy` authority must independently review each exact route intent.
-Declare `restart` and `provision` as WRITE with fenced target
+Declare `restart`, `provision` and `inspect` as WRITE with fenced target
 `{"targetId":"business-sandbox","targetClass":"SHARED_SQL"}`. Classify
-`inspect` as READ, without a fenced target. Use the current
+inspection as a receipt-persistence operation: its snapshot and outcome digest
+commit under current APPLY authority without changing sandbox subjects. Use the current
 [route-intent](../../docs/operations/general-effect-intents.md) and
 [target-fencing](../../docs/operations/generalized-target-fencing.md) contracts.
 
@@ -55,10 +56,10 @@ subject ACL. Every write verifies an actual accepted executor mTLS session,
 the exact request bytes/headers and the current signed effect grant using
 `ControlTargetAuthorization`. The target's private machine credential has only
 the exact role `toolgate-target-business-sandbox` for this tenant. It cannot be
-replaced by an administrator, agent or executor credential. Reads use the
-broker-injected API credential and native ACL; generic fenced reads are not
-supported. The TLS listener requests a client certificate, and the write
-verifier refuses writes without the accepted bound executor certificate.
+replaced by an administrator, agent or executor credential. Inspection uses
+the same current grant, native ACL and atomic outcome protocol. The TLS listener
+requests a client certificate, and the verifier refuses every operation without
+the accepted bound executor certificate.
 
 ## Fresh initialization and deployment
 
@@ -105,7 +106,8 @@ Control and install a binding file:
   "origin": "https://business-sandbox:8443",
   "routes": {
     "restart": {"profileId": "ACTUAL_PROFILE_ID", "profileDigest": "sha256:ACTUAL_PROFILE_DIGEST", "routeId": "restart"},
-    "provision": {"profileId": "ACTUAL_PROFILE_ID", "profileDigest": "sha256:ACTUAL_PROFILE_DIGEST", "routeId": "provision"}
+    "provision": {"profileId": "ACTUAL_PROFILE_ID", "profileDigest": "sha256:ACTUAL_PROFILE_DIGEST", "routeId": "provision"},
+    "inspect": {"profileId": "ACTUAL_PROFILE_ID", "profileDigest": "sha256:ACTUAL_PROFILE_DIGEST", "routeId": "inspect"}
   }
 }
 ```

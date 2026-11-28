@@ -53,8 +53,8 @@ public final class SandboxTools {
 
     @Authorization(action="sandbox.inspect",resources="sandbox://{tenant}/{kind}/{subject}")
     @ServerTool(name="inspect",title="Inspect sandbox state",
-        description="Read current sandbox service generation or joiner tasks and a prior reference receipt. A missing receipt cannot establish that an uncertain effect will never apply.",
-        effect=EffectSafety.READ_ONLY,stateless=true,routes="inspect")
+        description="Inspect current sandbox state and commit a fenced access outcome receipt. Requires APPLY authority for receipt persistence. A missing business receipt cannot establish that an uncertain effect will never apply.",
+        effect=EffectSafety.NON_IDEMPOTENT,businessKeyArgument="reference",routes="inspect",reconciliation=Reconciliation.MANUAL)
     public Result inspect(
         @Param(description="Resource kind",enumValues={"service","joiner"}) String kind,
         @Param(description="Seeded sandbox subject",minLength=1,maxLength=64,pattern="^[A-Za-z0-9_-]+$") String subject,
