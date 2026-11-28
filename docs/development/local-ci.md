@@ -124,10 +124,12 @@ The unified main workflow delegates production UI/browser checks to foundation.
 A standalone preflight replay includes its browser check using the reviewed
 `shared_checks=false` default. Main reuses foundation UI/test evidence for its
 image stage. Foundation runs one job per gate group: `foundation.python`,
-`foundation.ui`, `foundation.rust`, `foundation.examples` and `foundation.scans`
-replay locally. `foundation.browser`, `foundation.java`, `foundation.core-mcp` and
+`foundation.ui`, `foundation.rust` and `foundation.scans`
+replay locally. `foundation.examples`, `foundation.browser`, `foundation.java`, `foundation.core-mcp` and
 the `foundation.check` release gate consume the UI build or other stage artifacts
-from the same run, so they are reported as `staged` and unverified locally. The
+from the same run, so they are reported as `staged` and unverified locally.
+`foundation.starter-jvm` prepares the shared OCI package input and is classified
+as an artifact-producing job rather than a locally replayed gate. The
 `images.*` stages require same-run hosted artifacts and are reported as unverified
 locally. Legacy component bodies are compatibility-only and are
 not selected for replay; [the ownership map](ci-check-ownership.md) lists their

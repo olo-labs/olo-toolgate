@@ -179,8 +179,10 @@ class SharedCheckOwnershipTests(unittest.TestCase):
                     parts[part] = name
         self.assertEqual(set(parts), set(check.CI_PARTS))
         self.assertEqual(len(set(parts.values())), len(parts))
-        for name in ('browser', 'java', 'core-mcp'):
+        for name in ('browser', 'java'):
             self.assertEqual(jobs[name]['needs'], 'ui')
+        self.assertEqual(jobs['core-mcp']['needs'], ['ui', 'starter-jvm'])
+        self.assertEqual(jobs['examples']['needs'], 'starter-jvm')
 
     def test_ci_parts_together_run_the_whole_common_gate_set(self):
         def commands(argv):
