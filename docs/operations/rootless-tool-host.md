@@ -84,6 +84,10 @@ JVM admission. Its runtime declaration requires `runtimeId=jvm`, `language=java`
 The image provides `/opt/java/openjdk/bin/java` and the trusted
 `/opt/toolgate/qualification.jar` from the
 [JVM image recipe](../../apps/tool-host/packaging/jvm/Containerfile).
+Control package deployment accepts this Java 21 declaration only on a registered
+OCI host. A native-only host, another Java version or a runtime/language mismatch
+is rejected. Deployment compatibility does not establish qualified execution;
+the independent executor pin and admission-time route restrictions still apply.
 
 Before readiness or registration, every configured worker image executes its own
 probe with the actual policy. The JVM probe runs Java, tests socket denial and
@@ -115,7 +119,9 @@ Demo 3 acceptance. Container deployment, all seven packages and release acceptan
 remain subject to the [remaining delivery criteria](../plans/marketplace-demo3-java.md).
 
 The [managed container recipe](../../apps/tool-host/packaging/runtime-container/Containerfile)
-packages a checksum-verified prebuilt Tool Host, systemd and rootless Podman.
+packages a checksum-verified prebuilt Tool Host, systemd, the system D-Bus and
+rootless Podman. The unprivileged supervisor uses the system bus to verify its
+managed unit properties; a root-only systemd private socket is insufficient.
 It is a qualification candidate, not a published Marketplace startup profile.
 Its dedicated named volume at `/var/lib/toolgate-tool-host` must be private and
 owned by UID/GID 1000 after first initialization. Root-owned nonempty volumes,

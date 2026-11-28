@@ -1,0 +1,16 @@
+{
+  "summary": "Support source inventory",
+  "findings": [
+    {
+      "checkId": "knowledgeProvenance",
+      "status": "needs review",
+      "detail": "Verify governed retrieval receipts and published source versions before relying on policy interpretation",
+      "values": [],
+      "evidence": []
+    }
+  ],
+  "draft": "",
+  "nextActions": [
+    "knowledgeProvenance: Verify governed retrieval receipts and published source versions before relying on policy interpretation"
+  ]
+}

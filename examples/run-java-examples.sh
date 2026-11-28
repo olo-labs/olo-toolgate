@@ -12,11 +12,11 @@ out="$root/build/java-tool-examples"
 
 (cd "$root" && ./gradlew -q --configure-on-demand -I tools/ci/sdk-isolation.init.gradle :publishJavaSdkLocally && cargo build -q -p toolgate-cli)
 export TOOLGATE_CLI="${CARGO_TARGET_DIR:-$root/target}/debug/toolgate"
-builds=(java-tools mocked-tools)
+builds=("$here/java-tools" "$here/mocked-tools" "$root/bot/tools")
 expected=0
 for build in "${builds[@]}"; do
-  (cd "$here/$build" && ./gradlew -q --console=plain "-PtoolgateSdkRepo=$root/build/sdk-repo" check toolgatePackage >/dev/null)
-  expected=$((expected + $(ls "$here/$build"/*/build.gradle.kts | wc -l)))
+  (cd "$root" && ./gradlew -p "$build" -q --console=plain "-PtoolgateSdkRepo=$root/build/sdk-repo" check toolgatePackage >/dev/null)
+  expected=$((expected + $(ls "$build"/*/build.gradle.kts | wc -l)))
 done
 
 rm -rf "$out"
@@ -24,7 +24,7 @@ mkdir -p "$out"
 java="$(command -v java)"
 request='{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}'
 count=0
-for package in "$here"/java-tools/*/build/toolgate/*.olotool "$here"/mocked-tools/*/build/toolgate/*.olotool; do
+for package in "$here"/java-tools/*/build/toolgate/*.olotool "$here"/mocked-tools/*/build/toolgate/*.olotool "$root"/bot/tools/*/build/toolgate/*.olotool; do
   name="$(basename "$package" .olotool)"
   "$TOOLGATE_CLI" verify "$package" >/dev/null
   mkdir -p "$out/$name"

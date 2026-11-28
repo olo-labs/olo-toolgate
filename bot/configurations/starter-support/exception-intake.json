@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "useCase": "support",
+  "documents": [],
+  "request": {
+    "fieldSchema": [],
+    "requiredDocuments": []
+  }
+}

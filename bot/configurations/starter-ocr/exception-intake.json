@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "useCase": "ocr",
+  "documents": [],
+  "request": {
+    "fieldSchema": [
+      {
+        "id": "organizationName",
+        "labels": [
+          "Organization"
+        ]
+      },
+      {
+        "id": "registrationNumber",
+        "labels": [
+          "Registration number"
+        ]
+      },
+      {
+        "id": "address",
+        "labels": [
+          "Address"
+        ]
+      },
+      {
+        "id": "contactEmail",
+        "labels": [
+          "Contact email"
+        ],
+        "format": "email"
+      }
+    ],
+    "requiredDocuments": []
+  }
+}

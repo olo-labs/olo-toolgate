@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "useCase": "vlsic",
+  "documents": [
+    {
+      "id": "netlist-l1-l5",
+      "mediaType": "text/plain",
+      "file": "exception-netlist-l1-l5.txt",
+      "bytes": 101,
+      "sha256": "sha256:5e8b99c4a9544232fe7ec36a2634f072bd0773c8153ed0b27c202684fe2bf19c"
+    }
+  ],
+  "request": {
+    "fieldSchema": [],
+    "requiredDocuments": [],
+    "netlistDocumentId": "netlist-l1-l5",
+    "checklist": {
+      "version": "structural-verilog-1",
+      "rules": [
+        {
+          "id": "clockPort",
+          "kind": "port",
+          "name": "clk",
+          "direction": "input"
+        },
+        {
+          "id": "readySignal",
+          "kind": "signal",
+          "name": "ready"
+        },
+        {
+          "id": "resetNaming",
+          "kind": "document-port",
+          "referenceDocumentId": "design-s1",
+          "label": "Reset name in document"
+        },
+        {
+          "id": "timingClosure",
+          "kind": "timing"
+        }
+      ]
+    }
+  }
+}

@@ -1,6 +1,12 @@
 <!-- Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0 -->
 # Adapt a bot to your use case with monitoring
 
+For business-specific starting points, use the [eight starter bots](../../bot/starters/README.md).
+Each includes pinned synthetic intake files and authored expected findings.
+Deterministic reports remain separate from model commentary, so prompt or model
+tuning cannot silently replace source facts or financial calculations. Repeat
+sample evaluation and live publication acceptance after changing either layer.
+
 Start with a working [released bot](../../bot/README.md#first-time-users-choose-a-bot)
 on the published development containers in
 `D:\git\olo-toolgate\deploy\docker\quickstart\dev` (or your clone location).

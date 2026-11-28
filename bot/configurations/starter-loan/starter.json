@@ -1,0 +1,23 @@
+{
+  "useCase": "loan",
+  "title": "Loan document verification",
+  "fixtureVersion": "synthetic-2",
+  "inputMode": "authorized-intake",
+  "modelAssisted": true,
+  "effectAdapter": false,
+  "qualification": "not-qualified",
+  "integrationGaps": "Full-stack knowledge, governed actions and trace qualification remain required",
+  "files": [
+    "README.md",
+    "exception-input.txt",
+    "exception-intake.json",
+    "expected-exception-report.json",
+    "expected-report.json",
+    "sample-application-p1.txt",
+    "sample-identity-p1.txt",
+    "sample-income-p1.txt",
+    "sample-input.txt",
+    "sample-intake.json",
+    "starter.json"
+  ]
+}

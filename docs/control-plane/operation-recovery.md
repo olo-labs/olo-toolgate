@@ -40,12 +40,15 @@ pin. Removing a pin prevents future qualified admissions; already admitted
 attempts retain their original immutable scope. Revoke device/operation authority
 when withdrawing an existing execution's authority.
 
-Control independently restricts qualification to pinned Python OCI server tools
-with no secret, HTTP credential, tunnel or unmediated permission declarations and
-only nonstreaming supported OLO memory/RAG routes. The current scope covers
+Control independently restricts qualification to pinned Python or Java 21 OCI
+server tools with HTTP_ROUTE permissions only, no worker secret declarations,
+no TCP tunnels and no streaming. Broker-owned API-key authentication is allowed;
+workers never receive its credential. The reserved OLO service scope covers
 memory.read/append/delete and rag.query/ingest/update/delete via their exact
-HTTPS brokered service-profile paths. It does not qualify general HTTP targets,
-native tools or other runtimes. Package/runtime/descriptor/profile digests and
+HTTPS brokered service-profile paths. Generic HTTPS routes require an explicit
+operator effect review for every declared route and an intent reconstructed from
+admitted arguments and reviewed constants. Native tools and unsupported runtimes
+remain unqualified. Package/runtime/descriptor/profile digests and
 profile revision are captured before permit consumption.
 
 Every authorization generation from every consumed predecessor must be RELEASED.

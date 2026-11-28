@@ -1,0 +1,4 @@
+Category: workspace access
+Requester: synthetic-user-7
+Workspace: sandbox-alpha
+Duration: 2 hours

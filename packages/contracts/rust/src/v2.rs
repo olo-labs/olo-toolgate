@@ -5297,6 +5297,8 @@ pub struct WorkflowDefinition {
     pub agent_stages: Option<Vec<WorkflowAgentStage>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deployment: Option<WorkflowStackDeployment>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manual_run_mode: Option<WorkflowRemediationMode>,
     pub graph: WorkflowGraphSelection,
 }
 /// Bounded delegate model proposal; never execution authority.
@@ -5665,7 +5667,7 @@ pub struct WorkflowRunStartReceipt {
     #[serde(deserialize_with = "const_workflow_run_start_receipt_state")]
     pub state: String,
 }
-/// Explicit text input for one published bot. Backend derives service group and configured mode; current authority and idempotency remain required.
+/// Explicit text input for one published bot. Backend derives service group and mode from a matching published dispatch route, otherwise manualRunMode or PREPARE. Caller-selected modes are refused; current authority and idempotency remain required.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct WorkflowRunStartRequest {

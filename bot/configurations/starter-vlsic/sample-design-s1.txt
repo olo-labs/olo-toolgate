@@ -1,0 +1,5 @@
+Checklist: synthetic-1
+Module: sample_chip
+Required input port: clk
+Required internal signal: ready
+Reset name in document: reset_n

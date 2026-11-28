@@ -1,0 +1,3 @@
+Applicant: Jordan Fictional
+Monthly income: USD 5000
+Required documents: application, income statement, identity, address proof

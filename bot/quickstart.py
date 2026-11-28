@@ -221,6 +221,24 @@ def prepare_files(stack, row):
         input=json.dumps(dict(directories=paths, logs=logs)))
 
 
+def reviewed_tool_host(client,observed,groups):
+    """Approve the exact public identity observed by the deployment operator."""
+    host=observed['hostId'];fingerprint=observed['keyFingerprint']
+    code=observed['userCode']
+    if code is not None:
+        review=call(client,'/api/control/v1/endpoint/enrollments/review?code='+code)
+        if review['deviceId']!=host or review['keyFingerprint']!=fingerprint:
+            raise Refused('Tool Host key differs from the Control enrollment')
+        if review['state']=='PENDING':
+            call(client,'/api/control/v1/endpoint/enrollments/decision',dict(userCode=code,keyFingerprint=fingerprint,
+                choice='APPROVE',connectionExpiresAtUnixMs=int(time.time()*1000)+86400000))
+        elif review['state']!='APPROVED':raise Refused('Tool Host enrollment needs operator repair')
+    endpoint=wait_active(client,host,180)
+    if endpoint['keyFingerprint']!=fingerprint:
+        raise Refused('Active Tool Host key differs from the reviewed installation')
+    allocate(client,host,groups)
+
+
 def load_bundle(folder, row, *, version=None, commit=None):
     indexes = list(folder.glob('olo-profiles-*.json'))
     if len(indexes) != 1: raise Refused('Exactly one matching release bot inventory is required')
@@ -300,6 +318,10 @@ def configure_bot(stack, client, row, raw, credential_updates):
     files = inventory(raw, MAX_BUNDLE, 256*1024*1024)
     profile = json.loads(files['workflow.json'])
     references = json.loads(files['referenced-data.json'])
+    business=None
+    if any(pin['packageId']=='olo.business' for pin in profile['packages']):
+        from bot.business.installation import connection
+        business=connection(os.environ.get('OLO_BUSINESS_CONNECTION',str(stack.HERE/'business/connection.json')))
     if manifest['workflowId'] != row['workflowId']: raise Refused('Selected bot identity mismatch')
     directories = set(); logs = set()
     for connection in manifest['connections']:
@@ -319,6 +341,12 @@ def configure_bot(stack, client, row, raw, credential_updates):
               for item in profile['workflows']['modelDeployments']}
     def setup(_profile):
         nonlocal device
+        if business is not None:
+            from bot.business.installation import authorize,host_evidence
+            tenant=call(client,'/api/control/v1/config/export')['tenantId']
+            pin=next(pin for pin in profile['packages'] if pin['packageId']=='olo.business')
+            reviewed_tool_host(client,host_evidence(business,tenant,pin['hostIds']),['business-processor-hosts'])
+            authorize(client,profile,business)
         existing = call(client, '/api/control/v1/vault')['items']
         selected_groups={workflow['modelGroupId'] for workflow in profile['workflows']['workflows']}
         selected_groups.update(agent['modelGroupId'] for agent in profile['workflows']['agentDefinitions'])
@@ -345,6 +373,9 @@ def configure_bot(stack, client, row, raw, credential_updates):
             allocate(client, device, groups)
             prepare_files(stack, row)
     def qualification(_profile):
+        if business is not None:
+            from bot.business.installation import deploy_processor
+            deploy_processor(client,profile,business)
         if device is None: return
         tools = {node['toolRef'] for workflow in profile['workflows']['workflows']
                  for node in workflow['graph']['config'].get('nodes', []) if node['kind'] == 'tool'}
@@ -388,16 +419,36 @@ def setup_authority(client):
         raise Refused('Application images do not expose current tenant Super Admin runtime entitlements; publish matching current images before demo setup')
 
 
+def prepare_local_models(raw, prepared):
+    """Explicit selected-bot setup may install only this managed model companion."""
+    files = inventory(raw, MAX_BUNDLE, 256*1024*1024)
+    config = json.loads(files['workflow.json'])['workflows']
+    groups = {workflow['modelGroupId'] for workflow in config['workflows']}
+    groups.update(agent['modelGroupId'] for agent in config['agentDefinitions'])
+    active = {deployment for group in config['modelGroups'] if group['id'] in groups
+              and not group.get('standby') for deployment in group['deploymentIds']}
+    required = {deployment['modelId'] for deployment in config['modelDeployments']
+                if deployment['id'] in active and deployment['origin'] == 'https://ollama-provider:9443'
+                and deployment['modelId'] == 'qwen3:4b'}
+    for model in sorted(required-prepared):
+        print('Preparing starter model '+model+' in the managed Ollama companion...', flush=True)
+        subprocess.run([sys.executable, str(ROOT/'debug/profiled/ollama.py'),
+                        'prepare-model', '--model', model], cwd=ROOT, check=True)
+        prepared.add(model)
+
+
 def configure_selected(stack, rows, *, bundles_dir=None, client=None, credential_updates=None):
     if not rows: return []
     folder = bundles_dir or release_bundles(stack, rows)
     # Check every selected bundle before making any bot configuration changes.
     bundles = [load_bundle(folder, row) for row in rows]
     results = []
+    prepared_models = set()
     for row, raw in zip(rows, bundles):
         print('Configuring '+row['id']+'...', flush=True)
         operator = client or stack.operator_client()
         setup_authority(operator)
+        prepare_local_models(raw, prepared_models)
         try: results.append(configure_bot(stack, operator, row, raw, credential_updates or {}))
         except Refused as error: raise Refused(row['id']+': '+str(error)) from None
     return results

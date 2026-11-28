@@ -1,0 +1,4 @@
+Fictional joiner: Morgan Example
+Role: analyst
+Location: synthetic-office
+Question: When is orientation?

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "useCase": "itsm",
+  "documents": [],
+  "request": {
+    "fieldSchema": [
+      {
+        "id": "category",
+        "labels": [
+          "Category"
+        ]
+      },
+      {
+        "id": "workspace",
+        "labels": [
+          "Workspace"
+        ]
+      },
+      {
+        "id": "requester",
+        "labels": [
+          "Requester"
+        ]
+      },
+      {
+        "id": "duration",
+        "labels": [
+          "Duration"
+        ]
+      }
+    ],
+    "requiredDocuments": []
+  }
+}

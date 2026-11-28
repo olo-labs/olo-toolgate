@@ -120,6 +120,8 @@ def build():
     for group in ('java-tools','mocked-tools'):
         run(wrapper,'--no-daemon','-p',str(ROOT/'examples'/group),
             '-PtoolgateSdkRepo='+str(ROOT/'build/sdk-repo'),'clean','toolgatePackage')
+    run(wrapper,'--no-daemon','-p',str(ROOT/'bot/tools'),
+        '-PtoolgateSdkRepo='+str(ROOT/'build/sdk-repo'),'clean','toolgatePackage')
     run(sys.executable,'core-mcp/build.py','--cli','target/debug/toolgate','--without-tests')
     run(sys.executable,'tools/release/tool_packages.py','--output',str(ASSETS),
         '--version',version,'--commit',info['commit'])

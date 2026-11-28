@@ -1,0 +1,182 @@
+{
+  "summary": "Medical document administration",
+  "findings": [
+    {
+      "checkId": "referralDepartment",
+      "status": "needs review",
+      "detail": "Required field missing or unreadable",
+      "values": [],
+      "evidence": [
+        {
+          "sourceId": "referral-p1:p1",
+          "documentId": "referral-p1",
+          "page": 1,
+          "line": 3,
+          "quote": "Referring department: [missing]",
+          "sha256": "sha256:6b65d884255ca83ac4a45dca95c9cafc90a9c15c534d3b60725ae477530b5fd4",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        }
+      ]
+    },
+    {
+      "checkId": "dischargeDate",
+      "status": "fail",
+      "detail": "Conflicting source values; preserve each for reviewer resolution",
+      "values": [
+        "2026-01-09",
+        "2026-01-10"
+      ],
+      "evidence": [
+        {
+          "sourceId": "discharge-p1:p1",
+          "documentId": "discharge-p1",
+          "page": 1,
+          "line": 2,
+          "quote": "Discharge date: 2026-01-09",
+          "sha256": "sha256:9aa2285e76ea14da0587385d29826a2507ec573ff5990ce40b043fd241135d46",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "laboratory-p1:p1",
+          "documentId": "laboratory-p1",
+          "page": 1,
+          "line": 3,
+          "quote": "Recorded discharge date: 2026-01-10",
+          "sha256": "sha256:bdb9f7b42ca628d7b3f0fa0bc691fe7f1aebfcc1e66ee0e44b2860df45928fdc",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        }
+      ]
+    },
+    {
+      "checkId": "document:referral-p1",
+      "status": "pass",
+      "detail": "Document supplied",
+      "values": [
+        "referral-p1"
+      ],
+      "evidence": [
+        {
+          "sourceId": "referral-p1:p1",
+          "documentId": "referral-p1",
+          "page": 1,
+          "line": 1,
+          "quote": "Fictional person: Avery Sample",
+          "sha256": "sha256:6b65d884255ca83ac4a45dca95c9cafc90a9c15c534d3b60725ae477530b5fd4",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        }
+      ]
+    },
+    {
+      "checkId": "document:discharge-p1",
+      "status": "pass",
+      "detail": "Document supplied",
+      "values": [
+        "discharge-p1"
+      ],
+      "evidence": [
+        {
+          "sourceId": "discharge-p1:p1",
+          "documentId": "discharge-p1",
+          "page": 1,
+          "line": 1,
+          "quote": "Fictional person: Avery Sample",
+          "sha256": "sha256:9aa2285e76ea14da0587385d29826a2507ec573ff5990ce40b043fd241135d46",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        }
+      ]
+    },
+    {
+      "checkId": "document:laboratory-p1",
+      "status": "pass",
+      "detail": "Document supplied",
+      "values": [
+        "laboratory-p1"
+      ],
+      "evidence": [
+        {
+          "sourceId": "laboratory-p1:p1",
+          "documentId": "laboratory-p1",
+          "page": 1,
+          "line": 1,
+          "quote": "Fictional person: Avery Sample",
+          "sha256": "sha256:bdb9f7b42ca628d7b3f0fa0bc691fe7f1aebfcc1e66ee0e44b2860df45928fdc",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        }
+      ]
+    },
+    {
+      "checkId": "chronology",
+      "status": "pass",
+      "detail": "Explicit dated document events; professional interpretation required",
+      "values": [
+        "2026-01-03",
+        "2026-01-08",
+        "2026-01-09",
+        "2026-01-10"
+      ],
+      "evidence": [
+        {
+          "sourceId": "referral-p1:p1",
+          "documentId": "referral-p1",
+          "page": 1,
+          "line": 2,
+          "quote": "Referral date: 2026-01-03",
+          "sha256": "sha256:6b65d884255ca83ac4a45dca95c9cafc90a9c15c534d3b60725ae477530b5fd4",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "laboratory-p1:p1",
+          "documentId": "laboratory-p1",
+          "page": 1,
+          "line": 2,
+          "quote": "Collected: 2026-01-08",
+          "sha256": "sha256:bdb9f7b42ca628d7b3f0fa0bc691fe7f1aebfcc1e66ee0e44b2860df45928fdc",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "discharge-p1:p1",
+          "documentId": "discharge-p1",
+          "page": 1,
+          "line": 2,
+          "quote": "Discharge date: 2026-01-09",
+          "sha256": "sha256:9aa2285e76ea14da0587385d29826a2507ec573ff5990ce40b043fd241135d46",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "laboratory-p1:p1",
+          "documentId": "laboratory-p1",
+          "page": 1,
+          "line": 3,
+          "quote": "Recorded discharge date: 2026-01-10",
+          "sha256": "sha256:bdb9f7b42ca628d7b3f0fa0bc691fe7f1aebfcc1e66ee0e44b2860df45928fdc",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        }
+      ]
+    }
+  ],
+  "draft": "",
+  "nextActions": [
+    "referralDepartment: Required field missing or unreadable",
+    "dischargeDate: Conflicting source values; preserve each for reviewer resolution"
+  ]
+}

@@ -2865,6 +2865,7 @@ export interface WorkflowDefinition {
   readonly agents: ReadonlyArray<WorkflowAgentBinding>;
   readonly agentStages?: ReadonlyArray<WorkflowAgentStage>;
   readonly deployment?: WorkflowStackDeployment;
+  readonly manualRunMode?: WorkflowRemediationMode;
   readonly graph: WorkflowGraphSelection;
 }
 /** Bounded delegate model proposal; never execution authority. */
@@ -3089,7 +3090,7 @@ export interface WorkflowRunStartReceipt {
   readonly workflowId: string;
   readonly state: "QUEUED";
 }
-/** Explicit text input for one published bot. Backend derives service group and configured mode; current authority and idempotency remain required. */
+/** Explicit text input for one published bot. Backend derives service group and mode from a matching published dispatch route, otherwise manualRunMode or PREPARE. Caller-selected modes are refused; current authority and idempotency remain required. */
 export interface WorkflowRunStartRequest {
   readonly profileDigest: string;
   readonly expectedGeneration: number;

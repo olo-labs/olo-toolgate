@@ -87,6 +87,11 @@ class ProfileTests(unittest.TestCase):
             def logical(value):return value if folder.name.startswith('hotswap-demo-') else value.removeprefix(folder.name+'-')
             groups={logical(g['id']):[logical(x) for x in g['deploymentIds']] for g in config['modelGroups']}
             deployments={logical(m['id']):m for m in config['modelDeployments']}
+            if folder.name.startswith('starter-'):
+                self.assertEqual({'local-ceiling':['local-lightweight'],'general-models':['local-lightweight']},groups)
+                self.assertEqual('qwen3:4b',deployments['local-lightweight']['modelId'])
+                self.assertEqual({'local-lightweight'},set(deployments))
+                continue
             tiered=folder.name in three_tier
             expected=['local-qlora','local-lightweight','premium-openrouter']
             self.assertEqual(expected if tiered else ['local-qlora','local-lightweight'],groups['hotfolder-models'])
@@ -103,7 +108,7 @@ class ProfileTests(unittest.TestCase):
                 scoped=builder.scope(profile,workflow,json.loads((folder/'trigger-connections.json').read_text(encoding='utf-8')))
                 self.assertIn('premium-openrouter',{logical(m['id']) for m in scoped['workflows']['modelDeployments']})
             self.assertEqual('olo-qlora-hotfolder:e376fb40',deployments['local-qlora']['modelId'])
-            self.assertEqual('qwen3:0.6b',deployments['local-lightweight']['modelId'])
+            self.assertEqual('qwen3:4b' if folder.name.startswith('starter-') else 'qwen3:0.6b',deployments['local-lightweight']['modelId'])
         self.assertTrue(all(len(groups)==1 for groups in memberships.values()),memberships)
 
     def test_trigger_connections_keep_their_packages_without_deployment_fields(self):
@@ -215,9 +220,14 @@ class ProfileTests(unittest.TestCase):
                 name=configuration+'-1.2.3.olo';(source/name).write_bytes(data)
                 rows.append(dict(configuration=configuration,workflowId=workflow,filename=name,sha256=bundle.digest(data),bytes=len(data),packages=[]))
             index=source/'olo-profiles-1.2.3.json'
-            def write(items):index.write_text(json.dumps(dict(format='olo-profiles',version='1.2.3',sourceCommit='a'*40,profiles=items)),encoding='utf-8')
+            def write(items):
+                from bot.starters import build_kit
+                kit=build_kit(items,'1.2.3','a'*40)
+                (source/'olo-starters-1.2.3.zip').write_bytes(kit)
+                index.write_text(json.dumps(dict(format='olo-profiles',version='1.2.3',sourceCommit='a'*40,profiles=items,
+                    starterKit=dict(filename='olo-starters-1.2.3.zip',sha256=bundle.digest(kit),bytes=len(kit)))),encoding='utf-8')
             write(rows)
-            self.assertEqual(len(expected)+1,len(collect(source,output)))
+            self.assertEqual(len(expected)+2,len(collect(source,output)))
             for incomplete in (rows[:-1],rows+[rows[0]],rows[:-1]+[dict(rows[-1],configuration='unknown')]):
                 write(incomplete)
                 with self.assertRaisesRegex(ValueError,'every bot'):collect(source,root/'refused')

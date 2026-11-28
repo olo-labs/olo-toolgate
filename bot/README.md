@@ -1,6 +1,11 @@
 <!-- Copyright 2026 OLO Labs; SPDX-License-Identifier: Apache-2.0 -->
 # OLO bots
 
+The [eight business use-case starters](starters/README.md) use the same setup
+menu: PDF/image extraction, medical records, VLSIC review, loan documents,
+invoice reconciliation, support, IT service desk and onboarding. Their guides
+describe supported inputs, tuning and remaining external integrations.
+
 For incident analysis and handover across independently configured tenants, use
 [tenant incident triage](configurations/tenant-incident-triage/README.md).
 

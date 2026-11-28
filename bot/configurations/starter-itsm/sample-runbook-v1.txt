@@ -1,0 +1,1 @@
+Approved runbook synthetic-1: Propose temporary workspace access for sandbox-alpha only; require current Control approval and runtime grants before invoking the adapter.

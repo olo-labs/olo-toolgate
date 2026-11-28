@@ -2,6 +2,13 @@
 
 ## 1.0.0-dev.1
 
+- Add eight business starter bots to the standard setup menu and profile release
+  assets, with governed PDF/image intake, deterministic document/checklist and
+  decimal reconciliation tools, separate agent analysis/review, pinned samples,
+  tuning guides and saved-result evaluation. Add current-SDK RAG/memory
+  `.olotool` modules. Full workflow qualification and live release publication
+  remain gated on actual integration acceptance.
+
 - Add opt-in Java 21 OCI workers with independent immutable image pins, a live
   JVM isolation probe and the existing separated broker/cleanup boundary. Allow
   Java package builders to bind the worker image before signing, and permit

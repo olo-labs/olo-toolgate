@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "useCase": "onboarding",
+  "documents": [],
+  "request": {
+    "fieldSchema": [
+      {
+        "id": "requestId",
+        "labels": [
+          "Request ID"
+        ]
+      },
+      {
+        "id": "accessStatus",
+        "labels": [
+          "Status"
+        ]
+      }
+    ],
+    "requiredDocuments": [
+      "signed-offer",
+      "identity-evidence"
+    ]
+  }
+}

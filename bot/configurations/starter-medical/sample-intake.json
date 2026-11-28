@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "useCase": "medical",
+  "documents": [
+    {
+      "id": "referral-p1",
+      "mediaType": "text/plain",
+      "file": "sample-referral-p1.txt",
+      "bytes": 88,
+      "sha256": "sha256:6b65d884255ca83ac4a45dca95c9cafc90a9c15c534d3b60725ae477530b5fd4"
+    },
+    {
+      "id": "discharge-p1",
+      "mediaType": "text/plain",
+      "file": "sample-discharge-p1.txt",
+      "bytes": 57,
+      "sha256": "sha256:9aa2285e76ea14da0587385d29826a2507ec573ff5990ce40b043fd241135d46"
+    },
+    {
+      "id": "laboratory-p1",
+      "mediaType": "text/plain",
+      "file": "sample-laboratory-p1.txt",
+      "bytes": 88,
+      "sha256": "sha256:bdb9f7b42ca628d7b3f0fa0bc691fe7f1aebfcc1e66ee0e44b2860df45928fdc"
+    }
+  ],
+  "request": {
+    "fieldSchema": [
+      {
+        "id": "referralDepartment",
+        "labels": [
+          "Referring department"
+        ]
+      },
+      {
+        "id": "dischargeDate",
+        "labels": [
+          "Discharge date",
+          "Recorded discharge date"
+        ],
+        "format": "date"
+      }
+    ],
+    "requiredDocuments": [
+      "referral-p1",
+      "discharge-p1",
+      "laboratory-p1"
+    ]
+  }
+}

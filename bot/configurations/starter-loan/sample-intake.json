@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "useCase": "loan",
+  "documents": [
+    {
+      "id": "application-p1",
+      "mediaType": "text/plain",
+      "file": "sample-application-p1.txt",
+      "bytes": 127,
+      "sha256": "sha256:ed22dac73ccd91b213a4f7076b8e4bc877d8d7806194ca0ed6f1752f992ed8c6"
+    },
+    {
+      "id": "income-p1",
+      "mediaType": "text/plain",
+      "file": "sample-income-p1.txt",
+      "bytes": 52,
+      "sha256": "sha256:961624f9b18186af6a720693d2bc1ca9958f5cb9467086574e1c68e7b8206a19"
+    },
+    {
+      "id": "identity-p1",
+      "mediaType": "text/plain",
+      "file": "sample-identity-p1.txt",
+      "bytes": 55,
+      "sha256": "sha256:0a2a63ea2dd593016298555745a39ebbc3e6f8a03446d0a65fdea0d6732eb294"
+    }
+  ],
+  "request": {
+    "fieldSchema": [
+      {
+        "id": "identity",
+        "labels": [
+          "Fictional identifier"
+        ]
+      },
+      {
+        "id": "monthlyIncome",
+        "labels": [
+          "Monthly income"
+        ]
+      }
+    ],
+    "requiredDocuments": [
+      "application-p1",
+      "income-p1",
+      "identity-p1",
+      "address-proof"
+    ]
+  }
+}

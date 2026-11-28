@@ -1,0 +1,294 @@
+{
+  "summary": "Invoice, purchase order and receipt comparison",
+  "findings": [
+    {
+      "checkId": "A",
+      "status": "pass",
+      "detail": "Exact decimal three-way match",
+      "values": [
+        "invoice quantity=2",
+        "invoice unitPrice=0.10",
+        "USD",
+        "PO quantity=2",
+        "PO unitPrice=0.10",
+        "received quantity=2"
+      ],
+      "evidence": [
+        {
+          "sourceId": "PO-0042",
+          "documentId": "",
+          "page": 0,
+          "line": 0,
+          "quote": "",
+          "sha256": "",
+          "engine": "structured-record",
+          "rotation": 0,
+          "pointer": "/lines/0"
+        },
+        {
+          "sourceId": "GRN-0042",
+          "documentId": "",
+          "page": 0,
+          "line": 0,
+          "quote": "",
+          "sha256": "",
+          "engine": "structured-record",
+          "rotation": 0,
+          "pointer": "/lines"
+        },
+        {
+          "sourceId": "invoice-scan:p1",
+          "documentId": "invoice-scan",
+          "page": 1,
+          "line": 2,
+          "quote": "Invoice format: invoice-lines-1",
+          "sha256": "sha256:628911076249360045d8f3d51bc3df83581a0cd855ec37357ae5935852032425",
+          "engine": "tesseract-eng",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "invoice-scan:p1",
+          "documentId": "invoice-scan",
+          "page": 1,
+          "line": 3,
+          "quote": "Invoice ID: INV-0042",
+          "sha256": "sha256:628911076249360045d8f3d51bc3df83581a0cd855ec37357ae5935852032425",
+          "engine": "tesseract-eng",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "invoice-scan:p1",
+          "documentId": "invoice-scan",
+          "page": 1,
+          "line": 4,
+          "quote": "Purchase Order ID: PO-0042",
+          "sha256": "sha256:628911076249360045d8f3d51bc3df83581a0cd855ec37357ae5935852032425",
+          "engine": "tesseract-eng",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "invoice-scan:p1",
+          "documentId": "invoice-scan",
+          "page": 1,
+          "line": 5,
+          "quote": "Currency: USD",
+          "sha256": "sha256:628911076249360045d8f3d51bc3df83581a0cd855ec37357ae5935852032425",
+          "engine": "tesseract-eng",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "invoice-scan:p1",
+          "documentId": "invoice-scan",
+          "page": 1,
+          "line": 6,
+          "quote": "Line count: 3",
+          "sha256": "sha256:628911076249360045d8f3d51bc3df83581a0cd855ec37357ae5935852032425",
+          "engine": "tesseract-eng",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "invoice-scan:p1",
+          "documentId": "invoice-scan",
+          "page": 1,
+          "line": 7,
+          "quote": "Line: A| 2 | 0.10",
+          "sha256": "sha256:628911076249360045d8f3d51bc3df83581a0cd855ec37357ae5935852032425",
+          "engine": "tesseract-eng",
+          "rotation": 0,
+          "pointer": ""
+        }
+      ]
+    },
+    {
+      "checkId": "B",
+      "status": "fail",
+      "detail": "Quantity or unit-price discrepancy",
+      "values": [
+        "invoice quantity=5",
+        "invoice unitPrice=20.00",
+        "USD",
+        "PO quantity=4",
+        "PO unitPrice=20.00",
+        "received quantity=4"
+      ],
+      "evidence": [
+        {
+          "sourceId": "PO-0042",
+          "documentId": "",
+          "page": 0,
+          "line": 0,
+          "quote": "",
+          "sha256": "",
+          "engine": "structured-record",
+          "rotation": 0,
+          "pointer": "/lines/1"
+        },
+        {
+          "sourceId": "GRN-0042",
+          "documentId": "",
+          "page": 0,
+          "line": 0,
+          "quote": "",
+          "sha256": "",
+          "engine": "structured-record",
+          "rotation": 0,
+          "pointer": "/lines"
+        },
+        {
+          "sourceId": "invoice-scan:p1",
+          "documentId": "invoice-scan",
+          "page": 1,
+          "line": 2,
+          "quote": "Invoice format: invoice-lines-1",
+          "sha256": "sha256:628911076249360045d8f3d51bc3df83581a0cd855ec37357ae5935852032425",
+          "engine": "tesseract-eng",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "invoice-scan:p1",
+          "documentId": "invoice-scan",
+          "page": 1,
+          "line": 3,
+          "quote": "Invoice ID: INV-0042",
+          "sha256": "sha256:628911076249360045d8f3d51bc3df83581a0cd855ec37357ae5935852032425",
+          "engine": "tesseract-eng",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "invoice-scan:p1",
+          "documentId": "invoice-scan",
+          "page": 1,
+          "line": 4,
+          "quote": "Purchase Order ID: PO-0042",
+          "sha256": "sha256:628911076249360045d8f3d51bc3df83581a0cd855ec37357ae5935852032425",
+          "engine": "tesseract-eng",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "invoice-scan:p1",
+          "documentId": "invoice-scan",
+          "page": 1,
+          "line": 5,
+          "quote": "Currency: USD",
+          "sha256": "sha256:628911076249360045d8f3d51bc3df83581a0cd855ec37357ae5935852032425",
+          "engine": "tesseract-eng",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "invoice-scan:p1",
+          "documentId": "invoice-scan",
+          "page": 1,
+          "line": 6,
+          "quote": "Line count: 3",
+          "sha256": "sha256:628911076249360045d8f3d51bc3df83581a0cd855ec37357ae5935852032425",
+          "engine": "tesseract-eng",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "invoice-scan:p1",
+          "documentId": "invoice-scan",
+          "page": 1,
+          "line": 8,
+          "quote": "Line: B | 5 | 20.00",
+          "sha256": "sha256:628911076249360045d8f3d51bc3df83581a0cd855ec37357ae5935852032425",
+          "engine": "tesseract-eng",
+          "rotation": 0,
+          "pointer": ""
+        }
+      ]
+    },
+    {
+      "checkId": "C",
+      "status": "needs review",
+      "detail": "Receipt missing; do not infer delivery",
+      "values": [
+        "invoice quantity=1",
+        "invoice unitPrice=30.00",
+        "USD"
+      ],
+      "evidence": [
+        {
+          "sourceId": "invoice-scan:p1",
+          "documentId": "invoice-scan",
+          "page": 1,
+          "line": 2,
+          "quote": "Invoice format: invoice-lines-1",
+          "sha256": "sha256:628911076249360045d8f3d51bc3df83581a0cd855ec37357ae5935852032425",
+          "engine": "tesseract-eng",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "invoice-scan:p1",
+          "documentId": "invoice-scan",
+          "page": 1,
+          "line": 3,
+          "quote": "Invoice ID: INV-0042",
+          "sha256": "sha256:628911076249360045d8f3d51bc3df83581a0cd855ec37357ae5935852032425",
+          "engine": "tesseract-eng",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "invoice-scan:p1",
+          "documentId": "invoice-scan",
+          "page": 1,
+          "line": 4,
+          "quote": "Purchase Order ID: PO-0042",
+          "sha256": "sha256:628911076249360045d8f3d51bc3df83581a0cd855ec37357ae5935852032425",
+          "engine": "tesseract-eng",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "invoice-scan:p1",
+          "documentId": "invoice-scan",
+          "page": 1,
+          "line": 5,
+          "quote": "Currency: USD",
+          "sha256": "sha256:628911076249360045d8f3d51bc3df83581a0cd855ec37357ae5935852032425",
+          "engine": "tesseract-eng",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "invoice-scan:p1",
+          "documentId": "invoice-scan",
+          "page": 1,
+          "line": 6,
+          "quote": "Line count: 3",
+          "sha256": "sha256:628911076249360045d8f3d51bc3df83581a0cd855ec37357ae5935852032425",
+          "engine": "tesseract-eng",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "invoice-scan:p1",
+          "documentId": "invoice-scan",
+          "page": 1,
+          "line": 9,
+          "quote": "Line: C | 1 | 30.00",
+          "sha256": "sha256:628911076249360045d8f3d51bc3df83581a0cd855ec37357ae5935852032425",
+          "engine": "tesseract-eng",
+          "rotation": 0,
+          "pointer": ""
+        }
+      ]
+    }
+  ],
+  "draft": "",
+  "nextActions": [
+    "B: Quantity or unit-price discrepancy",
+    "C: Receipt missing; do not infer delivery"
+  ]
+}

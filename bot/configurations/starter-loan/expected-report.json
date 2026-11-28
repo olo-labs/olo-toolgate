@@ -1,0 +1,134 @@
+{
+  "summary": "Loan document completeness and consistency",
+  "findings": [
+    {
+      "checkId": "identity",
+      "status": "pass",
+      "detail": "Value extracted from the supplied source",
+      "values": [
+        "SYN-ID-123"
+      ],
+      "evidence": [
+        {
+          "sourceId": "identity-p1:p1",
+          "documentId": "identity-p1",
+          "page": 1,
+          "line": 1,
+          "quote": "Fictional identifier: SYN-ID-123",
+          "sha256": "sha256:0a2a63ea2dd593016298555745a39ebbc3e6f8a03446d0a65fdea0d6732eb294",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        }
+      ]
+    },
+    {
+      "checkId": "monthlyIncome",
+      "status": "fail",
+      "detail": "Conflicting source values; preserve each for reviewer resolution",
+      "values": [
+        "USD 5000",
+        "USD 4500"
+      ],
+      "evidence": [
+        {
+          "sourceId": "application-p1:p1",
+          "documentId": "application-p1",
+          "page": 1,
+          "line": 2,
+          "quote": "Monthly income: USD 5000",
+          "sha256": "sha256:ed22dac73ccd91b213a4f7076b8e4bc877d8d7806194ca0ed6f1752f992ed8c6",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        },
+        {
+          "sourceId": "income-p1:p1",
+          "documentId": "income-p1",
+          "page": 1,
+          "line": 2,
+          "quote": "Monthly income: USD 4500",
+          "sha256": "sha256:961624f9b18186af6a720693d2bc1ca9958f5cb9467086574e1c68e7b8206a19",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        }
+      ]
+    },
+    {
+      "checkId": "document:application-p1",
+      "status": "pass",
+      "detail": "Document supplied",
+      "values": [
+        "application-p1"
+      ],
+      "evidence": [
+        {
+          "sourceId": "application-p1:p1",
+          "documentId": "application-p1",
+          "page": 1,
+          "line": 1,
+          "quote": "Applicant: Jordan Fictional",
+          "sha256": "sha256:ed22dac73ccd91b213a4f7076b8e4bc877d8d7806194ca0ed6f1752f992ed8c6",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        }
+      ]
+    },
+    {
+      "checkId": "document:income-p1",
+      "status": "pass",
+      "detail": "Document supplied",
+      "values": [
+        "income-p1"
+      ],
+      "evidence": [
+        {
+          "sourceId": "income-p1:p1",
+          "documentId": "income-p1",
+          "page": 1,
+          "line": 1,
+          "quote": "Applicant: Jordan Fictional",
+          "sha256": "sha256:961624f9b18186af6a720693d2bc1ca9958f5cb9467086574e1c68e7b8206a19",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        }
+      ]
+    },
+    {
+      "checkId": "document:identity-p1",
+      "status": "pass",
+      "detail": "Document supplied",
+      "values": [
+        "identity-p1"
+      ],
+      "evidence": [
+        {
+          "sourceId": "identity-p1:p1",
+          "documentId": "identity-p1",
+          "page": 1,
+          "line": 1,
+          "quote": "Fictional identifier: SYN-ID-123",
+          "sha256": "sha256:0a2a63ea2dd593016298555745a39ebbc3e6f8a03446d0a65fdea0d6732eb294",
+          "engine": "utf-8",
+          "rotation": 0,
+          "pointer": ""
+        }
+      ]
+    },
+    {
+      "checkId": "document:address-proof",
+      "status": "needs review",
+      "detail": "Required document absent",
+      "values": [],
+      "evidence": []
+    }
+  ],
+  "draft": "",
+  "nextActions": [
+    "monthlyIncome: Conflicting source values; preserve each for reviewer resolution",
+    "document:address-proof: Required document absent"
+  ]
+}
